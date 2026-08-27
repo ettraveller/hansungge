@@ -1,0 +1,167 @@
+.root {
+  display: flex;
+  min-height: 100vh;
+  background: var(--light-gray);
+}
+
+.sidebar {
+  width: 220px;
+  flex: none;
+  background: var(--dark);
+  color: #fff;
+  padding: 24px 0;
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand {
+  padding: 0 24px;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--gold);
+  color: var(--dark);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav a {
+  padding: 9px 24px;
+  font-size: 13px;
+  color: rgba(250, 249, 245, 0.72);
+}
+
+.nav a:hover {
+  background: rgba(201, 162, 39, 0.16);
+  color: var(--gold);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  height: 52px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+}
+
+.env {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+.main {
+  flex: 1;
+  padding: 24px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    display: flex;
+  }
+}
+
+/* ---------- 인증 확인 중 화면 ---------- */
+.gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+  font-size: 13px;
+  background: var(--light-gray);
+}
+
+/* ---------- 사이드바 ---------- */
+.nav a.navActive {
+  background: rgba(201, 162, 39, 0.2);
+  color: var(--gold);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+/* 아직 만들지 않은 메뉴. 링크가 아니라는 것이 한눈에 보여야 한다. */
+.planned {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 24px 0;
+  border-top: 1px solid rgba(250, 249, 245, 0.12);
+  margin-top: auto;
+}
+
+.plannedTitle {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(250, 249, 245, 0.4);
+  margin-bottom: 4px;
+}
+
+.plannedItem {
+  font-size: 12px;
+  color: rgba(250, 249, 245, 0.3);
+  padding: 3px 0;
+}
+
+/* ---------- 상단바 ---------- */
+.topbar {
+  gap: 14px;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.35;
+  font-size: 13px;
+  color: var(--dark);
+}
+
+.role {
+  font-size: 11px;
+  color: var(--gray);
+}
+
+.logout {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: var(--radius-sm, 4px);
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.logout:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+.logout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

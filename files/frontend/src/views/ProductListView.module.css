@@ -1,0 +1,112 @@
+/* 상품 목록 — 시안의 상품 섹션(.tabs / .prod-grid)과 같은 시각 언어 */
+
+.section {
+  padding: 64px 0;
+}
+
+.secTitle {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.secTitle small {
+  color: var(--gold-deep);
+  letter-spacing: 3px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.secTitle h2 {
+  font-size: 28px;
+  margin-top: 6px;
+}
+
+.secTitle p {
+  color: var(--gray);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* 시안의 .tabs 를 카테고리 필터로 쓴다 */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.tab,
+.tabOn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray);
+  transition: 0.2s;
+}
+
+.tab:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+.tabOn {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+
+.count {
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--gray);
+  text-align: center;
+}
+
+.prodGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+.empty {
+  padding: 80px 20px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 14px;
+  background: var(--light-gray);
+  border-radius: var(--radius-lg);
+}
+
+.pager {
+  margin-top: 34px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+@media (max-width: 960px) {
+  .section {
+    padding: 44px 0;
+  }
+
+  .secTitle h2 {
+    font-size: 22px;
+  }
+
+  .prodGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab,
+  .tabOn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}

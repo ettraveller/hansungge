@@ -1,0 +1,41 @@
+# =====================================================================
+# local 프로파일 템플릿.
+#
+#   cp application-local.yml.example application-local.yml
+#
+# application-local.yml 은 .gitignore 대상이다 (개발자마다 값이 다르고,
+# 실수로 비밀번호가 들어갈 수 있는 파일이므로 아예 추적하지 않는다).
+#
+# 사전 준비 — 로컬 PostgreSQL 16:
+#   CREATE USER hanseongge WITH PASSWORD '<개발용 비밀번호>';
+#   CREATE DATABASE hanseongge OWNER hanseongge;
+#
+# OWNER 로 만들어야 한다. PostgreSQL 15+ 는 public 스키마의 CREATE 권한을 PUBLIC 에서
+# 회수했기 때문에, GRANT ALL PRIVILEGES ON DATABASE 만으로는 Flyway V1 이 실패한다.
+#
+# 비밀번호는 이 파일에 적지 말고 환경변수 DB_PASSWORD 로 넘기는 것을 권장한다.
+# =====================================================================
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/hanseongge}
+    username: ${DB_USERNAME:hanseongge}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+# API 문서 노출 (기본값은 application.yml 에서 차단, local 에서만 연다)
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.flywaydb: INFO

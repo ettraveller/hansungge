@@ -1,0 +1,54 @@
+# =====================================================================
+# 한성금거래소 모노레포 공통 .gitignore
+# 최우선 규칙: 비밀값이 담긴 파일은 어떤 경우에도 커밋되지 않는다.
+# =====================================================================
+
+# --- 비밀값 (절대 커밋 금지) ---
+.env
+.env.local
+.env.*.local
+*.env
+!*.env.example
+!.env.development
+!.env.production
+!.env.local.example
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+
+# --- Java / Gradle ---
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+*.class
+*.jar
+!gradle-wrapper.jar
+*.log
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+next-env.d.ts
+.turbo/
+*.tsbuildinfo
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+.settings/
+.project
+.classpath
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- 배포 산출물 ---
+dist/
+releases/

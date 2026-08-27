@@ -1,0 +1,213 @@
+/* =====================================================================
+   모바일 햄버거 · 드로어 · 하단 탭바 — 레퍼런스 시안 값을 그대로 옮긴다.
+   960px 초과에서는 햄버거와 탭바가 숨는다.
+   ===================================================================== */
+
+.hamburger {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border: none;
+  background: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px;
+}
+
+.hamburger span {
+  display: block;
+  height: 2.5px;
+  background: #333;
+  border-radius: 2px;
+}
+
+/* ---------- 오버레이 ---------- */
+
+.overlay,
+.overlayOn {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  transition: opacity 0.25s;
+  z-index: 190;
+}
+
+.overlay {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.overlayOn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------- 드로어 ---------- */
+
+.drawer,
+.drawerOn {
+  position: fixed;
+  top: 0;
+  width: 280px;
+  height: 100vh;
+  background: #fff;
+  z-index: 200;
+  transition: right 0.25s;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -6px 0 24px rgba(0, 0, 0, 0.15);
+}
+
+.drawer {
+  right: -290px;
+}
+
+.drawerOn {
+  right: 0;
+}
+
+.drawerHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawerHead img {
+  height: 34px;
+  width: auto;
+}
+
+.drawerClose {
+  border: none;
+  background: none;
+  font-size: 22px;
+  color: var(--gray);
+}
+
+.drawerNav {
+  border: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drawerLink,
+.drawerToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 15px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid #f2efe8;
+  background: none;
+  color: inherit;
+}
+
+.drawerLink:active,
+.drawerToggle:active {
+  background: var(--gold-light);
+}
+
+/* 펼침 표시 — 열리면 180° 돈다 */
+.caret,
+.caretOn {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--gray);
+  transition: transform 0.15s ease;
+}
+
+.caretOn {
+  transform: rotate(180deg);
+}
+
+.drawerGroup {
+  border: none;
+}
+
+/* 하위 목록 — 상위와 확실히 구분되게 배경을 깐다 */
+.drawerSub {
+  background: var(--light-gray);
+  border-bottom: 1px solid #f2efe8;
+}
+
+.drawerSub a {
+  display: block;
+  padding: 12px 22px 12px 34px;
+  font-size: 14px;
+  color: var(--gray);
+}
+
+.drawerSub a:active {
+  background: var(--gold-light);
+  color: var(--gold-deep);
+}
+
+.drawerFoot {
+  padding: 16px 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.drawerFoot a {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+
+/* ---------- 하단 탭바 ---------- */
+
+.tabbar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--tabbar-h);
+  background: #fff;
+  border-top: 1px solid var(--line);
+  z-index: 180;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab,
+.tabOn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11px;
+  color: #888;
+}
+
+.tabOn {
+  color: var(--gold-deep);
+  font-weight: 700;
+}
+
+.ti {
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 960px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .tabbar {
+    display: flex;
+  }
+}

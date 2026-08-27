@@ -1,0 +1,57 @@
+/* =====================================================================
+   디자인 토큰 — 한성금거래소
+
+   레퍼런스 시안(hansung_gold_main_web.html)의 값을 그대로 옮긴다.
+   시안과 다른 값을 쓰면 "비슷하지만 다른" 화면이 되고, 그 차이는
+   비교해 보기 전까지 아무도 설명하지 못한다.
+   ===================================================================== */
+
+:root {
+  /* --- 브랜드 (시안 :root 원본) --- */
+  --gold: #c9a227;
+  --gold-deep: #a8841a;
+  --gold-light: #f5ead0;
+  /* 히어로·배너에서 밝은 금색 강조에 쓰는 값 (시안 하드코딩 #e8c766) */
+  --gold-bright: #e8c766;
+
+  --dark: #1c1c1c;
+  --gray: #666;
+  --light-gray: #f7f6f2;
+  --line: #e6e2d8;
+
+  /* 국내 관행: 상승 = 적색, 하락 = 청색 */
+  --red: #e0455a;
+  --blue: #4b7fd4;
+  --maroon: #7d1f2e;
+
+  /* --- 다크 영역 (히어로·시세바·푸터) --- */
+  --hero-bg: #100d0c;
+  --strip-bg: #141414;
+  --strip-line: #2e2e2e;
+  --footer-bg: #1c1c1c;
+  --footer-line: #333;
+
+  /* --- 타이포 --- */
+  --font-sans: var(--font-noto-sans-kr), 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+  /* --- 레이아웃 (시안 .wrap = 1200px / padding 0 20px) --- */
+  --container: 1200px;
+  --gutter: 20px;
+
+  --topbar-h: 34px;
+  --header-h: 84px;
+  --gnb-h: 50px;
+  --strip-h: 64px;
+  --tabbar-h: 60px;
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 12px;
+  --radius-pill: 20px;
+
+  /* --- 반응형 브레이크포인트 (시안과 동일) ---
+     ~480px  : 소형 모바일
+     ~960px  : 모바일/태블릿 — 햄버거·하단탭바 전환
+     ~1100px : 검색창 축소
+  */
+}

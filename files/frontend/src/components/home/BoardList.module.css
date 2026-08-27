@@ -1,0 +1,90 @@
+.board {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px 26px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--dark);
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.more {
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.more:hover {
+  color: var(--gold-deep);
+}
+
+.list {
+  margin-top: 4px;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+}
+
+.item:hover .postTitle {
+  color: var(--gold-deep);
+  text-decoration: underline;
+}
+
+.postTitle {
+  font-size: 14px;
+  /* 제목이 길어도 한 줄로 자른다. 두 줄이 되면 목록 높이가 들쭉날쭉해진다 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.date {
+  font-size: 12px;
+  color: #999;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 40px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+}
+
+@media (max-width: 960px) {
+  .board {
+    padding: 20px;
+  }
+}

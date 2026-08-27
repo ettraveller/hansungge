@@ -1,0 +1,114 @@
+# =====================================================================
+# 공통 설정 — 모든 프로파일에 적용된다.
+#
+# 원칙: 민감정보(DB 비밀번호, OAuth Secret, JWT Secret)를 이 파일에 쓰지 않는다.
+#       전부 환경변수로 주입한다.
+# 프로파일: local(개발자 PC) / dev(NCP 개발) / prod(NCP 운영)
+# =====================================================================
+spring:
+  application:
+    name: hanseongge-api
+
+  profiles:
+    default: local
+
+  autoconfigure:
+    exclude:
+      # 기본 인메모리 사용자(랜덤 비밀번호) 자동생성을 막는다.
+      # 이 서비스의 인증 주체는 OAuth2 사용자와 admin_users 뿐이며,
+      # 정체불명의 계정이 컨텍스트에 존재하는 상태 자체를 만들지 않는다.
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: 5000
+
+  jpa:
+    open-in-view: false            # OSIV 비활성 — 트랜잭션 경계를 Service 로 고정
+    hibernate:
+      ddl-auto: validate           # 스키마의 유일한 소유자는 Flyway. Hibernate 가 만들지 않는다
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+        jdbc:
+          time_zone: Asia/Seoul
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework   # Nginx 프록시 뒤에서 실제 클라이언트 IP/스킴 인식
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+# API 문서는 기본이 '차단'이다. local/dev 프로파일에서만 명시적으로 연다.
+#
+# 주의: SwaggerConfig(@Profile({"local","dev"}))만으로는 부족하다. 그 클래스는 OpenAPI
+# 메타데이터 빈만 제공할 뿐이고, springdoc 자동설정은 별개로 /api-docs 를 계속 서빙한다.
+# 그래서 기본값을 false 로 두어, 새 프로파일이 추가돼도 문서가 딸려 열리지 않게 한다.
+springdoc:
+  api-docs:
+    enabled: false
+    path: /api-docs
+  swagger-ui:
+    enabled: false
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# --- 애플리케이션 고유 설정 ---
+app:
+  cors:
+    # 콤마 구분. 운영에서는 실제 도메인만 허용한다
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  admin-init:
+    # 값이 없으면 최초 관리자 생성을 건너뛴다 (WARN 로그).
+    # 기본 계정을 코드에 박아두지 않기 위해 의도적으로 빈 값이 기본이다.
+    id: ${ADMIN_INIT_ID:}
+    password: ${ADMIN_INIT_PASSWORD:}
+  jwt:
+    # 비어 있으면 local/test 한정으로 기동 시 1회용 랜덤 키를 만든다(WARN).
+    # prod 는 application-prod.yml 에서 기본값 없이 선언되므로 미주입 시 기동 실패한다.
+    secret: ${JWT_SECRET:}
+    issuer: hanseongge
+    admin-access-ttl-minutes: ${JWT_ADMIN_ACCESS_TTL_MINUTES:30}
+    admin-refresh-ttl-hours: ${JWT_ADMIN_REFRESH_TTL_HOURS:8}
+  admin-security:
+    max-login-failures: ${ADMIN_MAX_LOGIN_FAILURES:5}
+    login-rate-per-minute: ${ADMIN_LOGIN_RATE_PER_MINUTE:10}
+  market-price:
+    scheduler:
+      # 수집 주기(cron)는 여기가 아니라 system_settings.MARKET_FETCH_CRON 이다.
+      # 운영 중 바꿀 값이라 재배포가 필요한 곳에 두지 않는다.
+      enabled: ${MARKET_PRICE_SCHEDULER_ENABLED:true}
+    krx:
+      # KRX 자동 수집기는 미구현이다. 수집 방식 확정(TODO B-1) 전까지 켜지 않는다.
+      # 켜더라도 market_price_sources 의 KRX 행이 active=false 면 동작하지 않는다 (2중 차단).
+      enabled: ${MARKET_PRICE_KRX_ENABLED:false}
+
+logging:
+  level:
+    root: INFO
+    com.hanseongge: DEBUG

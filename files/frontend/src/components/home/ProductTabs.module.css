@@ -1,0 +1,88 @@
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.tab,
+.tabOn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: var(--radius-pill);
+  padding: 9px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray);
+  transition: 0.2s;
+}
+
+.tab:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+.tabOn {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+.empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 14px;
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.moreWrap {
+  text-align: center;
+  margin-top: 34px;
+}
+
+.moreBtn {
+  display: inline-block;
+  padding: 13px 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dark);
+  transition: 0.2s;
+}
+
+.moreBtn:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+.arr {
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab,
+  .tabOn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}

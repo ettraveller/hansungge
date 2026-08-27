@@ -1,0 +1,37 @@
+[Unit]
+Description=한성금거래소 API (Spring Boot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hanseongge
+Group=hanseongge
+
+# 비밀값은 전부 이 파일에서 온다. 유닛 파일에 직접 적지 않는다.
+#   소유자 root:hanseongge, 권한 640
+EnvironmentFile=/etc/hanseongge/api.env
+Environment="SPRING_PROFILES_ACTIVE=prod"
+
+WorkingDirectory=/opt/hanseongge/api
+ExecStart=/usr/bin/java -XX:MaxRAMPercentage=70 -Duser.timezone=Asia/Seoul -jar /opt/hanseongge/api/current/app.jar
+
+# 무중단이 아닌 단순 재시작 (설계서 §14.2 — 초기에는 단일 인스턴스)
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+TimeoutStopSec=30
+
+# --- 격리 ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/hanseongge
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hanseongge-api
+
+[Install]
+WantedBy=multi-user.target

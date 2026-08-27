@@ -1,0 +1,153 @@
+'use client';
+
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { NavItem } from '@/layouts/navigation';
+import styles from './MobileDrawer.module.css';
+
+const TABS = [
+  { href: '/', label: '홈', icon: '🏠' },
+  { href: '/price', label: '시세', icon: '📈' },
+  { href: '/shop', label: '상품', icon: '🪙' },
+  { href: '/mypage', label: '마이', icon: '👤' },
+];
+
+/**
+ * 모바일 햄버거 · 드로어 · 하단 탭바.
+ *
+ * <p>레이아웃에서 이 부분만 클라이언트 컴포넌트로 떼어냈다. 헤더·GNB 까지 통째로
+ * {@code 'use client'} 로 만들면 카테고리 링크가 <b>서버 HTML 에서 빠져</b> 검색엔진이
+ * 사이트 구조를 읽지 못한다.
+ *
+ * <p>드로어 안에서는 하위 메뉴를 <b>펼침/접힘</b>으로 다룬다. 좁은 화면에서 마우스오버
+ * 드롭다운은 쓸 수 없고, 하위 항목을 전부 펼쳐 두면 목록이 40줄이 넘는다.
+ */
+export function MobileDrawer({ nav }: { nav: NavItem[] }) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  // 페이지를 옮기면 드로어를 닫는다. 열어둔 채로 이동하면 새 화면 위에 메뉴가 남는다.
+  //
+  // effect 가 아니라 렌더 중에 보정한다 — React 가 권장하는 "이전 렌더 값 비교" 방식이다.
+  // effect 로 하면 새 화면이 한 번 그려진 뒤에 드로어가 닫혀 깜빡인다.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setOpen(false);
+    setExpanded(null);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.hamburger}
+        aria-label="메뉴 열기"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      <div
+        className={open ? styles.overlayOn : styles.overlay}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={open ? styles.drawerOn : styles.drawer} aria-hidden={!open}>
+        <div className={styles.drawerHead}>
+          <Image src="/logo.png" alt="한성금거래소" width={560} height={104} />
+          <button
+            type="button"
+            className={styles.drawerClose}
+            aria-label="메뉴 닫기"
+            onClick={() => setOpen(false)}
+          >
+            ✕
+          </button>
+        </div>
+
+        <nav className={styles.drawerNav}>
+          {nav.map((item) =>
+            item.children.length === 0 ? (
+              <Link key={item.href} href={item.href} className={styles.drawerLink}>
+                {item.label}
+              </Link>
+            ) : (
+              <div key={item.href} className={styles.drawerGroup}>
+                <button
+                  type="button"
+                  className={styles.drawerToggle}
+                  aria-expanded={expanded === item.label}
+                  onClick={() => setExpanded(expanded === item.label ? null : item.label)}
+                >
+                  {item.label}
+                  <span className={expanded === item.label ? styles.caretOn : styles.caret} />
+                </button>
+
+                {expanded === item.label && (
+                  <div className={styles.drawerSub}>
+                    <Link href={item.href}>{item.label} 전체</Link>
+                    {item.children.map((child) => (
+                      <Link key={child.href} href={child.href}>
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
+          )}
+        </nav>
+
+        <div className={styles.drawerFoot}>
+          <Link href="/login">로그인</Link>
+          <Link href="/signup">회원가입</Link>
+        </div>
+      </aside>
+
+      <nav className={styles.tabbar} aria-label="빠른 이동">
+        {TABS.map((tab) => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={isCurrent(pathname, tab.href) ? styles.tabOn : styles.tab}
+          >
+            <span className={styles.ti} aria-hidden="true">
+              {tab.icon}
+            </span>
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
+    </>
+  );
+}
+
+/** 홈만 정확히 일치로 보고, 나머지는 하위 경로까지 현재 탭으로 친다. */
+function isCurrent(pathname: string, href: string): boolean {
+  return href === '/' ? pathname === '/' : pathname.startsWith(href);
+}

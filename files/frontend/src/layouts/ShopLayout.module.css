@@ -1,0 +1,395 @@
+/* =====================================================================
+   쇼핑몰 레이아웃 — 레퍼런스 시안의 값을 그대로 옮긴다.
+   ===================================================================== */
+
+/* ---------- 상단 유틸 바 ---------- */
+
+.topbar {
+  background: var(--dark);
+  color: #ccc;
+  font-size: 12px;
+}
+
+.topbar :global(.wrap) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: var(--topbar-h);
+}
+
+.topbar a:hover {
+  color: var(--gold);
+}
+
+.notice {
+  color: var(--gold);
+}
+
+.util {
+  display: flex;
+  gap: 16px;
+}
+
+/* ---------- 헤더 ---------- */
+
+.header {
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-h);
+}
+
+.logo img {
+  height: 46px;
+  width: auto;
+  display: block;
+}
+
+.search {
+  flex: 1;
+  max-width: 380px;
+  margin: 0 40px;
+  position: relative;
+}
+
+.search input {
+  width: 100%;
+  height: 44px;
+  border: 2px solid var(--gold);
+  border-radius: 22px;
+  padding: 0 48px 0 20px;
+  font-size: 14px;
+  outline: none;
+}
+
+.search button {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  font-size: 15px;
+}
+
+.headerIcons {
+  display: flex;
+  gap: 22px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.headerIcons a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.headerIcons a:hover {
+  color: var(--gold-deep);
+}
+
+.ico {
+  font-size: 20px;
+}
+
+.cartWrap {
+  position: relative;
+}
+
+.cartBadge {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--maroon);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* ---------- GNB ---------- */
+
+.gnbNav {
+  border-top: 1px solid var(--line);
+}
+
+.gnb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: var(--gnb-h);
+  gap: 6px;
+}
+
+/* ---------- GNB 드롭다운 ----------
+   JS 없이 :hover 와 :focus-within 만으로 연다. 클라이언트 컴포넌트로 만들면
+   하위 링크가 초기 HTML 에서 빠져 검색엔진이 카테고리 구조를 읽지 못한다.
+   focus-within 덕분에 키보드 Tab 이동으로도 열린다. */
+
+.gnbItem {
+  position: relative;
+}
+
+.gnbLink {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 18px;
+  line-height: var(--gnb-h);
+  font-size: 15px;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+}
+
+.gnbItem:hover > .gnbLink,
+.gnbItem:focus-within > .gnbLink {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold);
+}
+
+.caret {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.55;
+}
+
+.dropdown {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  min-width: 168px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--gold);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  z-index: 120;
+
+  /* display:none 대신 투명도로 감춘다 — 열릴 때 전환이 붙고,
+     무엇보다 링크가 접근성 트리에서 사라지지 않는다 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+
+.gnbItem:hover > .dropdown,
+.gnbItem:focus-within > .dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* 위치는 항상 왼쪽 기준이다.
+   "마지막 항목이면 오른쪽 정렬" 같은 보정은 메뉴가 줄바꿈되는 순간 틀린다 —
+   두 번째 줄의 첫 항목이 :last-child 가 되어 드롭다운이 화면 왼쪽 밖으로 나갔다.
+   메뉴 폭(168px)이 좁아 현재 구성에서는 오른쪽으로 넘칠 일이 없고,
+   메뉴가 더 늘어나면 위치 보정은 CSS 가 아니라 JS 로 재야 한다. */
+
+.dropdown a {
+  display: block;
+  padding: 9px 18px;
+  font-size: 14px;
+  color: var(--gray);
+  white-space: nowrap;
+}
+
+.dropdown a:hover {
+  background: var(--gold-light);
+  color: var(--gold-deep);
+  font-weight: 600;
+}
+
+/* ---------- 푸터 ---------- */
+
+.footer {
+  background: var(--footer-bg);
+  color: #999;
+  font-size: 13px;
+}
+
+.footTop {
+  border-bottom: 1px solid var(--footer-line);
+}
+
+.footTop :global(.wrap) {
+  display: flex;
+  gap: 28px;
+  height: 52px;
+  align-items: center;
+}
+
+.footTop a {
+  color: #ccc;
+  font-weight: 600;
+}
+
+.footTop a:hover {
+  color: var(--gold);
+}
+
+.footMain :global(.wrap) {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 34px var(--gutter);
+  flex-wrap: wrap;
+}
+
+.footLogo {
+  height: 34px;
+  width: auto;
+  margin-bottom: 14px;
+  /* 다크 배경에 컬러 로고를 얹으면 대비가 떨어진다. 밝기를 올려 흰 글씨처럼 보이게 한다 */
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+.footInfo p {
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+
+.footNote {
+  margin-top: 12px;
+  color: #777;
+}
+
+.csLabel {
+  font-size: 12px;
+  color: #999;
+  letter-spacing: 2px;
+}
+
+.footCs {
+  text-align: right;
+}
+
+.tel {
+  font-size: 26px;
+  color: var(--gold-bright);
+  font-weight: 800;
+}
+
+.footCs p {
+  margin-top: 6px;
+}
+
+.copyright {
+  border-top: 1px solid var(--footer-line);
+  text-align: center;
+  padding: 16px;
+  color: #666;
+  font-size: 12px;
+}
+
+/* ---------- 반응형 (시안과 동일한 브레이크포인트) ---------- */
+
+@media (max-width: 1100px) {
+  .search {
+    max-width: 300px;
+    margin: 0 24px;
+  }
+}
+
+@media (max-width: 960px) {
+  .search,
+  .headerIcons {
+    display: none;
+  }
+
+  .headerMain {
+    height: 64px;
+  }
+
+  .logo img {
+    height: 38px;
+  }
+
+  .mHide {
+    display: none;
+  }
+
+  /* 메뉴가 넘치면 줄바꿈한다.
+     가로 스크롤(overflow-x)을 쓰면 그 컨테이너가 드롭다운을 잘라내서,
+     마우스를 올려도 하위 메뉴가 보이지 않는다 — 메뉴바만 살아 있고 아무 일도
+     일어나지 않는 상태가 된다. 헤더 높이가 한 줄 늘어나는 편이 낫다. */
+  .gnbLink {
+    padding: 0 14px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .footMain :global(.wrap) {
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px var(--gutter);
+  }
+
+  .footCs {
+    text-align: left;
+  }
+
+  .footTop :global(.wrap) {
+    overflow-x: auto;
+    gap: 18px;
+  }
+
+  .footTop a {
+    white-space: nowrap;
+    font-size: 12px;
+  }
+}
+
+/* 진짜 모바일 폭에서는 손가락 조작이라 호버 드롭다운이 의미가 없다.
+   메뉴바는 가로 스크롤로 두고, 하위 메뉴는 햄버거 드로어가 맡는다.
+   상위 메뉴를 눌러도 하위 카테고리 상품까지 함께 나오므로 길이 막히지 않는다. */
+@media (max-width: 767px) {
+  .gnb {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .gnb::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dropdown {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .notice {
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+  }
+}

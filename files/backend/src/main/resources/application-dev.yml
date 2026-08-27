@@ -1,0 +1,35 @@
+# =====================================================================
+# dev — NCP 개발 서버.
+#
+# 운영과 같은 방식(환경변수 주입)으로 동작시켜, 운영 배포 때 처음 겪는 문제를 없앤다.
+# 운영과 다른 점은 두 가지뿐이다: Swagger 노출, SQL 로그.
+# =====================================================================
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+# dev 에서는 프론트엔드 개발자가 스펙을 봐야 하므로 문서를 연다.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
+
+logging:
+  level:
+    root: INFO
+    com.hanseongge: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.flywaydb: INFO
+  file:
+    name: ${LOG_PATH:/var/log/hanseongge}/api-dev.log

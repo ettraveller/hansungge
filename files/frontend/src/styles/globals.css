@@ -1,0 +1,105 @@
+@import './tokens.css';
+
+/* =====================================================================
+   전역 스타일 — 레퍼런스 시안의 리셋·기본값을 옮긴다.
+   ===================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--dark);
+  background: #fff;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* 한글은 단어 단위로 끊는다 */
+  word-break: keep-all;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul {
+  list-style: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 시안의 .wrap — 모든 섹션이 이 폭을 공유한다 */
+.wrap {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* 금액·중량은 자릿수가 흔들리지 않게 고정폭 숫자를 쓴다 */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 화면에는 안 보이지만 스크린리더는 읽는 텍스트 (표 caption 등) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* 시세 등락 — 국내 관행대로 상승이 적색이다 */
+.up {
+  color: var(--red);
+}
+
+.down {
+  color: var(--blue);
+}
+
+.up::before {
+  content: '▲ ';
+  font-size: 11px;
+}
+
+.down::before {
+  content: '▼ ';
+  font-size: 11px;
+}
+
+/* 모바일에서 하단 탭바가 콘텐츠를 가리지 않게 */
+@media (max-width: 960px) {
+  body {
+    padding-bottom: var(--tabbar-h);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

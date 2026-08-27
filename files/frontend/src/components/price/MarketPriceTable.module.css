@@ -1,0 +1,94 @@
+.quote {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.quote thead th {
+  background: var(--light-gray);
+  padding: 10px 8px;
+  font-size: 13px;
+  color: var(--gray);
+  border-top: 2px solid var(--dark);
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+}
+
+/* 매입/판매 두 묶음을 옅은 세로선으로 갈라 눈이 헷갈리지 않게 한다 */
+.buyGroup {
+  border-left: 1px solid var(--line);
+}
+
+.sellGroup {
+  border-left: 1px solid var(--line);
+  background: #f2efe6 !important;
+}
+
+.quote td {
+  padding: 13px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.quote tbody th {
+  padding: 13px 8px 13px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.itemCol {
+  text-align: left !important;
+  padding-left: 14px !important;
+}
+
+.name {
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.unit {
+  color: var(--gray);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 고객이 사는 값이 이 표의 주인공이다 */
+.strong {
+  font-weight: 800;
+  border-left: 1px solid var(--line);
+}
+
+.change {
+  color: #999;
+  font-size: 13px;
+}
+
+.flat {
+  color: #bbb;
+}
+
+.inquiry {
+  color: var(--gold-deep);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+@media (max-width: 960px) {
+  .quote {
+    font-size: 13px;
+  }
+
+  .quote td,
+  .quote tbody th {
+    padding: 11px 4px;
+  }
+
+  .quote thead th {
+    padding: 9px 4px;
+    font-size: 12px;
+  }
+
+  .unit {
+    display: none;
+  }
+}

@@ -1,0 +1,113 @@
+.strip {
+  background: var(--strip-bg);
+  border-top: 1px solid #242424;
+  border-bottom: 1px solid #242424;
+  color: #fff;
+}
+
+.strip :global(.wrap) {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: var(--strip-h);
+}
+
+.label {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--gold-bright);
+  padding-right: 24px;
+  border-right: 1px solid var(--strip-line);
+  white-space: nowrap;
+}
+
+.label span {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #8f8f8f;
+}
+
+.ticker {
+  flex: 1;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tick {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  padding: 4px 20px;
+}
+
+.tick + .tick {
+  border-left: 1px solid var(--strip-line);
+}
+
+.name {
+  font-weight: 700;
+  color: #d6d6d6;
+}
+
+.val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.inquiry {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold-bright);
+}
+
+@media (max-width: 960px) {
+  .strip :global(.wrap) {
+    height: auto;
+    padding: 12px var(--gutter);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .label {
+    border-right: none;
+    padding-right: 0;
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  /* 모바일에서는 2열 그리드. 가로 스크롤보다 두 줄이 읽기 쉽다 */
+  .ticker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    column-gap: 10px;
+  }
+
+  .tick {
+    padding: 6px 0;
+    justify-content: flex-start;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .tick + .tick {
+    border-left: none;
+  }
+
+  .name,
+  .val,
+  .inquiry {
+    white-space: nowrap;
+  }
+
+  .val {
+    font-size: 14px;
+  }
+}

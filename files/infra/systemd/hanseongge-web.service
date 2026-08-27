@@ -1,0 +1,34 @@
+[Unit]
+Description=한성금거래소 웹 (Next.js standalone)
+After=network-online.target hanseongge-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hanseongge
+Group=hanseongge
+
+EnvironmentFile=/etc/hanseongge/web.env
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+# 외부에는 Nginx 만 노출한다 (설계서 §14.3)
+Environment="HOSTNAME=127.0.0.1"
+
+WorkingDirectory=/opt/hanseongge/web/current
+ExecStart=/usr/bin/node /opt/hanseongge/web/current/server.js
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hanseongge-web
+
+[Install]
+WantedBy=multi-user.target

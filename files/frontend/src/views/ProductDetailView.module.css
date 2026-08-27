@@ -1,0 +1,300 @@
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0 16px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.crumb a:hover {
+  color: var(--gold-deep);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  padding-bottom: 48px;
+}
+
+/* ---------- 이미지 ---------- */
+
+.gallery {
+  min-width: 0;
+}
+
+.mainImage {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(140deg, var(--gold-light), var(--light-gray));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.imageMark {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--gold-deep);
+  opacity: 0.5;
+}
+
+.imageNote {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+/* ---------- 정보 ---------- */
+
+.info {
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.name {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+.priceBox {
+  margin: 24px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.basis {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.notice {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--gold-deep);
+}
+
+/* ---------- 옵션 ---------- */
+
+.options {
+  margin-bottom: 24px;
+}
+
+.optionLabel {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray);
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option,
+.optionOn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: #fff;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.option:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.optionOn {
+  border-color: var(--gold);
+  background: var(--gold-light);
+}
+
+.option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.optionName {
+  flex: 1;
+  font-size: 13px;
+  color: var(--dark);
+}
+
+.optionPrice {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dark);
+}
+
+.optionSoldOut {
+  font-size: 12px;
+  color: var(--red);
+}
+
+/* ---------- 가격 내역 ---------- */
+
+.breakdown {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--light-gray);
+  border-radius: var(--radius);
+}
+
+.breakdownTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray);
+}
+
+.breakdownList {
+  margin: 0;
+}
+
+.breakdownList > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.breakdownList > div + div {
+  border-top: 1px dashed var(--line);
+}
+
+.breakdownList dt {
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.breakdownList dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dark);
+  white-space: nowrap;
+}
+
+/* 계산 근거 — "210,000원/g × 3.75g" */
+.formula {
+  display: block;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.breakdownNote {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+/* ---------- 구매 ---------- */
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cartBtn,
+.buyBtn {
+  height: 52px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.cartBtn {
+  border: 1px solid var(--dark);
+  background: #fff;
+  color: var(--dark);
+}
+
+.buyBtn {
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: #fff;
+}
+
+.cartBtn:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+.buyBtn:hover:not(:disabled) {
+  background: var(--gold-deep);
+  border-color: var(--gold-deep);
+}
+
+.cartBtn:disabled,
+.buyBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.blocked {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--gold-deep);
+}
+
+.disclaimer {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+/* ---------- 설명 ---------- */
+
+.description {
+  padding: 32px 0;
+  border-top: 1px solid var(--line);
+}
+
+.descTitle {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.descBody {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--gray);
+  white-space: pre-wrap;
+}
+
+.specNote {
+  margin: 0 0 64px;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}

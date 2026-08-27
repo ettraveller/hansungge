@@ -1,0 +1,34 @@
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--light-gray);
+  color: var(--gray);
+}
+
+.success {
+  background: #e6f0e6;
+  color: var(--success);
+}
+
+.warning {
+  background: #faeeda;
+  color: var(--gold-deep);
+}
+
+.danger {
+  background: #f8e8e5;
+  color: var(--red);
+}
+
+.gold {
+  background: var(--gold-light);
+  color: var(--gold-deep);
+}

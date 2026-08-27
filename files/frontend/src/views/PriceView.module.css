@@ -1,0 +1,181 @@
+/* 메인의 시세 섹션과 같은 시각 언어를 쓴다 */
+
+.section {
+  padding: 64px 0;
+  background: var(--light-gray);
+}
+
+.guideSec {
+  padding: 64px 0;
+}
+
+.secTitle {
+  text-align: center;
+  margin-bottom: 38px;
+}
+
+.secTitle small {
+  color: var(--gold-deep);
+  letter-spacing: 3px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.secTitle h2 {
+  font-size: 28px;
+  margin-top: 6px;
+}
+
+.secTitle p {
+  color: var(--gray);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.card,
+.gramCard {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+}
+
+.gramCard {
+  margin-top: 20px;
+}
+
+.card h3,
+.gramCard h3 {
+  font-size: 17px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.date {
+  font-size: 12px;
+  color: var(--gray);
+  font-weight: 400;
+}
+
+.cardNotice {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--gray);
+  font-size: 14px;
+}
+
+.warn {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: var(--gold-light);
+  border-radius: var(--radius);
+  color: var(--gold-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- 1g 기준표 ---------- */
+
+.gramList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.gramList li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--light-gray);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.gramList strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.gramNote {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #8a8a8a;
+}
+
+.quoteNotes {
+  margin-top: 18px;
+  font-size: 12.5px;
+  color: #8a8a8a;
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.quoteNotes span::before {
+  content: '· ';
+}
+
+/* ---------- 안내 ---------- */
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.guide {
+  background: var(--light-gray);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+}
+
+.guide h4 {
+  font-size: 15px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.n {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.guide p {
+  font-size: 13px;
+  color: var(--gray);
+}
+
+@media (max-width: 960px) {
+  .section,
+  .guideSec {
+    padding: 44px 0;
+  }
+
+  .secTitle h2 {
+    font-size: 22px;
+  }
+
+  .card,
+  .gramCard {
+    padding: 18px;
+  }
+
+  .guideGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

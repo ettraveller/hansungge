@@ -1,0 +1,540 @@
+/*
+ * 관리자 화면 공통 스타일.
+ *
+ * 쇼핑몰과 달리 관리자 화면은 보기 좋은 것보다 밀도와 오독 방지가 우선이다.
+ *  - 금액은 항상 tabular-nums 우측 정렬 — 자릿수가 어긋나면 0 하나를 놓친다.
+ *  - 상태는 색만으로 구분하지 않고 항상 문구를 함께 둔다.
+ */
+
+/* ---------- 페이지 머리 ---------- */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+.headActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 패널 ---------- */
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.panelNote {
+  font-size: 12px;
+  color: var(--gray);
+  font-weight: 400;
+  margin-top: 3px;
+  line-height: 1.6;
+}
+
+.panelBody {
+  padding: 16px;
+}
+
+.panelBodyFlush {
+  padding: 0;
+}
+
+/* ---------- 표 ---------- */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  background: var(--light-gray);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--gray);
+  letter-spacing: 0.02em;
+}
+
+.table tbody tr:hover {
+  background: #fcfbf7;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* 금액·수량 열 */
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.strong {
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.muted {
+  color: var(--gray);
+}
+
+.wrapText {
+  white-space: normal;
+  min-width: 200px;
+}
+
+.empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 13px;
+}
+
+/* ---------- 폼 ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dark);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.required {
+  color: var(--red);
+}
+
+.hint {
+  font-size: 11.5px;
+  color: var(--gray);
+  line-height: 1.55;
+}
+
+.error {
+  font-size: 11.5px;
+  color: var(--red);
+  line-height: 1.55;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--dark);
+  background: #fff;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: -1px;
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  background: var(--light-gray);
+  color: var(--gray);
+}
+
+.inputInvalid {
+  border-color: var(--red);
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.numInput {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--dark);
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ---------- 버튼 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--dark);
+  border-radius: var(--radius-sm, 4px);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #000;
+}
+
+.btnGold {
+  background: var(--gold);
+  border-color: var(--gold-deep);
+  color: var(--dark);
+  font-weight: 600;
+}
+
+.btnGold:hover:not(:disabled) {
+  background: var(--gold-deep);
+  color: #fff;
+}
+
+.btnDanger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+}
+
+.btnSm {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+/* ---------- 알림 ---------- */
+.alert {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 13px;
+  line-height: 1.6;
+  border: 1px solid;
+}
+
+.alertInfo {
+  background: #f2f6fd;
+  border-color: #c6d8f5;
+  color: #22437f;
+}
+
+.alertSuccess {
+  background: #f0f8f2;
+  border-color: #bfe0c8;
+  color: #1f6b38;
+}
+
+.alertWarning {
+  background: #fdf7ec;
+  border-color: #ecd8ac;
+  color: #7d5a12;
+}
+
+.alertDanger {
+  background: #fdf1f3;
+  border-color: #f2c3cb;
+  color: #97202f;
+}
+
+.alertBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.alertTitle {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.alertClose {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.alertClose:hover {
+  opacity: 1;
+}
+
+/* ---------- 페이지네이션 ---------- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.pageInfo {
+  font-size: 12px;
+  color: var(--gray);
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pageBtn {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 12.5px;
+  color: var(--dark);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageBtnActive {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pageBtnActive:hover:not(:disabled) {
+  background: var(--dark);
+}
+
+/* ---------- 모달 ---------- */
+.dialog {
+  border: 0;
+  padding: 0;
+  border-radius: var(--radius-md, 6px);
+  width: min(560px, calc(100vw - 32px));
+  background: #fff;
+  color: var(--dark);
+}
+
+.dialog::backdrop {
+  background: rgba(28, 28, 28, 0.45);
+}
+
+.dialogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dialogTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dialogBody {
+  padding: 16px;
+  max-height: min(66vh, 560px);
+  overflow-y: auto;
+}
+
+.dialogFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- 필터 · 기타 ---------- */
+.filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 130px;
+}
+
+.inlineCode {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  background: var(--light-gray);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.jsonBlock {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.6;
+  background: var(--light-gray);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 11.5px;
+  color: var(--gray);
+}
+
+.statValue {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.statValueSm {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.loading {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 13px;
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}

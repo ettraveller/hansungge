@@ -1,0 +1,195 @@
+.hero {
+  position: relative;
+  background: var(--hero-bg);
+  color: #fff;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+/* 슬라이드를 전부 DOM 에 두고 활성 항목만 보인다 (SEO) */
+.slide,
+.slideOn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.5s ease;
+}
+
+.slide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slideOn {
+  opacity: 1;
+  position: relative;
+}
+
+.bg {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 56%;
+  background-size: cover;
+  background-position: center right;
+}
+
+/* 사진 위 글자가 읽히도록 왼쪽에서 오른쪽으로 어둠을 깐다 */
+.bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--hero-bg) 0%,
+    rgba(16, 13, 12, 0.55) 18%,
+    rgba(16, 13, 12, 0) 45%
+  );
+}
+
+.copyWrap {
+  position: relative;
+  z-index: 2;
+  padding-top: 56px;
+  padding-bottom: 76px;
+  width: 100%;
+}
+
+.copy small {
+  color: var(--gold);
+  letter-spacing: 5px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.copy h2 {
+  font-size: 42px;
+  line-height: 1.35;
+  margin: 16px 0 14px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.copy h2 em {
+  font-style: normal;
+  color: var(--gold-bright);
+}
+
+.copy p {
+  color: #d8d2c6;
+  font-size: 15px;
+  margin-bottom: 26px;
+  max-width: 46ch;
+}
+
+.cta {
+  display: inline-block;
+  padding: 14px 28px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--gold-bright), #c39a24);
+  color: #241a00;
+  font-size: 15px;
+  font-weight: 700;
+  transition: filter 0.2s;
+}
+
+.cta:hover {
+  filter: brightness(1.08);
+}
+
+.arr {
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+/* ---------- 인디케이터 ---------- */
+
+.dotsWrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  z-index: 3;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot,
+.dotOn {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  transition: 0.2s;
+}
+
+.dot {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.dotOn {
+  background: var(--gold-bright);
+  width: 26px;
+  border-radius: 5px;
+}
+
+.counter {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #b6ad9a;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter b {
+  color: #fff;
+}
+
+@media (max-width: 960px) {
+  .hero {
+    min-height: 320px;
+  }
+
+  .bg {
+    width: 100%;
+  }
+
+  .bg::before {
+    background: linear-gradient(
+      90deg,
+      rgba(14, 11, 10, 0.92) 0%,
+      rgba(14, 11, 10, 0.8) 55%,
+      rgba(14, 11, 10, 0.55) 100%
+    );
+  }
+
+  .copyWrap {
+    padding-top: 40px;
+    padding-bottom: 64px;
+  }
+
+  .copy h2 {
+    font-size: 28px;
+  }
+
+  .copy p {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .copy h2 {
+    font-size: 24px;
+  }
+
+  .cta {
+    display: block;
+    text-align: center;
+  }
+}

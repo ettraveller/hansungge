@@ -1,0 +1,421 @@
+package com.hanseongge.domain.marketprice.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanseongge.domain.audit.dto.AuditRecord;
+import com.hanseongge.domain.audit.entity.ActorType;
+import com.hanseongge.domain.audit.service.AuditLogService;
+import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
+import com.hanseongge.domain.marketprice.entity.MarketPricePending;
+import com.hanseongge.domain.marketprice.entity.MarketPricePolicy;
+import com.hanseongge.domain.marketprice.entity.MarketPriceRaw;
+import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.marketprice.entity.PendingStatus;
+import com.hanseongge.domain.marketprice.entity.PriceSide;
+import com.hanseongge.domain.marketprice.event.MarketPriceChangedEvent;
+import com.hanseongge.domain.marketprice.repository.MarketPriceEffectiveRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPricePendingRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPricePolicyRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPriceRawRepository;
+import com.hanseongge.global.audit.AuditActions;
+import com.hanseongge.global.config.CacheConfig;
+import com.hanseongge.global.error.BusinessException;
+import com.hanseongge.global.error.ErrorCode;
+import com.hanseongge.global.util.PricePerGram;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * 시세 3층 파이프라인의 중심 (설계서 §6, 개발계획 §12).
+ *
+ * <pre>
+ * L1 원본(raw) ──► L2 정책 적용 ──► [변동률 검사] ──► L3 최종(effective)
+ *                                        └─ 초과 ──► L4 승인대기(pending), 발행 없음
+ * </pre>
+ *
+ * <h2>이 클래스가 지키는 것</h2>
+ * <ol>
+ *   <li><b>원본은 절대 덮어쓰지 않는다.</b> 최종 시세는 원본을 고치는 것이 아니라
+ *       새 행을 발행하는 것이다</li>
+ *   <li><b>실패가 가격을 0으로 만들지 않는다.</b> 어떤 실패 경로에서도 발행을 하지 않을 뿐
+ *       기존 현재값은 그대로다 (원칙 P6)</li>
+ *   <li><b>급격한 변동은 자동 반영되지 않는다.</b> 임계값 초과는 발행 대신 승인 대기다</li>
+ *   <li><b>사유와 작성자가 없는 적용은 없다.</b> DB NOT NULL 이자 감사 요건이다</li>
+ * </ol>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class MarketPriceService {
+
+    /** 이상 변동 임계값(%) 설정 키. V2 가 5 로 시드한다. */
+    public static final String SETTING_MAX_CHANGE_PERCENT = "MAX_PRICE_CHANGE_PERCENT";
+    /** 시세 노후 판정(분) 설정 키. V2 가 240 으로 시드한다. */
+    public static final String SETTING_STALE_MINUTES = "PRICE_STALE_MINUTES";
+
+    private static final BigDecimal DEFAULT_MAX_CHANGE_PERCENT = new BigDecimal("5");
+    private static final int DEFAULT_STALE_MINUTES = 240;
+
+    private final MarketPriceRawRepository rawRepository;
+    private final MarketPricePolicyRepository policyRepository;
+    private final MarketPriceEffectiveRepository effectiveRepository;
+    private final MarketPricePendingRepository pendingRepository;
+    private final MarketPriceCalculator calculator;
+    private final com.hanseongge.domain.setting.service.SystemSettingService systemSettingService;
+    private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectMapper objectMapper;
+
+    // =================================================================
+    // 적용 (L1 → L2 → L3)
+    // =================================================================
+
+    /**
+     * 원본에 정책을 적용해 최종 시세를 발행한다.
+     *
+     * <p>변동률이 임계값을 넘으면 <b>발행하지 않고</b> 승인 대기로 돌린다. 그 경우에도
+     * 예외를 던지지 않는다 — 보류는 설계된 정상 경로이고, 호출부는
+     * {@link PriceApplyResult#applied()} 로 분기한다.
+     *
+     * @param changeReason 필수. 비어 있으면 거부한다 (개발계획 §6.3)
+     */
+    @Transactional
+    public PriceApplyResult applyPrice(MetalType metalType, PriceSide priceSide, Long rawId,
+                                       String changeReason, String adminLoginId) {
+        requireReason(changeReason);
+
+        MarketPriceRaw raw = rawRepository.findById(rawId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_RAW_NOT_FOUND, "원본 없음: " + rawId));
+        if (raw.getMetalType() != metalType) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "원본 금속 불일치: raw=%s 요청=%s".formatted(raw.getMetalType(), metalType));
+        }
+
+        MarketPricePolicy policy = findPolicy(metalType, priceSide);
+        PriceCalculation calculation = calculate(raw.price(), policy);
+
+        // 이 지점부터 (metal, side) 를 배타적으로 잡는다. 트랜잭션 종료 시 자동 해제된다.
+        effectiveRepository.acquireLock(lockKey(metalType, priceSide));
+
+        Optional<MarketPriceEffective> currentOpt =
+                effectiveRepository.findByMetalTypeAndPriceSideAndEffectiveToIsNull(metalType, priceSide);
+
+        BigDecimal changePercent = currentOpt
+                .map(current -> calculation.result().changePercentFrom(current.price()))
+                .orElse(null);
+
+        if (exceedsLimit(changePercent, metalType, priceSide)) {
+            return hold(raw, metalType, priceSide, calculation, currentOpt.orElseThrow(),
+                    changePercent, changeReason, adminLoginId);
+        }
+
+        return issue(raw.getId(), metalType, priceSide, calculation, policy,
+                currentOpt.orElse(null), changePercent, changeReason, adminLoginId);
+    }
+
+    /**
+     * 승인된 보류건을 적용한다.
+     *
+     * <p>변동률 검사를 <b>다시 하지 않는다.</b> 임계값을 넘었다는 사실을 알고도 관리자가
+     * 승인한 것이므로, 여기서 또 막으면 승인이라는 행위 자체가 무의미해진다.
+     */
+    @Transactional
+    public PriceApplyResult applyApproved(MarketPricePending pending, String changeReason, String adminLoginId) {
+        requireReason(changeReason);
+
+        MarketPriceRaw raw = rawRepository.findById(pending.getRawId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_RAW_NOT_FOUND,
+                        "승인건의 원본 없음: " + pending.getRawId()));
+        MarketPricePolicy policy = findPolicy(pending.getMetalType(), pending.getPriceSide());
+
+        // 보류 당시 계산 결과를 그대로 쓴다. 승인 시점에 정책이 바뀌어 있어도 관리자가
+        // 승인한 것은 "그때 그 값"이다 — 다시 계산하면 화면에서 본 값과 다른 값이 발행된다.
+        PriceCalculation calculation = new PriceCalculation(
+                raw.price(), pending.calculatedPrice(),
+                pending.calculatedPrice().value().subtract(raw.price().value()),
+                policy.getMode());
+
+        effectiveRepository.acquireLock(lockKey(pending.getMetalType(), pending.getPriceSide()));
+
+        MarketPriceEffective current = effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveToIsNull(pending.getMetalType(), pending.getPriceSide())
+                .orElse(null);
+
+        return issue(raw.getId(), pending.getMetalType(), pending.getPriceSide(), calculation, policy,
+                current, pending.getChangePercent(), changeReason, adminLoginId);
+    }
+
+    /** 임계값 초과 → 발행하지 않고 승인 대기로 돌린다. 현재 시세는 직전 값 그대로 유지된다. */
+    private PriceApplyResult hold(MarketPriceRaw raw, MetalType metalType, PriceSide priceSide,
+                                  PriceCalculation calculation, MarketPriceEffective current,
+                                  BigDecimal changePercent, String changeReason, String adminLoginId) {
+
+        // 원본은 보존하되 "이상"으로 표시한다. 값 자체는 건드리지 않는다.
+        raw.markAnomaly();
+
+        Optional<MarketPricePending> existing = pendingRepository
+                .findFirstByMetalTypeAndPriceSideAndStatusOrderByCreatedAtDesc(
+                        metalType, priceSide, PendingStatus.PENDING);
+        if (existing.isPresent()) {
+            // 같은 조합에 이미 대기건이 있으면 새로 만들지 않는다. 수집 주기마다 쌓이면
+            // 관리자가 어느 것을 승인해야 할지 알 수 없게 된다.
+            log.warn("[MARKET-PRICE] {}/{} 이미 승인 대기 중(id={}). 새 대기건을 만들지 않습니다.",
+                    metalType, priceSide, existing.get().getId());
+            return PriceApplyResult.held(existing.get(), changePercent, calculation);
+        }
+
+        MarketPricePending pending = pendingRepository.save(MarketPricePending.of(
+                raw.getId(), metalType, priceSide,
+                calculation.result(), current.price(), changePercent));
+
+        log.warn("[MARKET-PRICE] 변동률 초과로 적용을 보류했습니다 — {}/{} {} → {} ({}%). 현재 시세는 유지됩니다.",
+                metalType, priceSide, current.getPricePerGram(),
+                calculation.result().value(), changePercent);
+
+        auditLogService.record(AuditRecord.builder(AuditActions.PRICE_APPLY_HELD)
+                .actor(ActorType.ADMIN, adminLoginId)
+                .target(AuditActions.TARGET_MARKET_PRICE, metalType + "/" + priceSide)
+                .before(Map.of("currentPricePerGram", current.getPricePerGram().toPlainString()))
+                .after(new LinkedHashMap<>(Map.of(
+                        "heldPricePerGram", calculation.result().value().toPlainString(),
+                        "changePercent", String.valueOf(changePercent),
+                        "pendingId", pending.getId(),
+                        "reason", changeReason)))
+                .build());
+
+        return PriceApplyResult.held(pending, changePercent, calculation);
+    }
+
+    /** 기존 현재값을 마감하고 새 행을 발행한다. */
+    private PriceApplyResult issue(Long rawId, MetalType metalType, PriceSide priceSide,
+                                   PriceCalculation calculation, MarketPricePolicy policy,
+                                   MarketPriceEffective current, BigDecimal changePercent,
+                                   String changeReason, String adminLoginId) {
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        if (current != null) {
+            current.close(now);
+            // 반드시 먼저 내보낸다. JPA 는 INSERT 를 UPDATE 보다 앞세우므로, 이 flush 가
+            // 없으면 신규 행(effective_to IS NULL)이 먼저 들어가 부분 UNIQUE 인덱스
+            // ux_mpe_current 를 위반한다.
+            effectiveRepository.saveAndFlush(current);
+        }
+
+        MarketPriceEffective issued = effectiveRepository.save(MarketPriceEffective.issue(
+                metalType, priceSide, calculation.result(), rawId,
+                calculation.mode(), policySnapshot(policy, calculation), now,
+                changeReason, adminLoginId));
+
+        BigDecimal previousPrice = current == null ? null : current.getPricePerGram();
+
+        auditLogService.record(AuditRecord.builder(AuditActions.PRICE_APPLY)
+                .actor(ActorType.ADMIN, adminLoginId)
+                .target(AuditActions.TARGET_MARKET_PRICE, metalType + "/" + priceSide)
+                .before(current == null ? null
+                        : Map.of("pricePerGram", previousPrice.toPlainString()))
+                .after(auditAfter(calculation, changePercent, changeReason, issued))
+                .build());
+
+        // AFTER_COMMIT 에서만 처리된다. 커밋 전에 캐시를 비우면 롤백된 시세가 캐시에 남는다.
+        eventPublisher.publishEvent(new MarketPriceChangedEvent(
+                metalType, priceSide, previousPrice, issued.getPricePerGram(),
+                issued.getId(), adminLoginId, now));
+
+        log.info("[MARKET-PRICE] 시세 발행 — {}/{} 원본 {} {} 보정 → 최종 {} (mode={}, by={})",
+                metalType, priceSide, calculation.raw().value(),
+                calculation.adjustment().toPlainString(), calculation.result().value(),
+                calculation.mode(), adminLoginId);
+
+        return PriceApplyResult.applied(issued, changePercent, calculation);
+    }
+
+    // =================================================================
+    // 조회
+    // =================================================================
+
+    /**
+     * 판매에 사용할 수 있는 현재 시세.
+     *
+     * <p>없거나 노후면 {@link Optional#empty()} 다. <b>0 이나 옛 가격을 대신 돌려주지 않는다</b> —
+     * 호출부는 empty 를 받으면 "시세문의"를 표시하고 주문을 막는다 (개발계획 §12.4).
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.MARKET_PRICES, key = "'cur:' + #metalType + ':' + #priceSide")
+    public Optional<PricePerGram> getCurrentPrice(MetalType metalType, PriceSide priceSide) {
+        CurrentPriceView view = describeCurrent(metalType, priceSide);
+        return view.isSellable() ? Optional.of(view.effective().price()) : Optional.empty();
+    }
+
+    /** 현재 상태 + 사유. 관리자 화면은 노후된 값도 봐야 하므로 이 형태를 쓴다. */
+    @Transactional(readOnly = true)
+    public CurrentPriceView describeCurrent(MetalType metalType, PriceSide priceSide) {
+        return effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveToIsNull(metalType, priceSide)
+                .map(this::classify)
+                .orElseGet(() -> CurrentPriceView.none(metalType, priceSide));
+    }
+
+    /** 전 금속 × SELL/BUY 현재 상태. 고시된 적 없는 조합도 NONE 으로 채워 빠짐없이 돌려준다. */
+    @Transactional(readOnly = true)
+    public List<CurrentPriceView> describeAllCurrent() {
+        Map<String, MarketPriceEffective> byKey = new LinkedHashMap<>();
+        for (MarketPriceEffective e : effectiveRepository.findByEffectiveToIsNullOrderByMetalTypeAscPriceSideAsc()) {
+            byKey.put(e.getMetalType() + "/" + e.getPriceSide(), e);
+        }
+
+        List<CurrentPriceView> views = new ArrayList<>();
+        for (MetalType metal : MetalType.values()) {
+            for (PriceSide side : PriceSide.values()) {
+                MarketPriceEffective effective = byKey.get(metal + "/" + side);
+                views.add(effective == null ? CurrentPriceView.none(metal, side) : classify(effective));
+            }
+        }
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MarketPriceEffective> history(MetalType metalType, PriceSide priceSide, Pageable pageable) {
+        return effectiveRepository
+                .findByMetalTypeAndPriceSideOrderByEffectiveFromDescIdDesc(metalType, priceSide, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MarketPriceEffective> historySince(MetalType metalType, PriceSide priceSide, int days) {
+        OffsetDateTime from = OffsetDateTime.now().minusDays(days);
+        return effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveFromGreaterThanEqualOrderByEffectiveFromAsc(
+                        metalType, priceSide, from);
+    }
+
+    /**
+     * 한 최종 시세 행의 원본·보정·최종 3값.
+     *
+     * <p>V2 에는 원본가·보정액 컬럼이 없어(결함 D-11) {@code base_raw_id} 로 원본을 되짚는다.
+     * 원본을 못 찾으면 최종가만 담아 돌려준다 — 여기서 예외를 던지면 화면 하나가 통째로
+     * 뜨지 않고, 정작 보여줘야 할 현재 시세까지 사라진다.
+     */
+    @Transactional(readOnly = true)
+    public PriceBreakdown breakdown(MarketPriceEffective effective) {
+        BigDecimal rawPrice = effective.getBaseRawId() == null ? null
+                : rawRepository.findById(effective.getBaseRawId())
+                        .map(MarketPriceRaw::getPricePerGram)
+                        .orElse(null);
+        return PriceBreakdown.of(rawPrice, effective.getPricePerGram());
+    }
+
+    /** 직전 최종가. 단위 오입력 검증의 기준값으로 쓴다. */
+    @Transactional(readOnly = true)
+    public Optional<PricePerGram> findLatestPriceForValidation(MetalType metalType, PriceSide priceSide) {
+        return effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveToIsNull(metalType, priceSide)
+                .map(MarketPriceEffective::price);
+    }
+
+    // =================================================================
+    // 내부
+    // =================================================================
+
+    private CurrentPriceView classify(MarketPriceEffective effective) {
+        int staleMinutes = systemSettingService.getInt(SETTING_STALE_MINUTES, DEFAULT_STALE_MINUTES);
+        OffsetDateTime threshold = OffsetDateTime.now().minusMinutes(staleMinutes);
+        return effective.getEffectiveFrom().isBefore(threshold)
+                ? CurrentPriceView.stale(effective)
+                : CurrentPriceView.available(effective);
+    }
+
+    private MarketPricePolicy findPolicy(MetalType metalType, PriceSide priceSide) {
+        return policyRepository.findByMetalTypeAndPriceSide(metalType, priceSide)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_POLICY_NOT_FOUND,
+                        "정책 없음: " + metalType + "/" + priceSide));
+    }
+
+    /**
+     * 정책 적용. 보정 결과가 0 이하가 되면 {@link PricePerGram} 이 거부하고, 그것을
+     * 도메인 예외로 바꾼다 — <b>발행되지 않으므로 기존 시세가 유지된다.</b>
+     */
+    private PriceCalculation calculate(PricePerGram raw, MarketPricePolicy policy) {
+        try {
+            return calculator.apply(raw, policy);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.PRICE_CALCULATION_FAILED,
+                    "보정 결과가 유효하지 않습니다: " + e.getMessage());
+        }
+    }
+
+    private boolean exceedsLimit(BigDecimal changePercent, MetalType metalType, PriceSide priceSide) {
+        if (changePercent == null) {
+            // 최초 발행은 비교 대상이 없다. 여기서 막으면 첫 고시가 영원히 승인 대기가 된다.
+            return false;
+        }
+        BigDecimal limit = systemSettingService.getDecimal(SETTING_MAX_CHANGE_PERCENT, DEFAULT_MAX_CHANGE_PERCENT);
+        boolean exceeds = changePercent.abs().compareTo(limit) > 0;
+        if (exceeds) {
+            log.warn("[MARKET-PRICE] {}/{} 변동률 {}% 가 허용치 {}% 를 초과했습니다.",
+                    metalType, priceSide, changePercent, limit);
+        }
+        return exceeds;
+    }
+
+    private void requireReason(String changeReason) {
+        if (changeReason == null || changeReason.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "시세 변경 사유는 필수입니다.");
+        }
+    }
+
+    /** advisory lock 키. metal×side 조합마다 고유해야 한다. */
+    private String lockKey(MetalType metalType, PriceSide priceSide) {
+        return "market_price:" + metalType.name() + ":" + priceSide.name();
+    }
+
+    /**
+     * 적용 당시 정책 + 계산 근거를 통째로 담는다.
+     *
+     * <p>V2 에는 {@code raw_price_per_gram} / {@code adjustment_amount} 컬럼이 없어(결함 D-11)
+     * 원본가와 보정액을 여기에 함께 넣는다. 그래야 정책이 나중에 바뀌어도
+     * "이 시세가 원본 얼마에 얼마를 보정한 값인가"를 조인 없이 답할 수 있다.
+     */
+    private String policySnapshot(MarketPricePolicy policy, PriceCalculation calculation) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("mode", policy.getMode().name());
+        snapshot.put("adjAmount", policy.getAdjAmount());
+        snapshot.put("adjPercent", policy.getAdjPercent());
+        snapshot.put("manualPrice", policy.getManualPrice());
+        snapshot.put("rawPricePerGram", calculation.raw().value());
+        snapshot.put("adjustmentAmount", calculation.adjustment());
+        snapshot.put("resultPricePerGram", calculation.result().value());
+        try {
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (Exception e) {
+            // 스냅샷을 못 만들면 발행하지 않는다. 근거 없는 시세를 남기느니 실패가 낫다.
+            throw new BusinessException(ErrorCode.PRICE_CALCULATION_FAILED,
+                    "정책 스냅샷 직렬화 실패: " + e.getMessage());
+        }
+    }
+
+    private Map<String, Object> auditAfter(PriceCalculation calculation, BigDecimal changePercent,
+                                           String changeReason, MarketPriceEffective issued) {
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("effectiveId", issued.getId());
+        after.put("rawPricePerGram", calculation.raw().value().toPlainString());
+        after.put("adjustmentAmount", calculation.adjustment().toPlainString());
+        after.put("pricePerGram", calculation.result().value().toPlainString());
+        after.put("policyMode", calculation.mode().name());
+        after.put("changePercent", changePercent == null ? null : changePercent.toPlainString());
+        after.put("reason", changeReason);
+        return after;
+    }
+}

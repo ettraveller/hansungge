@@ -1,0 +1,33 @@
+.price {
+  font-weight: 700;
+  color: var(--dark);
+  letter-spacing: -0.01em;
+}
+
+/* "시세문의"는 금액과 확실히 달라 보여야 한다 — 고객이 숫자로 오해하면 안 된다 */
+.inquiry {
+  font-weight: 500;
+  color: var(--gold-deep);
+  background: var(--gold-light);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.from {
+  font-weight: 500;
+  color: var(--gray);
+  margin-left: 1px;
+}
+
+.sm {
+  font-size: 13px;
+}
+
+.md {
+  font-size: 17px;
+}
+
+.lg {
+  font-size: 26px;
+}

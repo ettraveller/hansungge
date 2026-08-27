@@ -1,0 +1,38 @@
+import type { AuditSearch } from '@/api/admin/audit';
+import type { ProductSearch } from '@/api/admin/products';
+import type { PendingStatus } from '@/types/admin';
+import type { MetalType, PriceSide } from '@/types/price';
+
+/**
+ * 관리자 쿼리 키.
+ *
+ * 문자열을 화면마다 손으로 쓰면 무효화가 조용히 빗나간다 — 시세를 고시했는데
+ * 대시보드 숫자가 그대로인 식이다. 한 곳에서 만든다.
+ */
+export const adminKeys = {
+  all: ['admin'] as const,
+
+  session: () => [...adminKeys.all, 'session'] as const,
+
+  prices: () => [...adminKeys.all, 'prices'] as const,
+  currentPrices: () => [...adminKeys.prices(), 'current'] as const,
+  collectionStatus: () => [...adminKeys.prices(), 'collection-status'] as const,
+  policies: () => [...adminKeys.prices(), 'policies'] as const,
+  priceHistory: (metal: MetalType, side: PriceSide, page: number) =>
+    [...adminKeys.prices(), 'history', metal, side, page] as const,
+  pending: (status: PendingStatus, page: number) =>
+    [...adminKeys.prices(), 'pending', status, page] as const,
+
+  products: () => [...adminKeys.all, 'products'] as const,
+  productList: (search: ProductSearch) => [...adminKeys.products(), 'list', search] as const,
+  product: (id: number) => [...adminKeys.products(), id] as const,
+  productOptions: (id: number) => [...adminKeys.products(), id, 'options'] as const,
+  productImages: (id: number) => [...adminKeys.products(), id, 'images'] as const,
+  productPreview: (id: number) => [...adminKeys.products(), id, 'preview'] as const,
+
+  categories: () => [...adminKeys.all, 'categories'] as const,
+
+  auditLogs: (search: AuditSearch) => [...adminKeys.all, 'audit-logs', search] as const,
+
+  admins: (page: number) => [...adminKeys.all, 'admins', page] as const,
+};

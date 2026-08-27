@@ -1,0 +1,45 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### 비밀값 / 로컬 전용 설정 (절대 커밋 금지) ###
+# 개발자마다 값이 다르고 실수로 비밀번호가 들어갈 수 있으므로 아예 추적하지 않는다.
+# 템플릿은 application-local.yml.example 을 쓴다.
+src/main/resources/application-local.yml
+.env
+*.env
+!.env.example
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/

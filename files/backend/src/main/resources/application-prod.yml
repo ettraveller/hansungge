@@ -1,0 +1,64 @@
+# =====================================================================
+# prod — NCP 운영 서버.
+#
+# 모든 값이 환경변수로만 주입된다. 기본값(:-)을 두지 않는다 —
+# 환경변수를 빠뜨리면 조용히 잘못된 값으로 뜨는 대신 기동에 실패해야 한다.
+# 주입 방법: systemd EnvironmentFile=/etc/hanseongge/api.env (권한 640)
+# =====================================================================
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      leak-detection-threshold: 30000
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+# JWT 서명키는 기본값을 두지 않는다. 미주입 시 기동이 실패해야 한다 —
+# 랜덤 키로 조용히 뜨면 재기동마다 전 관리자가 로그아웃되고, 그 사실을 아무도 모른다.
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+
+# 운영에서 Swagger / API 문서 전면 차단 (설계서 §15).
+# SwaggerConfig 자체가 @Profile({"local","dev"}) 이라 로드되지 않지만,
+# springdoc 자동설정까지 확실히 끄고 Nginx 도 해당 경로를 404 로 막는다 — 3중 차단.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Actuator 는 health 만, 그것도 내부 포트로만 노출
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+server:
+  port: ${SERVER_PORT:8080}
+  # Nginx 만 바라보므로 루프백 바인딩 (설계서 §14)
+  address: ${SERVER_ADDRESS:127.0.0.1}
+
+logging:
+  level:
+    root: INFO
+    com.hanseongge: INFO
+    org.hibernate.SQL: WARN
+  file:
+    name: ${LOG_PATH:/var/log/hanseongge}/api.log
+  logback:
+    rollingpolicy:
+      max-history: 30
+      max-file-size: 100MB
