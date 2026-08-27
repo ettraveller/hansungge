@@ -1,0 +1,397 @@
+.head {
+  padding: 36px 0 20px;
+  border-bottom: 2px solid var(--dark);
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dark);
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.7;
+}
+
+.noticeWrap {
+  margin-bottom: 18px;
+}
+
+.loading {
+  padding: 60px 16px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 14px;
+}
+
+/* ---------- 비어 있을 때 ---------- */
+.empty {
+  padding: 72px 16px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  background: #fff;
+  margin-bottom: 60px;
+}
+
+.emptyText {
+  font-size: 15px;
+  color: var(--gray);
+  margin-bottom: 18px;
+}
+
+.emptyLink {
+  display: inline-block;
+  padding: 11px 26px;
+  background: var(--gold);
+  border: 1px solid var(--gold-deep);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--dark);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.emptyLink:hover {
+  background: var(--gold-deep);
+  color: #fff;
+}
+
+/* ---------- 배치 ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-bottom: 60px;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr 300px;
+    align-items: start;
+  }
+}
+
+/* ---------- 목록 ---------- */
+.list {
+  border-top: 1px solid var(--line);
+}
+
+.row,
+.rowBlocked {
+  display: grid;
+  grid-template-columns: 72px 1fr auto auto 32px;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 주문할 수 없는 줄은 눈에 띄게 두되 읽을 수는 있어야 한다 */
+.rowBlocked {
+  background: #fdfbf7;
+}
+
+.rowBlocked .amount strong {
+  color: var(--gray);
+}
+
+@media (max-width: 640px) {
+  .row,
+  .rowBlocked {
+    grid-template-columns: 60px 1fr 28px;
+    grid-template-areas:
+      'thumb info remove'
+      'thumb qty  amount';
+    row-gap: 10px;
+  }
+
+  .thumb { grid-area: thumb; }
+  .info { grid-area: info; }
+  .qty { grid-area: qty; }
+  .amount { grid-area: amount; }
+  .remove { grid-area: remove; }
+}
+
+/* 이미지 업로드는 STEP 10(Object Storage) 이라 지금은 CSS 로 그린 금괴다 */
+.thumb {
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--light-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bar {
+  display: block;
+  width: 38px;
+  height: 22px;
+  border-radius: 2px;
+  background: linear-gradient(160deg, var(--gold-bright), var(--gold) 55%, var(--gold-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.info {
+  min-width: 0;
+}
+
+.name {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--dark);
+  line-height: 1.5;
+}
+
+.name:hover {
+  text-decoration: underline;
+}
+
+.meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.deltaUp,
+.deltaDown {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.deltaUp {
+  color: var(--red);
+}
+
+.deltaDown {
+  color: var(--blue);
+}
+
+.deltaBase {
+  font-weight: 400;
+  color: var(--gray);
+  margin-left: 4px;
+}
+
+.blocked {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--maroon);
+  font-weight: 600;
+}
+
+/* ---------- 수량 ---------- */
+.qty {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  overflow: hidden;
+}
+
+.qty button {
+  width: 30px;
+  height: 32px;
+  border: 0;
+  background: #fff;
+  font-size: 15px;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.qty button:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+.qty button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.qty span {
+  min-width: 34px;
+  text-align: center;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  line-height: 32px;
+}
+
+/* ---------- 금액 ---------- */
+.amount {
+  text-align: right;
+  min-width: 110px;
+}
+
+.amount strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--gray);
+}
+
+/* 금액 자리에 "시세문의"가 들어갈 때. 0원으로 보이지 않아야 한다 */
+.inquiry {
+  color: var(--maroon) !important;
+  font-size: 14px !important;
+}
+
+.remove {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 50%;
+  color: var(--gray);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.remove:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.clearWrap {
+  padding: 16px 0;
+  text-align: right;
+}
+
+.clear {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: var(--radius-sm, 4px);
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.clear:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- 요약 ---------- */
+.summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  background: #fff;
+  padding: 20px;
+  position: sticky;
+  top: 16px;
+}
+
+.summaryTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.summaryRows {
+  padding: 14px 0;
+}
+
+.summaryRows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.summaryRows dt {
+  color: var(--gray);
+}
+
+.summaryRows dd {
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.later {
+  color: var(--gray) !important;
+  font-size: 12px;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 0;
+  border-top: 2px solid var(--dark);
+  font-size: 14px;
+  color: var(--dark);
+}
+
+.total strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--maroon);
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryNote {
+  font-size: 11.5px;
+  color: var(--maroon);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.order {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--gold-deep);
+  background: var(--gold);
+  color: var(--dark);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.order:disabled {
+  background: var(--light-gray);
+  border-color: var(--line);
+  color: var(--gray);
+  cursor: not-allowed;
+}
+
+.disclaimer {
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: var(--gray);
+  line-height: 1.65;
+}

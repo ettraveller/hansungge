@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { HeaderAuth } from '@/layouts/HeaderAuth';
+import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
 import { buildNav } from '@/layouts/navigation';
 import styles from './ShopLayout.module.css';
@@ -87,7 +88,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
               <span className={styles.ico} aria-hidden="true">
                 🛒
               </span>
-              <span className={styles.cartBadge}>0</span>
+              <HeaderCartBadge />
               장바구니
             </Link>
             <Link href="/wishlist">

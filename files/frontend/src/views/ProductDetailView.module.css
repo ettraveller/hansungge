@@ -298,3 +298,21 @@
     gap: 24px;
   }
 }
+
+/* 담기 성공 안내. 오류(.blocked)와 구분되게 초록 계열로 둔다. */
+.added {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #bfe0c8;
+  background: #f0f8f2;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 13px;
+  color: #1f6b38;
+  line-height: 1.6;
+}
+
+.added a {
+  color: #1f6b38;
+  font-weight: 700;
+  text-decoration: underline;
+}

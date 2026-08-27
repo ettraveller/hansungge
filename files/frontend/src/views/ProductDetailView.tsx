@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PriceTag } from '@/components/ui/PriceTag';
+import { useAddToCart } from '@/hooks/useCart';
+import { useUserSession } from '@/hooks/useUserSession';
+import { ApiError } from '@/types/api';
 import { METAL_LABEL } from '@/types/price';
 import type { ProductDetail } from '@/types/product';
 import { formatGram, formatKrw, formatPricePerGram } from '@/utils/format';
@@ -21,11 +25,34 @@ import styles from './ProductDetailView.module.css';
  * (설계서 원칙 P1).
  */
 export function ProductDetailView({ product }: { product: ProductDetail }) {
+  const router = useRouter();
+  const { restored, isAuthenticated } = useUserSession();
+  const addToCart = useAddToCart();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [added, setAdded] = useState(false);
 
   const option = product.options[selectedIndex];
   const price = product.prices[selectedIndex];
   const orderable = price?.orderable ?? false;
+
+  /**
+   * 장바구니 담기.
+   *
+   * <p>수량과 옵션만 보낸다 — 가격은 서버가 담는 순간 계산해 기록한다 (원칙 P1).
+   * 비회원이면 로그인으로 보내되, 로그인 후 이 상품으로 돌아오게 next 를 실어 준다.
+   */
+  const handleAddToCart = () => {
+    if (restored && !isAuthenticated) {
+      const next = encodeURIComponent(`/shop/product/${product.id}`);
+      router.push(`/login?reason=required&next=${next}`);
+      return;
+    }
+    setAdded(false);
+    addToCart.mutate(
+      { productId: product.id, optionId: option?.id ?? null, quantity: 1 },
+      { onSuccess: () => setAdded(true) },
+    );
+  };
 
   return (
     <div className="container">
@@ -84,7 +111,10 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
                       role="radio"
                       aria-checked={selected}
                       disabled={!opt.inStock}
-                      onClick={() => setSelectedIndex(index)}
+                      onClick={() => {
+                        setSelectedIndex(index);
+                        setAdded(false);
+                      }}
                       className={selected ? styles.optionOn : styles.option}
                     >
                       <span className={styles.optionName}>{opt.name}</span>
@@ -128,13 +158,38 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
 
           {/* ---------- 구매 ---------- */}
           <div className={styles.actions}>
-            <button type="button" className={styles.cartBtn} disabled={!orderable}>
-              장바구니 담기
+            <button
+              type="button"
+              className={styles.cartBtn}
+              disabled={!orderable || addToCart.isPending}
+              onClick={handleAddToCart}
+            >
+              {addToCart.isPending ? '담는 중…' : '장바구니 담기'}
             </button>
-            <button type="button" className={styles.buyBtn} disabled={!orderable}>
-              바로 구매
+            {/* 주문 기능은 STEP 13 이다. 눌러도 아무 일도 없는 버튼을 두지 않는다. */}
+            <button
+              type="button"
+              className={styles.buyBtn}
+              disabled
+              title="주문 기능 준비 중입니다"
+            >
+              바로 구매 (준비 중)
             </button>
           </div>
+
+          {added && (
+            <p className={styles.added} role="status">
+              장바구니에 담았습니다. <Link href="/cart">장바구니 보기</Link>
+            </p>
+          )}
+          {addToCart.error && (
+            <p className={styles.blocked} role="alert">
+              {addToCart.error instanceof ApiError
+                ? addToCart.error.message
+                : '장바구니에 담지 못했습니다.'}
+            </p>
+          )}
+
           {!orderable && (
             <p className={styles.blocked}>
               {price?.status === 'SOLD_OUT'
