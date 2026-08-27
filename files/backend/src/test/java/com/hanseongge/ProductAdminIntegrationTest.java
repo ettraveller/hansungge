@@ -136,6 +136,15 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(jsonPath("$[0].stock").value(10))
                     .andExpect(jsonPath("$[0].inStock").value(true));
 
+            // 자동 생성된 옵션은 is_default 여야 한다 (V8, D-7).
+            // 이 표시가 빠지면 ux_opt_default 가 아무것도 지키지 못하고, 상품에 기본
+            // 옵션이 하나도 없는 상태가 조용히 만들어진다.
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM product_options WHERE product_id = ? AND is_default",
+                    Integer.class, productId))
+                    .as("재고를 담을 기본 옵션이 정확히 하나 표시되어야 한다")
+                    .isEqualTo(1);
+
             assertThat(countAudit(AuditActions.PRODUCT_CREATE)).isEqualTo(1);
         }
 

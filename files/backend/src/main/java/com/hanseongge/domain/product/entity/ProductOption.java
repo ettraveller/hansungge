@@ -59,8 +59,23 @@ public class ProductOption {
     @Column(name = "active", nullable = false)
     private boolean active;
 
+    /**
+     * 재고를 담는 기본 옵션인가 (결함 D-7).
+     *
+     * <p>상품당 정확히 1개다 — {@code ux_opt_default} 부분 유니크 인덱스가 강제한다.
+     * "옵션 없는 상품"을 없애 재고 소스를 {@code product_options.stock} 한 곳으로
+     * 고정하기 위한 표시이며, 이 값이 비어 있는 상품이 생기면 재고가 어디에도
+     * 존재하지 않게 된다.
+     *
+     * <p>수정 API 로는 바뀌지 않는다. 기본 옵션을 옮기는 것은 재고 이동을 동반하는
+     * 별도 작업이라, 이름·중량을 고치다가 실수로 딸려가면 안 된다.
+     */
+    @Column(name = "is_default", nullable = false)
+    private boolean isDefault;
+
     private ProductOption(Long productId, String name, BigDecimal weightG,
-                          BigDecimal additionalLaborCost, int stock, int sort) {
+                          BigDecimal additionalLaborCost, int stock, int sort,
+                          boolean isDefault) {
         this.productId = productId;
         this.name = name;
         this.weightG = weightG;
@@ -68,11 +83,24 @@ public class ProductOption {
         this.stock = stock;
         this.sort = sort;
         this.active = true;
+        this.isDefault = isDefault;
     }
 
+    /** 추가 옵션. 기본 옵션은 상품당 하나뿐이라 여기서 만들 수 없다. */
     public static ProductOption create(Long productId, String name, BigDecimal weightG,
                                        BigDecimal additionalLaborCost, int stock, int sort) {
-        return new ProductOption(productId, name, weightG, additionalLaborCost, stock, sort);
+        return new ProductOption(productId, name, weightG, additionalLaborCost, stock, sort, false);
+    }
+
+    /**
+     * 상품 등록 시 자동 생성되는 기본 옵션 (D-7).
+     *
+     * <p>이 경로로만 {@code is_default=true} 가 만들어진다. 상품당 1개 제약은 DB 가
+     * 지키지만, 애초에 만들 수 있는 지점을 하나로 좁혀 두는 편이 안전하다.
+     */
+    public static ProductOption createDefault(Long productId, String name, BigDecimal weightG,
+                                              BigDecimal additionalLaborCost, int stock, int sort) {
+        return new ProductOption(productId, name, weightG, additionalLaborCost, stock, sort, true);
     }
 
     public void update(String name, BigDecimal weightG, BigDecimal additionalLaborCost,

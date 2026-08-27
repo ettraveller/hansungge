@@ -149,7 +149,7 @@ public class ProductService {
                 categoryId, name, pricing, description, thumbnailKey, adminLoginId));
 
         // 재고를 담을 곳을 반드시 하나 만든다 (D-7)
-        ProductOption defaultOption = optionRepository.save(ProductOption.create(
+        ProductOption defaultOption = optionRepository.save(ProductOption.createDefault(
                 product.getId(),
                 resolveDefaultOptionName(defaultOptionName, pricing),
                 pricing.weightG(),

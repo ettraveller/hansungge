@@ -44,6 +44,7 @@
 - [x] **STEP 6 완료 (2026-08-26): 시세 3층 구조 + 안전장치.** L1 원본(`market_price_raw`) → L2 정책(`market_price_policies`, AUTO/FIXED_ADJ/PERCENT_ADJ/MANUAL) → L3 최종(`market_prices_effective`, append-only) → L4 승인대기(`market_price_pending`) 파이프라인, `MarketPriceProvider` 인터페이스 + `ManualMarketPriceProvider`(주력) + `KrxMarketPriceProvider`(껍데기, 기본 비활성), 변동률 임계 초과 시 발행 중단 + pending, advisory lock 기반 마감·발행, `MarketPriceChangedEvent`(AFTER_COMMIT) → 가격 캐시 무효화, `MARKET_FETCH_CRON` 기반 동적 스케줄러 + `market_price_fetch_logs`(V7), "시세문의" 폴백, 관리자/공개 API. **테스트 78건 전원 통과 (시나리오 S1·S2·S4·S5·S6 포함)**
 - [x] **STEP 7 완료 (2026-08-26): 상품 가격 계산 엔진.** `PriceCalculationService` — 상품·옵션 로드 → 가격모델 정규화(SIMPLE → 구성요소) → 시세 조회(없음/노후 시 INQUIRY_ONLY) → 구성요소 누적 → 부가세 → **반올림 1회**. `price_type` 4방식(FIXED/MANUAL·MARKET_LINKED·MARKET_PLUS·MARKET_MULTIPLIER), 옵션 중량 우선, 상품 도메인 엔티티(Category/Product/ProductOption), `VatMode`+`VatPolicyResolver`(A-1 미확정 → 임시 NONE + WARN), 헬스체크에 부가세 정책 노출, 관리자 미리보기 API + 공개 가격 API, PRODUCT_PRICES 캐시 + 시세변경 이벤트 무효화. **요구사항 예시(210,000×3.75+50,000=837,500) 실 DB 검증, 테스트 109건 전원 통과**
 - [x] **STEP 8 완료 (2026-08-26): 상품·카테고리·옵션 관리.** 상품 도메인 CRUD(`Product`·`Category`·`ProductOption`·`ProductImage` 엔티티에 생성/변경 메서드), `ProductPricing` 값 객체가 `price_type` 별 필수값 정합성(V3 `chk_price_type_fields`)을 400 으로 검증, **등록 시 기본 옵션 자동 생성**(D-7 응용 계층 해결), 상품은 `HIDDEN` 으로 시작하고 판매 시작 시 활성 옵션 존재 확인, 재고 실사 조정(절대 수량), 이미지 목록 교체, 카테고리 순환 참조·사용 중 삭제 차단, QueryDSL 동적 상품 검색, 공개 목록(대표가=최저 옵션가)/상세(옵션별 가격, 재고 비공개), 전 변경 지점 `@AuditLog`. **테스트 132건 전원 통과**
+- [x] **관리자 화면 + V8 마이그레이션 완료 (2026-08-27).** ① 관리자 프론트엔드 전체 — 로그인(sessionStorage 토큰 + 401 재발급 재시도), 대시보드, 시세관리(현재시세 3단·수집상태·수동고시·승인대기·보정정책·이력), 상품관리(목록·등록·상세·옵션/재고·가격 미리보기), 카테고리 트리, 감사로그(before/after JSONB), 관리자 계정(SUPER_ADMIN), 내 계정. ② **V8 마이그레이션 — 잔여 결함 11건 전건 해소** (C-1 참조). 신규 7테이블(누적 40), 불변 트리거 4종 추가, 기존 데이터 백필 검증. **테스트 152건 전원 통과 (신규 `SchemaGuardIntegrationTest` 19건은 DB 가 실제로 거절하는지를 확인한다)**
 - [x] Docker 전면 미사용 확정 / QueryDSL 단독 채택(MyBatis 미도입) / 프론트엔드 Next.js(React) 확정
 
 ### C-2. 확정 스택 (설계서 v0.2 대비)
@@ -136,29 +137,43 @@
 | **사용 중 카테고리 삭제 차단** | 상품·하위가 있으면 409, `active=false` 로 숨김 | 지우면 그 상품들이 **존재하지 않는 분류**를 가리키고 목록에서 조용히 사라진다 |
 | **이미지는 목록 통째 교체** | 개별 추가·삭제 대신 `PUT /{id}/images` | 순서가 의미를 갖는 목록이라, 개별 조작은 여러 요청으로 나뉘며 중간 상태가 화면에 노출된다 |
 
-### C-1. V8에서 해소할 스키마 결함 (검토 후 착수)
+### ~~C-1. V8에서 해소할 스키마 결함~~ — ✅ 전건 해소 (2026-08-27)
 
 > **번호 변경 이력**
 > - 2026-08-24: STEP 5(관리자 인증)가 `admin_users` 에 실패횟수·잠금시각·토큰세대 컬럼을
 >   먼저 필요로 해서 **V6 = `V6__admin_auth.sql`** 이 가져갔다.
 > - 2026-08-26: STEP 6 이 수집 실패를 기록할 곳(D-3)을 먼저 필요로 해서
->   **V7 = `V7__market_price_fetch_logs.sql`** 이 가져갔다. **D-3 은 이로써 해소 완료**이고,
->   아래 표에서 제외했다. 남은 11건은 **V8** 로 옮긴다. 내용과 범위는 그대로다.
+>   **V7 = `V7__market_price_fetch_logs.sql`** 이 가져갔다.
+> - 2026-08-27: 남은 11건을 **V8 = `V8__remaining_defects.sql`** 이 한 번에 해소했다.
+>   주문·결제·회원 코드보다 먼저 넣은 이유는 D-2·D-6·D-9 가 <b>나중에 붙일 수 없는</b>
+>   항목이기 때문이다 — 주문이 쌓인 뒤 구성요소 스냅샷을 추가하면 그 주문은 내역을
+>   복원할 수 없고, 멱등키 없이 받은 콜백은 중복 여부를 사후 판정할 수 없으며,
+>   약관 동의 시각은 소급 생성 자체가 위법이다.
 
-| # | 등급 | 문제 | 해결 |
+| # | 등급 | 문제 | 해소 방식 |
 |---|---|---|---|
-| D-1 | 치명 | 주얼리 "부자재·스톤" 확장 불가 (가격 항목이 `labor_cost` 단일 컬럼) | `product_price_components` 신설 |
-| D-2 | 치명 | 주문에 구성요소별 금액 Snapshot 없음 | `order_item_price_components` 신설 |
-| ~~D-3~~ | ~~치명~~ | ~~`market_price_raw`가 수집 실패를 기록 못함~~ | **✅ 해소 (V7, STEP 6)** — `market_price_fetch_logs` 신설 |
-| D-4 | 치명 | 관리자 보정 정책의 변경 이력 없음 | `market_price_policy_history` 신설 |
-| D-5 | 높음 | MANUAL 고시가 원본 레이어를 건너뜀 (주력 경로에서 원본/보정 분리 깨짐) | 수동 고시도 `raw` INSERT |
-| D-6 | 높음 | PG 콜백 멱등성 키 없음 → 이중 승인 가능 | `idempotency_key UNIQUE` |
-| D-7 | 높음 | 옵션 없는 상품의 재고 필드 부재 | **응용 계층은 STEP 8 에서 해결** (등록 시 기본 옵션 자동 생성 + 마지막 활성 옵션 비활성화 차단). V8 은 `is_default` 컬럼 + 부분 UNIQUE 인덱스로 DB 수준 보장만 남았다 |
-| D-8 | 높음 | `order_items`에 `option_id` 미보관 | 컬럼 추가 |
-| D-9 | 높음 | 약관 동의 이력 테이블 부재 (법적 필수) | `user_agreements` 신설 |
-| D-10 | 중간 | 설계서의 `max_change_percent` 컬럼이 DDL에 누락 | 컬럼 추가 |
-| D-11 | 중간 | effective에 원본가·보정액 없어 3값 동시 표시 불가 | 스냅샷 컬럼 3개 추가 |
-| D-12 | 중간 | 시세 원본 중복 적재 방지 제약 없음 | dedup UNIQUE 인덱스 |
+| ~~D-1~~ | ~~치명~~ | ~~주얼리 "부자재·스톤" 확장 불가~~ | **✅ V8** — `product_price_components` 신설 + `chk_ppc_method` 로 산출식별 필수값 강제. `products.pricing_model`(SIMPLE/COMPONENT) 추가 |
+| ~~D-2~~ | ~~치명~~ | ~~주문에 구성요소별 금액 Snapshot 없음~~ | **✅ V8** — `order_item_price_components` 신설, `order_item_adjustments`(취소·환불은 원본 수정 대신 조정 행), `order_items`/구성요소 **UPDATE·DELETE 차단 트리거** |
+| ~~D-3~~ | ~~치명~~ | ~~`market_price_raw`가 수집 실패를 기록 못함~~ | **✅ V7** — `market_price_fetch_logs` 신설. V8 이 `status` 에서 `FAILED` 제거를 마무리 |
+| ~~D-4~~ | ~~치명~~ | ~~관리자 보정 정책의 변경 이력 없음~~ | **✅ V8** — `market_price_policy_history` 신설 (append-only 트리거) |
+| ~~D-5~~ | ~~높음~~ | ~~MANUAL 고시가 원본 레이어를 건너뜀~~ | **✅ STEP 6(코드) + V8(스키마)** — 수동 고시도 `raw` INSERT 를 거치고, effective 에 원본·보정 스냅샷 컬럼이 생겼다 |
+| ~~D-6~~ | ~~높음~~ | ~~PG 콜백 멱등성 키 없음~~ | **✅ V8** — `payment_transactions.idempotency_key` + `ux_ptx_idem`, `ux_pay_tid_approved`(같은 TID 로 승인 2건 불가) |
+| ~~D-7~~ | ~~높음~~ | ~~옵션 없는 상품의 재고 필드 부재~~ | **✅ STEP 8(응용) + V8(DB)** — `is_default` 컬럼 + `ux_opt_default` 부분 UNIQUE. 기존 상품 7건은 정렬 최상단 옵션으로 백필 |
+| ~~D-8~~ | ~~높음~~ | ~~`order_items`에 `option_id` 미보관~~ | **✅ V8** — `option_id` 외 Snapshot 확정 필드 14개 추가 |
+| ~~D-9~~ | ~~높음~~ | ~~약관 동의 이력 테이블 부재 (법적 필수)~~ | **✅ V8** — `user_agreements` 신설. 철회도 `agreed=false` 행 추가이며 UPDATE 를 트리거가 막는다 |
+| ~~D-10~~ | ~~중간~~ | ~~`max_change_percent` 컬럼 누락~~ | **✅ V8** — 금속별 임계값 컬럼(NULL=전역값). `derive_from`/`derive_ratio`/`auto_apply`/`active` 도 함께 |
+| ~~D-11~~ | ~~중간~~ | ~~effective에 원본가·보정액 없음~~ | **✅ V8** — `raw_price_per_gram`·`adjustment_amount`·`source_code`·`quote_at`·`pending_id` 추가. 기존 22행 백필(원본+보정=최종 전건 일치), 가드 트리거가 신규 컬럼까지 보호 |
+| ~~D-12~~ | ~~중간~~ | ~~시세 원본 중복 적재 방지 제약 없음~~ | **✅ V8** — `quote_at`(기준시각) 분리 + `ux_mpr_dedup(source_id, metal_type, quote_at)` |
+
+**검증**: `SchemaGuardIntegrationTest` 19건이 애플리케이션이 아니라 **DB 가 실제로 거절하는지**를
+확인한다 (주문 UPDATE 거부, 멱등키 중복 거부, 기본 옵션 2개 거부, 동의 철회 UPDATE 거부 등).
+전체 테스트 152건 통과. 개발 DB 적용 후 40테이블·schemaVersion=8 확인.
+
+**V8 에 함께 들어갔으나 아직 코드가 쓰지 않는 것** (스키마만 준비된 상태):
+- `products.slug` — SEO URL. 한글 상품명 자동 생성은 의미가 뭉개져 비워 뒀다. 운영에서 지정한다
+- `market_price_policies.mode = 'DERIVED'` — 파생 시세(18K/14K를 24K에서 산출). **A-7 미확정**이라
+  계산 로직이 없다. API 는 enum 검증이 있어 이 값을 만들 수 없다
+- `price_calculation_logs` / `order_status_histories` — 주문·결제 STEP 에서 쓰기 시작한다
 
 ## D. 오픈 후 과제 (Phase 2 이후)
 

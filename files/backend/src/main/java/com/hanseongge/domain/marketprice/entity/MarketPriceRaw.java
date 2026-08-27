@@ -60,6 +60,18 @@ public class MarketPriceRaw {
     @Column(name = "collected_at", nullable = false)
     private OffsetDateTime collectedAt;
 
+    /**
+     * 시세 <b>기준</b> 시각. {@link #collectedAt}(수집 시각)과 다를 수 있다.
+     *
+     * <p>KRX 일별 시세는 "장 마감가"를 밤에 가져오는 식이라 둘이 어긋난다. 한 값으로
+     * 뭉개면 중복 판정({@code ux_mpr_dedup})이 기준시각이 아니라 수집시각으로 걸려
+     * 같은 시세를 매 주기 새로 적재하게 된다.
+     *
+     * <p>수동 고시는 고시하는 순간이 곧 기준시각이라 두 값이 같다.
+     */
+    @Column(name = "quote_at", nullable = false)
+    private OffsetDateTime quoteAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 10, nullable = false)
     private RawStatus status;
@@ -74,29 +86,46 @@ public class MarketPriceRaw {
     private String createdBy;
 
     private MarketPriceRaw(MarketPriceSource source, MetalType metalType, PricePerGram pricePerGram,
-                           OffsetDateTime collectedAt, String rawPayload, String createdBy) {
+                           OffsetDateTime collectedAt, OffsetDateTime quoteAt,
+                           String rawPayload, String createdBy) {
         this.source = source;
         this.metalType = metalType;
         // PricePerGram 을 거쳐야만 값이 들어온다 — 0 이하는 그 타입이 생성 자체를 거부한다.
         this.pricePerGram = pricePerGram.value();
         this.collectedAt = collectedAt;
+        this.quoteAt = quoteAt == null ? collectedAt : quoteAt;
         this.status = RawStatus.NORMAL;
         this.rawPayload = rawPayload;
         this.createdBy = createdBy;
     }
 
-    /** 자동 수집 원본. */
+    /**
+     * 자동 수집 원본.
+     *
+     * <p>기준시각을 따로 주지 않으면 수집시각과 같다고 본다. 제공처가 기준시각을
+     * 알려주는 경우(KRX 장 마감가 등)에는 {@link #collected(MarketPriceSource, MetalType,
+     * PricePerGram, OffsetDateTime, OffsetDateTime, String)} 를 쓴다.
+     */
     public static MarketPriceRaw collected(MarketPriceSource source, MetalType metalType,
                                            PricePerGram pricePerGram, OffsetDateTime collectedAt,
                                            String rawPayload) {
-        return new MarketPriceRaw(source, metalType, pricePerGram, collectedAt, rawPayload, null);
+        return collected(source, metalType, pricePerGram, collectedAt, collectedAt, rawPayload);
+    }
+
+    /** 기준시각이 수집시각과 다른 자동 수집 원본. */
+    public static MarketPriceRaw collected(MarketPriceSource source, MetalType metalType,
+                                           PricePerGram pricePerGram, OffsetDateTime collectedAt,
+                                           OffsetDateTime quoteAt, String rawPayload) {
+        return new MarketPriceRaw(source, metalType, pricePerGram, collectedAt, quoteAt,
+                rawPayload, null);
     }
 
     /** 관리자 수동 고시 원본 (개발계획 §12.3 — 수동도 L1 을 반드시 통과한다). */
     public static MarketPriceRaw declared(MarketPriceSource source, MetalType metalType,
                                           PricePerGram pricePerGram, String adminLoginId,
                                           String rawPayload) {
-        return new MarketPriceRaw(source, metalType, pricePerGram, OffsetDateTime.now(),
+        OffsetDateTime now = OffsetDateTime.now();
+        return new MarketPriceRaw(source, metalType, pricePerGram, now, now,
                 rawPayload, adminLoginId);
     }
 
