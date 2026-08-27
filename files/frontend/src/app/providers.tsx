@@ -3,6 +3,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { SessionBootstrap } from '@/components/auth/SessionBootstrap';
+
 /**
  * 서버 상태 관리 Provider.
  *
@@ -23,5 +25,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       }),
   );
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <SessionBootstrap />
+      {children}
+    </QueryClientProvider>
+  );
 }

@@ -393,3 +393,22 @@
     max-width: 60%;
   }
 }
+
+/* 유틸 바의 로그아웃 버튼. 링크들 사이에 있어 같은 모양이어야 한다. */
+.linkButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.linkButton:hover:not(:disabled) {
+  color: var(--gold-deep);
+}
+
+.linkButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

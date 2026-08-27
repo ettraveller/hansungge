@@ -1,0 +1,380 @@
+/*
+ * 회원 인증 화면 공통 스타일.
+ * 쇼핑몰 톤(금색 포인트 + 밝은 배경)을 따르되, 폼은 관리자 쪽처럼 밀도 있게 둔다.
+ */
+
+.page {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 48px var(--gutter) 72px;
+}
+
+.wide {
+  max-width: 780px;
+}
+
+.head {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dark);
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.7;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  padding: 24px 22px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 4px;
+}
+
+.sectionNote {
+  font-size: 12.5px;
+  color: var(--gray);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+
+/* ---------- 소셜 버튼 ---------- */
+.socialList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.socialBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.socialBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 구글 버튼은 흰 바탕이라 테두리가 없으면 배경에 묻힌다 */
+.socialOutlined {
+  border-color: #dadce0;
+}
+
+.socialMark {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ---------- 안내 ---------- */
+.notice {
+  display: flex;
+  gap: 9px;
+  padding: 13px 14px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 13px;
+  line-height: 1.7;
+  border: 1px solid;
+}
+
+.noticeInfo {
+  background: #f4f7fc;
+  border-color: #cfdcf2;
+  color: #2a4470;
+}
+
+.noticeWarn {
+  background: #fdf7ec;
+  border-color: #ecd8ac;
+  color: #7d5a12;
+}
+
+.noticeError {
+  background: #fdf1f3;
+  border-color: #f2c3cb;
+  color: #97202f;
+}
+
+.noticeTitle {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ---------- 약관 ---------- */
+.agreeAll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--light-gray);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.agreeItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 13.5px;
+  color: var(--dark);
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+
+.agreeItem:last-of-type {
+  border-bottom: 0;
+}
+
+.agreeItem input {
+  margin-top: 2px;
+  flex: none;
+}
+
+.agreeText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.6;
+}
+
+.tagRequired {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.tagOptional {
+  color: var(--gray);
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.agreeVersion {
+  display: block;
+  font-size: 11.5px;
+  color: var(--gray);
+  margin-top: 2px;
+}
+
+/* ---------- 폼 ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  padding: 11px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--dark);
+  background: #fff;
+}
+
+.input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: -1px;
+}
+
+.input:disabled {
+  background: var(--light-gray);
+  color: var(--gray);
+}
+
+.hint {
+  font-size: 11.5px;
+  color: var(--gray);
+  line-height: 1.55;
+}
+
+.error {
+  font-size: 11.5px;
+  color: var(--red);
+  line-height: 1.55;
+}
+
+/* ---------- 버튼 ---------- */
+.primary {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--gold-deep);
+  background: var(--gold);
+  color: var(--dark);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--gold-deep);
+  color: #fff;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ghost {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--dark);
+  border-radius: var(--radius-sm, 4px);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+.ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.foot {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--gray);
+  line-height: 1.75;
+  text-align: center;
+}
+
+.foot a {
+  color: var(--dark);
+  text-decoration: underline;
+}
+
+/* ---------- 마이페이지 ---------- */
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  margin-bottom: 18px;
+}
+
+.panelHead {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panelBody {
+  padding: 18px;
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rowLabel {
+  font-size: 11.5px;
+  color: var(--gray);
+}
+
+.rowValue {
+  font-size: 14px;
+  color: var(--dark);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.socialRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.socialRow:last-child {
+  border-bottom: 0;
+}
+
+.socialMeta {
+  font-size: 12px;
+  color: var(--gray);
+  margin-top: 2px;
+}
+
+.loading {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 13px;
+}

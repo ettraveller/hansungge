@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
+import { HeaderAuth } from '@/layouts/HeaderAuth';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
 import { buildNav } from '@/layouts/navigation';
 import styles from './ShopLayout.module.css';
@@ -42,8 +43,8 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
             <span aria-hidden="true">🔊</span> 오늘의 순금 시세가 업데이트 되었습니다.
           </div>
           <div className={styles.util}>
-            <Link href="/login">로그인</Link>
-            <Link href="/signup">회원가입</Link>
+            {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
+            <HeaderAuth />
             <Link href="/mypage/orders" className={styles.mHide}>
               주문조회
             </Link>
