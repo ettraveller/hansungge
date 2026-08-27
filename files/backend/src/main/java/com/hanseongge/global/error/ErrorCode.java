@@ -72,7 +72,27 @@ public enum ErrorCode {
     /** 자기 자신의 권한·상태를 바꾸면 스스로를 잠가 복구 불가 상태를 만들 수 있다. */
     ADMIN_SELF_MODIFICATION_DENIED(HttpStatus.CONFLICT, "본인 계정에는 수행할 수 없는 작업입니다."),
     /** 마지막 SUPER_ADMIN 을 잠그면 아무도 관리자 계정을 만들 수 없게 된다. */
-    ADMIN_LAST_SUPER_ADMIN(HttpStatus.CONFLICT, "마지막 최고관리자 계정은 변경할 수 없습니다.");
+    ADMIN_LAST_SUPER_ADMIN(HttpStatus.CONFLICT, "마지막 최고관리자 계정은 변경할 수 없습니다."),
+
+    // --- 회원 인증 (STEP 9) ---
+    /** 클라이언트 ID/시크릿이 주입되지 않아 그 소셜 로그인을 쓸 수 없다 (TODO A-4 검수 대기). */
+    OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "현재 이 방식의 로그인을 사용할 수 없습니다."),
+    /** 인가코드 교환 또는 사용자 정보 조회 실패. 상세 사유는 로그에만 남긴다. */
+    OAUTH_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "소셜 로그인 처리에 실패했습니다. 다시 시도해 주세요."),
+    /** state 불일치·만료. 인가코드 주입(CSRF) 시도일 수 있다. */
+    OAUTH_STATE_INVALID(HttpStatus.BAD_REQUEST, "로그인 요청이 유효하지 않습니다. 처음부터 다시 시도해 주세요."),
+    /** 가입 진행 토큰이 만료됐거나 위조됨. 약관 화면에 오래 머문 경우가 대부분이다. */
+    SIGNUP_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "가입 진행 시간이 만료되었습니다. 다시 로그인해 주세요."),
+    /** 필수 약관 미동의. 어떤 약관이 빠졌는지는 errors 필드에 담는다. */
+    AGREEMENT_REQUIRED(HttpStatus.BAD_REQUEST, "필수 약관에 동의해야 가입할 수 있습니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
+    /** 탈퇴·정지 계정. 두 경우를 한 코드로 묶지 않는다 — 안내 문구가 달라야 한다. */
+    USER_WITHDRAWN(HttpStatus.FORBIDDEN, "탈퇴한 계정입니다."),
+    USER_BLOCKED(HttpStatus.FORBIDDEN, "이용이 제한된 계정입니다. 고객센터로 문의해 주세요."),
+    /** 이미 다른 계정에 연결된 소셜 계정 (설계서 §7.2 — 이메일 자동 병합은 하지 않는다). */
+    SOCIAL_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 다른 계정에 연결된 소셜 계정입니다."),
+    /** 마지막 소셜 연동을 끊으면 로그인할 방법이 사라진다. */
+    SOCIAL_LAST_CONNECTION(HttpStatus.CONFLICT, "마지막 소셜 연동은 해제할 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

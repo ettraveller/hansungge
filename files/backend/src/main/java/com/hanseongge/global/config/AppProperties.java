@@ -16,7 +16,8 @@ public record AppProperties(
         @DefaultValue Cors cors,
         @DefaultValue AdminInit adminInit,
         @DefaultValue Jwt jwt,
-        @DefaultValue AdminSecurity adminSecurity
+        @DefaultValue AdminSecurity adminSecurity,
+        @DefaultValue OAuth oauth
 ) {
 
     public record Cors(
@@ -50,10 +51,65 @@ public record AppProperties(
             /** 관리자 Access 토큰 수명. 개발계획 §7.1 = 30분. */
             @DefaultValue("30") int adminAccessTtlMinutes,
             /** 관리자 Refresh 토큰 수명. 개발계획 §7.1 = 8시간. */
-            @DefaultValue("8") int adminRefreshTtlHours
+            @DefaultValue("8") int adminRefreshTtlHours,
+            /** 회원 Access 토큰 수명. 개발계획 §7.1 = 30분. */
+            @DefaultValue("30") int userAccessTtlMinutes,
+            /**
+             * 회원 Refresh 토큰 수명. 개발계획 §7.1 = 14일.
+             * 관리자(8시간)보다 훨씬 긴 이유는 쇼핑몰에서 매번 재로그인을 요구하면
+             * 이탈이 커지기 때문이다. 대신 회원 Refresh 는 DB 에 남아 즉시 회수할 수 있다.
+             */
+            @DefaultValue("14") int userRefreshTtlDays
     ) {
         public boolean hasSecret() {
             return secret != null && !secret.isBlank();
+        }
+    }
+
+    /**
+     * 소셜 로그인 설정 (개발계획 §7.1).
+     *
+     * <p>클라이언트 시크릿에 기본값을 두지 않는다. 값이 비어 있으면 그 제공자가
+     * "사용 불가"로 표시될 뿐 기동은 정상이다 — 앱 등록·검수(TODO A-4)가 끝나지 않은
+     * 제공자 때문에 서비스 전체가 못 뜨면 안 되기 때문이다.
+     */
+    public record OAuth(
+            /**
+             * 제공자가 인가코드를 돌려보낼 <b>프론트엔드</b> 주소의 앞부분.
+             * 최종 redirect_uri 는 {@code {base}/{provider 소문자}} 이며,
+             * 제공자 콘솔에 등록한 값과 <b>글자 하나까지 같아야</b> 한다.
+             */
+            @DefaultValue("http://localhost:3000/auth/callback") String redirectBaseUrl,
+            /** state 토큰 수명. 사용자가 제공자 로그인 화면에 머무는 시간을 감안한다. */
+            @DefaultValue("10") int stateTtlMinutes,
+            /** 약관 동의를 마치기까지 허용하는 시간. */
+            @DefaultValue("15") int signUpTokenTtlMinutes,
+            /** 외부 호출 연결/응답 제한(초). 소셜 서버가 늦으면 로그인 요청이 통째로 묶인다. */
+            @DefaultValue("5") int connectTimeoutSeconds,
+            @DefaultValue("8") int readTimeoutSeconds,
+            /**
+             * Refresh 쿠키에 Secure 를 붙일지. 운영은 반드시 true 다.
+             * 개발은 http://localhost 라 true 면 쿠키가 아예 저장되지 않는다.
+             */
+            @DefaultValue("false") boolean refreshCookieSecure,
+            /**
+             * Refresh 쿠키 도메인. 비우면 host-only 다.
+             * 운영에서 www 와 api 가 서브도메인으로 갈리면 {@code .hanseongge.com} 을 준다 —
+             * 그래야 같은 사이트로 취급되어 SameSite=Lax 쿠키가 API 요청에 실린다.
+             */
+            @DefaultValue("") String refreshCookieDomain,
+            @DefaultValue OAuthClient google,
+            @DefaultValue OAuthClient naver,
+            @DefaultValue OAuthClient kakao
+    ) {}
+
+    public record OAuthClient(
+            @DefaultValue("") String clientId,
+            @DefaultValue("") String clientSecret
+    ) {
+        public boolean isConfigured() {
+            return clientId != null && !clientId.isBlank()
+                    && clientSecret != null && !clientSecret.isBlank();
         }
     }
 

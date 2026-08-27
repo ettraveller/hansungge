@@ -9,13 +9,10 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.WeakKeyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -50,37 +47,13 @@ public class AdminJwtProvider {
     private final Duration accessTtl;
     private final Duration refreshTtl;
 
-    public AdminJwtProvider(AppProperties appProperties) {
+    public AdminJwtProvider(AppProperties appProperties, JwtSigningKey signingKey) {
         AppProperties.Jwt config = appProperties.jwt();
-        this.issuer = config.issuer();
+        this.issuer = signingKey.issuer();
         this.accessTtl = Duration.ofMinutes(config.adminAccessTtlMinutes());
         this.refreshTtl = Duration.ofHours(config.adminRefreshTtlHours());
-        this.key = resolveKey(config);
-    }
-
-    /**
-     * 서명키 결정.
-     *
-     * <p>키가 없으면 기동 시 1회용 랜덤 키를 만든다. 재기동하면 기존 토큰이 전부 무효가
-     * 되지만, 개발 편의를 위해 <b>고정된 기본 키를 코드에 박아두는 것보다 낫다</b> —
-     * 그런 키는 반드시 운영까지 따라간다. 운영(prod)은 application-prod.yml 이
-     * {@code ${JWT_SECRET}} 을 기본값 없이 요구하므로 여기까지 오지 않는다.
-     */
-    private SecretKey resolveKey(AppProperties.Jwt config) {
-        if (!config.hasSecret()) {
-            log.warn("""
-                    [JWT] app.jwt.secret 이 비어 있어 1회용 랜덤 서명키로 기동합니다.
-                    재기동하면 발급된 관리자 토큰이 모두 무효가 됩니다.
-                    고정하려면 JWT_SECRET 환경변수를 설정하세요 (최소 32바이트).""");
-            return Jwts.SIG.HS256.key().build();
-        }
-        try {
-            return Keys.hmacShaKeyFor(config.secret().getBytes(StandardCharsets.UTF_8));
-        } catch (WeakKeyException e) {
-            // 짧은 키를 조용히 늘려주지 않는다. 서명 강도를 시스템이 임의로 정하면 안 된다.
-            throw new IllegalStateException(
-                    "JWT_SECRET 이 너무 짧습니다. HS256 은 최소 32바이트(256bit)가 필요합니다.", e);
-        }
+        // 서명키는 회원 토큰과 공유한다. 구분은 키가 아니라 audience 가 한다.
+        this.key = signingKey.key();
     }
 
     // ---------- 발급 ----------

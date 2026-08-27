@@ -29,7 +29,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
         ErrorCode code = e.getErrorCode();
         log.warn("[BUSINESS] {} - {}", code.name(), e.getMessage());
-        return ResponseEntity.status(code.getStatus()).body(ErrorResponse.of(code));
+        // 항목별 사유가 있으면 errors 로 함께 내보낸다. 없으면 Jackson 이 필드를 생략한다.
+        return ResponseEntity.status(code.getStatus())
+                .body(e.getFieldErrors() == null
+                        ? ErrorResponse.of(code)
+                        : ErrorResponse.of(code, e.getFieldErrors()));
     }
 
     /** @Valid 바디 검증 실패 → 필드별 오류를 errors 로 전달한다. */

@@ -2,10 +2,13 @@ package com.hanseongge.global.config;
 
 import com.hanseongge.domain.admin.repository.AdminUserRepository;
 import com.hanseongge.global.auth.AdminJwtAuthenticationFilter;
+import com.hanseongge.domain.user.repository.UserRepository;
 import com.hanseongge.global.auth.AdminJwtProvider;
 import com.hanseongge.global.auth.JsonAccessDeniedHandler;
 import com.hanseongge.global.auth.JsonAuthenticationEntryPoint;
 import com.hanseongge.global.auth.LoginRateLimitFilter;
+import com.hanseongge.global.auth.UserJwtAuthenticationFilter;
+import com.hanseongge.global.auth.UserJwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +47,8 @@ public class SecurityConfig {
     private final AppProperties appProperties;
     private final AdminJwtProvider adminJwtProvider;
     private final AdminUserRepository adminUserRepository;
+    private final UserJwtProvider userJwtProvider;
+    private final UserRepository userRepository;
 
     /** 관리자 체인 — 사용자 체인보다 먼저 매칭된다. */
     @Bean
@@ -82,14 +87,20 @@ public class SecurityConfig {
         http
                 .securityMatcher("/**")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // Bearer 토큰 기반 무상태 API. Refresh 쿠키가 도입되는 STEP 6 에서
-                // 해당 경로에 한해 CSRF 토큰을 다시 켠다.
+                // Bearer 토큰 기반 무상태 API 라 CSRF 토큰을 두지 않는다.
+                //
+                // Refresh 토큰만 쿠키로 오가지만 SameSite=Lax 라 교차 사이트 POST 에는
+                // 실리지 않는다 — 공격자 페이지가 /api/v1/auth/refresh 를 호출해도 쿠키가
+                // 가지 않아 실패한다. 쿠키 경로도 /api/v1/auth 로 좁혀 두었다.
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(h -> h.frameOptions(f -> f.deny()))
+                // 회원 토큰(aud=user) 인증. 토큰이 없으면 아무 일도 하지 않으므로
+                // 상품·시세 같은 공개 조회에는 영향이 없다.
+                .addFilterBefore(userJwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         // --- 공개 ---
                         .requestMatchers(HttpMethod.GET,
@@ -123,6 +134,10 @@ public class SecurityConfig {
      */
     private AdminJwtAuthenticationFilter adminJwtAuthenticationFilter() {
         return new AdminJwtAuthenticationFilter(adminJwtProvider, adminUserRepository);
+    }
+
+    private UserJwtAuthenticationFilter userJwtAuthenticationFilter() {
+        return new UserJwtAuthenticationFilter(userJwtProvider, userRepository);
     }
 
     private LoginRateLimitFilter loginRateLimitFilter() {

@@ -33,7 +33,7 @@ class HealthHttpIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(response.getBody())
                 .contains("\"service\":\"hanseongge-api\"")
                 .contains("\"database\":\"UP\"")
-                .contains("\"schemaVersion\":\"8\"")
+                .contains("\"schemaVersion\":\"9\"")
                 .contains("\"roundingPolicy\":\"WON_FLOOR\"");
     }
 

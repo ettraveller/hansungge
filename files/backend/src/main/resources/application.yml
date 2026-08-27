@@ -95,6 +95,33 @@ app:
     issuer: hanseongge
     admin-access-ttl-minutes: ${JWT_ADMIN_ACCESS_TTL_MINUTES:30}
     admin-refresh-ttl-hours: ${JWT_ADMIN_REFRESH_TTL_HOURS:8}
+    # 회원은 관리자보다 Refresh 수명이 훨씬 길다. 쇼핑몰에서 매번 재로그인을 요구하면
+    # 이탈이 크고, 회원 Refresh 는 DB 에 남아 즉시 회수할 수 있어 위험이 낮다.
+    user-access-ttl-minutes: ${JWT_USER_ACCESS_TTL_MINUTES:30}
+    user-refresh-ttl-days: ${JWT_USER_REFRESH_TTL_DAYS:14}
+  oauth:
+    # 제공자 콘솔에 등록한 콜백 주소와 글자 하나까지 같아야 한다.
+    # 최종 주소는 {redirect-base-url}/{google|naver|kakao} 다.
+    redirect-base-url: ${OAUTH_REDIRECT_BASE_URL:http://localhost:3000/auth/callback}
+    state-ttl-minutes: ${OAUTH_STATE_TTL_MINUTES:10}
+    sign-up-token-ttl-minutes: ${OAUTH_SIGNUP_TTL_MINUTES:15}
+    # 외부 서버가 느릴 때 로그인 요청이 톰캣 스레드를 붙잡지 않도록 반드시 준다.
+    connect-timeout-seconds: ${OAUTH_CONNECT_TIMEOUT:5}
+    read-timeout-seconds: ${OAUTH_READ_TIMEOUT:8}
+    # 개발은 http 라 Secure 를 켜면 쿠키가 저장되지 않는다. 운영은 prod 에서 true 다.
+    refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:false}
+    refresh-cookie-domain: ${REFRESH_COOKIE_DOMAIN:}
+    # 앱 등록·검수(TODO A-4)가 끝난 제공자만 값이 채워진다.
+    # 비어 있으면 그 제공자는 "사용 불가"로 표시될 뿐 기동은 정상이다.
+    google:
+      client-id: ${OAUTH_GOOGLE_CLIENT_ID:}
+      client-secret: ${OAUTH_GOOGLE_CLIENT_SECRET:}
+    naver:
+      client-id: ${OAUTH_NAVER_CLIENT_ID:}
+      client-secret: ${OAUTH_NAVER_CLIENT_SECRET:}
+    kakao:
+      client-id: ${OAUTH_KAKAO_CLIENT_ID:}
+      client-secret: ${OAUTH_KAKAO_CLIENT_SECRET:}
   admin-security:
     max-login-failures: ${ADMIN_MAX_LOGIN_FAILURES:5}
     login-rate-per-minute: ${ADMIN_LOGIN_RATE_PER_MINUTE:10}
