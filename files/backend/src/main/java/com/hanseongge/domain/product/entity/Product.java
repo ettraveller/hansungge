@@ -88,6 +88,24 @@ public class Product {
     @Column(name = "active", nullable = false)
     private boolean active;
 
+    /**
+     * 1회 주문 최소 수량 (V8).
+     *
+     * <p>골드바처럼 낱개 판매가 기본인 상품은 1이지만, 소액 부자재는 묶음으로만 파는
+     * 경우가 있다. 지금은 등록 화면에서 값을 받지 않아 항상 기본값 1이다.
+     */
+    @Column(name = "min_qty", nullable = false)
+    private int minQty;
+
+    /**
+     * 1회 주문 최대 수량 (V8). null 이면 제한 없음이며 장바구니 상한(99)이 적용된다.
+     *
+     * <p>귀금속은 단가가 커서 실수로 두 자리 수량을 넣으면 금액이 수천만 원이 된다.
+     * 상품별로 막을 수 있게 자리를 마련해 두었다.
+     */
+    @Column(name = "max_qty")
+    private Integer maxQty;
+
     @Column(name = "created_by", length = 60)
     private String createdBy;
 
@@ -108,6 +126,8 @@ public class Product {
         this.description = description;
         this.thumbnailKey = thumbnailKey;
         this.status = ProductStatus.HIDDEN;   // 등록 직후에는 노출하지 않는다 (아래 설명)
+        // DB 기본값과 같은 값을 명시한다. 엔티티로 INSERT 하면 컬럼 DEFAULT 가 쓰이지 않는다.
+        this.minQty = 1;
         this.active = true;
         this.createdBy = createdBy;
         this.updatedBy = createdBy;
