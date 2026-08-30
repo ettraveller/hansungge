@@ -23,16 +23,19 @@
   color: var(--gold-deep);
 }
 
+/* 금색 배경 대신 먹색이다. 금색은 이 사이트에서 금액의 색이라 선택 탭까지 금색이면
+   시선이 가격에서 분산되고, 금색 위 흰 글자는 대비가 2.3:1 로 읽기 어렵다.
+   /shop 의 카테고리 탭과도 같은 모양이 된다. */
 .tabOn {
-  background: var(--gold);
-  border-color: var(--gold);
+  background: var(--dark);
+  border-color: var(--dark);
   color: #fff;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 22px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
 }
 
 .empty {

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { Loaded } from '@/api/server';
 import { BoardList } from '@/components/home/BoardList';
 import { HeroSlider } from '@/components/home/HeroSlider';
@@ -7,6 +6,7 @@ import { StoreLocator } from '@/components/home/StoreLocator';
 import { TrustStrip } from '@/components/home/TrustStrip';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
+import { SectionHead } from '@/components/ui/SectionHead';
 import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
 import { formatDateTime } from '@/utils/format';
 import { HERO_SLIDES, NEWS, NOTICES, REGIONS } from './home-content';
@@ -98,34 +98,6 @@ export function HomeView({ prices, histories, groups }: Props) {
         </div>
       </section>
     </>
-  );
-}
-
-/**
- * 섹션 머리 — 좌측정렬 제목 + 설명, 우측 더보기.
- *
- * <p>가운데정렬 3줄(작은영문/제목/설명)을 섹션마다 반복하지 않는다. 같은 형태가 네 번
- * 이어지면 스크롤에 리듬이 없어지고, 어디까지 읽었는지 알기 어려워진다.
- */
-function SectionHead({
-  title,
-  desc,
-  moreHref,
-  moreLabel,
-}: {
-  title: string;
-  desc: string;
-  moreHref: string;
-  moreLabel: string;
-}) {
-  return (
-    <div className={styles.secHead}>
-      <h2 className={styles.secTitle}>{title}</h2>
-      <p className={styles.secDesc}>{desc}</p>
-      <Link href={moreHref} className={styles.more}>
-        {moreLabel}
-      </Link>
-    </div>
   );
 }
 

@@ -28,44 +28,6 @@
   color: var(--gray);
 }
 
-/* ---------- 섹션 머리 ---------- */
-
-.secHead {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.secTitle {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-wrap: pretty;
-}
-
-.secDesc {
-  font-size: 13px;
-  color: var(--gray);
-  padding-bottom: 3px;
-}
-
-.more {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--dark);
-  border-bottom: 1px solid var(--dark);
-  padding-bottom: 2px;
-  transition: 0.2s;
-}
-
-.more:hover {
-  color: var(--gold-deep);
-  border-bottom-color: var(--gold-deep);
-}
-
 /* ---------- 게시판 ---------- */
 
 /* 1fr 이 아니라 minmax(0, 1fr) 인 이유 — 1fr 의 최소값은 auto 라, 안쪽에 줄어들지 않는
@@ -84,28 +46,6 @@
     padding: 28px 0 32px;
   }
 
-  .secHead {
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    margin-bottom: 16px;
-  }
-
-  .secTitle {
-    font-size: 19px;
-  }
-
-  .secDesc {
-    width: 100%;
-    order: 3;
-    padding-bottom: 0;
-    font-size: 12.5px;
-  }
-
-  .more {
-    font-size: 13px;
-    border-bottom: none;
-    color: var(--gray);
-  }
 
   /* 뉴스와 공지를 세로로 쌓는다 */
   .boards {

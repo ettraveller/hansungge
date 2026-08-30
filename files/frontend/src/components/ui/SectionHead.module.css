@@ -1,0 +1,65 @@
+/* =====================================================================
+   섹션 머리 (공용) — HomeView · PriceView · ProductListView 가 함께 쓴다
+   ===================================================================== */
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+}
+
+.desc {
+  font-size: 13px;
+  color: var(--gray);
+  padding-bottom: 3px;
+}
+
+.more {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dark);
+  border-bottom: 1px solid var(--dark);
+  padding-bottom: 2px;
+  transition: 0.2s;
+}
+
+.more:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+@media (max-width: 960px) {
+  .head {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-bottom: 16px;
+  }
+
+  .title {
+    font-size: 19px;
+  }
+
+  /* 설명은 제목 아래 줄로 내린다. 옆에 두면 제목이 두 글자마다 줄바꿈된다 */
+  .desc {
+    width: 100%;
+    order: 3;
+    padding-bottom: 0;
+    font-size: 12.5px;
+  }
+
+  .more {
+    font-size: 13px;
+    border-bottom: none;
+    color: var(--gray);
+  }
+}

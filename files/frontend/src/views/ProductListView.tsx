@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Loaded } from '@/api/server';
 import { ProductCard } from '@/components/product/ProductCard';
+import { SectionHead } from '@/components/ui/SectionHead';
 import type { PageResponse } from '@/types/api';
 import type { Category, ProductSummary } from '@/types/product';
 import styles from './ProductListView.module.css';
@@ -28,11 +29,11 @@ export function ProductListView({ categories, products, selectedCategoryId }: Pr
   return (
     <section className={styles.section}>
       <div className="wrap">
-        <div className={styles.secTitle}>
-          <small>PRODUCTS</small>
-          <h2>{currentName ?? '전체 상품'}</h2>
-          <p>모든 시세 연동 상품의 가격은 현재 고시 시세 기준으로 계산되어 표시됩니다.</p>
-        </div>
+        <SectionHead
+          as="h1"
+          title={currentName ?? '전체 상품'}
+          desc="가격은 현재 고시 시세 기준으로 계산되어 표시됩니다"
+        />
 
         {categories.data && categories.data.length > 0 && (
           <nav className={styles.tabs} aria-label="카테고리">

@@ -1,79 +1,38 @@
-/* 메인의 시세 섹션과 같은 시각 언어를 쓴다 */
+/* =====================================================================
+   금시세 화면 (/price)
+
+   시세표 자체는 MarketPriceBoard 가 그린다 — 메인과 같은 컴포넌트다.
+   이 파일은 그 아래 1g 기준표와 안내만 맡는다.
+   ===================================================================== */
+
+.boardSection {
+  background: var(--light-gray);
+  border-bottom: 1px solid var(--line);
+}
+
+.loadError {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 56px var(--gutter);
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+}
 
 .section {
-  padding: 64px 0;
+  padding: 52px 0 60px;
+}
+
+.guideSection {
+  padding: 52px 0 60px;
   background: var(--light-gray);
 }
 
-.guideSec {
-  padding: 64px 0;
-}
-
-.secTitle {
-  text-align: center;
-  margin-bottom: 38px;
-}
-
-.secTitle small {
-  color: var(--gold-deep);
-  letter-spacing: 3px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.secTitle h2 {
-  font-size: 28px;
-  margin-top: 6px;
-}
-
-.secTitle p {
-  color: var(--gray);
-  font-size: 14px;
-  margin-top: 8px;
-}
-
-.card,
-.gramCard {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 26px;
-}
-
-.gramCard {
-  margin-top: 20px;
-}
-
-.card h3,
-.gramCard h3 {
-  font-size: 17px;
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.date {
-  font-size: 12px;
-  color: var(--gray);
-  font-weight: 400;
-}
-
-.cardNotice {
+.warn {
   padding: 40px 0;
   text-align: center;
-  color: var(--gray);
   font-size: 14px;
-}
-
-.warn {
-  margin-top: 16px;
-  padding: 14px 18px;
-  background: var(--gold-light);
-  border-radius: var(--radius);
-  color: var(--gold-deep);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--gray);
 }
 
 /* ---------- 1g 기준표 ---------- */
@@ -84,98 +43,121 @@
   gap: 12px;
 }
 
-.gramList li {
+.gramItem {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
-  background: var(--light-gray);
-  border-radius: var(--radius);
-  font-size: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px 20px;
 }
 
-.gramList strong {
-  font-size: 15px;
-  font-weight: 800;
+.gramName {
+  font-size: 13.5px;
+  font-weight: 700;
 }
 
-.gramNote {
-  margin-top: 12px;
-  font-size: 12.5px;
-  color: #8a8a8a;
+.gramPrice {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.quoteNotes {
-  margin-top: 18px;
-  font-size: 12.5px;
-  color: #8a8a8a;
-  display: flex;
-  gap: 26px;
-  flex-wrap: wrap;
-}
+/* ---------- 시세 안내 ---------- */
 
-.quoteNotes span::before {
-  content: '· ';
-}
-
-/* ---------- 안내 ---------- */
-
-.guideGrid {
+.guides {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
 }
 
+/* 카드(테두리 + 그림자)로 감싸지 않는다. 여기 담긴 것은 읽을거리지 고를 항목이 아니고,
+   카드는 "선택할 수 있다"는 신호를 준다. 번호와 여백만으로 구분한다. */
 .guide {
-  background: var(--light-gray);
-  border-radius: var(--radius-lg);
-  padding: 26px;
+  border-top: 2px solid var(--dark);
+  padding-top: 16px;
 }
 
-.guide h4 {
-  font-size: 15px;
-  margin-bottom: 10px;
+.guideTitle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
-.n {
-  width: 24px;
-  height: 24px;
+.guideNum {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--gold);
   color: #fff;
   font-size: 12px;
-  display: flex;
+  font-weight: 700;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: none;
 }
 
-.guide p {
-  font-size: 13px;
+.guideBody {
+  font-size: 13.5px;
+  line-height: 1.75;
   color: var(--gray);
+  /* 한 줄이 너무 길면 다음 줄 첫 글자를 찾기 어렵다 */
+  max-width: 46ch;
+}
+
+.guideBody strong {
+  color: var(--dark);
+  font-weight: 700;
+}
+
+/* ---------- 안내 문구 ---------- */
+
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 32px;
+  font-size: 12.5px;
+  color: #8a8a8a;
 }
 
 @media (max-width: 960px) {
   .section,
-  .guideSec {
-    padding: 44px 0;
+  .guideSection {
+    padding: 28px 0 32px;
   }
 
-  .secTitle h2 {
-    font-size: 22px;
+  .gramList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
-  .card,
-  .gramCard {
-    padding: 18px;
+  .gramItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 14px 16px;
   }
 
-  .guideGrid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .gramPrice {
+    font-size: 16px;
+  }
+
+  .guides {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .notes {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 24px;
+    font-size: 11.5px;
   }
 }
