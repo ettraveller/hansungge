@@ -1,2 +1,5 @@
 # 초기 전달용 압축본. files/ 에 같은 내용이 풀려 있어 추적하지 않는다.
 files.zip
+
+# Claude Code 로컬 권한 설정 (개발자마다 다르다 — 스킬은 추적하되 이 파일은 제외)
+.claude/settings.local.json
