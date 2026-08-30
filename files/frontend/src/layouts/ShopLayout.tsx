@@ -4,7 +4,9 @@ import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { HeaderAuth } from '@/layouts/HeaderAuth';
 import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
+import { CartIcon, SearchIcon } from '@/layouts/icons';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
+import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { buildNav } from '@/layouts/navigation';
 import styles from './ShopLayout.module.css';
 
@@ -12,13 +14,17 @@ import styles from './ShopLayout.module.css';
  * 쇼핑몰 공통 레이아웃.
  *
  * <pre>
- * 상단 유틸바 (다크)
- * 헤더 (sticky) — 로고 · 검색 · 로그인/마이페이지/장바구니/위시리스트 · 햄버거
- * GNB — 카테고리 드롭다운
+ * 헤더 (sticky) — [햄버거] 로고 · 검색 · 로그인/장바구니
+ * GNB — 카테고리 드롭다운 (모바일에서는 햄버거 드로어가 대신한다)
  * [ 본문 ]
  * 푸터 (다크)
  * 모바일 하단 탭바 (960px 이하)
  * </pre>
+ *
+ * <h2>머리가 2층인 이유</h2>
+ * 예전에는 유틸바까지 3층이라 내용이 시작되기 전에 168px 를 썼다. 첫 화면에서 가장
+ * 먼저 보여야 할 것은 시세지 메뉴가 아니다. 유틸바에 있던 로그인·장바구니는 헤더
+ * 오른쪽으로, 주문조회·고객센터는 마이페이지와 푸터로 옮겼다.
  *
  * <h2>드롭다운을 JS 없이 만든 이유</h2>
  * {@code :hover} 와 {@code :focus-within} 으로만 연다. 클라이언트 컴포넌트로 만들면
@@ -37,70 +43,31 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* ---------- 상단 유틸 바 ---------- */}
-      <div className={styles.topbar}>
-        <div className="wrap">
-          <div className={styles.notice}>
-            <span aria-hidden="true">🔊</span> 오늘의 순금 시세가 업데이트 되었습니다.
-          </div>
-          <div className={styles.util}>
-            {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
-            <HeaderAuth />
-            <Link href="/mypage/orders" className={styles.mHide}>
-              주문조회
-            </Link>
-            <Link href="/support" className={styles.mHide}>
-              고객센터
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* ---------- 헤더 ---------- */}
       <header className={styles.header}>
         <div className={`wrap ${styles.headerMain}`}>
+          {/* 햄버거는 모바일에서만 보인다. 로고 왼쪽이 엄지가 닿는 자리다 */}
+          <MobileDrawer nav={nav} />
+
           <Link href="/" className={styles.logo} aria-label="한성금거래소 홈">
             <Image src="/logo.png" alt="한성금거래소" width={560} height={104} priority />
           </Link>
 
           <form className={styles.search} action="/shop" role="search">
+            <SearchIcon size={17} className={styles.searchIcon} />
             <input type="text" name="keyword" placeholder="찾으시는 상품을 검색해 보세요" />
-            <button type="submit" aria-label="검색">
-              🔍
-            </button>
+            <button type="submit">검색</button>
           </form>
 
-          {/* 순서는 레퍼런스와 동일: 로그인 → 마이페이지 → 장바구니 → 위시리스트 */}
-          <div className={styles.headerIcons}>
-            <Link href="/login">
-              <span className={styles.ico} aria-hidden="true">
-                🔑
-              </span>
-              로그인
-            </Link>
-            <Link href="/mypage">
-              <span className={styles.ico} aria-hidden="true">
-                👤
-              </span>
-              마이페이지
-            </Link>
-            <Link href="/cart" className={styles.cartWrap}>
-              <span className={styles.ico} aria-hidden="true">
-                🛒
-              </span>
+          <div className={styles.headerUtil}>
+            {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
+            <HeaderAuth />
+            <Link href="/cart" className={styles.cartLink}>
+              <CartIcon size={18} />
+              <span className={styles.cartText}>장바구니</span>
               <HeaderCartBadge />
-              장바구니
-            </Link>
-            <Link href="/wishlist">
-              <span className={styles.ico} aria-hidden="true">
-                ♡
-              </span>
-              위시리스트
             </Link>
           </div>
-
-          {/* 햄버거·드로어는 브라우저 상태가 필요해 클라이언트 컴포넌트로 분리한다 */}
-          <MobileDrawer nav={nav} />
         </div>
 
         {/* ---------- GNB (CSS 드롭다운) ---------- */}
@@ -133,6 +100,8 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main>{children}</main>
+
+      <MobileTabBar />
 
       {/* ---------- 푸터 ---------- */}
       <footer className={styles.footer}>

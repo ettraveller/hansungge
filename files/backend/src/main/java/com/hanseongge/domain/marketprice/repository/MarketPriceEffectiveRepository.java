@@ -35,6 +35,26 @@ public interface MarketPriceEffectiveRepository extends JpaRepository<MarketPric
             MetalType metalType, PriceSide priceSide, OffsetDateTime from);
 
     /**
+     * metal×side 별 <b>직전</b> 최종 시세 (마감된 행 중 가장 최근).
+     *
+     * <p>공개 시세표의 변동폭을 계산하는 근거다. 이 테이블이 append-only 라서 별도 이력
+     * 테이블 없이 <b>마감된 행이 그대로 과거값</b>이 된다 (설계서 §12.2 L3).
+     *
+     * <p>전 조합을 한 번에 읽는다. metal×side 마다 따로 부르면 시세표 한 번에 10 쿼리가
+     * 나가고, 그 비용이 변동폭 하나 때문에 매 요청 발생한다.
+     */
+    @Query("""
+            SELECT e FROM MarketPriceEffective e
+            WHERE e.effectiveTo IS NOT NULL
+              AND e.effectiveTo = (
+                    SELECT MAX(prev.effectiveTo) FROM MarketPriceEffective prev
+                    WHERE prev.metalType = e.metalType
+                      AND prev.priceSide = e.priceSide
+                      AND prev.effectiveTo IS NOT NULL)
+            """)
+    List<MarketPriceEffective> findLatestClosedPerMetalSide();
+
+    /**
      * {@code (metal, side)} 단위 배타 잠금 (개발계획 §12.6).
      *
      * <p>트랜잭션 종료와 함께 자동 해제되는 advisory lock 이다. 잠글 <b>대상 행이 아직

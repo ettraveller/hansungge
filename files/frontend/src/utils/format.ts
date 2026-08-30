@@ -45,6 +45,34 @@ export function formatAdjustment(amount: string | number | null | undefined): st
   return `${sign}${KRW.format(n)}원`;
 }
 
+/**
+ * 변동액 표시: "▼ 26,000" / "▲ 26,000" / "— 0"
+ *
+ * 화살표를 텍스트로 넣는 이유 — CSS {@code ::before} 로 붙이면 복사·스크린리더에서
+ * 사라진다. 시세표에서 방향은 금액만큼 중요한 정보다.
+ */
+export function formatDelta(amount: number | null | undefined): string {
+  if (amount == null || !Number.isFinite(amount)) return '-';
+  if (amount === 0) return '— 0';
+  return `${amount > 0 ? '▲' : '▼'} ${KRW.format(Math.abs(amount))}`;
+}
+
+/** 변동률 표시: "-3.00%" / "+1.25%" / "0.00%" */
+export function formatPercent(percent: number | null | undefined): string {
+  if (percent == null || !Number.isFinite(percent)) return '-';
+  const sign = percent > 0 ? '+' : '';
+  return `${sign}${percent.toFixed(2)}%`;
+}
+
+/** "▼ 26,000 (-3.00%)" — 시세표 변동 칸의 한 줄 표기 */
+export function formatDeltaWithPercent(
+  amount: number | null | undefined,
+  percent: number | null | undefined,
+): string {
+  if (amount == null || percent == null) return '-';
+  return `${formatDelta(amount)} (${formatPercent(percent)})`;
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '-';
   const d = new Date(iso);

@@ -1,0 +1,52 @@
+/* =====================================================================
+   시세 추이 스파크라인
+
+   색은 CSS 가 정한다. SVG 속성에 색을 박으면 다크모드나 강조 상태에서
+   바꿀 자리가 없어진다.
+   ===================================================================== */
+
+.chart {
+  display: block;
+  width: 100%;
+  height: 76px;
+}
+
+.line {
+  stroke: var(--gold);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  /* viewBox 를 늘려 쓰기 때문에(preserveAspectRatio: none) 선 굵기가 가로로 늘어난다.
+     이 속성이 있어야 어느 폭에서도 2px 로 보인다. */
+  vector-effect: non-scaling-stroke;
+}
+
+.dot {
+  fill: var(--gold);
+}
+
+.fillTop {
+  stop-color: var(--gold);
+  stop-opacity: 0.2;
+}
+
+.fillBottom {
+  stop-color: var(--gold);
+  stop-opacity: 0;
+}
+
+.empty {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+@media (max-width: 960px) {
+  .chart,
+  .empty {
+    height: 56px;
+  }
+}

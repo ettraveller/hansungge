@@ -287,6 +287,28 @@ public class MarketPriceService {
         return views;
     }
 
+    /**
+     * metal×side 별 <b>직전</b> 최종 시세. 공개 시세표의 변동폭 계산에 쓴다.
+     *
+     * <p>키는 {@code "GOLD_24K/SELL"} 형태다. 최초 고시라 직전 행이 없는 조합은 아예
+     * 담기지 않으므로, 호출부는 {@code null} 을 "비교 대상 없음"으로 다뤄야 한다 —
+     * 0% 로 채우면 "움직이지 않았다"는 거짓 정보가 된다.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, MarketPriceEffective> findPreviousByKey() {
+        Map<String, MarketPriceEffective> byKey = new LinkedHashMap<>();
+        for (MarketPriceEffective e : effectiveRepository.findLatestClosedPerMetalSide()) {
+            byKey.merge(previousKey(e.getMetalType(), e.getPriceSide()), e,
+                    (a, b) -> a.getEffectiveTo().isAfter(b.getEffectiveTo()) ? a : b);
+        }
+        return byKey;
+    }
+
+    /** {@link #findPreviousByKey()} 가 쓰는 키. 호출부도 이 메서드로 만든다. */
+    public static String previousKey(MetalType metalType, PriceSide priceSide) {
+        return metalType + "/" + priceSide;
+    }
+
     @Transactional(readOnly = true)
     public Page<MarketPriceEffective> history(MetalType metalType, PriceSide priceSide, Pageable pageable) {
         return effectiveRepository

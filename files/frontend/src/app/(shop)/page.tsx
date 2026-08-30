@@ -3,10 +3,14 @@ import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import type { CategoryProducts } from '@/components/home/ProductTabs';
 import type { Category } from '@/types/product';
+import { METAL_ORDER, type MetalType, type PriceHistoryPoint } from '@/types/price';
 import { HomeView } from '@/views/HomeView';
 
 /** 제품 소개 탭에서 카테고리당 보여줄 개수. 레퍼런스는 12~15개다. */
 const PER_CATEGORY = 8;
+
+/** 시세 보드의 추이 그래프 기간. 시안 문구("최근 30일 추이")와 같아야 한다. */
+const HISTORY_DAYS = 30;
 
 /**
  * 요청 시점 렌더링을 명시한다.
@@ -27,15 +31,36 @@ export const dynamic = 'force-dynamic';
  *  화면 디렉터리 이름으로 쓸 수 없다. 그래서 views/ 를 쓴다.)
  */
 export default async function HomePage() {
-  // 시세와 카테고리를 병렬로 부른다. 순차로 부르면 느린 쪽이 빠른 쪽을 기다린다.
-  const [prices, categories] = await Promise.all([
+  // 시세·카테고리·추이를 병렬로 부른다. 순차로 부르면 느린 쪽이 빠른 쪽을 기다린다.
+  const [prices, categories, histories] = await Promise.all([
     load(() => priceApi.current(), '메인 시세'),
     load(() => productApi.categories(), '메인 카테고리'),
+    loadHistories(),
   ]);
 
   const groups = await loadProductGroups(categories.data);
 
-  return <HomeView prices={prices} groups={groups} />;
+  return <HomeView prices={prices} histories={histories} groups={groups} />;
+}
+
+/**
+ * 금속별 30일 추이.
+ *
+ * <p>시세 보드는 마우스를 올린 금속으로 그래프가 <b>즉시</b> 바뀐다. 그러려면 5종을
+ * 미리 다 갖고 있어야 한다 — 호버할 때마다 요청을 보내면 그래프가 늦게 뜨고, 마우스를
+ * 훑는 것만으로 요청이 쏟아진다.
+ *
+ * <p>한 금속이 실패해도 나머지는 그린다. 그래프는 부가 정보라, 여기서 예외를 던지면
+ * 정작 중요한 시세표까지 사라진다.
+ */
+async function loadHistories(): Promise<Partial<Record<MetalType, PriceHistoryPoint[]>>> {
+  const entries = await Promise.all(
+    METAL_ORDER.map(async (metal) => {
+      const result = await load(() => priceApi.history(metal, HISTORY_DAYS), `메인 추이 (${metal})`);
+      return [metal, result.data ?? []] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
 /**

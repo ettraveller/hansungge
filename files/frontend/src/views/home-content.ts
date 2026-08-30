@@ -19,8 +19,10 @@ export const HERO_SLIDES: Slide[] = [
     title: '오늘의 정확한 시세로',
     highlight: '안심하고 거래하세요',
     desc: '고시 시세를 그대로 반영한 판매가. 주문 시점에 서버가 다시 계산해 확정합니다.',
-    href: '/price',
-    cta: '오늘의 금 시세 확인',
+    // 바로 아래가 시세표라 "시세 확인"으로 보내면 이미 도착한 곳을 다시 가리킨다.
+    // 배너의 역할은 다음 행동을 만드는 것이다.
+    href: '/shop?categoryId=1',
+    cta: '골드바 보러가기',
     image: '/hero.jpg',
   },
   {
@@ -87,12 +89,3 @@ export const NOTICES: BoardPost[] = [
   { id: 3, title: '시스템 정기 점검 안내 (매월 첫째 주 화요일)', date: '2026-08-04' },
   { id: 4, title: '매입 접수 운영시간 변경 안내', date: '2026-07-28' },
 ];
-
-/** 중간 띠배너. 레퍼런스의 시세 아래 배너 자리다. */
-export const MID_BANNER = {
-  eyebrow: 'SAFE DELIVERY',
-  title: '오후 2시 이전 결제 시 당일 출고',
-  desc: '보증서와 함께 안전 포장되어 배송됩니다.',
-  href: '/guide',
-  cta: '이용안내 보기',
-};

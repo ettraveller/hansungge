@@ -53,18 +53,24 @@
   height: 100vh;
   background: #fff;
   z-index: 200;
-  transition: right 0.25s;
+  transition: transform 0.25s, visibility 0.25s;
   display: flex;
   flex-direction: column;
   box-shadow: -6px 0 24px rgba(0, 0, 0, 0.15);
 }
 
+/* 닫힌 드로어를 right: -290px 로 밀어내면 문서 폭이 그만큼 늘어나 페이지 전체가
+   가로로 스크롤된다(모바일에서 scrollWidth 423 > viewport 390 으로 실측). 화면 밖에
+   두되 폭에는 기여하지 않도록 translate 로 옮기고, 닫힌 동안은 포커스도 받지 않는다. */
 .drawer {
-  right: -290px;
+  right: 0;
+  transform: translateX(100%);
+  visibility: hidden;
 }
 
 .drawerOn {
-  right: 0;
+  transform: translateX(0);
+  visibility: visible;
 }
 
 .drawerHead {
@@ -165,49 +171,10 @@
   color: var(--gold-deep);
 }
 
-/* ---------- 하단 탭바 ---------- */
-
-.tabbar {
-  display: none;
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--tabbar-h);
-  background: #fff;
-  border-top: 1px solid var(--line);
-  z-index: 180;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.tab,
-.tabOn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-size: 11px;
-  color: #888;
-}
-
-.tabOn {
-  color: var(--gold-deep);
-  font-weight: 700;
-}
-
-.ti {
-  font-size: 20px;
-  line-height: 1;
-}
+/* 하단 탭바는 MobileTabBar 로 옮겼다 — 드로어와 탭바는 서로 다른 상태를 다룬다. */
 
 @media (max-width: 960px) {
   .hamburger {
-    display: flex;
-  }
-
-  .tabbar {
     display: flex;
   }
 }

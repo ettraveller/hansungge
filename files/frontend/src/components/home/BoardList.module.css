@@ -55,6 +55,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* flex 자식의 기본 min-width 는 auto 라, 이 줄이 없으면 nowrap 인 제목이 줄어들지
+     못하고 <b>부모를 밀어낸다</b>. 잘림이 동작하지 않을 뿐 아니라 페이지 전체가 가로로
+     스크롤된다 (모바일에서 scrollWidth 423 > viewport 390 으로 실측). */
+  min-width: 0;
 }
 
 .new {

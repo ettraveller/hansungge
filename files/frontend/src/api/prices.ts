@@ -1,5 +1,11 @@
 import { api } from '@/api/client';
-import type { MarketPrice, MetalType, PriceSide, ProductPrice } from '@/types/price';
+import type {
+  MarketPrice,
+  MetalType,
+  PriceHistoryPoint,
+  PriceSide,
+  ProductPrice,
+} from '@/types/price';
 
 /**
  * 시세 API.
@@ -11,6 +17,18 @@ import type { MarketPrice, MetalType, PriceSide, ProductPrice } from '@/types/pr
 export const priceApi = {
   /** 전 금속 × 매입/판매 현재 시세. 사용 불가 조합도 "시세문의"로 포함된다. */
   current: () => api.get<MarketPrice[]>('/api/v1/prices/current', { cache: 'no-store' }),
+
+  /**
+   * 시세 이력 (차트용). 오래된 순으로 온다.
+   *
+   * 이 테이블이 append-only 라 <b>고시가 일어난 시점마다 한 행</b>이다. 하루에 여러 번
+   * 고시하면 그날 점이 여러 개고, 고시가 없던 날은 점이 없다 — 일별 종가가 아니다.
+   */
+  history: (metal: MetalType, days = 30, side: PriceSide = 'SELL') =>
+    api.get<PriceHistoryPoint[]>('/api/v1/prices/history', {
+      query: { metal, side, days },
+      cache: 'no-store',
+    }),
 
   /** 상품 가격. optionId 를 주지 않으면 상품 대표 산출이다. */
   forProduct: (productId: number, optionId?: number) =>

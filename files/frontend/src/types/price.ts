@@ -69,6 +69,47 @@ export interface MarketPrice {
   /** 화면 표시 문구. 사용 불가면 "시세문의" */
   displayText: string;
   effectiveFrom?: string | null;
+  /** 직전 고시 대비 변동폭. 최초 고시이거나 사용 불가면 생략된다 */
+  change?: PriceChange | null;
+}
+
+/**
+ * 직전 고시 대비 변동폭 (`PriceChange`).
+ *
+ * <b>표시 전용이다.</b> 어떤 주문 금액에도 들어가지 않는다. 프론트엔드가 현재가와
+ * 이력을 빼서 직접 만들지 않는 이유는, 그러면 화면마다 "직전"의 기준이 달라져 같은
+ * 상품에 서로 다른 변동률이 표시되기 때문이다 (설계서 원칙 P1).
+ *
+ * 최초 고시라 비교 대상이 없으면 이 객체 자체가 없다 — 0% 로 채우지 않는다.
+ */
+export interface PriceChange {
+  previousPricePerGram: number;
+  /** 변동액(원/g). 하락이면 음수 */
+  changePerGram: number;
+  /** 변동액(원/돈). 시세표가 1돈 기준으로 표시한다. 하락이면 음수 */
+  changePerDon: number;
+  /** 변동률(%). 하락이면 음수 */
+  changePercent: number;
+}
+
+/**
+ * 시세 이력 한 점 (`GET /api/v1/prices/history`).
+ *
+ * 백엔드 `PriceHistoryResponse` 의 일부만 쓴다 — 차트에 필요한 건 값과 시각뿐이다.
+ * 나머지 필드(정책·사유·적용자)는 관리자 화면의 것이다.
+ */
+export interface PriceHistoryPoint {
+  pricePerGram: number;
+  effectiveFrom: string;
+  current: boolean;
+}
+
+/** 등락 방향. 국내 관행상 상승이 적색, 하락이 청색이다. */
+export type PriceDirection = 'UP' | 'DOWN' | 'FLAT';
+
+export function directionOf(change?: PriceChange | null): PriceDirection {
+  if (change == null || change.changePerGram === 0) return 'FLAT';
+  return change.changePerGram > 0 ? 'UP' : 'DOWN';
 }
 
 /** 가격 내역 한 줄. 합계가 정확히 소계와 같다 (백엔드 불변식). */
