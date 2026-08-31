@@ -2,6 +2,7 @@ package com.hanseongge.domain.marketprice.controller;
 
 import com.hanseongge.domain.marketprice.dto.PriceHistoryResponse;
 import com.hanseongge.domain.marketprice.dto.PublicPriceResponse;
+import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.MetalType;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.MarketPriceService;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 공개 시세 API (설계서 §5 공개 — {@code /api/v1/prices/**}).
@@ -50,8 +52,13 @@ public class PublicMarketPriceController {
                     + "이 응답에 0원이 담기는 경로는 존재하지 않는다.")
     @GetMapping("/current")
     public ResponseEntity<List<PublicPriceResponse>> current() {
+        // 직전 시세를 한 번에 읽어 둔다. 줄마다 조회하면 시세표 한 번에 10 쿼리가 나간다.
+        Map<String, MarketPriceEffective> previous = marketPriceService.findPreviousByKey();
+
         return ResponseEntity.ok(marketPriceService.describeAllCurrent().stream()
-                .map(PublicPriceResponse::of)
+                .map(view -> PublicPriceResponse.of(
+                        view,
+                        previous.get(MarketPriceService.previousKey(view.metalType(), view.priceSide()))))
                 .toList());
     }
 

@@ -1,6 +1,7 @@
 package com.hanseongge;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.hanseongge.domain.marketprice.dto.PublicPriceResponse;
 import com.hanseongge.domain.marketprice.entity.FetchResult;
 import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.MarketPricePolicy;
@@ -555,6 +556,94 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
             assertThat(views).filteredOn(CurrentPriceView::isSellable).hasSize(1);
             assertThat(views).filteredOn(v -> v.availability() == CurrentPriceView.Availability.NONE)
                     .allSatisfy(v -> assertThat(v.effective()).isNull());
+        }
+    }
+
+    @Nested
+    @DisplayName("변동폭 — 직전 고시 대비")
+    class PriceChangeCalculation {
+
+        @Test
+        @DisplayName("최초 고시는 비교 대상이 없어 변동폭이 null 이다 — 0% 로 채우지 않는다")
+        void firstDeclarationHasNoChange() {
+            declare("200000", "최초 고시");
+
+            CurrentPriceView view = marketPriceService.describeCurrent(MetalType.GOLD_24K, PriceSide.SELL);
+            PublicPriceResponse response = PublicPriceResponse.of(
+                    view, marketPriceService.findPreviousByKey()
+                            .get(MarketPriceService.previousKey(MetalType.GOLD_24K, PriceSide.SELL)));
+
+            assertThat(response.available()).isTrue();
+            assertThat(response.change()).isNull();
+        }
+
+        @Test
+        @DisplayName("두 번째 고시부터 직전 행 대비 변동액·변동률이 계산된다")
+        void secondDeclarationReportsChange() {
+            declare("200000", "최초 고시");
+            declare("194000", "장중 하락");   // -3.00%
+
+            MarketPriceEffective previous = marketPriceService.findPreviousByKey()
+                    .get(MarketPriceService.previousKey(MetalType.GOLD_24K, PriceSide.SELL));
+            assertThat(previous).isNotNull();
+            assertThat(previous.getPricePerGram()).isEqualByComparingTo("200000.00");
+
+            PublicPriceResponse response = PublicPriceResponse.of(
+                    marketPriceService.describeCurrent(MetalType.GOLD_24K, PriceSide.SELL), previous);
+
+            assertThat(response.change()).isNotNull();
+            assertThat(response.change().previousPricePerGram()).isEqualByComparingTo("200000.00");
+            assertThat(response.change().changePerGram()).isEqualByComparingTo("-6000.00");
+            // 시세표는 1돈(3.75g) 기준으로 표시한다
+            assertThat(response.change().changePerDon()).isEqualByComparingTo("-22500.00");
+            assertThat(response.change().changePercent()).isEqualByComparingTo("-3.00");
+        }
+
+        @Test
+        @DisplayName("직전 시세는 마감된 행 중 가장 최근이다 — 세 번 고시하면 두 번째와 비교한다")
+        void previousIsTheMostRecentlyClosedRow() {
+            declare("200000", "1차");
+            declare("204000", "2차");
+            declare("208000", "3차");
+
+            MarketPriceEffective previous = marketPriceService.findPreviousByKey()
+                    .get(MarketPriceService.previousKey(MetalType.GOLD_24K, PriceSide.SELL));
+
+            assertThat(previous.getPricePerGram()).isEqualByComparingTo("204000.00");
+        }
+
+        @Test
+        @DisplayName("사용할 수 없는 시세에는 변동폭을 담지 않는다 — 가격이 '시세문의'인데 변동률만 뜨면 안 된다")
+        void unavailablePriceCarriesNoChange() {
+            declare("200000", "최초 고시");
+            declare("194000", "장중 하락");
+
+            MarketPriceEffective previous = marketPriceService.findPreviousByKey()
+                    .get(MarketPriceService.previousKey(MetalType.GOLD_24K, PriceSide.SELL));
+
+            try {
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
+                evictPriceCache();
+
+                PublicPriceResponse response = PublicPriceResponse.of(
+                        marketPriceService.describeCurrent(MetalType.GOLD_24K, PriceSide.SELL), previous);
+
+                assertThat(response.available()).isFalse();
+                assertThat(response.displayText()).isEqualTo(PublicPriceResponse.UNAVAILABLE_TEXT);
+                assertThat(response.change()).isNull();
+            } finally {
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "240", "test");
+                evictPriceCache();
+            }
+        }
+
+        @Test
+        @DisplayName("고시된 적 없는 조합은 직전 시세 맵에 아예 담기지 않는다")
+        void neverDeclaredCombinationIsAbsent() {
+            declare("200000", "최초 고시");
+
+            assertThat(marketPriceService.findPreviousByKey())
+                    .doesNotContainKey(MarketPriceService.previousKey(MetalType.SILVER, PriceSide.BUY));
         }
     }
 

@@ -7,15 +7,11 @@ import { useEffect, useState } from 'react';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './MobileDrawer.module.css';
 
-const TABS = [
-  { href: '/', label: '홈', icon: '🏠' },
-  { href: '/price', label: '시세', icon: '📈' },
-  { href: '/shop', label: '상품', icon: '🪙' },
-  { href: '/mypage', label: '마이', icon: '👤' },
-];
-
 /**
- * 모바일 햄버거 · 드로어 · 하단 탭바.
+ * 모바일 햄버거 · 드로어.
+ *
+ * <p>하단 탭바는 {@link MobileTabBar} 가 맡는다 — 드로어는 열고 닫는 상태를,
+ * 탭바는 현재 경로만 알면 되어 관심사가 다르다.
  *
  * <p>레이아웃에서 이 부분만 클라이언트 컴포넌트로 떼어냈다. 헤더·GNB 까지 통째로
  * {@code 'use client'} 로 만들면 카테고리 링크가 <b>서버 HTML 에서 빠져</b> 검색엔진이
@@ -128,26 +124,6 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
           <Link href="/signup">회원가입</Link>
         </div>
       </aside>
-
-      <nav className={styles.tabbar} aria-label="빠른 이동">
-        {TABS.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={isCurrent(pathname, tab.href) ? styles.tabOn : styles.tab}
-          >
-            <span className={styles.ti} aria-hidden="true">
-              {tab.icon}
-            </span>
-            {tab.label}
-          </Link>
-        ))}
-      </nav>
     </>
   );
-}
-
-/** 홈만 정확히 일치로 보고, 나머지는 하위 경로까지 현재 탭으로 친다. */
-function isCurrent(pathname: string, href: string): boolean {
-  return href === '/' ? pathname === '/' : pathname.startsWith(href);
 }

@@ -1,27 +1,40 @@
-/* 레퍼런스 시안 .prod */
+/* =====================================================================
+   상품 카드
+
+   테두리를 쓰지 않는다. 목록에서 카드가 12개 늘어서면 테두리 12개가 격자를
+   만들어, 정작 봐야 할 상품명과 가격보다 선이 먼저 눈에 들어온다.
+   배경 한 톤만으로 카드 영역을 알린다.
+   ===================================================================== */
 
 .prod {
   display: block;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: 10px;
   overflow: hidden;
-  background: #fff;
-  transition: 0.25s;
+  background: #faf9f5;
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
 }
 
 .prod:hover {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
-  transform: translateY(-4px);
+  box-shadow: 0 8px 20px -6px rgba(60, 50, 20, 0.18);
+  transform: translateY(-2px);
 }
 
-/* ---------- 썸네일 (CSS 금괴 일러스트) ---------- */
+.prod:active {
+  transform: translateY(0);
+}
+
+/* ---------- 썸네일 (CSS 금괴 일러스트) ----------
+   실제 상품 사진은 Object Storage 연동 후에 들어온다. 그전까지 회색 네모를
+   두면 목록 전체가 비어 보인다. */
 
 .thumb {
-  height: 190px;
+  height: 168px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #faf7ef, #f0e9d8);
+  background: #f2efe7;
   position: relative;
 }
 
@@ -74,34 +87,54 @@
   background: var(--dark);
 }
 
+/*
+ * 품절 오버레이.
+ *
+ * 글자를 칩으로 감싼다. 반투명 막에 글자만 얹으면 아래 도형의 문구("GOLD 999.9")와
+ * 겹쳐 "GO품절9.9" 처럼 읽혔다 — 둘 다 가운데 정렬이라 정확히 포개진다.
+ * 실제 상품 사진이 들어와도 같은 문제가 나므로, 배경을 가진 칩으로 띄운다.
+ */
 .soldOut {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(28, 28, 28, 0.55);
+  background: rgba(28, 28, 28, 0.5);
+}
+
+.soldOutLabel {
+  padding: 7px 18px;
+  border-radius: 100px;
+  background: rgba(28, 28, 28, 0.92);
   color: #fff;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  line-height: 1;
 }
 
 /* ---------- 정보 ---------- */
 
 .info {
-  padding: 16px;
+  padding: 16px 16px 18px;
 }
 
+/* 금속 표기는 배지로 둔다 — 대문자 자간 넓힌 라벨보다 짧게 읽힌다 */
 .cat {
-  font-size: 11px;
-  color: var(--gray);
-  letter-spacing: 1px;
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gold-deep);
+  background: #f9f4e4;
+  border-radius: 3px;
+  padding: 3px 7px;
+  margin-bottom: 9px;
 }
 
 .info h5 {
-  font-size: 14px;
-  margin: 5px 0 8px;
-  font-weight: 600;
+  font-size: 14.5px;
+  margin-bottom: 8px;
+  font-weight: 500;
   line-height: 1.45;
   /* 상품명 길이가 제각각이라 2줄로 고정해야 카드 높이가 맞는다 */
   display: -webkit-box;
@@ -112,38 +145,51 @@
 }
 
 .price {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .price small {
-  font-size: 11px;
-  color: var(--gray);
+  font-size: 11.5px;
+  color: #9a958a;
   font-weight: 400;
-  margin-left: 4px;
 }
 
 .from {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--gray);
 }
 
 .inquiry {
-  color: var(--gold-deep);
+  font-size: 16px;
+  color: #9a958a;
 }
 
 @media (max-width: 960px) {
   .thumb {
-    height: 150px;
+    height: 140px;
   }
-}
 
-@media (max-width: 480px) {
+  .info {
+    padding: 12px 12px 14px;
+  }
+
   .info h5 {
     font-size: 13px;
   }
 
   .price {
-    font-size: 14px;
+    font-size: 16px;
+  }
+
+  /* 좁은 화면에서는 "시세 반영가" 같은 부연을 접는다. 두 줄이 되면
+     카드마다 높이가 달라져 격자가 어긋난다 */
+  .price small {
+    display: none;
   }
 }

@@ -43,7 +43,7 @@ export function CartView() {
   if (!isAuthenticated) return <p className={styles.loading}>로그인 화면으로 이동합니다…</p>;
 
   return (
-    <div className="container">
+    <div className="wrap">
       <header className={styles.head}>
         <h1 className={styles.title}>장바구니</h1>
         <p className={styles.lead}>

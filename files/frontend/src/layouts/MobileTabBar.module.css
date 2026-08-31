@@ -1,0 +1,41 @@
+/* =====================================================================
+   모바일 하단 탭바 — 960px 이하에서만 보인다
+   ===================================================================== */
+
+.bar {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    height: var(--tabbar-h);
+    /* 홈 인디케이터가 있는 기기에서 탭이 가려지지 않게 한다 */
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    background: #fff;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    /* 손가락 조작이라 44px 아래로 내려가지 않는다 */
+    min-height: 44px;
+    font-size: 10.5px;
+    color: #9a958a;
+  }
+
+  .on {
+    color: var(--dark);
+    font-weight: 700;
+  }
+}

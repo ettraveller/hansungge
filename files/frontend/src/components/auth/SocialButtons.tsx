@@ -3,8 +3,15 @@
 import { PROVIDER_STYLE, type AuthProviderItem, type OAuthProviderType } from '@/types/user';
 import styles from './auth.module.css';
 
+/**
+ * 버튼 앞 글자 마크.
+ *
+ * <p>카카오만 이모지(💬)였는데 셋을 나란히 두면 하나만 그림이라 크기와 색이 따로 논다.
+ * 세 개 다 글자로 맞춘다. 각 사의 공식 로고 이미지는 브랜드 가이드에 따라 앱 등록
+ * (TODO A-4)이 끝난 뒤 받아서 교체한다 — 비슷하게 그린 로고를 쓰는 것이 더 문제다.
+ */
 const MARK: Record<OAuthProviderType, string> = {
-  KAKAO: '💬',
+  KAKAO: 'K',
   NAVER: 'N',
   GOOGLE: 'G',
 };

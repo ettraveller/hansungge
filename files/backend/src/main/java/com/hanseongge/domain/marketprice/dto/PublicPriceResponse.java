@@ -1,5 +1,6 @@
 package com.hanseongge.domain.marketprice.dto;
 
+import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.MetalType;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.CurrentPriceView;
@@ -48,19 +49,32 @@ public record PublicPriceResponse(
         String displayText,
 
         @Schema(description = "시세 기준 시각. 사용 불가면 null")
-        OffsetDateTime effectiveFrom
+        OffsetDateTime effectiveFrom,
+
+        @Schema(description = "직전 고시 대비 변동폭. 최초 고시이거나 사용 불가면 null")
+        PriceChange change
 ) {
 
     /** 유효 시세가 없거나 노후일 때의 표시 문구 (개발계획 §12.4). */
     public static final String UNAVAILABLE_TEXT = "시세문의";
 
+    /** 직전 시세를 모르는 자리에서 쓰는 형태. 변동폭 없이 현재값만 담는다. */
     public static PublicPriceResponse of(CurrentPriceView view) {
+        return of(view, null);
+    }
+
+    /**
+     * @param previous 같은 metal×side 의 직전 최종 시세 행. 없으면 null
+     */
+    public static PublicPriceResponse of(CurrentPriceView view, MarketPriceEffective previous) {
         MetalType metal = view.metalType();
         PriceSide side = view.priceSide();
 
         if (!view.isSellable()) {
+            // 사용할 수 없는 시세에는 변동폭도 담지 않는다. 가격이 "시세문의"인데
+            // 옆에 "-3.00%" 가 붙으면 값이 있다는 뜻으로 읽힌다.
             return new PublicPriceResponse(metal, metal.displayName(), side, side.displayName(),
-                    false, null, null, UNAVAILABLE_TEXT, null);
+                    false, null, null, UNAVAILABLE_TEXT, null, null);
         }
 
         BigDecimal perGram = view.effective().getPricePerGram();
@@ -70,6 +84,7 @@ public record PublicPriceResponse(
                 perGram,
                 perGram.multiply(MetalType.GRAMS_PER_DON),
                 perGram.toPlainString(),
-                view.effective().getEffectiveFrom());
+                view.effective().getEffectiveFrom(),
+                PriceChange.of(perGram, previous));
     }
 }

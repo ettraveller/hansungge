@@ -2,34 +2,6 @@
    쇼핑몰 레이아웃 — 레퍼런스 시안의 값을 그대로 옮긴다.
    ===================================================================== */
 
-/* ---------- 상단 유틸 바 ---------- */
-
-.topbar {
-  background: var(--dark);
-  color: #ccc;
-  font-size: 12px;
-}
-
-.topbar :global(.wrap) {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: var(--topbar-h);
-}
-
-.topbar a:hover {
-  color: var(--gold);
-}
-
-.notice {
-  color: var(--gold);
-}
-
-.util {
-  display: flex;
-  gap: 16px;
-}
-
 /* ---------- 헤더 ---------- */
 
 .header {
@@ -43,7 +15,7 @@
 .headerMain {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 36px;
   height: var(--header-h);
 }
 
@@ -55,64 +27,90 @@
 
 .search {
   flex: 1;
-  max-width: 380px;
-  margin: 0 40px;
+  max-width: 420px;
   position: relative;
 }
 
+/* 유틸을 오른쪽 끝으로 민다. justify-content: space-between 대신 이 방식을 쓰는
+   이유는, 검색창이 없는 모바일에서도 유틸이 오른쪽에 붙어야 하기 때문이다. */
+.headerUtil {
+  margin-left: auto;
+}
+
+/* 금색 2px 테두리는 검색창을 페이지에서 가장 강한 요소로 만든다.
+   여기서 가장 강해야 할 것은 시세다. 검색창은 얇은 회색 테두리로 물러난다. */
 .search input {
   width: 100%;
   height: 44px;
-  border: 2px solid var(--gold);
+  border: 1px solid var(--line);
   border-radius: 22px;
-  padding: 0 48px 0 20px;
-  font-size: 14px;
+  padding: 0 20px 0 44px;
+  font-size: 13.5px;
   outline: none;
+  background: #fff;
+  transition: border-color 0.2s;
 }
 
+.search input:focus {
+  border-color: var(--gold);
+}
+
+.search input::placeholder {
+  color: #9a958a;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9a958a;
+  pointer-events: none;
+}
+
+/* 제출 버튼은 화면에 두지 않는다 — Enter 로 제출되고, 아이콘이 이미 용도를 알린다.
+   버튼 자체를 없애면 키보드·스크린리더 사용자가 제출할 방법이 사라지므로 남겨 둔다. */
 .search button {
   position: absolute;
-  right: 5px;
-  top: 5px;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 50%;
-  background: var(--gold);
-  color: #fff;
-  font-size: 15px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.headerIcons {
+/* 헤더 오른쪽 유틸 — 아이콘을 세로로 쌓지 않고 한 줄로 둔다.
+   세로 배치는 헤더 높이를 키우기만 하고 읽는 속도를 높여주지 않는다. */
+.headerUtil {
   display: flex;
-  gap: 22px;
-  font-size: 13px;
-  color: var(--gray);
-}
-
-.headerIcons a {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 22px;
+  font-size: 13.5px;
+  color: #555;
+  white-space: nowrap;
 }
 
-.headerIcons a:hover {
+.headerUtil a:hover,
+.headerUtil button:hover {
   color: var(--gold-deep);
 }
 
-.ico {
-  font-size: 20px;
-}
-
-.cartWrap {
+.cartLink {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dark);
+  font-weight: 500;
 }
 
 .cartBadge {
   position: absolute;
-  top: -6px;
-  right: 8px;
+  top: -7px;
+  left: 10px;
   min-width: 16px;
   height: 16px;
   border-radius: 8px;
@@ -316,31 +314,40 @@
 }
 
 @media (max-width: 960px) {
-  .search,
-  .headerIcons {
+  .search {
     display: none;
   }
 
   .headerMain {
-    height: 64px;
+    height: 56px;
+    gap: 12px;
   }
 
   .logo img {
-    height: 38px;
+    height: 30px;
   }
 
-  .mHide {
+  /* 좁은 화면에서는 로그인·로그아웃 글자를 접고 장바구니 아이콘만 남긴다.
+     하단 탭바가 홈·시세·카테고리·장바구니·마이를 이미 맡고 있어, 헤더가 같은
+     링크를 또 늘어놓으면 폭만 먹는다. */
+  .headerUtil {
+    margin-left: auto;
+    gap: 14px;
+    font-size: 12.5px;
+  }
+
+  .cartText {
     display: none;
   }
 
-  /* 메뉴가 넘치면 줄바꿈한다.
-     가로 스크롤(overflow-x)을 쓰면 그 컨테이너가 드롭다운을 잘라내서,
-     마우스를 올려도 하위 메뉴가 보이지 않는다 — 메뉴바만 살아 있고 아무 일도
-     일어나지 않는 상태가 된다. 헤더 높이가 한 줄 늘어나는 편이 낫다. */
-  .gnbLink {
-    padding: 0 14px;
-    font-size: 14px;
-    white-space: nowrap;
+  .cartBadge {
+    left: 9px;
+  }
+
+  /* GNB 는 햄버거 드로어가 대신한다. 카테고리 링크 자체는 서버 HTML 에 남아
+     있으므로(display:none 이지 조건부 렌더링이 아니다) SEO 에는 영향이 없다. */
+  .gnbNav {
+    display: none;
   }
 
   .footMain :global(.wrap) {
@@ -364,37 +371,7 @@
   }
 }
 
-/* 진짜 모바일 폭에서는 손가락 조작이라 호버 드롭다운이 의미가 없다.
-   메뉴바는 가로 스크롤로 두고, 하위 메뉴는 햄버거 드로어가 맡는다.
-   상위 메뉴를 눌러도 하위 카테고리 상품까지 함께 나오므로 길이 막히지 않는다. */
-@media (max-width: 767px) {
-  .gnb {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .gnb::-webkit-scrollbar {
-    display: none;
-  }
-
-  .dropdown {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .notice {
-    font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 60%;
-  }
-}
-
-/* 유틸 바의 로그아웃 버튼. 링크들 사이에 있어 같은 모양이어야 한다. */
+/* 헤더의 로그아웃 버튼. 링크들 사이에 있어 같은 모양이어야 한다. */
 .linkButton {
   border: 0;
   background: none;

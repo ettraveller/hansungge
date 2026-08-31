@@ -1,132 +1,92 @@
-import Link from 'next/link';
 import type { Loaded } from '@/api/server';
 import { BoardList } from '@/components/home/BoardList';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { ProductTabs, type CategoryProducts } from '@/components/home/ProductTabs';
 import { StoreLocator } from '@/components/home/StoreLocator';
-import { MarketPriceTable } from '@/components/price/MarketPriceTable';
-import { PriceTicker } from '@/components/price/PriceTicker';
-import type { MarketPrice } from '@/types/price';
+import { TrustStrip } from '@/components/home/TrustStrip';
+import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
+import { toMetalRows } from '@/components/price/metalRows';
+import { SectionHead } from '@/components/ui/SectionHead';
+import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
 import { formatDateTime } from '@/utils/format';
-import {
-  HERO_SLIDES,
-  MID_BANNER,
-  NEWS,
-  NOTICES,
-  REGIONS,
-} from './home-content';
+import { HERO_SLIDES, NEWS, NOTICES, REGIONS } from './home-content';
 import styles from './HomeView.module.css';
 
 interface Props {
   prices: Loaded<MarketPrice[]>;
+  histories: Partial<Record<MetalType, PriceHistoryPoint[]>>;
   groups: CategoryProducts[];
 }
 
 /**
- * 메인 화면 — 레퍼런스(kaggold.com)의 섹션 순서를 따른다.
+ * 메인 화면.
  *
  * <pre>
- * 배너 슬라이드
- * 시세 스트립 (다크 티커)
- * 오늘의 시세 (항목 / 내가 살 때·변동률 / 내가 팔 때·변동률, 1돈 기준)
- * 중간 띠배너
- * 지점안내 (지역별 아코디언)
- * 제품 소개 (카테고리 탭 + 그리드)
- * 뉴스센터
- * 공지사항
+ * 히어로 배너
+ * 오늘의 고시 시세  ★ 이 화면의 주인공
+ * 신뢰 스트립
+ * 시세 연동 상품
+ * 전국 지점 안내
+ * 뉴스센터 · 공지사항
  * </pre>
  *
- * <p>서버 컴포넌트다. 시세·상품·지점 주소가 초기 HTML 에 실려 나간다 — 이 프로젝트가
- * Next.js 를 고른 첫 번째 이유가 SEO 다.
+ * <h2>시세가 맨 앞인 이유</h2>
+ * 이 시스템의 강점은 시세가 상품 가격을 실시간으로 결정한다는 것이다. 그 구조가 화면에
+ * 드러나지 않으면 다른 쇼핑몰과 구분되지 않는다. 배너 아래 첫 섹션이 시세표이고,
+ * 이 페이지에서 <b>가장 큰 글자가 시세</b>다.
  *
- * <p>백엔드가 내려가도 페이지는 뜬다. 실패한 영역만 안내 문구로 바뀐다.
+ * <h2>서버 컴포넌트다</h2>
+ * 시세·상품·지점 주소가 초기 HTML 에 실려 나간다 — 이 프로젝트가 Next.js 를 고른
+ * 첫 번째 이유가 SEO 다. 호버로 그래프를 바꾸는 시세 보드만 클라이언트 컴포넌트이고,
+ * 그 값도 전부 여기서 props 로 넘긴다.
+ *
+ * <h2>백엔드가 내려가도 페이지는 뜬다</h2>
+ * 실패한 영역만 안내 문구로 바뀐다.
  */
-export function HomeView({ prices, groups }: Props) {
+export function HomeView({ prices, histories, groups }: Props) {
+  const rows = toMetalRows(prices.data ?? [], histories);
   const quotedAt = latestQuotedAt(prices.data);
 
   return (
     <>
       <HeroSlider slides={HERO_SLIDES} />
 
-      <PriceTicker prices={prices.data ?? []} quotedAt={quotedAt} />
+      {/* ---------- 오늘의 고시 시세 ---------- */}
+      <div className={styles.priceSection} id="quote">
+        {prices.data ? (
+          <MarketPriceBoard rows={rows} quotedAt={quotedAt} />
+        ) : (
+          <p className={styles.loadError}>
+            시세 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
+      </div>
 
-      {/* ---------- 오늘의 시세 ---------- */}
-      <section className={styles.quoteSec} id="quote">
+      <TrustStrip />
+
+      {/* ---------- 시세 연동 상품 ---------- */}
+      <section className={styles.section} id="products">
         <div className="wrap">
-          <div className={styles.secTitle}>
-            <small>TODAY&apos;S PRICE</small>
-            <h2>오늘의 시세</h2>
-            <p>매일 고시 시세를 투명하게 공시합니다. (단위: 3.75g / 1돈 기준)</p>
-          </div>
-
-          <div className={styles.card}>
-            <h3>
-              고시 시세표
-              <span className={styles.date}>{quotedAt ? `${quotedAt} 고시` : '고시 대기'}</span>
-            </h3>
-
-            {prices.data ? (
-              <MarketPriceTable prices={prices.data} />
-            ) : (
-              <p className={styles.cardNotice}>시세 정보를 불러올 수 없습니다.</p>
-            )}
-
-            <div className={styles.quoteNotes}>
-              <span>시세는 당사 기준이며, 시장 상황에 따라 변동될 수 있습니다.</span>
-              <span>최종 결제 금액은 주문 시점에 서버가 다시 계산합니다.</span>
-              <span>부가세 정책 확정 전이며, 현재 표시가는 부가세가 포함되지 않은 금액입니다.</span>
-            </div>
-          </div>
-
-          <div className={styles.quoteMore}>
-            <Link href="/price" className={styles.moreBtn}>
-              시세 상세보기
-              <span className={styles.arr} aria-hidden="true">
-                ›
-              </span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------- 중간 띠배너 ---------- */}
-      <section className={styles.midBanner}>
-        <div className={`wrap ${styles.midInner}`}>
-          <div>
-            <small>{MID_BANNER.eyebrow}</small>
-            <h2>{MID_BANNER.title}</h2>
-            <p>{MID_BANNER.desc}</p>
-          </div>
-          <Link href={MID_BANNER.href} className={styles.midCta}>
-            {MID_BANNER.cta}
-            <span className={styles.arr} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </div>
-      </section>
-
-      {/* ---------- 지점안내 ---------- */}
-      <section className={styles.section}>
-        <div className="wrap">
-          <div className={styles.secTitle}>
-            <small>STORE</small>
-            <h2>전국 한성금거래소 지점 안내</h2>
-            <p>가까운 지점에서 실물 확인과 매입 상담을 받으실 수 있습니다.</p>
-          </div>
-          <StoreLocator regions={REGIONS} />
-        </div>
-      </section>
-
-      {/* ---------- 제품 소개 ---------- */}
-      <section className={styles.quoteSec} id="products">
-        <div className="wrap">
-          <div className={styles.secTitle}>
-            <small>PRODUCTS</small>
-            <h2>제품 소개</h2>
-            <p>한성금거래소가 자신 있게 추천하는 상품입니다.</p>
-          </div>
+          <SectionHead
+            title="시세 연동 상품"
+            desc="시세가 바뀌면 가격도 함께 바뀝니다"
+            moreHref="/shop"
+            moreLabel="전체 보기"
+          />
           <ProductTabs groups={groups} />
+        </div>
+      </section>
+
+      {/* ---------- 전국 지점 안내 ---------- */}
+      <section className={styles.sectionTinted}>
+        <div className="wrap">
+          <SectionHead
+            title="전국 지점 안내"
+            desc="가까운 지점에서 실물 확인과 매입 상담을 받으실 수 있습니다"
+            moreHref="/store"
+            moreLabel="전체 지점 보기"
+          />
+          <StoreLocator regions={REGIONS} />
         </div>
       </section>
 

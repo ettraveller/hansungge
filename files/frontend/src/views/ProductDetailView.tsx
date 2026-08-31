@@ -55,7 +55,7 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   };
 
   return (
-    <div className="container">
+    <div className="wrap">
       <nav className={styles.crumb} aria-label="위치">
         <Link href="/shop">상품</Link>
         <span aria-hidden="true">›</span>

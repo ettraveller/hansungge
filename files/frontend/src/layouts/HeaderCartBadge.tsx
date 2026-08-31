@@ -17,6 +17,10 @@ export function HeaderCartBadge() {
   const { data } = useCartCount();
   const count = data?.count ?? 0;
 
+  // 0 은 그리지 않는다. 빈 장바구니에 붙은 배지는 알려주는 것이 없으면서
+  // 뭔가 담긴 것처럼 시선을 끈다.
+  if (count === 0) return null;
+
   return (
     <span className={styles.cartBadge} aria-label={`장바구니 ${count}건`}>
       {count}
