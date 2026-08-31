@@ -32,7 +32,11 @@ export function ProductCard({ product, flag }: Props) {
           </span>
         )}
         <div className={barClassName(product)}>{barLabel(product)}</div>
-        {soldOut && <span className={styles.soldOut}>품절</span>}
+        {soldOut && (
+          <span className={styles.soldOut}>
+            <b className={styles.soldOutLabel}>품절</b>
+          </span>
+        )}
       </div>
 
       <div className={styles.info}>

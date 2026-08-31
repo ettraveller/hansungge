@@ -87,16 +87,30 @@
   background: var(--dark);
 }
 
+/*
+ * 품절 오버레이.
+ *
+ * 글자를 칩으로 감싼다. 반투명 막에 글자만 얹으면 아래 도형의 문구("GOLD 999.9")와
+ * 겹쳐 "GO품절9.9" 처럼 읽혔다 — 둘 다 가운데 정렬이라 정확히 포개진다.
+ * 실제 상품 사진이 들어와도 같은 문제가 나므로, 배경을 가진 칩으로 띄운다.
+ */
 .soldOut {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(28, 28, 28, 0.55);
+  background: rgba(28, 28, 28, 0.5);
+}
+
+.soldOutLabel {
+  padding: 7px 18px;
+  border-radius: 100px;
+  background: rgba(28, 28, 28, 0.92);
   color: #fff;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  line-height: 1;
 }
 
 /* ---------- 정보 ---------- */
