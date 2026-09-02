@@ -1,15 +1,5 @@
+import type { Region } from '@/data/branches';
 import styles from './StoreLocator.module.css';
-
-export interface Branch {
-  name: string;
-  address: string;
-  tel: string;
-}
-
-export interface Region {
-  name: string;
-  branches: Branch[];
-}
 
 /**
  * 지점안내 — 지역별 아코디언 (레퍼런스와 같은 형태).

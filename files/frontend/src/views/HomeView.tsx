@@ -7,9 +7,10 @@ import { TrustStrip } from '@/components/home/TrustStrip';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
 import { SectionHead } from '@/components/ui/SectionHead';
+import { REGIONS } from '@/data/branches';
 import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
 import { formatDateTime } from '@/utils/format';
-import { HERO_SLIDES, NEWS, NOTICES, REGIONS } from './home-content';
+import { HERO_SLIDES, NEWS, NOTICES } from './home-content';
 import styles from './HomeView.module.css';
 
 interface Props {

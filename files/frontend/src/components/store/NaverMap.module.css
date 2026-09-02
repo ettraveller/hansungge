@@ -1,0 +1,67 @@
+/* =====================================================================
+   지점 위치 지도
+   ===================================================================== */
+
+.map {
+  width: 100%;
+  height: 360px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--light-gray);
+}
+
+/* 키가 없거나 좌표가 없을 때. 회색 네모만 두면 "고장난 것"으로 보이므로,
+   무엇이 없는지와 대신 갈 곳을 알려준다. */
+.fallback {
+  height: 360px;
+  border-radius: var(--radius-lg);
+  background: #f2efe7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+}
+
+.fallbackTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #7a7469;
+}
+
+.fallbackDesc {
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.fallbackLink {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  background: #03c75a; /* 네이버 브랜드 그린 */
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  transition: filter 0.2s;
+}
+
+.fallbackLink:hover {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+.fallbackLink:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 960px) {
+  .map,
+  .fallback {
+    height: 260px;
+  }
+}

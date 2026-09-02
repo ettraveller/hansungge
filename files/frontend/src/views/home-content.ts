@@ -1,6 +1,5 @@
 import type { BoardPost } from '@/components/home/BoardList';
 import type { Slide } from '@/components/home/HeroSlider';
-import type { Region } from '@/components/home/StoreLocator';
 
 /**
  * 메인 화면의 <b>편집 콘텐츠</b>.
@@ -43,36 +42,6 @@ export const HERO_SLIDES: Slide[] = [
   },
 ];
 
-/** ⚠️ 임시 콘텐츠. 지점 관리 기능이 생기면 API 로 대체한다. */
-export const REGIONS: Region[] = [
-  {
-    name: '서울',
-    branches: [
-      { name: '종로 본점', address: '서울특별시 종로구 돈화문로 00, 0층 (묘동)', tel: '02-000-0000' },
-      { name: '강남점', address: '서울특별시 강남구 테헤란로 000, 0층', tel: '02-000-0001' },
-      { name: '영등포점', address: '서울특별시 영등포구 영중로 00, 0층', tel: '02-000-0002' },
-    ],
-  },
-  {
-    name: '경기 · 인천',
-    branches: [
-      { name: '수원점', address: '경기도 수원시 팔달구 정조로 000', tel: '031-000-0000' },
-      { name: '인천점', address: '인천광역시 미추홀구 주안로 000', tel: '032-000-0000' },
-    ],
-  },
-  {
-    name: '부산 · 경남',
-    branches: [
-      { name: '부산 서면점', address: '부산광역시 부산진구 중앙대로 000', tel: '051-000-0000' },
-    ],
-  },
-  {
-    name: '대구 · 경북',
-    branches: [
-      { name: '대구 중앙점', address: '대구광역시 중구 중앙대로 000', tel: '053-000-0000' },
-    ],
-  },
-];
 
 /** ⚠️ 임시 콘텐츠. 게시판(STEP 15~16)이 생기면 API 로 대체한다. */
 export const NEWS: BoardPost[] = [
