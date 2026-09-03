@@ -73,6 +73,97 @@
   border-bottom-color: var(--gold-deep);
 }
 
+/* ---------- 작성 폼 ---------- */
+
+.writeForm {
+  max-width: 760px;
+  margin-top: 20px;
+}
+
+/* auth.module.css 의 .input 은 한 줄 입력용이라 높이가 고정이다 */
+.textarea {
+  min-height: 200px;
+  line-height: 1.75;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.secretCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--light-gray);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.secretCheck input {
+  /* 체크박스는 브라우저 기본 크기가 작다. 손가락으로 누를 수 있게 키운다 */
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--gold-deep);
+}
+
+.secretCheck em {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+.writeNotice {
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #8a8a8a;
+}
+
+/* ---------- 이벤트 응모 폼 ---------- */
+
+.entryForm {
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  background: var(--light-gray);
+  border-radius: var(--radius-lg);
+}
+
+.entryTextarea {
+  min-height: 84px;
+  line-height: 1.7;
+  resize: vertical;
+  font-family: inherit;
+  background: #fff;
+}
+
+.entryFormFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.secretInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.secretInline input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold-deep);
+}
+
 /* ---------- 상세 하단 이전/다음 ---------- */
 
 .siblings {

@@ -18,6 +18,7 @@ import {
 import { formatDateTime } from '@/utils/format';
 import { ApiError } from '@/types/api';
 import { USER_STATUS_LABEL, type OAuthProviderType } from '@/types/user';
+import { MyInquiryPanel } from './MyInquiryPanel';
 import styles from '@/components/auth/auth.module.css';
 
 /** 마이페이지 — 내 정보 · 약관 · 소셜 연동 · 탈퇴. */
@@ -46,6 +47,9 @@ export function MyPageView() {
       </header>
 
       <ProfilePanel />
+      {/* 내가 쓴 글은 게시판이 아니라 내 계정에 속한 정보다 — 비밀글로 쓴 문의는
+          목록에서 제목만 보이므로 답변이 왔는지 확인할 곳이 따로 있어야 한다 */}
+      <MyInquiryPanel />
       <AgreementPanel />
       <SocialPanel />
       <AccountPanel />

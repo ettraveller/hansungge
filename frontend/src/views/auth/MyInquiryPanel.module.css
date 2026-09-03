@@ -1,0 +1,116 @@
+/* =====================================================================
+   마이페이지 「내 문의」 패널
+
+   틀(.panel / .panelHead / .panelBody)은 auth.module.css 를 그대로 쓴다.
+   여기에는 목록 부분만 있다.
+   ===================================================================== */
+
+.more {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--gray);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1px;
+  transition: 0.2s;
+}
+
+.more:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+.list {
+  display: grid;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 제목이 길어도 오른쪽 상태 배지를 밀어내지 않는다 */
+  min-width: 0;
+  flex: 1;
+}
+
+.board {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--gold-deep);
+}
+
+.title {
+  font-size: 13.5px;
+  color: var(--dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link:hover .title {
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
+.empty {
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.7;
+}
+
+.empty a {
+  color: var(--dark);
+  font-weight: 500;
+  border-bottom: 1px solid var(--dark);
+  padding-bottom: 1px;
+}
+
+.empty a:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+.foot {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
+.foot strong {
+  color: var(--dark);
+}
+
+@media (max-width: 960px) {
+  /* 좁은 화면에서 제목과 배지를 한 줄에 두면 제목이 두 글자만 남는다 */
+  .item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .link {
+    width: 100%;
+  }
+}
