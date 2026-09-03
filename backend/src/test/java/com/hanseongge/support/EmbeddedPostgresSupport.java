@@ -6,6 +6,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 
 /**
  * 실제 PostgreSQL 16 을 띄우는 통합테스트 기반 클래스.
@@ -24,12 +25,28 @@ import java.io.UncheckedIOException;
  */
 public abstract class EmbeddedPostgresSupport {
 
+    /**
+     * PostgreSQL 기동을 기다리는 시간. zonky 기본값은 10초다.
+     *
+     * <p>10초로는 부족한 장비가 있다. 백신·EDR 이 프로세스 실행마다 검사하는 사내 PC 에서는
+     * {@code postgres.exe --version} 한 번에도 2~3초가 걸린다. 기동 과정은 initdb·pg_ctl·
+     * 준비 확인으로 프로세스를 여러 번 띄우므로 10초를 쉽게 넘고, 그러면 통합테스트가
+     * <b>전부</b> "Failed to load ApplicationContext" 로 무너진다 — 원인이 코드에 있는 것처럼
+     * 보여서 찾는 데 시간이 걸린다.
+     *
+     * <p>넉넉히 기다리는 것은 손해가 없다. 정상 장비에서는 어차피 몇 초 만에 떠서 이 값에
+     * 닿지 않고, 느린 장비에서만 기다린다.
+     */
+    private static final Duration STARTUP_WAIT = Duration.ofSeconds(60);
+
     private static volatile EmbeddedPostgres instance;
 
     static synchronized EmbeddedPostgres postgres() {
         if (instance == null) {
             try {
-                instance = EmbeddedPostgres.builder().start();
+                instance = EmbeddedPostgres.builder()
+                        .setPGStartupWait(STARTUP_WAIT)
+                        .start();
                 EmbeddedPostgres started = instance;
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     try {

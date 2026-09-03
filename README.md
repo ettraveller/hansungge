@@ -37,12 +37,14 @@
 ## 프로젝트 구조
 
 ```
-files/
-├── backend/                 Spring Boot API
-├── frontend/                Next.js (쇼핑몰 + /admin)
-├── infra/                   nginx / systemd / 배포 스크립트
-└── docs/                    설계서, 개발계획, 보류항목
+backend/                     Spring Boot API
+frontend/                    Next.js (쇼핑몰 + /admin)
+infra/                       nginx / systemd / 배포 스크립트
+docs/                        설계서, 개발계획, 보류항목
 ```
+
+`backend` 와 `frontend` 는 **형제로 최상위에 둔다.** 프론트를 백엔드 하위에 넣으면
+빌드 산출물이 섞이고 배포할 때 둘을 따로 패키징할 수 없다.
 
 자세한 계층 구조는 [`docs/한성금거래소_전체개발계획_v1.0.md`](docs/한성금거래소_전체개발계획_v1.0.md) §3 참조.
 

@@ -1,4 +1,4 @@
-# 한성금거래소 쇼핑몰 — TODO / 보류 항목
+﻿# 한성금거래소 쇼핑몰 — TODO / 보류 항목
 
 - 갱신일: 2026-08-20
 - 목표 오픈: **2026-10 중순 (D-2개월)**
@@ -383,7 +383,7 @@ DB_PASSWORD=<발급 비밀번호>
 5. 발급된 **Client ID** 를 프론트 환경변수에 넣는다
 
 ```
-# files/frontend/.env.local (개발) — 운영은 배포 환경변수
+# frontend/.env.local (개발) — 운영은 배포 환경변수
 NEXT_PUBLIC_NAVER_MAP_CLIENT_ID=발급받은_ID
 ```
 
