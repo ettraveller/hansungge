@@ -1,0 +1,338 @@
+/* =====================================================================
+   매입절차 (/purchase-guide)
+
+   번호 붙은 블록(01./02./03.)은 /store 와 같은 모양을 쓴다. 두 페이지가 같은
+   사이트로 읽히려면 같은 골격을 써야 한다.
+   ===================================================================== */
+
+.page {
+  padding: 52px 0 44px;
+}
+
+/* ---------- 번호 붙은 블록 (StoreView 와 동일) ---------- */
+
+.block {
+  margin-bottom: 36px;
+}
+
+.blockTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  background: var(--dark);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 01. 매입 품목 ---------- */
+
+.groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.group {
+  padding: 20px 22px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.groupName {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 칩 모양이지만 버튼이 아니다 — 누를 수 있어 보이지 않게 배경만 옅게 깐다 */
+.item {
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--light-gray);
+  font-size: 12.5px;
+  color: #555;
+}
+
+.groupNote {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gray);
+  max-width: 62ch;
+}
+
+/* ---------- 02. 매입 절차 ---------- */
+
+/* 가로 카드로 늘어놓지 않는다. 카드 다섯 장이 나란히 있으면 고를 수 있는 선택지처럼
+   읽히는데, 절차는 순서다. 세로로 쌓고 위에서 아래로 읽게 한다. */
+.steps {
+  display: grid;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 16px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+
+/* 첫 줄만 굵게 — 목록이 어디서 시작하는지 보인다 */
+.step:first-child {
+  border-top: 2px solid var(--dark);
+}
+
+.stepNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stepTitle {
+  font-size: 15.5px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  /* 배지가 30px 이라 첫 줄의 시선 높이를 맞춘다 */
+  padding-top: 4px;
+}
+
+.stepDesc {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--gray);
+  max-width: 62ch;
+}
+
+.stepLink {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dark);
+  border-bottom: 1px solid var(--dark);
+  padding-bottom: 2px;
+  transition: 0.2s;
+}
+
+.stepLink::after {
+  content: ' →';
+}
+
+.stepLink:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+/* ---------- 03. 준비물 ---------- */
+
+.prepare {
+  padding: 22px 24px;
+  background: var(--light-gray);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.prepareLead {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.prepareLead strong {
+  font-weight: 700;
+}
+
+.prepareBody {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--gray);
+  max-width: 68ch;
+}
+
+/* ---------- 자주 묻는 것 ---------- */
+
+.faqSection {
+  padding: 52px 0 60px;
+  background: var(--light-gray);
+  border-top: 1px solid var(--line);
+}
+
+.faqs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 32px;
+}
+
+.faq {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.faqQ {
+  font-size: 14.5px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.faqA {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--gray);
+  max-width: 52ch;
+}
+
+/* ---------- 유의사항 (PriceView 와 동일) ---------- */
+
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 32px;
+  font-size: 12.5px;
+  color: #8a8a8a;
+}
+
+/* ---------- 다음 행동 ---------- */
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+.primaryBtn,
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  /* 손가락 조작에서 44px 아래로 내려가지 않는다 */
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+  transition: 0.2s;
+}
+
+.primaryBtn {
+  background: var(--gold);
+  color: var(--dark);
+}
+
+.primaryBtn:hover {
+  background: var(--gold-deep);
+  color: #fff;
+}
+
+.ghostBtn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--dark);
+  font-weight: 500;
+}
+
+.ghostBtn:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+.primaryBtn:active,
+.ghostBtn:active {
+  transform: translateY(1px);
+}
+
+/* ===================================================================== */
+
+@media (max-width: 960px) {
+  .page {
+    padding: 28px 0 24px;
+  }
+
+  .block {
+    margin-bottom: 28px;
+  }
+
+  .blockTitle {
+    font-size: 15.5px;
+  }
+
+  .groups {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .group {
+    padding: 16px 18px;
+  }
+
+  .step {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px 0;
+  }
+
+  .stepNum {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .stepTitle {
+    font-size: 14.5px;
+    padding-top: 2px;
+  }
+
+  .prepare {
+    padding: 16px 18px;
+  }
+
+  .faqSection {
+    padding: 28px 0 32px;
+  }
+
+  .faqs {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .notes {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 24px;
+    font-size: 11.5px;
+  }
+
+  .actions {
+    margin-top: 22px;
+  }
+}
