@@ -92,7 +92,19 @@ public enum ErrorCode {
     /** 이미 다른 계정에 연결된 소셜 계정 (설계서 §7.2 — 이메일 자동 병합은 하지 않는다). */
     SOCIAL_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 다른 계정에 연결된 소셜 계정입니다."),
     /** 마지막 소셜 연동을 끊으면 로그인할 방법이 사라진다. */
-    SOCIAL_LAST_CONNECTION(HttpStatus.CONFLICT, "마지막 소셜 연동은 해제할 수 없습니다.");
+    SOCIAL_LAST_CONNECTION(HttpStatus.CONFLICT, "마지막 소셜 연동은 해제할 수 없습니다."),
+
+    // --- 게시판 (STEP 15~16) ---
+    /** 내린 공지도 이 코드로 응답한다 — 존재 자체를 알리지 않는다. */
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."),
+    EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
+    /** 비밀글을 남이 열었을 때도 이 코드다. 403 이면 "여기 글이 있다"가 새어 나간다. */
+    QNA_NOT_FOUND(HttpStatus.NOT_FOUND, "문의글을 찾을 수 없습니다."),
+    /** 답변이 달린 뒤 고객이 질문을 고치면 답변이 엉뚱한 질문에 붙는다. */
+    QNA_ALREADY_ANSWERED(HttpStatus.CONFLICT, "답변이 등록된 문의는 수정하거나 삭제할 수 없습니다."),
+    /** 기간이 지났거나 아직 시작하지 않은 이벤트. */
+    EVENT_NOT_OPEN(HttpStatus.CONFLICT, "응모 기간이 아닙니다."),
+    EVENT_ALREADY_ENTERED(HttpStatus.CONFLICT, "이미 응모하셨습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -6,6 +6,23 @@
 # 테스트 설정에 실수로 남는 사고를 원천 차단하기 위해서다.
 # =====================================================================
 spring:
+  datasource:
+    hikari:
+      # 느린 장비 대비 — EmbeddedPostgresSupport.STARTUP_WAIT 과 같은 이유다.
+      #
+      # 실제로 겪었다(2026-09-03): PostgreSQL 은 정상 기동했는데 그 다음에
+      #   "Connection is not available, request timed out after 5011ms"
+      #   → java.net.SocketTimeoutException: Read timed out
+      # 으로 Flyway 가 첫 커넥션을 못 얻어 통합테스트가 전부 무너졌다.
+      #
+      # EDR 이 프로세스 실행마다 검사하는 장비에서는 PostgreSQL 이 커넥션마다 백엔드
+      # 프로세스를 fork 하는 비용이 커진다. 기동만 넉넉히 기다려서는 부족하고,
+      # 붙는 시간도 함께 늘려야 한다.
+      #
+      # 정상 장비에서는 즉시 붙어 이 값에 닿지 않는다.
+      connection-timeout: 60000
+      validation-timeout: 20000
+
   flyway:
     enabled: true
     locations: classpath:db/migration

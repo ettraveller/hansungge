@@ -1,5 +1,5 @@
 import type { Loaded } from '@/api/server';
-import { BoardList } from '@/components/home/BoardList';
+import { BoardList, type BoardPost } from '@/components/home/BoardList';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { ProductTabs, type CategoryProducts } from '@/components/home/ProductTabs';
 import { StoreLocator } from '@/components/home/StoreLocator';
@@ -8,15 +8,18 @@ import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
 import { SectionHead } from '@/components/ui/SectionHead';
 import { REGIONS } from '@/data/branches';
+import type { PageResponse } from '@/types/api';
+import type { NoticeSummary } from '@/types/board';
 import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
-import { formatDateTime } from '@/utils/format';
-import { HERO_SLIDES, NEWS, NOTICES } from './home-content';
+import { formatBoardDate, formatDateTime } from '@/utils/format';
+import { HERO_SLIDES } from './home-content';
 import styles from './HomeView.module.css';
 
 interface Props {
   prices: Loaded<MarketPrice[]>;
   histories: Partial<Record<MetalType, PriceHistoryPoint[]>>;
   groups: CategoryProducts[];
+  notices: Loaded<PageResponse<NoticeSummary>>;
 }
 
 /**
@@ -44,7 +47,7 @@ interface Props {
  * <h2>백엔드가 내려가도 페이지는 뜬다</h2>
  * 실패한 영역만 안내 문구로 바뀐다.
  */
-export function HomeView({ prices, histories, groups }: Props) {
+export function HomeView({ prices, histories, groups, notices }: Props) {
   const rows = toMetalRows(prices.data ?? [], histories);
   const quotedAt = latestQuotedAt(prices.data);
 
@@ -91,15 +94,42 @@ export function HomeView({ prices, histories, groups }: Props) {
         </div>
       </section>
 
-      {/* ---------- 뉴스센터 · 공지사항 ---------- */}
+      {/* ---------- 공지사항 ---------- */}
       <section className={styles.section}>
         <div className={`wrap ${styles.boards}`}>
-          <BoardList title="뉴스센터" moreHref="/news" basePath="/news" posts={NEWS} />
-          <BoardList title="공지사항" moreHref="/notice" basePath="/notice" posts={NOTICES} />
+          <BoardList
+            title="공지사항"
+            moreHref="/notice"
+            basePath="/notice"
+            posts={toBoardPosts(notices.data?.content)}
+          />
         </div>
       </section>
     </>
   );
+}
+
+/** 최근 며칠 안에 올라온 글에 NEW 를 붙일지. */
+const FRESH_DAYS = 7;
+
+/**
+ * 공지 응답 → 메인 위젯이 쓰는 모양.
+ *
+ * <p>{@code BoardPost.date} 는 <b>이미 포맷된 문자열</b>이다 — 위젯은 표시만 하고
+ * 날짜를 해석하지 않는다. 조회 실패(백엔드 다운)면 빈 배열이 가고, 위젯이 "등록된 글이
+ * 없습니다"를 그린다. 메인 전체가 죽는 것보다 낫다.
+ */
+function toBoardPosts(notices: NoticeSummary[] | undefined): BoardPost[] {
+  if (!notices) return [];
+
+  const freshLine = Date.now() - FRESH_DAYS * 24 * 60 * 60 * 1000;
+
+  return notices.map((notice) => ({
+    id: notice.id,
+    title: notice.title,
+    date: formatBoardDate(notice.createdAt),
+    fresh: new Date(notice.createdAt).getTime() >= freshLine,
+  }));
 }
 
 /** 표에 실린 시세 중 가장 최근 기준시각. 없으면 null. */

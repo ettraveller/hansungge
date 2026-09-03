@@ -1,3 +1,4 @@
+import { noticeApi } from '@/api/board';
 import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
@@ -11,6 +12,9 @@ const PER_CATEGORY = 8;
 
 /** 시세 보드의 추이 그래프 기간. 시안 문구("최근 30일 추이")와 같아야 한다. */
 const HISTORY_DAYS = 30;
+
+/** 메인 공지 위젯에 보여줄 건수. BoardList 가 4줄짜리 요약 위젯이다. */
+const HOME_NOTICES = 4;
 
 /**
  * 요청 시점 렌더링을 명시한다.
@@ -31,16 +35,19 @@ export const dynamic = 'force-dynamic';
  *  화면 디렉터리 이름으로 쓸 수 없다. 그래서 views/ 를 쓴다.)
  */
 export default async function HomePage() {
-  // 시세·카테고리·추이를 병렬로 부른다. 순차로 부르면 느린 쪽이 빠른 쪽을 기다린다.
-  const [prices, categories, histories] = await Promise.all([
+  // 시세·카테고리·추이·공지를 병렬로 부른다. 순차로 부르면 느린 쪽이 빠른 쪽을 기다린다.
+  const [prices, categories, histories, notices] = await Promise.all([
     load(() => priceApi.current(), '메인 시세'),
     load(() => productApi.categories(), '메인 카테고리'),
     loadHistories(),
+    load(() => noticeApi.list({ size: HOME_NOTICES }), '메인 공지'),
   ]);
 
   const groups = await loadProductGroups(categories.data);
 
-  return <HomeView prices={prices} histories={histories} groups={groups} />;
+  return (
+    <HomeView prices={prices} histories={histories} groups={groups} notices={notices} />
+  );
 }
 
 /**

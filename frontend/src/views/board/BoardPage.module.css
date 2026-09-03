@@ -1,0 +1,137 @@
+/* =====================================================================
+   게시판 페이지 골격 — 목록·상세가 공유한다.
+
+   표와 페이저는 components/board/board.module.css 가 맡는다.
+   이 파일은 페이지 여백과 그 주변만 다룬다.
+   ===================================================================== */
+
+.page {
+  padding: 52px 0 60px;
+}
+
+.loadError {
+  padding: 56px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+}
+
+/* ---------- 게시판 사이 이동 (문의게시판 ↔ 제품문의) ---------- */
+
+.boardTabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 탭도 링크다 — 상태로 두면 각 게시판에 고유 URL 이 없어진다 */
+.boardTab {
+  padding: 10px 18px 12px;
+  font-size: 14.5px;
+  color: var(--gray);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: 0.2s;
+}
+
+.boardTab:hover {
+  color: var(--dark);
+}
+
+.boardTabOn {
+  color: var(--dark);
+  font-weight: 700;
+  border-bottom-color: var(--dark);
+}
+
+/* ---------- 로그인 안내 ---------- */
+
+/* 비로그인은 오류가 아니라 정상 상태다. 경고색을 쓰지 않는다 */
+.loginNotice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding: 18px 22px;
+  background: var(--light-gray);
+  border-radius: var(--radius-lg);
+  font-size: 13.5px;
+  color: var(--gray);
+}
+
+.loginNotice a {
+  color: var(--dark);
+  font-weight: 700;
+  border-bottom: 1px solid var(--dark);
+  padding-bottom: 1px;
+}
+
+.loginNotice a:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+/* ---------- 상세 하단 이전/다음 ---------- */
+
+.siblings {
+  border-bottom: 1px solid var(--line);
+}
+
+.sibling {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.sibling:first-child {
+  border-top: none;
+}
+
+.siblingLabel {
+  flex-shrink: 0;
+  width: 46px;
+  color: #9a958a;
+  font-size: 12.5px;
+}
+
+.siblingTitle {
+  color: var(--dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sibling a:hover .siblingTitle {
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.siblingNone {
+  color: #b5b0a5;
+}
+
+@media (max-width: 960px) {
+  .page {
+    padding: 28px 0 32px;
+  }
+
+  .boardTabs {
+    margin-bottom: 16px;
+  }
+
+  .boardTab {
+    padding: 9px 14px 11px;
+    font-size: 13.5px;
+  }
+
+  .loginNotice {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+}

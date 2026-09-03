@@ -1,0 +1,427 @@
+/* =====================================================================
+   게시판 공용 — 목록 표 · 페이지 이동 · 상세
+
+   네 게시판(공지 · 이벤트 · 문의 · 제품문의)이 이 파일을 공유한다.
+   ===================================================================== */
+
+/* ---------- 목록 표 ---------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  /* 칸 너비를 내용이 아니라 아래 지정값이 정한다. 제목이 길다고 날짜 칸이
+     찌그러지면 줄마다 날짜 위치가 달라져 훑어보기 어렵다 */
+  table-layout: fixed;
+  font-size: 14px;
+}
+
+.table thead th {
+  padding: 13px 8px;
+  border-top: 2px solid var(--dark);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.table tbody td {
+  padding: 15px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--gray);
+  vertical-align: middle;
+}
+
+.colNo {
+  width: 76px;
+  text-align: center;
+}
+
+.colAuthor {
+  width: 120px;
+  text-align: center;
+}
+
+.colViews {
+  width: 76px;
+  text-align: center;
+}
+
+.colDate {
+  width: 104px;
+  text-align: center;
+}
+
+/* 고정 공지는 배경으로 구분한다. 색만으로 알리지 않도록 번호 자리에 "공지" 글자가 함께 간다 */
+.rowPinned {
+  background: var(--light-gray);
+}
+
+.noticeTag {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--dark);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* ---------- 제목 칸 ---------- */
+
+.cellTitle {
+  /* 표가 table-layout: fixed 라 이 칸이 남은 폭을 전부 가진다 */
+  text-align: left;
+}
+
+.titleLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--dark);
+  transition: color 0.2s;
+}
+
+.titleLink:hover .titleText {
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.titleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prefix {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--gold-deep);
+  font-weight: 500;
+}
+
+.lock {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: #9a958a;
+}
+
+.badgeSlot {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* 넓은 화면에서는 글쓴이·날짜 칸이 따로 있으므로 이 줄은 숨는다 */
+.metaMobile {
+  display: none;
+}
+
+.empty {
+  padding: 56px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+  border-top: 2px solid var(--dark);
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---------- 페이지 이동 ---------- */
+
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+.pageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 손가락 조작에서 36px 아래로 내려가지 않는다 */
+  min-width: 36px;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 13.5px;
+  color: var(--gray);
+  font-variant-numeric: tabular-nums;
+  transition: 0.2s;
+}
+
+.pageBtn:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+/* 금색이 아니라 먹색이다 — 금색은 이 사이트에서 금액의 색이다 (StoreView 의 칩과 같은 규칙) */
+.pageOn {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pageOn:hover {
+  color: #fff;
+  border-color: var(--dark);
+}
+
+.pageGap {
+  padding: 0 2px;
+  color: #b5b0a5;
+  font-size: 13px;
+}
+
+/* ---------- 상세 ---------- */
+
+.detail {
+  border-top: 2px solid var(--dark);
+}
+
+.detailHead {
+  padding: 22px 4px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detailTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.detailMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: #8a8a8a;
+}
+
+.detailBody {
+  padding: 28px 4px 40px;
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: #333;
+  border-bottom: 1px solid var(--line);
+  /* 붙여넣은 본문의 줄바꿈을 그대로 살린다 */
+  white-space: pre-wrap;
+}
+
+/* ---------- 답변 ---------- */
+
+.answer {
+  margin-top: 20px;
+  padding: 22px 24px;
+  background: var(--light-gray);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.answerHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.answerBody {
+  font-size: 14px;
+  line-height: 1.85;
+  color: #333;
+  white-space: pre-wrap;
+}
+
+.answerWaiting {
+  margin-top: 20px;
+  padding: 22px 24px;
+  background: var(--light-gray);
+  border-radius: var(--radius-lg);
+  font-size: 13.5px;
+  color: var(--gray);
+  text-align: center;
+}
+
+/* ---------- 목록 아래 버튼줄 ---------- */
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.actionsRight {
+  margin-left: auto;
+}
+
+.primaryBtn,
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-family: inherit;
+  transition: 0.2s;
+}
+
+.primaryBtn {
+  background: var(--gold);
+  color: var(--dark);
+  font-weight: 700;
+}
+
+.primaryBtn:hover {
+  background: var(--gold-deep);
+  color: #fff;
+}
+
+.ghostBtn {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--dark);
+  font-weight: 500;
+}
+
+.ghostBtn:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+/* ---------- 목록 위 요약 ---------- */
+
+.count {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.count strong {
+  color: var(--dark);
+  font-weight: 700;
+}
+
+/* =====================================================================
+   모바일 — 표를 접는다.
+
+   좁은 화면에서 5칸을 유지하면 제목이 두 글자마다 줄바꿈된다. 번호·글쓴이·조회수
+   칸을 숨기고, 그 값들을 제목 아래 한 줄로 내린다. 가로 스크롤을 만들지 않는다.
+   ===================================================================== */
+
+@media (max-width: 960px) {
+  .table {
+    font-size: 13.5px;
+  }
+
+  .table thead {
+    /* 칸이 하나만 남으면 머리글이 의미를 잃는다. caption 이 스크린리더를 대신한다 */
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: auto;
+  }
+
+  .table tbody tr {
+    padding: 14px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .table tbody tr:first-child {
+    border-top: 2px solid var(--dark);
+  }
+
+  .table tbody td {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  /* 번호·글쓴이·조회수 칸은 통째로 접는다. 고정글 표시는 아래 metaMobile 이 대신한다 —
+     빈 칸이 남으면 줄마다 높이가 들쭉날쭉해지고, :has() 로 빈 칸만 골라 숨기는 방식은
+     선택자가 깨졌을 때 조용히 어긋난다 */
+  .colNo,
+  .colAuthor,
+  .colViews,
+  .colDate {
+    display: none;
+  }
+
+  .titleLink {
+    display: flex;
+  }
+
+  .titleText {
+    white-space: normal;
+    /* 두 줄까지만 보이고 그 아래는 자른다 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .metaMobile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 7px;
+    font-size: 12px;
+    color: #8a8a8a;
+  }
+
+  /* 접힌 번호 칸을 대신해 여기에 "공지"가 온다 */
+  .metaMobile .noticeTag {
+    padding: 2px 7px;
+    font-size: 10.5px;
+  }
+
+  .pager {
+    margin-top: 22px;
+  }
+
+  .pageBtn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 9px;
+    font-size: 13px;
+  }
+
+  .detailTitle {
+    font-size: 16.5px;
+  }
+
+  .detailHead {
+    padding: 16px 2px 14px;
+  }
+
+  .detailBody {
+    padding: 20px 2px 28px;
+    font-size: 14px;
+  }
+
+  .answer,
+  .answerWaiting {
+    padding: 16px 18px;
+  }
+}

@@ -31,9 +31,10 @@ const TRAILING: NavItem[] = [
     children: [
       { href: '/support/qna', label: '문의게시판' },
       { href: '/support/product-qna', label: '제품문의' },
-      { href: '/news', label: '뉴스센터' },
       { href: '/event', label: '이벤트' },
       { href: '/notice', label: '공지사항' },
+      // 뉴스센터(`/news`)는 뺐다. 만들지 않기로 했고, 남겨 두면 영구히 404 인 메뉴가 된다.
+      // 백엔드 news 테이블은 그대로 있으므로 나중에 필요해지면 한 줄 되돌리면 된다.
     ],
   },
 ];

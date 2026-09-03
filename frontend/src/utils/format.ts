@@ -84,5 +84,29 @@ export function formatDateTime(iso: string | null | undefined): string {
   }).format(d);
 }
 
+/**
+ * 게시판 목록의 날짜: "2026-09-01"
+ *
+ * <p>레퍼런스는 올해 글을 {@code 09-01}, 오늘 글을 {@code 13:37} 로 줄여 쓴다. 그렇게
+ * 하지 않는 이유는 <b>"오늘"이 렌더링 시점에 따라 달라지기 때문</b>이다. 서버에서 그린
+ * 문자열과 브라우저에서 다시 계산한 문자열이 어긋나면 하이드레이션 경고가 나고, 자정
+ * 근처에서는 실제로 값이 달라진다.
+ *
+ * <p>연도를 붙이는 것은 덤이다 — 목록에서 {@code 09-01} 만 보이면 올해 글인지 재작년
+ * 글인지 알 수 없다.
+ */
+export function formatBoardDate(iso: string | null | undefined): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '-';
+  // en-CA 로케일이 YYYY-MM-DD 를 준다. 수동 조립보다 시간대 처리가 안전하다
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).format(d);
+}
+
 /** 시세를 표시할 수 없을 때의 문구 (설계서 §12.4) */
 export const PRICE_INQUIRY_LABEL = '시세문의';

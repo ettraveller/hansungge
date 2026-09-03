@@ -36,8 +36,13 @@ public abstract class EmbeddedPostgresSupport {
      *
      * <p>넉넉히 기다리는 것은 손해가 없다. 정상 장비에서는 어차피 몇 초 만에 떠서 이 값에
      * 닿지 않고, 느린 장비에서만 기다린다.
+     *
+     * <p>60초도 부족한 경우를 봤다(2026-09-03). 로컬 PostgreSQL·백엔드·프론트 개발서버가
+     * 함께 떠 있는 상태에서 EDR 이 CPU 1위였고, {@code initdb} 가 60초를 넘겨 통합테스트가
+     * 전멸했다. 바이너리 압축해제 캐시는 이미 있었으므로(재압축이 아니다) 순수하게
+     * 프로세스 기동이 느린 것이다. 180초로 늘린다.
      */
-    private static final Duration STARTUP_WAIT = Duration.ofSeconds(60);
+    private static final Duration STARTUP_WAIT = Duration.ofSeconds(180);
 
     private static volatile EmbeddedPostgres instance;
 

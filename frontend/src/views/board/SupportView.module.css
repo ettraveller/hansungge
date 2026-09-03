@@ -1,0 +1,155 @@
+/* =====================================================================
+   고객센터 허브 (/support)
+   ===================================================================== */
+
+.page {
+  padding: 52px 0 60px;
+}
+
+/* ---------- 전화 ---------- */
+
+.call {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 26px 30px;
+  background: var(--light-gray);
+  border-radius: var(--radius-lg);
+  margin-bottom: 28px;
+}
+
+.callLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray);
+  margin-bottom: 4px;
+}
+
+.callNumber {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--dark);
+}
+
+.callHours {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.callBtn {
+  display: inline-flex;
+  align-items: center;
+  /* 손가락 조작에서 44px 아래로 내려가지 않는다 */
+  height: 44px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  color: var(--dark);
+  font-size: 14px;
+  font-weight: 700;
+  transition: 0.2s;
+}
+
+.callBtn:hover {
+  background: var(--gold-deep);
+  color: #fff;
+}
+
+.callBtn:active {
+  transform: translateY(1px);
+}
+
+/* ---------- 바로가기 ---------- */
+
+.desks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.desk {
+  display: grid;
+  gap: 6px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  transition: 0.2s;
+}
+
+.desk:hover {
+  border-color: var(--gold);
+}
+
+.deskTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.deskDesc {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--gray);
+}
+
+.deskGo {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gold-deep);
+}
+
+/* ---------- 하단 ---------- */
+
+.foot {
+  margin-top: 28px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--gray);
+}
+
+.foot a {
+  color: var(--dark);
+  font-weight: 500;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1px;
+  transition: 0.2s;
+}
+
+.foot a:hover {
+  color: var(--gold-deep);
+  border-bottom-color: var(--gold-deep);
+}
+
+@media (max-width: 960px) {
+  .page {
+    padding: 28px 0 32px;
+  }
+
+  .call {
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+
+  .callNumber {
+    font-size: 23px;
+  }
+
+  .desks {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .desk {
+    padding: 17px 18px;
+  }
+
+  .deskTitle {
+    font-size: 15px;
+  }
+}

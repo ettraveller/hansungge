@@ -50,8 +50,24 @@ public final class AuditActions {
     public static final String PRODUCT_STOCK_ADJUST = "PRODUCT_STOCK_ADJUST";
     public static final String PRODUCT_IMAGE_CHANGE = "PRODUCT_IMAGE_CHANGE";
 
+    // --- 게시판 (STEP 15~16) ---
+    public static final String NOTICE_CREATE = "NOTICE_CREATE";
+    public static final String NOTICE_UPDATE = "NOTICE_UPDATE";
+    /** 공지를 내림. 행을 지우지 않으므로 DELETE 가 아니다 */
+    public static final String NOTICE_HIDE = "NOTICE_HIDE";
+    public static final String EVENT_CREATE = "EVENT_CREATE";
+    public static final String EVENT_UPDATE = "EVENT_UPDATE";
+    public static final String EVENT_HIDE = "EVENT_HIDE";
+    /** 관리자가 고객 문의에 답변함 */
+    public static final String QNA_ANSWER = "QNA_ANSWER";
+    /** 관리자가 문의글을 내림 (욕설·개인정보 노출 등) */
+    public static final String QNA_HIDE = "QNA_HIDE";
+
     // --- 대상 유형 ---
     public static final String TARGET_ADMIN_USER = "ADMIN_USER";
+    public static final String TARGET_NOTICE = "NOTICE";
+    public static final String TARGET_EVENT = "EVENT";
+    public static final String TARGET_QNA = "QNA";
     public static final String TARGET_CATEGORY = "CATEGORY";
     public static final String TARGET_PRODUCT = "PRODUCT";
     public static final String TARGET_PRODUCT_OPTION = "PRODUCT_OPTION";
