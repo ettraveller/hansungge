@@ -3,10 +3,21 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './MobileDrawer.module.css';
+
+/**
+ * 서버 렌더에서는 false, 브라우저에서는 true.
+ *
+ * <p>{@code document} 가 없는 서버에서 포털을 만들 수 없어 "지금 브라우저인가"를 알아야
+ * 한다. effect 안에서 setState 하는 방식이 흔하지만, 그건 렌더를 한 번 더 돌리고
+ * React 규칙에도 걸린다. 바뀔 일이 없는 값이라 구독은 빈 함수로 둔다.
+ */
+const subscribeNothing = () => () => {};
+const onClient = () => true;
+const onServer = () => false;
 
 /**
  * 모바일 햄버거 · 드로어.
@@ -36,6 +47,27 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
     setOpen(false);
     setExpanded(null);
   }
+
+  /**
+   * 펼친 항목을 화면 안으로 끌어온다.
+   *
+   * <p>목록 아래쪽에 있는 항목(고객센터 같은)을 누르면 하위 메뉴가 <b>화면 밖에서</b>
+   * 열린다. 스크롤을 내려야 보이니 사용자에게는 <b>눌러도 아무 일도 안 일어난 것</b>처럼
+   * 보인다 — 그래서 한 번 더 누르고, 그러면 이번엔 접힌다.
+   *
+   * <p>{@code block: 'nearest'} 라 이미 다 보이면 움직이지 않는다. 필요한 만큼만 민다.
+   */
+  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (expanded == null) return;
+    const el = groupRefs.current[expanded];
+    // 하위 목록이 그려진 뒤에 재야 한다. 펼치는 순간에는 아직 높이가 0 이다.
+    const id = requestAnimationFrame(() => {
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [expanded]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,8 +102,7 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
    * <p>맥락 밖으로 꺼내면 z-index 가 제 값대로 동작한다. 헤더의 z-index 를 올리는
    * 방법도 있지만, 그건 다음에 z-index 를 쓰는 사람이 또 같은 함정에 빠진다.
    */
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(subscribeNothing, onClient, onServer);
 
   return (
     <>
@@ -116,7 +147,13 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
                 {item.label}
               </Link>
             ) : (
-              <div key={item.href} className={styles.drawerGroup}>
+              <div
+                key={item.href}
+                ref={(el) => {
+                  groupRefs.current[item.label] = el;
+                }}
+                className={styles.drawerGroup}
+              >
                 <button
                   type="button"
                   className={styles.drawerToggle}
