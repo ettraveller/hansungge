@@ -19,6 +19,9 @@
 
 # production
 /build
+# deploy.sh 가 standalone 산출물을 모아 두는 곳. 빌드 결과라 커밋 대상이 아니다
+# (29MB 가 넘고, 배포할 때마다 통째로 바뀐다).
+/.deploy
 
 # misc
 .DS_Store
