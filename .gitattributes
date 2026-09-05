@@ -1,0 +1,24 @@
+# =====================================================================
+# 개행 문자 정규화
+#
+# Windows 에서 체크아웃하면 git 이 기본으로 CRLF 를 붙인다. 저장소 안에서만
+# 도는 파일은 그래도 되지만, <b>서버로 건너가 실행되는 파일</b>은 깨진다.
+#
+#   *.sh        bash 가 첫 줄을 `#!/usr/bin/env bash\r` 로 읽고
+#               "bad interpreter: ... ^M" 로 죽는다
+#   *.service   systemd 가 값 끝의 \r 을 값의 일부로 읽어
+#               ExecStart 경로가 존재하지 않는 파일이 된다
+#   *.conf      nginx 지시자 끝에 \r 이 붙는다
+#
+# 셋 다 증상이 원인을 가리키지 않는다 — "파일이 있는데 없다고 한다"로 보인다.
+# 그래서 개발 PC 의 설정에 맡기지 않고 저장소가 강제한다.
+# =====================================================================
+*.sh        text eol=lf
+*.service   text eol=lf
+*.conf      text eol=lf
+gradlew     text eol=lf
+
+# Windows 전용 스크립트는 반대다
+*.ps1       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
