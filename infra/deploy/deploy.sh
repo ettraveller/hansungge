@@ -43,6 +43,17 @@ EOF
 }
 
 deploy_web() {
+  # NEXT_PUBLIC_* 는 런타임이 아니라 빌드 시점에 번들에 박힌다. 서버의 web.env 로는
+  # 못 바꾼다. 이 파일이 없으면 기본값(localhost:8080)으로 빌드되어, 배포는 성공했는데
+  # 운영 사이트가 아무 데이터도 못 불러오는 상태가 된다 — 화면은 뜨는데 전부 비어 있어
+  # 원인을 찾는 데 시간이 걸린다. 그래서 여기서 멈춘다.
+  if [ ! -f "$ROOT/frontend/.env.production" ]; then
+    echo "오류: frontend/.env.production 이 없습니다." >&2
+    echo "      cp frontend/.env.production.example frontend/.env.production 후 값을 채우세요." >&2
+    echo "      (NEXT_PUBLIC_* 는 빌드 시점에 박히므로 서버 환경변수로는 바꿀 수 없습니다)" >&2
+    exit 1
+  fi
+
   echo "==> 프론트엔드 빌드"
   (cd "$ROOT/frontend" && npm ci && npm run build)
 

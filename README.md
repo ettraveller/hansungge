@@ -509,6 +509,32 @@ views/  →  hooks/  →  api/  →  api/client.ts
 
 ## 배포 (Docker 미사용)
 
+### 1. 서버 최초 1회 세팅
+
+`deploy.sh` 는 서버가 준비되어 있다고 전제합니다 — 계정·디렉터리·JDK·Node·systemd·
+sudoers 가 없으면 첫 배포가 중간에 멈춥니다. `provision.sh` 가 그 전제를 만듭니다.
+
+```bash
+# 서버에 저장소를 올린 뒤, 서버에서 root 로
+sudo bash infra/deploy/provision.sh
+```
+
+멱등이라 여러 번 돌려도 안전합니다. 끝나면 남은 사람 몫(SSH 키 등록, `api.env` 값 채우기,
+SSL 발급)을 화면에 안내합니다.
+
+### 2. 운영 빌드 값
+
+```bash
+cp frontend/.env.production.example frontend/.env.production   # 값 채우기
+```
+
+**`NEXT_PUBLIC_*` 은 런타임이 아니라 빌드 시점에 번들에 박힙니다.** 서버의
+`/etc/hanseongge/web.env` 로는 바꿀 수 없습니다. 이 파일이 없으면 `deploy.sh` 가
+멈춥니다 — 없이 빌드하면 배포는 성공했는데 운영 사이트가 `localhost:8080` 을 부르는,
+화면은 뜨지만 전부 비어 있는 상태가 되기 때문입니다.
+
+### 3. 배포
+
 ```bash
 export REMOTE_HOST=<NCP 서버 IP>
 ./infra/deploy/deploy.sh all      # api + web
@@ -516,6 +542,16 @@ export REMOTE_HOST=<NCP 서버 IP>
 ```
 
 릴리스는 타임스탬프 디렉터리에 풀고 symlink 를 교체합니다. 직전 3개를 보관하므로 롤백은 symlink 를 되돌리는 것으로 끝납니다.
+
+### SSL 인증서가 두 장인 이유
+
+`hanseongge.com`(+www) 과 `api.hanseongge.com` 을 따로 발급합니다. nginx 설정이 서로 다른
+인증서 경로를 쓰기 때문에, 한 장으로 묶으면 경로가 맞지 않아 nginx 가 뜨지 않습니다.
+
+```bash
+certbot certonly --webroot -w /var/www/certbot -d hanseongge.com -d www.hanseongge.com
+certbot certonly --webroot -w /var/www/certbot -d api.hanseongge.com
+```
 
 ---
 
