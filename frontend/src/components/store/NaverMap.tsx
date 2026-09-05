@@ -8,6 +8,15 @@ import styles from './NaverMap.module.css';
 /** NCP 콘솔 > Maps > Application 에서 발급한다. 없으면 지도 대신 안내를 띄운다. */
 const CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
 
+/**
+ * 지오코더 서브모듈을 기다리는 한도.
+ *
+ * <p>느린 모바일 회선에서도 서브모듈 한 개를 받기에 충분하고, Geocoding 이 아예
+ * 꺼져 있어 영영 오지 않는 경우에 사용자를 붙잡아 두기에는 짧다.
+ */
+const GEOCODER_WAIT_MS = 5_000;
+const GEOCODER_POLL_MS = 100;
+
 interface Props {
   branch: Branch;
 }
@@ -54,9 +63,10 @@ export function NaverMap({ branch }: Props) {
     const naver = (window as unknown as { naver?: NaverMaps }).naver;
     if (!naver?.maps) return;
 
-    const { LatLng, Map, Marker, Service } = naver.maps;
+    const { LatLng, Map, Marker } = naver.maps;
     const el = ref.current;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     const draw = (lat: number, lng: number) => {
       if (cancelled) return;
@@ -70,28 +80,54 @@ export function NaverMap({ branch }: Props) {
       return;
     }
 
-    // 주소 → 좌표. NCP 애플리케이션에서 Geocoding 이 꺼져 있으면 Service 가 없다.
-    if (!Service) {
-      // 비동기로 알린다 — effect 본문에서 바로 setState 하지 않기 위해서다.
-      queueMicrotask(() => {
-        if (!cancelled) setPhase('failed');
+    const geocode = (Service: NonNullable<NaverMaps['maps']['Service']>) => {
+      Service.geocode({ query: branch.address }, (status, response) => {
+        if (cancelled) return;
+        const found = response?.v2?.addresses?.[0];
+        if (status !== Service.Status.OK || !found) {
+          setPhase('failed');
+          return;
+        }
+        // x 가 경도, y 가 위도다. 뒤집으면 지도가 엉뚱한 곳(바다)으로 간다.
+        draw(Number(found.y), Number(found.x));
       });
-      return;
-    }
+    };
 
-    Service.geocode({ query: branch.address }, (status, response) => {
+    /**
+     * 지오코더가 준비될 때까지 기다린다.
+     *
+     * <p>{@code submodules=geocoder} 는 maps.js 와 <b>같이 오지 않는다.</b> maps.js 가
+     * 실행되면서 서브모듈을 따로 내려받으므로, 스크립트의 load 이벤트가 떴을 때
+     * {@code naver.maps.Service} 는 아직 없을 수 있다.
+     *
+     * <p>여기서 곧장 실패로 처리하면 <b>캐시가 없는 첫 방문에서만</b> 지도가 안 뜨고,
+     * 새로고침하면 서브모듈이 캐시에서 즉시 올라와 정상으로 보인다 — "처음엔 안 되고
+     * 새로고침하면 되는" 증상이 정확히 이것이었다.
+     *
+     * <p>영영 안 오는 경우(NCP 애플리케이션에서 Geocoding 미활성)와 구분해야 하므로
+     * 무한정 기다리지 않는다. 기한을 넘기면 그때 폴백으로 내려간다.
+     */
+    const deadline = Date.now() + GEOCODER_WAIT_MS;
+    const waitForGeocoder = () => {
       if (cancelled) return;
-      const found = response?.v2?.addresses?.[0];
-      if (status !== Service.Status.OK || !found) {
+      const Service = naver.maps.Service;
+      if (Service) {
+        geocode(Service);
+        return;
+      }
+      if (Date.now() >= deadline) {
         setPhase('failed');
         return;
       }
-      // x 가 경도, y 가 위도다. 뒤집으면 지도가 엉뚱한 곳(바다)으로 간다.
-      draw(Number(found.y), Number(found.x));
-    });
+      timer = setTimeout(waitForGeocoder, GEOCODER_POLL_MS);
+    };
+
+    // effect 본문에서 동기적으로 setState 하지 않도록 한 박자 미뤄 시작한다.
+    timer = setTimeout(waitForGeocoder, 0);
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [phase, branch]);
 
