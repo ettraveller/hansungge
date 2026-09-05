@@ -68,6 +68,32 @@ deploy_web() {
   echo "==> 프론트엔드 빌드"
   (cd "$ROOT/frontend" && npm ci && npm run build)
 
+  # 빌드 결과를 직접 확인한다. .env.production 이 있다는 것만으로는 부족했다 —
+  # Next 의 우선순위에서 .env.local 이 .env.production 을 이기기 때문에, 파일은
+  # 제자리에 있는데 값은 개발용이 박히는 일이 실제로 있었다.
+  #
+  # 그때 증상이 고약하다. 배포는 성공하고 화면도 다 뜨는데, 브라우저만 localhost
+  # 를 부르다 CORS 로 막혀 로그인 같은 클라이언트 요청만 실패한다. 서버 렌더는
+  # 멀쩡하니 목록·상세는 잘 보이고, 그래서 원인이 프론트 빌드라는 데까지 가는 데
+  # 오래 걸린다. 산출물을 열어 보는 것이 유일하게 확실한 검사다.
+  #
+  # 검사 범위는 <b>우리가 만든 청크</b>로 좁힌다. standalone/node_modules 에는 Next
+  # 런타임이 내부 기본값으로 갖는 localhost 문자열이 들어 있어(clean-url.js 등),
+  # 통째로 훑으면 늘 걸린다 — 늘 걸리는 검사는 곧 무시되는 검사가 된다.
+  echo "==> 번들 검사 (개발용 주소가 박혔는지)"
+  local leaked
+  leaked="$(grep -rl 'localhost:8080\|localhost:3000' \
+              "$ROOT/frontend/.next/static" \
+              "$ROOT/frontend/.next/standalone/.next" 2>/dev/null || true)"
+  if [ -n "$leaked" ]; then
+    echo "오류: 운영 번들에 개발용 주소가 박혀 있습니다." >&2
+    echo "$leaked" | sed 's|^|      |' >&2
+    echo "      원인은 대개 frontend/.env.local 입니다 — Next 우선순위에서" >&2
+    echo "      .env.production 을 이깁니다. .env.development.local 로 바꾸세요." >&2
+    exit 1
+  fi
+  echo "  깨끗함"
+
   local staging="$ROOT/frontend/.deploy"
   rm -rf "$staging" && mkdir -p "$staging"
   cp -r "$ROOT/frontend/.next/standalone/." "$staging/"
