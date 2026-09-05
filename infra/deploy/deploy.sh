@@ -34,9 +34,20 @@ deploy_api() {
 set -euo pipefail
 ln -sfn /opt/hanseongge/api/releases/$STAMP /opt/hanseongge/api/current
 sudo systemctl restart hanseongge-api
-sleep 5
-# 기동 확인 — 실패하면 즉시 알 수 있게 종료 코드를 전파한다
-curl -fsS http://127.0.0.1:8081/actuator/health > /dev/null
+# 고정 대기로는 안 된다. Spring Boot 기동에 8~10초가 걸려 sleep 5 는 매 배포를
+# 실패로 만들고(앱은 멀쩡히 떠 있는데 배포만 실패한 것처럼 보인다), 넉넉히
+# 30초를 자면 진짜 실패했을 때도 30초를 버린다. 뜰 때까지 1초씩 확인한다.
+for i in \$(seq 1 60); do
+  if curl -fsS http://127.0.0.1:8081/actuator/health > /dev/null 2>&1; then
+    echo "  기동 확인 (\${i}초)"
+    break
+  fi
+  if [ "\$i" -eq 60 ]; then
+    echo "  60초 안에 기동하지 못했습니다 — journalctl -u hanseongge-api -n 50" >&2
+    exit 1
+  fi
+  sleep 1
+done
 ls -1dt /opt/hanseongge/api/releases/*/ | tail -n +$((KEEP + 1)) | xargs -r rm -rf
 EOF
   echo "==> 백엔드 배포 완료: $STAMP"
@@ -71,8 +82,18 @@ deploy_web() {
 set -euo pipefail
 ln -sfn /opt/hanseongge/web/releases/$STAMP /opt/hanseongge/web/current
 sudo systemctl restart hanseongge-web
-sleep 5
-curl -fsS http://127.0.0.1:3000/ > /dev/null
+# api 와 같은 이유로 고정 대기를 쓰지 않는다.
+for i in \$(seq 1 60); do
+  if curl -fsS http://127.0.0.1:3000/ > /dev/null 2>&1; then
+    echo "  기동 확인 (\${i}초)"
+    break
+  fi
+  if [ "\$i" -eq 60 ]; then
+    echo "  60초 안에 기동하지 못했습니다 — journalctl -u hanseongge-web -n 50" >&2
+    exit 1
+  fi
+  sleep 1
+done
 ls -1dt /opt/hanseongge/web/releases/*/ | tail -n +$((KEEP + 1)) | xargs -r rm -rf
 EOF
   echo "==> 프론트엔드 배포 완료: $STAMP"
