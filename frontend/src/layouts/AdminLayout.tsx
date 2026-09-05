@@ -21,6 +21,7 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin/prices', label: '시세관리', minRole: 'OPERATOR' },
   { href: '/admin/products', label: '상품관리', minRole: 'OPERATOR' },
   { href: '/admin/categories', label: '카테고리', minRole: 'OPERATOR' },
+  { href: '/admin/qnas', label: '문의 관리', minRole: 'OPERATOR' },
   { href: '/admin/audit-logs', label: '감사로그', minRole: 'ADMIN' },
   { href: '/admin/admins', label: '관리자 계정', minRole: 'SUPER_ADMIN' },
   { href: '/admin/account', label: '내 계정', minRole: 'OPERATOR' },

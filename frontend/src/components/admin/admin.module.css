@@ -538,3 +538,58 @@
   gap: 6px;
   flex-wrap: nowrap;
 }
+
+/* ---------- 문의 관리 ---------- */
+
+/* 제목 앞에 붙는 짧은 표식(비밀글 등). 배지와 달리 상태가 아니라 속성이라 색을 쓰지 않는다 */
+.tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--gray);
+  vertical-align: middle;
+}
+
+/* 표 한 칸 안의 둘째 줄 — 상품명이나 "내려진 글" 같은 부연 */
+.cellSub {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--gray);
+}
+
+.detailList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detailList dt {
+  font-size: 11.5px;
+  color: var(--gray);
+  margin-bottom: 3px;
+}
+
+.detailList dd {
+  font-size: 13.5px;
+  color: var(--dark);
+  line-height: 1.7;
+}
+
+/* 문의 본문은 고객이 입력한 그대로 보여야 한다 — 줄바꿈을 접으면 문단이 한 덩어리가 된다 */
+.preserveLines {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dialogText {
+  font-size: 13.5px;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}

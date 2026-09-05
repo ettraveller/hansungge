@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
 import { useCollectionStatus, useCurrentPrices, usePendingPrices } from '@/hooks/admin/usePrices';
 import { useAdminProducts } from '@/hooks/admin/useProducts';
+import { useUnansweredQnaCount } from '@/hooks/admin/useQnas';
 import { formatDateTime, formatPricePerGram } from '@/utils/format';
 import { METAL_LABEL } from '@/types/price';
 import { ApiError } from '@/types/api';
@@ -27,6 +28,7 @@ export function AdminDashboardView() {
   const pending = usePendingPrices('PENDING', 0);
   const onSale = useAdminProducts({ status: 'ON_SALE', size: 1 });
   const hidden = useAdminProducts({ status: 'HIDDEN', size: 1 });
+  const unansweredQnas = useUnansweredQnaCount();
 
   const priceRows = prices.data ?? [];
   const unusable = priceRows.filter((p) => !p.available);
@@ -103,6 +105,19 @@ export function AdminDashboardView() {
             <span className={styles.statValue}>{pendingCount}</span>
             <Link className={styles.hint} href="/admin/prices">
               시세관리 →
+            </Link>
+          </div>
+        </Panel>
+        {/* 답변이 밀리는 것이 게시판의 유일한 실패 방식이다. 목록을 열어야만 알 수
+            있으면 아무도 열지 않는 날 쌓인다 — 그래서 첫 화면까지 올린다. */}
+        <Panel>
+          <div className={styles.stat}>
+            <span className={styles.statLabel}>답변 대기 문의</span>
+            <span className={styles.statValue}>
+              {unansweredQnas.data?.count ?? (unansweredQnas.isLoading ? '…' : 0)}
+            </span>
+            <Link className={styles.hint} href="/admin/qnas">
+              문의 관리 →
             </Link>
           </div>
         </Panel>

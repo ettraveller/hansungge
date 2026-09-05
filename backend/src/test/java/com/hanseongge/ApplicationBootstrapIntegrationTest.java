@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * STEP 3 완료 검증 — 실제 PostgreSQL 위에서 전체 기동을 확인한다.
  *
- * <p>검증 범위: Flyway V1~V11 적용 → 스키마 정합성(ddl-auto=validate) → 설정 캐시 →
+ * <p>검증 범위: Flyway V1~V12 적용 → 스키마 정합성(ddl-auto=validate) → 설정 캐시 →
  * 최초 관리자 생성 → 헬스체크 응답.
  *
  * <p>관리자 인증·권한·감사로그는 {@link AdminAuthIntegrationTest} 가 맡는다.
@@ -51,7 +51,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("Flyway V1~V11 이 적용되고 40개 테이블이 생성된다")
+    @DisplayName("Flyway V1~V12 가 적용되고 41개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
@@ -60,15 +60,17 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V8 은 잔여 결함 11건을 해소하며 7개 테이블을 더한다.
         // V9(약관 버전)·V11(반올림 정책)은 설정 행만 다루고, V10 은 장바구니 컬럼만
         // 보강하므로 셋 다 테이블 수를 늘리지 않는다.
+        // V12(게시판)는 V5 가 세워둔 notices/events/qnas 에 컬럼을 더하고
+        // event_entries 1개만 새로 만든다 → 40 + 1.
         assertThat(versions)
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
 
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables "
                         + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                         + "AND table_name <> 'flyway_schema_history'",
                 Integer.class);
-        assertThat(tableCount).isEqualTo(40);
+        assertThat(tableCount).isEqualTo(41);
     }
 
     @Test
@@ -155,7 +157,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
                 .andExpect(jsonPath("$.service").value("hanseongge-api"))
                 .andExpect(jsonPath("$.profile").value("test"))
                 .andExpect(jsonPath("$.database").value("UP"))
-                .andExpect(jsonPath("$.schemaVersion").value("11"))
+                .andExpect(jsonPath("$.schemaVersion").value("12"))
                 // A-2 확정값이 V11 로 반영되어 있으므로 임시 정책이 아니다.
                 .andExpect(jsonPath("$.roundingPolicy").value(RoundingPolicy.CEIL_100.name()))
                 .andExpect(jsonPath("$.roundingPolicyTemporary").value(false))

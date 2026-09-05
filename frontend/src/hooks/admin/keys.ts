@@ -1,5 +1,6 @@
 import type { AuditSearch } from '@/api/admin/audit';
 import type { ProductSearch } from '@/api/admin/products';
+import type { AdminQnaSearch } from '@/api/admin/qnas';
 import type { PendingStatus } from '@/types/admin';
 import type { MetalType, PriceSide } from '@/types/price';
 
@@ -31,6 +32,10 @@ export const adminKeys = {
   productPreview: (id: number) => [...adminKeys.products(), id, 'preview'] as const,
 
   categories: () => [...adminKeys.all, 'categories'] as const,
+
+  qnas: () => [...adminKeys.all, 'qnas'] as const,
+  qnaList: (search: AdminQnaSearch) => [...adminKeys.qnas(), 'list', search] as const,
+  qnaUnansweredCount: () => [...adminKeys.qnas(), 'unanswered-count'] as const,
 
   auditLogs: (search: AuditSearch) => [...adminKeys.all, 'audit-logs', search] as const,
 
