@@ -51,6 +51,10 @@
   top: 0;
   width: 280px;
   height: 100vh;
+  /* 모바일 브라우저의 주소창은 스크롤에 따라 접혔다 펴진다. 100vh 는 <b>펴진 상태</b>
+     기준이라, 드로어가 실제 화면보다 길어져 아래쪽(고객센터 밑)이 잘려 나간다.
+     dvh 는 지금 보이는 높이를 따라간다. 지원하지 않는 브라우저는 위 100vh 를 쓴다. */
+  height: 100dvh;
   background: #fff;
   z-index: 200;
   transition: transform 0.25s, visibility 0.25s;
@@ -97,6 +101,13 @@
   border: none;
   flex: 1;
   overflow-y: auto;
+  /* flex 자식의 기본 min-height 는 auto — 내용만큼 커지려 해서 절대 줄지 않는다.
+     그러면 overflow-y:auto 가 걸려 있어도 스크롤이 생기지 않고, 넘친 항목은 그냥
+     화면 밖에 남는다. 메뉴가 고객센터에서 끊겨 더 못 내려가던 원인이 이것이다. */
+  min-height: 0;
+  /* 드로어 안에서 끝까지 내렸을 때 뒤 페이지가 따라 움직이지 않게 한다 */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .drawerLink,
@@ -176,5 +187,26 @@
 @media (max-width: 960px) {
   .hamburger {
     display: flex;
+  }
+}
+
+/* 휴대폰에서는 화면을 가득 채운다.
+   280px 패널로 두면 왼쪽에 페이지가 띠처럼 남아 어중간하게 보인다. 태블릿처럼 넓은
+   화면에서는 그 여백이 자연스럽지만, 폭이 좁을수록 남는 띠가 방해로만 읽힌다.
+   대신 바깥을 눌러 닫을 수 없게 되므로 닫기 버튼이 유일한 출구가 된다 —
+   그래서 아래에서 닫기 버튼을 키운다. */
+@media (max-width: 600px) {
+  .drawer,
+  .drawerOn {
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .drawerClose {
+    /* 손가락으로 누르는 유일한 출구다. 최소 44px 을 확보한다 */
+    width: 44px;
+    height: 44px;
+    font-size: 26px;
+    margin-right: -10px;
   }
 }
