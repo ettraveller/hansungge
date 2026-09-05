@@ -111,7 +111,15 @@ chmod 0600 "/home/$APP_USER/.ssh/authorized_keys"
 # 6. 디렉터리
 # ---------------------------------------------------------------------
 log "디렉터리"
+# ⚠️ install -d 는 <b>중간에 만들어지는 상위 디렉터리에 소유권을 적용하지 않는다.</b>
+# releases 만 지정하면 그 부모인 api/ · web/ 이 root 소유로 남고, deploy.sh 가
+# 그 안에 current 심볼릭 링크를 만들지 못해 "Permission denied" 로 멈춘다 —
+# 그런데 releases 로의 업로드는 성공한 뒤라, 원인이 업로드 쪽으로 보인다.
+# 부모까지 명시한다.
+install -d -o root -g root -m 0755 /opt/hanseongge
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 \
+  /opt/hanseongge/api \
+  /opt/hanseongge/web \
   /opt/hanseongge/api/releases \
   /opt/hanseongge/web/releases
 
