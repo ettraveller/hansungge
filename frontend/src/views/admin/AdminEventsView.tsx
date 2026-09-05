@@ -90,7 +90,8 @@ export function AdminEventsView() {
         ) : rows.length === 0 ? (
           <p className={styles.empty}>등록된 이벤트가 없습니다.</p>
         ) : (
-          <table className={styles.table}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
             <thead>
               <tr>
                 <th scope="col">제목</th>
@@ -142,7 +143,8 @@ export function AdminEventsView() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
 
         {data && (
@@ -349,7 +351,8 @@ function EntriesDialog({ event, onClose }: { event: AdminEvent; onClose: () => v
       ) : rows.length === 0 ? (
         <p className={styles.empty}>응모가 없습니다.</p>
       ) : (
-        <table className={styles.table}>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
           <thead>
             <tr>
               <th scope="col">작성자</th>
@@ -369,7 +372,8 @@ function EntriesDialog({ event, onClose }: { event: AdminEvent; onClose: () => v
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
 
       {data && data.totalPages > 1 && (

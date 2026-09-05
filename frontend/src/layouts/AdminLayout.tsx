@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAdminLogout, useAdminSession } from '@/hooks/admin/useAdminSession';
 import { ADMIN_ROLE_LABEL, type AdminRole } from '@/types/admin';
@@ -49,6 +49,31 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { admin, hydrated, isAuthenticated, can } = useAdminSession();
   const logout = useAdminLogout();
 
+  /**
+   * 좁은 화면에서 메뉴를 여닫는 상태.
+   *
+   * <p>사이드바는 1024px 미만에서 숨는데 대체 수단이 없어서, <b>휴대폰으로는 화면 사이를
+   * 이동할 방법 자체가 없었다.</b> 같은 사이드바를 겹쳐 띄우는 방식으로 연다 — 모바일용
+   * 메뉴를 따로 만들면 항목이 갈라져 한쪽만 갱신되는 일이 생긴다.
+   */
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // 화면을 옮기면 닫는다. 열어둔 채 이동하면 새 화면 위에 메뉴가 남는다.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setMenuOpen(false);
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [menuOpen]);
+
   const onLoginPage = pathname === LOGIN_PATH;
 
   useEffect(() => {
@@ -75,7 +100,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={styles.root}>
-      <aside className={styles.sidebar}>
+      {/* 좁은 화면에서 메뉴가 열렸을 때만 뒤를 덮는다. 넓은 화면에서는 아예 안 보인다. */}
+      <div
+        className={menuOpen ? styles.scrimOn : styles.scrim}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside className={menuOpen ? styles.sidebarOpen : styles.sidebar}>
         <div className={styles.brand}>
           한성금거래소
           <span className={styles.badge}>ADMIN</span>
@@ -104,6 +136,19 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
       <div className={styles.body}>
         <header className={styles.topbar}>
+          {/* 좁은 화면 전용. 넓은 화면에서는 사이드바가 늘 보이므로 숨긴다. */}
+          <button
+            type="button"
+            className={styles.menuButton}
+            aria-label={menuOpen ? '메뉴 닫기' : '메뉴 열기'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+
           <span className={styles.env}>{process.env.NEXT_PUBLIC_ENV_LABEL ?? 'local'}</span>
           <span className={styles.who}>
             <strong>{admin?.name}</strong>

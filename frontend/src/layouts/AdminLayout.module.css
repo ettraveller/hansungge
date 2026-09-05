@@ -4,7 +4,8 @@
   background: var(--light-gray);
 }
 
-.sidebar {
+.sidebar,
+.sidebarOpen {
   width: 220px;
   flex: none;
   background: var(--dark);
@@ -13,6 +14,66 @@
   display: none;
   flex-direction: column;
   gap: 24px;
+}
+
+/* 좁은 화면에서 메뉴를 열면 본문 위에 겹쳐 띄운다. 자리를 차지하게 하면 본문이
+   옆으로 밀려 표가 화면 밖으로 나간다. */
+.sidebarOpen {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 200;
+  overflow-y: auto;
+  /* flex 자식이 아니라 fixed 라 min-height:0 대신 이것으로 충분하다 */
+  overscroll-behavior: contain;
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.3);
+}
+
+/* 메뉴 뒤를 덮는 막. 열렸을 때만 눌러서 닫을 수 있다. */
+.scrim,
+.scrimOn {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 190;
+  transition: opacity 0.2s;
+}
+
+.scrim {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.scrimOn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 햄버거 — 좁은 화면 전용. 넓은 화면에서는 사이드바가 늘 보인다. */
+.menuButton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  height: 40px;
+  margin-right: auto;
+  padding: 9px;
+  border: none;
+  background: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menuButton span {
+  display: block;
+  height: 2px;
+  background: var(--dark);
+  border-radius: 2px;
 }
 
 .brand {
@@ -80,8 +141,40 @@
 }
 
 @media (min-width: 1024px) {
-  .sidebar {
+  .sidebar,
+  .sidebarOpen {
     display: flex;
+    /* 넓은 화면에서는 늘 제자리에 있다 — 열림 상태여도 겹치지 않는다 */
+    position: static;
+    height: auto;
+    box-shadow: none;
+  }
+
+  .scrim,
+  .scrimOn {
+    display: none;
+  }
+
+  .menuButton {
+    display: none;
+  }
+}
+
+/* 휴대폰 — 24px 여백은 좁은 화면에서 본문 폭을 크게 깎는다 */
+@media (max-width: 640px) {
+  .topbar {
+    height: 48px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .main {
+    padding: 14px 12px 28px;
+  }
+
+  /* 로그인 아이디·등급까지 다 넣으면 상단바가 두 줄이 된다 */
+  .role {
+    display: none;
   }
 }
 

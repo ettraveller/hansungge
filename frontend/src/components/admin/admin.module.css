@@ -44,7 +44,7 @@
 .panel {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius);
 }
 
 .panelHead {
@@ -422,7 +422,7 @@
 .dialog {
   border: 0;
   padding: 0;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius);
   width: min(560px, calc(100vw - 32px));
   background: #fff;
   color: var(--dark);
@@ -592,4 +592,114 @@
   font-size: 13.5px;
   line-height: 1.7;
   margin-bottom: 12px;
+}
+
+/* =====================================================================
+   휴대폰
+   관리자 화면도 폰에서 쓴다 — 시세 고시나 문의 답변은 자리에 앉아서만 하는 일이
+   아니다. 표는 가로로만 스크롤되게 가두고, 나머지는 한 줄로 편다.
+   ===================================================================== */
+@media (max-width: 640px) {
+  .page {
+    gap: 14px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .panelHead {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 14px 12px;
+  }
+
+  .headActions {
+    width: 100%;
+  }
+
+  .panelBody {
+    padding: 14px;
+  }
+
+  /* 필터는 가로로 늘어놓으면 두세 줄로 접힌다. 한 줄에 하나씩 편다. */
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .filters .select,
+  .filters .input {
+    width: 100%;
+  }
+
+  /* 입력이 두 칸으로 갈리면 한 칸이 손가락으로 쓰기 어려울 만큼 좁아진다 */
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  /* iOS 는 글자가 16px 보다 작은 입력에 포커스하면 화면을 확대한다.
+     확대된 채로 돌아오지 않아 "관리자 화면이 확대되어 보인다"의 원인이 된다. */
+  .input,
+  .select,
+  .textarea,
+  .numInput {
+    font-size: 16px;
+  }
+
+  .btn {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+
+  .btnSm {
+    min-height: 34px;
+  }
+
+  /* 표는 감싼 상자 안에서만 가로로 움직인다. 페이지가 통째로 밀리면 본문을 읽을 수 없다. */
+  .tableWrap {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .table {
+    font-size: 12px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 10px;
+  }
+
+  /* 좁은 화면에서 대화상자는 화면을 거의 다 쓴다 */
+  .dialog {
+    width: calc(100vw - 16px);
+    max-height: 88dvh;
+  }
+
+  .dialogBody {
+    max-height: 62dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .dialogFoot {
+    flex-wrap: wrap;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pageBtn {
+    min-width: 34px;
+    min-height: 34px;
+  }
 }

@@ -117,7 +117,8 @@ export function AdminQnasView() {
             {unansweredOnly ? '답변을 기다리는 문의가 없습니다.' : '문의가 없습니다.'}
           </p>
         ) : (
-          <table className={styles.table}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
             <thead>
               <tr>
                 <th scope="col">게시판</th>
@@ -164,7 +165,8 @@ export function AdminQnasView() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
 
         {data && (

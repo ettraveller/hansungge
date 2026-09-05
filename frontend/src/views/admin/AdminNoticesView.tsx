@@ -79,7 +79,8 @@ export function AdminNoticesView() {
         ) : rows.length === 0 ? (
           <p className={styles.empty}>등록된 공지가 없습니다.</p>
         ) : (
-          <table className={styles.table}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
             <thead>
               <tr>
                 <th scope="col">제목</th>
@@ -122,7 +123,8 @@ export function AdminNoticesView() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
 
         {data && (
