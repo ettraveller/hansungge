@@ -60,15 +60,18 @@
   transition: transform 0.25s, visibility 0.25s;
   display: flex;
   flex-direction: column;
-  box-shadow: -6px 0 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.15);
 }
 
-/* 닫힌 드로어를 right: -290px 로 밀어내면 문서 폭이 그만큼 늘어나 페이지 전체가
+/* 왼쪽에서 나온다. 햄버거 버튼이 헤더 왼쪽에 있으므로, 누른 자리에서 열리는 것이
+   손의 흐름과 맞는다.
+
+   닫힌 드로어를 left: -290px 로 밀어내면 문서 폭이 그만큼 늘어나 페이지 전체가
    가로로 스크롤된다(모바일에서 scrollWidth 423 > viewport 390 으로 실측). 화면 밖에
    두되 폭에는 기여하지 않도록 translate 로 옮기고, 닫힌 동안은 포커스도 받지 않는다. */
 .drawer {
-  right: 0;
-  transform: translateX(100%);
+  left: 0;
+  transform: translateX(-100%);
   visibility: hidden;
 }
 
@@ -95,6 +98,8 @@
   background: none;
   font-size: 22px;
   color: var(--gray);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .drawerNav {
@@ -107,7 +112,10 @@
   min-height: 0;
   /* 드로어 안에서 끝까지 내렸을 때 뒤 페이지가 따라 움직이지 않게 한다 */
   overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  /* -webkit-overflow-scrolling: touch 는 쓰지 않는다. iOS 13 부터 관성 스크롤이
+     기본이라 필요가 없고, 이 속성이 만드는 별도 스크롤 레이어에서는 <b>스크롤이
+     멎기 전의 첫 탭이 "관성 멈춤"으로 먹혀</b> 버튼이 눌리지 않는다. 두세 번
+     눌러야 반응하는 것처럼 보이는 원인이다. */
 }
 
 .drawerLink,
@@ -116,6 +124,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-height: 52px;
   padding: 15px 22px;
   font-size: 15px;
   font-weight: 600;
@@ -124,6 +133,10 @@
   border-bottom: 1px solid #f2efe8;
   background: none;
   color: inherit;
+  /* 더블탭 확대를 끄면 브라우저가 "두 번째 탭"을 기다리지 않고 즉시 click 을 낸다.
+     이것이 없으면 탭할 때마다 300ms 가 붙어 반응이 없는 것처럼 느껴진다. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .drawerLink:active,
@@ -157,10 +170,14 @@
 }
 
 .drawerSub a {
-  display: block;
+  display: flex;
+  align-items: center;
+  min-height: 46px;
   padding: 12px 22px 12px 34px;
   font-size: 14px;
   color: var(--gray);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .drawerSub a:active {
