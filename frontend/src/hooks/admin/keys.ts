@@ -1,4 +1,6 @@
 import type { AuditSearch } from '@/api/admin/audit';
+import type { AdminEventSearch } from '@/api/admin/events';
+import type { AdminNoticeSearch } from '@/api/admin/notices';
 import type { ProductSearch } from '@/api/admin/products';
 import type { AdminQnaSearch } from '@/api/admin/qnas';
 import type { PendingStatus } from '@/types/admin';
@@ -36,6 +38,14 @@ export const adminKeys = {
   qnas: () => [...adminKeys.all, 'qnas'] as const,
   qnaList: (search: AdminQnaSearch) => [...adminKeys.qnas(), 'list', search] as const,
   qnaUnansweredCount: () => [...adminKeys.qnas(), 'unanswered-count'] as const,
+
+  notices: () => [...adminKeys.all, 'notices'] as const,
+  noticeList: (search: AdminNoticeSearch) => [...adminKeys.notices(), 'list', search] as const,
+
+  events: () => [...adminKeys.all, 'events'] as const,
+  eventList: (search: AdminEventSearch) => [...adminKeys.events(), 'list', search] as const,
+  eventEntries: (id: number, page: number) =>
+    [...adminKeys.events(), id, 'entries', page] as const,
 
   auditLogs: (search: AuditSearch) => [...adminKeys.all, 'audit-logs', search] as const,
 
