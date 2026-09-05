@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
-import { DecimalInput, Field, SelectInput, TextArea } from '../Field';
+import { Field, MoneyInput, SelectInput, TextArea } from '../Field';
 import { Panel } from '../Panel';
 import { useDeclarePrice } from '@/hooks/admin/usePrices';
 import { formatAdjustment, formatKrw, formatPricePerGram } from '@/utils/format';
@@ -109,12 +109,12 @@ export function PriceDeclareForm() {
             hint="1돈(3.75g) 값이 아니다. 소수점 둘째 자리까지."
             error={priceInvalid ? '숫자만, 소수점 두 자리까지 입력할 수 있습니다.' : null}
           >
-            <DecimalInput
+            <MoneyInput
               id="declare-price"
               value={pricePerGram}
               invalid={priceInvalid}
-              placeholder="147000"
-              onChange={(e) => setPricePerGram(e.target.value)}
+              placeholder="147,000"
+              onValueChange={setPricePerGram}
             />
           </Field>
         </div>

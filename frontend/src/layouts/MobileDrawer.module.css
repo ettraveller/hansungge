@@ -49,6 +49,11 @@
 .drawerOn {
   position: fixed;
   top: 0;
+  /* ⚠️ left 를 <b>양쪽 상태에</b> 둔다.
+     열림(.drawerOn)에서 빠지면 position:fixed 가 <b>정적 위치</b>를 기준으로 잡는다.
+     이 컴포넌트는 헤더의 .wrap 안에서 렌더되므로 좌우 gutter 만큼 안쪽으로 밀리고,
+     화면 왼쪽 끝에 그만큼 빈 띠가 생긴다. */
+  left: 0;
   /* 왼쪽에서 나오므로 화면을 다 덮을 이유가 없다. 오른쪽에 남는 여백은 눌러서 닫는
      자리가 되어 오히려 쓸모가 있다. 아주 좁은 기기에서는 vw 로 줄어든다. */
   width: min(280px, 78vw);
@@ -72,7 +77,6 @@
    가로로 스크롤된다(모바일에서 scrollWidth 423 > viewport 390 으로 실측). 화면 밖에
    두되 폭에는 기여하지 않도록 translate 로 옮기고, 닫힌 동안은 포커스도 받지 않는다. */
 .drawer {
-  left: 0;
   transform: translateX(-100%);
   visibility: hidden;
 }

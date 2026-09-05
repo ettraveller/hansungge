@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
-import { DecimalInput, Field, SelectInput, TextArea } from '../Field';
+import { DecimalInput, Field, MoneyInput, SelectInput, TextArea } from '../Field';
 import { Modal } from '../Modal';
 import { Panel } from '../Panel';
 import { usePolicies, useUpdatePolicy } from '@/hooks/admin/usePrices';
@@ -214,11 +214,11 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
             hint="음수를 넣으면 차감된다. 예: -3000"
             error={valueInvalid ? '숫자를 입력해 주세요.' : null}
           >
-            <DecimalInput
+            <MoneyInput
               id="policy-adj-amount"
               value={adjAmount}
               invalid={valueInvalid}
-              onChange={(e) => setAdjAmount(e.target.value)}
+              onValueChange={setAdjAmount}
             />
           </Field>
         )}
@@ -254,11 +254,11 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
                   : null
             }
           >
-            <DecimalInput
+            <MoneyInput
               id="policy-manual"
               value={manualPrice}
               invalid={valueInvalid || manualInvalid}
-              onChange={(e) => setManualPrice(e.target.value)}
+              onValueChange={setManualPrice}
             />
           </Field>
         )}

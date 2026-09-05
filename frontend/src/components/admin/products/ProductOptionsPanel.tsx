@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
-import { DecimalInput, Field, TextInput } from '../Field';
+import { DecimalInput, Field, MoneyInput, TextInput } from '../Field';
 import { Modal } from '../Modal';
 import { Panel } from '../Panel';
 import { ReasonDialog } from '../ReasonDialog';
@@ -274,11 +274,11 @@ function OptionDialog({
             hint="MARKET_PLUS 방식에서만 가격에 더해진다."
             error={laborInvalid ? '숫자를 입력해 주세요.' : null}
           >
-            <DecimalInput
+            <MoneyInput
               id="opt-labor"
               value={additionalLaborCost}
               invalid={laborInvalid}
-              onChange={(e) => setAdditionalLaborCost(e.target.value)}
+              onValueChange={setAdditionalLaborCost}
             />
           </Field>
 

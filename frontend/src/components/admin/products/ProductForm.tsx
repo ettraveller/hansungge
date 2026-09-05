@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
-import { DecimalInput, Field, SelectInput, TextArea, TextInput } from '../Field';
+import { DecimalInput, Field, MoneyInput, SelectInput, TextArea, TextInput } from '../Field';
 import { flattenCategories, useAdminCategories } from '@/hooks/admin/useCategories';
 import type { ProductInput } from '@/api/admin/products';
 import type { AdminProduct } from '@/types/admin';
@@ -237,11 +237,11 @@ export function ProductForm({
             hint="가공비. 0 이면 시세 × 중량 그대로."
             error={laborInvalid ? '숫자를 입력해 주세요.' : fieldError(error, 'laborCost')}
           >
-            <DecimalInput
+            <MoneyInput
               id="p-labor"
               value={laborCost}
               invalid={laborInvalid}
-              onChange={(e) => setLaborCost(e.target.value)}
+              onValueChange={setLaborCost}
             />
           </Field>
 
@@ -273,11 +273,11 @@ export function ProductForm({
               fixedInvalid ? '0보다 큰 숫자를 입력해 주세요.' : fieldError(error, 'fixedPrice')
             }
           >
-            <DecimalInput
+            <MoneyInput
               id="p-fixed"
               value={fixedPrice}
               invalid={fixedInvalid}
-              onChange={(e) => setFixedPrice(e.target.value)}
+              onValueChange={setFixedPrice}
             />
           </Field>
         </div>
