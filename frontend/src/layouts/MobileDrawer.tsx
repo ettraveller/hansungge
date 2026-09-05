@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './MobileDrawer.module.css';
 
@@ -53,6 +54,25 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
     };
   }, [open]);
 
+  /**
+   * 드로어를 <b>{@code <body>} 바로 밑으로</b> 옮겨 그린다.
+   *
+   * <p>이 컴포넌트는 헤더 안에서 렌더되는데, 헤더가 {@code position: sticky} 에
+   * {@code z-index: 100} 이라 <b>쌓임 맥락</b>을 만든다. 그 안에서는 드로어의
+   * {@code z-index: 200} 이 헤더 내부에서만 의미가 있고, 바깥 세상에서는 헤더의
+   * 100 으로 취급된다.
+   *
+   * <p>그래서 페이지 어딘가에 100 보다 큰 요소가 있으면 <b>드로어를 뚫고 올라온다.</b>
+   * 지점찾기의 네이버 지도가 그랬다 — 지도가 만든 내부 요소들이 루트에서 그대로
+   * 경쟁하는데(지도 컨테이너에 position 이 없어 자기 맥락을 만들지 않는다), 그중
+   * 저작권 표시가 열린 메뉴 위로 비쳐 보였다.
+   *
+   * <p>맥락 밖으로 꺼내면 z-index 가 제 값대로 동작한다. 헤더의 z-index 를 올리는
+   * 방법도 있지만, 그건 다음에 z-index 를 쓰는 사람이 또 같은 함정에 빠진다.
+   */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <>
       <button
@@ -67,13 +87,16 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
         <span />
       </button>
 
-      <div
-        className={open ? styles.overlayOn : styles.overlay}
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-      />
+      {mounted &&
+        createPortal(
+          <>
+            <div
+              className={open ? styles.overlayOn : styles.overlay}
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
 
-      <aside className={open ? styles.drawerOn : styles.drawer} aria-hidden={!open}>
+            <aside className={open ? styles.drawerOn : styles.drawer} aria-hidden={!open}>
         <div className={styles.drawerHead}>
           <Image src="/logo.png" alt="한성금거래소" width={560} height={104} />
           <button
@@ -119,11 +142,14 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
           )}
         </nav>
 
-        <div className={styles.drawerFoot}>
-          <Link href="/login">로그인</Link>
-          <Link href="/signup">회원가입</Link>
-        </div>
-      </aside>
+            <div className={styles.drawerFoot}>
+              <Link href="/login">로그인</Link>
+              <Link href="/signup">회원가입</Link>
+            </div>
+            </aside>
+          </>,
+          document.body,
+        )}
     </>
   );
 }

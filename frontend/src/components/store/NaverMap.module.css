@@ -8,6 +8,12 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--light-gray);
+  /* 지도 SDK 가 만드는 내부 요소들을 <b>이 상자 안에 가둔다.</b>
+     position 이 없으면 그것들의 z-index 가 페이지 루트에서 그대로 경쟁해서,
+     저작권 표시 같은 것이 헤더나 열린 메뉴 위로 비쳐 올라온다. position 과
+     z-index 를 함께 주면 여기서 자체 쌓임 맥락이 만들어져 밖으로 새지 않는다. */
+  position: relative;
+  z-index: 0;
 }
 
 /* 키가 없거나 좌표가 없을 때. 회색 네모만 두면 "고장난 것"으로 보이므로,
