@@ -55,13 +55,17 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
    * 열린다. 스크롤을 내려야 보이니 사용자에게는 <b>눌러도 아무 일도 안 일어난 것</b>처럼
    * 보인다 — 그래서 한 번 더 누르고, 그러면 이번엔 접힌다.
    *
+   * <p>기준을 <b>묶음 전체가 아니라 열린 하위 목록</b>으로 잡는다. 묶음을 기준으로 하면
+   * 하위 목록이 길 때 브라우저가 묶음의 <b>윗변</b>에 맞춰 올려버려서, 정작 보여야 할
+   * 하위 항목이 여전히 화면 밖에 남는다.
+   *
    * <p>{@code block: 'nearest'} 라 이미 다 보이면 움직이지 않는다. 필요한 만큼만 민다.
    */
-  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const subRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (expanded == null) return;
-    const el = groupRefs.current[expanded];
+    const el = subRef.current;
     // 하위 목록이 그려진 뒤에 재야 한다. 펼치는 순간에는 아직 높이가 0 이다.
     const id = requestAnimationFrame(() => {
       el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -147,13 +151,7 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
                 {item.label}
               </Link>
             ) : (
-              <div
-                key={item.href}
-                ref={(el) => {
-                  groupRefs.current[item.label] = el;
-                }}
-                className={styles.drawerGroup}
-              >
+              <div key={item.href} className={styles.drawerGroup}>
                 <button
                   type="button"
                   className={styles.drawerToggle}
@@ -165,7 +163,7 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
                 </button>
 
                 {expanded === item.label && (
-                  <div className={styles.drawerSub}>
+                  <div ref={subRef} className={styles.drawerSub}>
                     <Link href={item.href}>{item.label} 전체</Link>
                     {item.children.map((child) => (
                       <Link key={child.href} href={child.href}>
