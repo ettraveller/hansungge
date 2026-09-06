@@ -425,6 +425,70 @@ DB_PASSWORD=<발급 비밀번호>
 > 함께 필요한 NCP 리소스: 앱 서버(Ubuntu), Object Storage(상품 이미지),
 > 도메인·SSL(A-5). 이미지 업로드는 아직 미구현이라 Object Storage 는 그 STEP 에서 붙인다.
 
+### E-6. GitHub Actions 자체 호스팅 러너 (배포)
+
+**왜 이렇게 하나** — 개발자가 이동하며 작업해서 공인 IP 가 계속 바뀐다. ACG 의 22번
+허용 IP 를 매번 고치는 것은 보안이 아니라 마찰이다. 자체 호스팅 러너는 서버에서
+GitHub 로 **나가는** 연결만 쓰므로 22번 포트를 열 필요가 없고, 배포는 GitHub 버튼
+하나로 끝난다(휴대폰에서도 된다).
+
+⚠️ 러너는 운영 서버에서 저장소의 코드를 실행한다. **저장소 쓰기 권한 = 서버에서
+임의 명령 실행**이라는 뜻이다. 비공개 저장소이고 접근 인원이 적다는 전제 위에 선다.
+외부 기여자를 받게 되면 이 방식을 다시 봐야 한다.
+
+#### 설치 (서버에서 1회, `hanseongge` 계정으로)
+
+> ⚠️ 이 한 번만은 SSH 가 필요하다. 지금 접속이 막혀 있으면 NCP 콘솔에서 ACG 의
+> 22번 허용 IP 를 현재 IP 로 한 번 고친 뒤 진행한다. 설치가 끝나면 다시는 필요 없다.
+
+```bash
+# GitHub > 저장소 > Settings > Actions > Runners > New self-hosted runner
+# 에서 나오는 토큰을 쓴다 (토큰은 1시간 만료).
+sudo -u hanseongge -i
+mkdir -p ~/actions-runner && cd ~/actions-runner
+curl -o runner.tar.gz -L https://github.com/actions/runner/releases/download/v2.328.0/actions-runner-linux-x64-2.328.0.tar.gz
+tar xzf runner.tar.gz
+./config.sh --url https://github.com/ettraveller/hansungge \
+            --token <발급받은_토큰> \
+            --labels hanseongge \
+            --name hanseongge-prod --unattended
+exit
+
+# 부팅 시 자동 시작 (root 로)
+cd /home/hanseongge/actions-runner
+sudo ./svc.sh install hanseongge
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+`--labels hanseongge` 를 빼면 안 된다. 워크플로가 `runs-on: [self-hosted, hanseongge]`
+로 이 러너를 지목한다.
+
+#### GitHub 변수 등록
+
+Settings > Secrets and variables > Actions > **Variables** 에 넣는다.
+비밀값이 아니다 — 브라우저 번들에 그대로 보인다. 저장소에 두지 않는 이유는
+도메인·키가 바뀔 때 코드를 고치지 않기 위해서다.
+
+| 이름 | 값 |
+|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api.hanseongge.com` |
+| `NEXT_PUBLIC_SITE_URL` | `https://hanseongge.com` |
+| `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID` | 발급받은 값 |
+
+#### 배포하기
+
+Actions 탭 > **배포** > Run workflow > `all`/`api`/`web` 선택.
+
+기본은 손으로 누른다. `main` 에 푸시할 때마다 나가게 하려면 워크플로의 `push:`
+주석을 풀면 되지만, 작업 중인 커밋도 `main` 으로 올라오므로 권하지 않는다.
+
+#### 개발 PC 에서 직접 배포하려면
+
+`infra/deploy/deploy.sh` 는 그대로 남아 있다. SSH 가 열려 있을 때만 쓸 수 있다.
+두 스크립트가 하는 일은 같고 거리가 다르다 — `deploy-local.sh` 는 서버 위에서
+자기 자신에게 설치한다.
+
 ### E-4. 휴대폰 본인확인 (KG이니시스 통합인증)
 
 **가입이 이것 없이는 완결되지 않는다.** 계약 전까지는 목 공급자로만 돌아가고,

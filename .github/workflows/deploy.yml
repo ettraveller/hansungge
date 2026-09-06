@@ -1,0 +1,97 @@
+#  =====================================================================
+#  배포 — 서버 안의 자체 호스팅 러너가 돈다
+#
+#  왜 자체 호스팅인가
+#    GitHub 가 빌려주는 러너는 IP 가 매번 바뀐다. 그 IP 를 ACG 에 허용하려면
+#    GitHub 의 전체 대역을 열어야 하는데, 그건 사실상 인터넷 전체를 여는 것이다.
+#
+#    자체 호스팅 러너는 서버 안에서 GitHub 로 <b>나가는</b> 연결만 쓴다.
+#    22번 포트를 열 필요가 없고, 개발자가 어디서 작업하든 상관이 없다 —
+#    배포는 GitHub 버튼 하나로 끝난다(휴대폰에서도 된다).
+#
+#  ⚠️ 러너는 운영 서버에서 이 저장소의 코드를 실행한다. 저장소에 쓰기 권한이 있는
+#     사람은 서버에서 임의 명령을 돌릴 수 있다는 뜻이다. 비공개 저장소이고 접근
+#     인원이 적다는 전제 위에 서 있다.
+#
+#  설치 방법은 docs/TODO_보류항목.md 의 E-6 참조.
+#  =====================================================================
+name: 배포
+
+on:
+  # 기본은 손으로 누른다. main 에 푸시할 때마다 나가게 하지 않는 이유 —
+  # 작업 중인 커밋도 main 으로 올라오고, 그때마다 운영이 바뀌면 곤란하다.
+  # 자동으로 바꾸려면 아래 push 주석을 풀면 된다.
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 무엇을 배포할지
+        required: true
+        default: all
+        type: choice
+        options: [all, api, web]
+
+  # push:
+  #   branches: [main]
+
+concurrency:
+  # 배포가 겹치면 current 심볼릭 링크를 서로 덮어써 어느 판이 도는지 알 수 없게 된다.
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, hanseongge]
+    timeout-minutes: 30
+
+    steps:
+      - name: 코드 받기
+        uses: actions/checkout@v4
+
+      - name: 운영 빌드 값 준비
+        # NEXT_PUBLIC_* 는 빌드 시점에 번들에 박힌다. 서버 환경변수로는 못 바꾼다.
+        #
+        # 비밀값이 아니다 — 브라우저 번들에 그대로 보인다. 그런데도 저장소에 두지
+        # 않는 이유는 도메인·키가 바뀔 때 코드를 고치지 않기 위해서다.
+        # GitHub > Settings > Secrets and variables > Actions > Variables 에 넣는다.
+        env:
+          API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          MAP_CLIENT_ID: ${{ vars.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_BASE_URL}" ] || [ -z "${SITE_URL}" ]; then
+            echo "::error::NEXT_PUBLIC_API_BASE_URL / NEXT_PUBLIC_SITE_URL 변수가 없습니다."
+            echo "::error::비어 있으면 번들에 localhost 가 박혀 사이트가 데이터를 못 불러옵니다."
+            exit 1
+          fi
+          cat > frontend/.env.production <<EOF
+          NEXT_PUBLIC_API_BASE_URL=${API_BASE_URL}
+          NEXT_PUBLIC_SITE_URL=${SITE_URL}
+          NEXT_PUBLIC_ENV_LABEL=prod
+          NEXT_PUBLIC_NAVER_MAP_CLIENT_ID=${MAP_CLIENT_ID}
+          EOF
+
+      - name: 배포
+        run: |
+          chmod +x infra/deploy/deploy-local.sh
+          infra/deploy/deploy-local.sh "${{ inputs.target || 'all' }}"
+
+      - name: 배포 후 확인
+        # 배포 스크립트는 서버 내부(127.0.0.1)만 본다. 밖에서 실제로 응답하는지는
+        # 별개 문제다 — nginx 설정이나 인증서가 잘못되면 내부는 멀쩡한데 밖이 막힌다.
+        run: |
+          set -euo pipefail
+          for url in https://hanseongge.com/ https://api.hanseongge.com/api/v1/health; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url")
+            echo "  $url -> $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::$url 이 200 이 아닙니다 ($code)"
+              exit 1
+            fi
+          done
+
+      - name: 빌드 산출물 정리
+        # 러너가 운영 서버에서 돈다. 워크스페이스를 그대로 두면 디스크가 찬다.
+        if: always()
+        run: |
+          rm -rf backend/build frontend/.next frontend/node_modules || true
