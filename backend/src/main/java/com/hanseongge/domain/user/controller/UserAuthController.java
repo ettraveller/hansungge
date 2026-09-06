@@ -7,6 +7,8 @@ import com.hanseongge.domain.user.dto.EmailVerificationRequest;
 import com.hanseongge.domain.user.dto.IdentityCompleteRequest;
 import com.hanseongge.domain.user.dto.IdentityStartRequest;
 import com.hanseongge.domain.user.dto.IdentityStartResponse;
+import com.hanseongge.domain.user.dto.PasswordResetConfirmRequest;
+import com.hanseongge.domain.user.dto.PasswordResetRequest;
 import com.hanseongge.domain.user.dto.PasswordSignInRequest;
 import com.hanseongge.domain.user.dto.OAuthAuthorizeResponse;
 import com.hanseongge.domain.user.dto.OAuthCallbackRequest;
@@ -149,6 +151,28 @@ public class UserAuthController {
             HttpServletResponse response) {
         return ResponseEntity.ok(userAuthService.signInWithPassword(
                 request.email(), request.password(), response));
+    }
+
+    @Operation(summary = "비밀번호 재설정 인증번호 요청",
+            description = "가입 여부와 무관하게 같은 응답을 준다 — 알려주면 회원 명단을 "
+                    + "훑는 도구가 된다. 메일은 회원인 경우에만 실제로 나간다.")
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequest request,
+            HttpServletRequest httpRequest) {
+        userAuthService.requestPasswordReset(request.email(), RequestInfo.from(httpRequest));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "비밀번호 재설정",
+            description = "성공하면 <b>그 회원의 다른 세션을 전부 끊는다.</b> 비밀번호를 잊은 "
+                    + "상황은 계정을 빼앗긴 상황과 구분되지 않기 때문이다.")
+    @PostMapping("/password/reset/confirm")
+    public ResponseEntity<Void> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmRequest request) {
+        userAuthService.confirmPasswordReset(
+                request.email(), request.code(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Access 토큰 재발급",

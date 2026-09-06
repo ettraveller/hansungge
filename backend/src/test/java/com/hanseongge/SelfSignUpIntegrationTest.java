@@ -381,6 +381,98 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 비밀번호 재설정
+    // =================================================================
+
+    @Nested
+    @DisplayName("비밀번호 재설정")
+    class PasswordReset {
+
+        private MvcResult requestReset(String email) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/password/reset")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("email", email))))
+                    .andReturn();
+        }
+
+        private MvcResult confirmReset(String email, String code, String newPassword) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/password/reset/confirm")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "email", email, "code", code, "newPassword", newPassword))))
+                    .andReturn();
+        }
+
+        @Test
+        @DisplayName("새 비밀번호로 바꾸고 그것으로 로그인된다")
+        void resetsAndSignsIn() throws Exception {
+            signUpWithEmail("buyer@test.local");
+            String newPassword = "Changed!2026a";
+
+            assertThat(requestReset("buyer@test.local").getResponse().getStatus()).isEqualTo(204);
+            MvcResult done = confirmReset("buyer@test.local", mailSender.lastCode(), newPassword);
+            assertThat(done.getResponse().getStatus()).isEqualTo(204);
+
+            assertThat(mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("email", "buyer@test.local", "password", newPassword))))
+                    .andReturn().getResponse().getStatus()).isEqualTo(200);
+
+            // 옛 비밀번호는 더 이상 통하지 않는다.
+            assertThat(mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("email", "buyer@test.local", "password", PASSWORD))))
+                    .andReturn().getResponse().getStatus()).isEqualTo(401);
+        }
+
+        @Test
+        @DisplayName("재설정하면 다른 기기의 세션이 끊긴다 — 빼앗긴 계정을 되찾는 것이 목적이다")
+        void revokesOtherSessions() throws Exception {
+            signUpWithEmail("buyer@test.local");
+            // 가입으로 받은 쿠키가 다른 기기의 세션이라고 본다.
+            MvcResult login = mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("email", "buyer@test.local", "password", PASSWORD))))
+                    .andReturn();
+            var cookie = login.getResponse().getCookie("hsg_rt");
+            assertThat(cookie).isNotNull();
+
+            requestReset("buyer@test.local");
+            confirmReset("buyer@test.local", mailSender.lastCode(), "Changed!2026a");
+
+            assertThat(mockMvc.perform(post("/api/v1/auth/refresh").cookie(cookie))
+                    .andReturn().getResponse().getStatus()).isGreaterThanOrEqualTo(400);
+        }
+
+        @Test
+        @DisplayName("가입하지 않은 주소도 같은 응답이다 — 회원 명단을 훑을 수 없다")
+        void unknownEmailLooksTheSame() throws Exception {
+            signUpWithEmail("buyer@test.local");
+
+            assertThat(requestReset("buyer@test.local").getResponse().getStatus()).isEqualTo(204);
+            assertThat(requestReset("nobody@test.local").getResponse().getStatus()).isEqualTo(204);
+
+            // 회원이 아닌 주소에는 메일이 나가지 않는다.
+            assertThat(mailSender.sent.stream().map(StubMailSender.Sent::to))
+                    .doesNotContain("nobody@test.local");
+        }
+
+        @Test
+        @DisplayName("가입 인증번호로 비밀번호를 바꿀 수 없다 — 목적이 다르면 다른 인증이다")
+        void signUpCodeCannotResetPassword() throws Exception {
+            signUpWithEmail("buyer@test.local");
+            // 가입 목적으로 새 번호를 받는다.
+            mockMvc.perform(post("/api/v1/auth/email/verification")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("email", "buyer@test.local"))))
+                    .andExpect(status().isNoContent());
+
+            MvcResult result = confirmReset("buyer@test.local", mailSender.lastCode(), "Changed!2026a");
+            assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        }
+    }
+
+    // =================================================================
     // 개인정보가 새어 나가지 않는다
     // =================================================================
 

@@ -8,6 +8,7 @@ import com.hanseongge.domain.user.entity.AgreementType;
 import com.hanseongge.domain.user.dto.IdentityStartResponse;
 import com.hanseongge.domain.user.entity.EmailVerificationPurpose;
 import com.hanseongge.domain.user.entity.IdentityPurpose;
+import com.hanseongge.domain.user.entity.User;
 import com.hanseongge.domain.user.entity.OAuthProviderType;
 import com.hanseongge.domain.user.entity.SocialAccount;
 import com.hanseongge.domain.user.oauth.OAuthException;
@@ -73,6 +74,7 @@ public class UserAuthService {
     private final EmailVerificationService emailVerificationService;
     private final UserLoginAttemptService loginAttemptService;
     private final AppProperties appProperties;
+    private final com.hanseongge.domain.user.repository.UserRepository userRepository;
 
     // =================================================================
     // 로그인 화면 구성
@@ -317,6 +319,45 @@ public class UserAuthService {
             case BAD_CREDENTIALS -> throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
         return accountService.signInWithPassword(outcome.user().getId(), response);
+    }
+
+    // =================================================================
+    // 비밀번호 재설정
+    // =================================================================
+
+    /**
+     * 재설정 인증번호를 보낸다.
+     *
+     * <p><b>가입 여부를 알려주지 않는다.</b> 회원이든 아니든 같은 응답을 준다 —
+     * 알려주면 아무 주소나 넣어 회원 명단을 훑을 수 있다.
+     *
+     * <p>회원이 아니어도 인증 행을 남기는 이유는 <b>재발송 쿨다운을 같게 만들기</b>
+     * 위해서다. 행을 남기지 않으면 두 번 연속 요청했을 때 회원이면 429, 아니면 204 가
+     * 되어 응답으로 구분된다. 메일만 보내지 않는다.
+     */
+    public void requestPasswordReset(String email, RequestInfo requestInfo) {
+        boolean isMember = userRepository.findByEmail(email).isPresent();
+        emailVerificationService.issue(
+                email, EmailVerificationPurpose.PASSWORD_RESET, requestInfo, isMember);
+    }
+
+    /**
+     * 인증번호를 확인하고 비밀번호를 바꾼다.
+     *
+     * <p>여기서도 회원이 아닌 경우와 번호가 틀린 경우를 같은 오류로 돌려준다.
+     */
+    public void confirmPasswordReset(String email, String code, String newPassword) {
+        if (!emailVerificationService.confirm(email, code, EmailVerificationPurpose.PASSWORD_RESET)) {
+            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID);
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID));
+        user.requireSignInAllowed();
+
+        accountService.resetPassword(user.getId(), newPassword);
+        emailVerificationService.findLatestVerified(email, EmailVerificationPurpose.PASSWORD_RESET)
+                .ifPresent(v -> emailVerificationService.consume(v.getId()));
     }
 
     // =================================================================

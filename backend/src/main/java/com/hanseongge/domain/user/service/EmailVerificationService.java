@@ -55,6 +55,19 @@ public class EmailVerificationService {
      */
     @Transactional
     public void issue(String email, EmailVerificationPurpose purpose, RequestInfo requestInfo) {
+        issue(email, purpose, requestInfo, true);
+    }
+
+    /**
+     * @param deliver false 면 행만 남기고 메일은 보내지 않는다.
+     *
+     * <p>비밀번호 재설정에서 쓴다. 가입되지 않은 주소에는 메일을 보낼 이유가 없지만,
+     * <b>행을 남기지 않으면 재발송 쿨다운이 달라져 가입 여부가 새어 나간다</b> —
+     * 두 번 연속 요청했을 때 회원이면 429, 아니면 204 가 되어 구분된다.
+     */
+    @Transactional
+    public void issue(String email, EmailVerificationPurpose purpose, RequestInfo requestInfo,
+                      boolean deliver) {
         OffsetDateTime now = OffsetDateTime.now();
 
         // 재발송 쿨다운 — 없으면 같은 주소로 메일을 무한히 보낼 수 있고, 그것은 우리
@@ -69,6 +82,10 @@ public class EmailVerificationService {
         OffsetDateTime expiresAt = now.plusMinutes(policy().emailCodeTtlMinutes());
         repository.save(EmailVerification.issue(email, code, purpose, expiresAt,
                 requestInfo == null ? null : requestInfo.ip()));
+
+        if (!deliver) {
+            return;
+        }
 
         try {
             mailSender.send(email, subjectOf(purpose), bodyOf(purpose, code));
@@ -119,6 +136,12 @@ public class EmailVerificationService {
             throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID);
         }
         return verification;
+    }
+
+    /** 인증을 소진 처리한다. 한 번 쓴 번호는 다시 통하지 않는다. */
+    @Transactional
+    public void consume(Long id) {
+        repository.findById(id).ifPresent(EmailVerification::consume);
     }
 
     @Transactional(readOnly = true)

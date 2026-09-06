@@ -180,6 +180,22 @@ public class UserAccountService {
         return issueSession(user, response);
     }
 
+    /**
+     * 비밀번호 재설정.
+     *
+     * <p><b>그 회원의 다른 세션을 전부 끊는다.</b> 비밀번호를 잊어 재설정하는 상황은
+     * 계정을 빼앗겼을 가능성과 구분되지 않는다. 남의 기기에 열려 있던 세션이
+     * 비밀번호를 바꾼 뒤에도 살아 있으면 재설정이 아무 소용이 없다.
+     */
+    @Transactional
+    public void resetPassword(Long userId, String rawPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.changePassword(passwordEncoder.encode(rawPassword));
+        refreshTokenService.revokeAll(userId);
+        log.info("[AUTH] 비밀번호 재설정. userId={}", userId);
+    }
+
     /** 쿠키 회전 후 새 Access 토큰을 낸다. */
     @Transactional(readOnly = true)
     public SignInResponse describeSession(Long userId, String accessToken) {
