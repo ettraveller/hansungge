@@ -90,19 +90,19 @@ export function CurrentPriceTable() {
 function PriceRow({ row }: { row: AdminCurrentPrice }) {
   return (
     <tr>
-      <td className={styles.strong}>{METAL_LABEL[row.metalType] ?? row.metalName}</td>
-      <td>{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
-      <td className={styles.num}>{formatPricePerGram(row.rawPricePerGram)}</td>
-      <td className={styles.num}>{formatAdjustment(row.adjustment)}</td>
-      <td className={`${styles.num} ${styles.strong}`}>
+      <td data-label="금속" data-card-title className={styles.strong}>{METAL_LABEL[row.metalType] ?? row.metalName}</td>
+      <td data-label="구분">{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
+      <td data-label="원본" className={styles.num}>{formatPricePerGram(row.rawPricePerGram)}</td>
+      <td data-label="보정" className={styles.num}>{formatAdjustment(row.adjustment)}</td>
+      <td data-label="최종" className={`${styles.num} ${styles.strong}`}>
         {row.available ? formatPricePerGram(row.pricePerGram) : '-'}
       </td>
-      <td>{row.policyMode ? MODE_LABEL[row.policyMode] : '-'}</td>
-      <td>
+      <td data-label="정책">{row.policyMode ? MODE_LABEL[row.policyMode] : '-'}</td>
+      <td data-label="상태">
         <AvailabilityBadge row={row} />
       </td>
-      <td className={styles.muted}>{formatDateTime(row.effectiveFrom)}</td>
-      <td className={`${styles.muted} ${styles.wrapText}`}>
+      <td data-label="고시 시각" className={styles.muted}>{formatDateTime(row.effectiveFrom)}</td>
+      <td data-label="고시자" className={`${styles.muted} ${styles.wrapText}`}>
         {row.createdBy ? `${row.createdBy} · ${row.changeReason ?? '-'}` : '-'}
       </td>
     </tr>

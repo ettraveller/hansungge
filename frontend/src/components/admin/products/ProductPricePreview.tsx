@@ -92,6 +92,11 @@ function QuoteBlock({ quote }: { quote: AdminPriceQuote }) {
           )}
         </Alert>
       ) : (
+        // 다른 관리자 표와 달리 td 에 data-label 을 붙이지 않는다 — 일부러다.
+        // 이 표는 목록이 아니라 계산 명세서다. 행 하나가 독립된 항목이 아니라
+        // 소계·부가세·단수조정·합계로 이어지는 한 줄기 계산이고, 그 줄들은
+        // colSpan 으로 금액 열에 맞춰 서 있다. 카드로 쪼개면 '무엇에서 무엇이
+        // 나왔는지'가 사라진다. 좁은 화면에서는 예전처럼 가로로 스크롤한다.
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>

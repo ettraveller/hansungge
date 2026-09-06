@@ -244,27 +244,27 @@ function ProductRow({
 }) {
   return (
     <tr>
-      <td className={`${styles.num} ${styles.muted}`}>{product.id}</td>
-      <td className={styles.strong}>
+      <td data-label="ID" className={`${styles.num} ${styles.muted}`}>{product.id}</td>
+      <td data-label="상품명" data-card-title className={styles.strong}>
         <Link href={`/admin/products/${product.id}`}>{product.name}</Link>
       </td>
-      <td className={styles.muted}>{categoryPath}</td>
-      <td>{product.priceTypeName}</td>
-      <td>{product.metalType ? METAL_LABEL[product.metalType] : '-'}</td>
-      <td className={styles.num}>{formatGram(product.weightG)}</td>
-      <td className={styles.num}>{formatKrw(product.laborCost)}</td>
-      <td>
+      <td data-label="카테고리" className={styles.muted}>{categoryPath}</td>
+      <td data-label="가격 방식">{product.priceTypeName}</td>
+      <td data-label="금속">{product.metalType ? METAL_LABEL[product.metalType] : '-'}</td>
+      <td data-label="중량" className={styles.num}>{formatGram(product.weightG)}</td>
+      <td data-label="공임" className={styles.num}>{formatKrw(product.laborCost)}</td>
+      <td data-label="상태">
         <StatusBadge tone={STATUS_TONE[product.status]}>
           {PRODUCT_STATUS_LABEL[product.status]}
         </StatusBadge>
       </td>
-      <td>
+      <td data-label="노출">
         <StatusBadge tone={product.active ? 'success' : 'neutral'}>
           {product.active ? '노출' : '숨김'}
         </StatusBadge>
       </td>
-      <td className={styles.muted}>{formatDateTime(product.updatedAt)}</td>
-      <td>
+      <td data-label="수정" className={styles.muted}>{formatDateTime(product.updatedAt)}</td>
+      <td data-label="작업" data-card-actions>
         <Link className={`${styles.btn} ${styles.btnSm}`} href={`/admin/products/${product.id}`}>
           상세
         </Link>

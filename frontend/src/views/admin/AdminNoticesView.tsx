@@ -94,7 +94,7 @@ export function AdminNoticesView() {
             <tbody>
               {rows.map((notice) => (
                 <tr key={notice.id} className={notice.active ? undefined : styles.muted}>
-                  <td data-label="제목">
+                  <td data-label="제목" data-card-title>
                     <span className={styles.wrapText}>
                       {notice.pinned && <span className={styles.tag}>고정</span>}
                       {notice.title}
@@ -108,7 +108,7 @@ export function AdminNoticesView() {
                   <td data-label="조회수" className="tabular">{notice.viewCount.toLocaleString()}</td>
                   <td data-label="작성자">{notice.createdBy}</td>
                   <td data-label="등록" className="tabular">{formatDateTime(notice.createdAt)}</td>
-                  <td data-label="작업">
+                  <td data-label="작업" data-card-actions>
                     <div className={styles.rowActions}>
                       <Button small onClick={() => setEditing(notice)}>
                         {canWrite ? '수정' : '보기'}

@@ -124,14 +124,14 @@ export function AdminUsersView() {
                   const isSelf = user.id === admin?.id;
                   return (
                     <tr key={user.id}>
-                      <td className={`${styles.num} ${styles.muted}`}>{user.id}</td>
-                      <td className={styles.strong}>
+                      <td data-label="ID" className={`${styles.num} ${styles.muted}`}>{user.id}</td>
+                      <td data-label="아이디" data-card-title className={styles.strong}>
                         {user.loginId}
                         {isSelf && <span className={styles.muted}> (본인)</span>}
                       </td>
-                      <td>{user.name}</td>
-                      <td>{ADMIN_ROLE_LABEL[user.role]}</td>
-                      <td>
+                      <td data-label="이름">{user.name}</td>
+                      <td data-label="권한">{ADMIN_ROLE_LABEL[user.role]}</td>
+                      <td data-label="상태">
                         <StatusBadge
                           tone={
                             user.status === 'ACTIVE'
@@ -144,10 +144,10 @@ export function AdminUsersView() {
                           {ADMIN_STATUS_LABEL[user.status]}
                         </StatusBadge>
                       </td>
-                      <td className={styles.num}>{user.loginFailCount}</td>
-                      <td className={styles.muted}>{formatDateTime(user.lastLoginAt)}</td>
-                      <td className={styles.muted}>{formatDateTime(user.passwordChangedAt)}</td>
-                      <td>
+                      <td data-label="실패" className={styles.num}>{user.loginFailCount}</td>
+                      <td data-label="마지막 로그인" className={styles.muted}>{formatDateTime(user.lastLoginAt)}</td>
+                      <td data-label="비밀번호 변경" className={styles.muted}>{formatDateTime(user.passwordChangedAt)}</td>
+                      <td data-label="작업" data-card-actions>
                         <div className={styles.rowActions}>
                           <Button small onClick={() => setEditing(user)}>
                             수정

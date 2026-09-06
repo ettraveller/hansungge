@@ -95,33 +95,33 @@ export function ProductOptionsPanel({
             <tbody>
               {rows.map((option) => (
                 <tr key={option.id}>
-                  <td className={`${styles.num} ${styles.muted}`}>{option.id}</td>
-                  <td className={styles.strong}>{option.name}</td>
-                  <td className={styles.num}>
+                  <td data-label="ID" className={`${styles.num} ${styles.muted}`}>{option.id}</td>
+                  <td data-label="옵션명" data-card-title className={styles.strong}>{option.name}</td>
+                  <td data-label="중량" className={styles.num}>
                     {option.weightG == null ? (
                       <span className={styles.muted}>상품 중량</span>
                     ) : (
                       formatGram(option.weightG)
                     )}
                   </td>
-                  <td className={styles.num}>
+                  <td data-label="추가공임" className={styles.num}>
                     {usesAdditionalLabor ? (
                       formatKrw(option.additionalLaborCost)
                     ) : (
                       <span className={styles.muted}>{formatKrw(option.additionalLaborCost)}</span>
                     )}
                   </td>
-                  <td className={`${styles.num} ${styles.strong}`}>{option.stock ?? '-'}</td>
-                  <td>
+                  <td data-label="재고" className={`${styles.num} ${styles.strong}`}>{option.stock ?? '-'}</td>
+                  <td data-label="판매">
                     <StatusBadge
                       tone={!option.active ? 'neutral' : option.inStock ? 'success' : 'warning'}
                     >
                       {!option.active ? '비활성' : option.inStock ? '판매 가능' : '품절'}
                     </StatusBadge>
                   </td>
-                  <td className={styles.num}>{option.sort}</td>
+                  <td data-label="정렬" className={styles.num}>{option.sort}</td>
                   {canEdit && (
-                    <td>
+                    <td data-label="작업" data-card-actions>
                       <div className={styles.rowActions}>
                         <Button small onClick={() => setStockTarget(option)}>
                           재고

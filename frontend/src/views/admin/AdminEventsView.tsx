@@ -105,7 +105,7 @@ export function AdminEventsView() {
             <tbody>
               {rows.map((event) => (
                 <tr key={event.id} className={event.active ? undefined : styles.muted}>
-                  <td data-label="제목">
+                  <td data-label="제목" data-card-title>
                     <span className={styles.wrapText}>{event.title}</span>
                     {!event.active && <span className={styles.cellSub}>내려진 이벤트</span>}
                   </td>
@@ -128,7 +128,7 @@ export function AdminEventsView() {
                     )}
                   </td>
                   <td data-label="조회수" className="tabular">{event.viewCount.toLocaleString()}</td>
-                  <td data-label="작업">
+                  <td data-label="작업" data-card-actions>
                     <div className={styles.rowActions}>
                       <Button small onClick={() => setEditing(event)}>
                         {canWrite ? '수정' : '보기'}
@@ -363,12 +363,12 @@ function EntriesDialog({ event, onClose }: { event: AdminEvent; onClose: () => v
           <tbody>
             {rows.map((entry) => (
               <tr key={entry.id}>
-                <td>
+                <td data-label="작성자" data-card-title>
                   {entry.authorName}
                   {entry.secret && <span className={styles.tag}>비밀</span>}
                 </td>
-                <td className={styles.preserveLines}>{entry.content}</td>
-                <td className="tabular">{formatDateTime(entry.createdAt)}</td>
+                <td data-label="응모 내용" className={styles.preserveLines}>{entry.content}</td>
+                <td data-label="응모 시각" className="tabular">{formatDateTime(entry.createdAt)}</td>
               </tr>
             ))}
           </tbody>

@@ -258,19 +258,19 @@ export function AdminAuditLogsView() {
                 {rows.map((log) => (
                   <Fragment key={log.id}>
                     <tr>
-                      <td className={styles.muted}>{formatDateTime(log.createdAt)}</td>
-                      <td className={styles.strong}>
+                      <td data-label="시각" className={styles.muted}>{formatDateTime(log.createdAt)}</td>
+                      <td data-label="행위자" className={styles.strong}>
                         {log.actor}
                         <span className={styles.muted}> · {log.actorType}</span>
                       </td>
-                      <td>
+                      <td data-label="행위" data-card-title>
                         <StatusBadge tone={toneOf(log.action)}>{log.action}</StatusBadge>
                       </td>
-                      <td className={styles.muted}>
+                      <td data-label="대상" className={styles.muted}>
                         {log.targetType ? `${log.targetType} #${log.targetId ?? '-'}` : '-'}
                       </td>
-                      <td className={styles.muted}>{log.ip ?? '-'}</td>
-                      <td>
+                      <td data-label="IP" className={styles.muted}>{log.ip ?? '-'}</td>
+                      <td data-label="변경 내용" data-card-actions>
                         {log.beforeValue || log.afterValue ? (
                           <Button
                             small

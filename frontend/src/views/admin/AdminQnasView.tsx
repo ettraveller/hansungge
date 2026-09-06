@@ -133,7 +133,7 @@ export function AdminQnasView() {
               {rows.map((qna) => (
                 <tr key={qna.id} className={qna.active ? undefined : styles.muted}>
                   <td data-label="게시판">{BOARD_LABEL[qna.boardType]}</td>
-                  <td data-label="제목">
+                  <td data-label="제목" data-card-title>
                     <span className={styles.wrapText}>
                       {qna.secret && <span className={styles.tag}>비밀</span>}
                       {qna.title}
@@ -150,7 +150,7 @@ export function AdminQnasView() {
                     </StatusBadge>
                   </td>
                   <td data-label="등록" className="tabular">{formatDateTime(qna.createdAt)}</td>
-                  <td data-label="작업">
+                  <td data-label="작업" data-card-actions>
                     <div className={styles.rowActions}>
                       <Button small onClick={() => setAnswering(qna)}>
                         {qna.status === 'ANSWERED' ? '답변 보기' : '답변'}

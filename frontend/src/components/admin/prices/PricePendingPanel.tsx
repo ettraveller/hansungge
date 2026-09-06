@@ -119,19 +119,19 @@ export function PricePendingPanel({ canDecide }: { canDecide: boolean }) {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td className={`${styles.num} ${styles.muted}`}>{row.id}</td>
-                  <td className={styles.strong}>{METAL_LABEL[row.metalType]}</td>
-                  <td>{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
-                  <td className={styles.num}>{formatPricePerGram(row.prevPrice)}</td>
-                  <td className={`${styles.num} ${styles.strong}`}>
+                  <td data-label="#" className={`${styles.num} ${styles.muted}`}>{row.id}</td>
+                  <td data-label="금속" data-card-title className={styles.strong}>{METAL_LABEL[row.metalType]}</td>
+                  <td data-label="구분">{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
+                  <td data-label="현재 적용가" className={styles.num}>{formatPricePerGram(row.prevPrice)}</td>
+                  <td data-label="대기 값" className={`${styles.num} ${styles.strong}`}>
                     {formatPricePerGram(row.calcPrice)}
                   </td>
-                  <td className={styles.num}>
+                  <td data-label="변동률" className={styles.num}>
                     {row.changePercent == null
                       ? '-'
                       : `${row.changePercent > 0 ? '+' : ''}${row.changePercent}%`}
                   </td>
-                  <td>
+                  <td data-label="상태">
                     <StatusBadge
                       tone={
                         row.status === 'PENDING'
@@ -144,12 +144,12 @@ export function PricePendingPanel({ canDecide }: { canDecide: boolean }) {
                       {STATUS_LABEL[row.status]}
                     </StatusBadge>
                   </td>
-                  <td className={styles.muted}>{formatDateTime(row.createdAt)}</td>
-                  <td className={styles.muted}>
+                  <td data-label="등록 시각" className={styles.muted}>{formatDateTime(row.createdAt)}</td>
+                  <td data-label="판단" className={styles.muted}>
                     {row.decidedBy ? `${row.decidedBy} · ${formatDateTime(row.decidedAt)}` : '-'}
                   </td>
                   {canDecide && (
-                    <td>
+                    <td data-label="작업" data-card-actions>
                       {row.status === 'PENDING' ? (
                         <div className={styles.rowActions}>
                           <Button

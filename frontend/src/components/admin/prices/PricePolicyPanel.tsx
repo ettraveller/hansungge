@@ -93,14 +93,14 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
             <tbody>
               {data.map((policy) => (
                 <tr key={policy.id}>
-                  <td className={styles.strong}>{METAL_LABEL[policy.metalType]}</td>
-                  <td>{sideLabelOf(policy.priceSide)}</td>
-                  <td>{MODE_LABEL[policy.mode]}</td>
-                  <td className={styles.num}>{describe(policy)}</td>
-                  <td className={styles.muted}>{policy.updatedBy ?? '-'}</td>
-                  <td className={styles.muted}>{formatDateTime(policy.updatedAt)}</td>
+                  <td data-label="금속" data-card-title className={styles.strong}>{METAL_LABEL[policy.metalType]}</td>
+                  <td data-label="구분">{sideLabelOf(policy.priceSide)}</td>
+                  <td data-label="보정 방식">{MODE_LABEL[policy.mode]}</td>
+                  <td data-label="보정값" className={styles.num}>{describe(policy)}</td>
+                  <td data-label="변경자" className={styles.muted}>{policy.updatedBy ?? '-'}</td>
+                  <td data-label="변경 시각" className={styles.muted}>{formatDateTime(policy.updatedAt)}</td>
                   {canEdit && (
-                    <td>
+                    <td data-label="작업" data-card-actions>
                       <Button small onClick={() => setEditing(policy)}>
                         변경
                       </Button>

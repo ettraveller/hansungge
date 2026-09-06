@@ -165,12 +165,12 @@ export function AdminDashboardView() {
               <tbody>
                 {priceRows.map((row) => (
                   <tr key={`${row.metalType}-${row.priceSide}`}>
-                    <td className={styles.strong}>{METAL_LABEL[row.metalType] ?? row.metalName}</td>
-                    <td>{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
-                    <td className={`${styles.num} ${styles.strong}`}>
+                    <td data-label="금속" data-card-title className={styles.strong}>{METAL_LABEL[row.metalType] ?? row.metalName}</td>
+                    <td data-label="구분">{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
+                    <td data-label="최종 시세" className={`${styles.num} ${styles.strong}`}>
                       {row.available ? formatPricePerGram(row.pricePerGram) : '시세문의'}
                     </td>
-                    <td>
+                    <td data-label="상태">
                       <StatusBadge
                         tone={
                           row.availability === 'AVAILABLE'
@@ -187,7 +187,7 @@ export function AdminDashboardView() {
                             : '미고시'}
                       </StatusBadge>
                     </td>
-                    <td className={styles.muted}>{formatDateTime(row.effectiveFrom)}</td>
+                    <td data-label="고시 시각" className={styles.muted}>{formatDateTime(row.effectiveFrom)}</td>
                   </tr>
                 ))}
               </tbody>

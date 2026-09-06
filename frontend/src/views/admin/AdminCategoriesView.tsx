@@ -89,8 +89,8 @@ export function AdminCategoriesView() {
               <tbody>
                 {rows.map(({ category, depth }) => (
                   <tr key={category.id}>
-                    <td className={`${styles.num} ${styles.muted}`}>{category.id}</td>
-                    <td>
+                    <td data-label="ID" className={`${styles.num} ${styles.muted}`}>{category.id}</td>
+                    <td data-label="이름" data-card-title>
                       <span style={{ paddingLeft: depth * 18 }}>
                         {depth > 0 && <span className={styles.muted}>└ </span>}
                         <span className={depth === 0 ? styles.strong : undefined}>
@@ -98,15 +98,15 @@ export function AdminCategoriesView() {
                         </span>
                       </span>
                     </td>
-                    <td className={styles.num}>{category.sort}</td>
-                    <td>
+                    <td data-label="정렬" className={styles.num}>{category.sort}</td>
+                    <td data-label="노출">
                       <StatusBadge tone={category.active ? 'success' : 'neutral'}>
                         {category.active ? '노출' : '숨김'}
                       </StatusBadge>
                     </td>
-                    <td className={styles.muted}>{formatDateTime(category.updatedAt)}</td>
+                    <td data-label="수정 시각" className={styles.muted}>{formatDateTime(category.updatedAt)}</td>
                     {canEdit && (
-                      <td>
+                      <td data-label="작업" data-card-actions>
                         <div className={styles.rowActions}>
                           <Button small onClick={() => setEditing(category)}>
                             수정

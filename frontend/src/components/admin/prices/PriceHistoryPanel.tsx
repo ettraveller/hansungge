@@ -106,21 +106,21 @@ export function PriceHistoryPanel() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td className={`${styles.num} ${styles.muted}`}>{row.id}</td>
-                  <td className={`${styles.num} ${styles.strong}`}>
+                  <td data-label="#" className={`${styles.num} ${styles.muted}`}>{row.id}</td>
+                  <td data-label="최종 시세" data-card-title className={`${styles.num} ${styles.strong}`}>
                     {formatPricePerGram(row.pricePerGram)}
                   </td>
-                  <td>{MODE_LABEL[row.policyMode]}</td>
-                  <td>{formatDateTime(row.effectiveFrom)}</td>
-                  <td>
+                  <td data-label="보정">{MODE_LABEL[row.policyMode]}</td>
+                  <td data-label="적용 시작">{formatDateTime(row.effectiveFrom)}</td>
+                  <td data-label="적용 마감">
                     {row.effectiveTo == null ? (
                       <StatusBadge tone="gold">현재 적용중</StatusBadge>
                     ) : (
                       <span className={styles.muted}>{formatDateTime(row.effectiveTo)}</span>
                     )}
                   </td>
-                  <td className={styles.muted}>{row.createdBy}</td>
-                  <td className={`${styles.muted} ${styles.wrapText}`}>{row.changeReason}</td>
+                  <td data-label="고시자" className={styles.muted}>{row.createdBy}</td>
+                  <td data-label="사유" className={`${styles.muted} ${styles.wrapText}`}>{row.changeReason}</td>
                 </tr>
               ))}
             </tbody>
