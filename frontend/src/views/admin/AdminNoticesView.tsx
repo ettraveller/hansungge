@@ -94,21 +94,21 @@ export function AdminNoticesView() {
             <tbody>
               {rows.map((notice) => (
                 <tr key={notice.id} className={notice.active ? undefined : styles.muted}>
-                  <td>
+                  <td data-label="제목">
                     <span className={styles.wrapText}>
                       {notice.pinned && <span className={styles.tag}>고정</span>}
                       {notice.title}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="상태">
                     <StatusBadge tone={notice.active ? 'success' : 'neutral'}>
                       {notice.active ? '노출중' : '내림'}
                     </StatusBadge>
                   </td>
-                  <td className="tabular">{notice.viewCount.toLocaleString()}</td>
-                  <td>{notice.createdBy}</td>
-                  <td className="tabular">{formatDateTime(notice.createdAt)}</td>
-                  <td>
+                  <td data-label="조회수" className="tabular">{notice.viewCount.toLocaleString()}</td>
+                  <td data-label="작성자">{notice.createdBy}</td>
+                  <td data-label="등록" className="tabular">{formatDateTime(notice.createdAt)}</td>
+                  <td data-label="작업">
                     <div className={styles.rowActions}>
                       <Button small onClick={() => setEditing(notice)}>
                         {canWrite ? '수정' : '보기'}

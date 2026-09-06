@@ -1,0 +1,86 @@
+/* =====================================================================
+   관리자 하단 탭바 — 1024px 미만에서만 보인다
+
+   그 위에서는 사이드바가 늘 떠 있어 탭바가 겹치기만 한다. 기준을 사이드바가
+   숨는 폭(AdminLayout 의 1024px)과 같게 맞춘다 — 두 값이 어긋나면 어느 폭에서는
+   둘 다 없거나 둘 다 있는 구간이 생긴다.
+   ===================================================================== */
+
+.bar {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 150;
+    background: #fff;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    /* 홈 인디케이터가 있는 기기에서 탭이 가려지지 않게 한다 */
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .tab {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    /* 손가락 조작이라 44px 아래로 내려가지 않는다 */
+    min-height: 52px;
+    padding: 6px 0;
+    font-size: 11px;
+    color: #9a958a;
+    text-decoration: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .on {
+    color: var(--gold-deep);
+    font-weight: 700;
+  }
+
+  /* 활성 탭 위에 짧은 선. 색만으로 구분하면 색각 이상에서 구분되지 않는다. */
+  .on::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 2px;
+    background: var(--gold-deep);
+    border-radius: 0 0 2px 2px;
+  }
+
+  .iconWrap {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* 미답변 건수. 숫자가 늘어도 아이콘을 밀지 않도록 절대 위치로 띄운다. */
+  .badge {
+    position: absolute;
+    top: -5px;
+    left: 12px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+  }
+}

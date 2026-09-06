@@ -105,20 +105,20 @@ export function AdminEventsView() {
             <tbody>
               {rows.map((event) => (
                 <tr key={event.id} className={event.active ? undefined : styles.muted}>
-                  <td>
+                  <td data-label="제목">
                     <span className={styles.wrapText}>{event.title}</span>
                     {!event.active && <span className={styles.cellSub}>내려진 이벤트</span>}
                   </td>
-                  <td className="tabular">
+                  <td data-label="기간" className="tabular">
                     {formatDateTime(event.startAt)}
                     <span className={styles.cellSub}>~ {formatDateTime(event.endAt)}</span>
                   </td>
-                  <td>
+                  <td data-label="상태">
                     <StatusBadge tone={STATUS_TONE[event.status]}>
                       {EVENT_STATUS_LABEL[event.status]}
                     </StatusBadge>
                   </td>
-                  <td className="tabular">
+                  <td data-label="응모" className="tabular">
                     {event.entryCount > 0 ? (
                       <Button small onClick={() => setViewingEntries(event)}>
                         {event.entryCount.toLocaleString()}건
@@ -127,8 +127,8 @@ export function AdminEventsView() {
                       <span className={styles.muted}>0건</span>
                     )}
                   </td>
-                  <td className="tabular">{event.viewCount.toLocaleString()}</td>
-                  <td>
+                  <td data-label="조회수" className="tabular">{event.viewCount.toLocaleString()}</td>
+                  <td data-label="작업">
                     <div className={styles.rowActions}>
                       <Button small onClick={() => setEditing(event)}>
                         {canWrite ? '수정' : '보기'}

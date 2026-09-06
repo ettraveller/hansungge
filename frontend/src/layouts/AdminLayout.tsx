@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { AdminTabBar } from '@/layouts/AdminTabBar';
 import { useAdminLogout, useAdminSession } from '@/hooks/admin/useAdminSession';
 import { ADMIN_ROLE_LABEL, type AdminRole } from '@/types/admin';
 import styles from './AdminLayout.module.css';
@@ -167,6 +168,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </header>
         <main className={styles.main}>{children}</main>
       </div>
+
+      {/* 좁은 화면 전용. 자주 가는 화면만 올린다 — 메뉴 전체는 햄버거에 그대로 있다. */}
+      <AdminTabBar />
     </div>
   );
 }

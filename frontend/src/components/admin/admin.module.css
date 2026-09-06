@@ -602,6 +602,8 @@
 @media (max-width: 640px) {
   .page {
     gap: 14px;
+    /* 하단 탭바에 마지막 항목이 가리지 않게 한다 */
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 
   .title {
@@ -658,19 +660,124 @@
     min-height: 34px;
   }
 
-  /* 표는 감싼 상자 안에서만 가로로 움직인다. 페이지가 통째로 밀리면 본문을 읽을 수 없다. */
+  /* -------------------------------------------------------------
+     표를 카드 목록으로 바꾼다
+
+     좁은 화면에서 표는 가로로 밀어야 읽힌다. 한 줄을 보려고 좌우로 오가는 것은
+     손으로 쓰기에 최악이고, 글자를 줄여 맞추면 이번에는 읽을 수 없다.
+
+     그래서 <b>한 줄을 카드 한 장</b>으로 편다. 각 칸 앞에 열 이름을 붙여야 무슨
+     값인지 알 수 있는데, 그 이름은 td 의 data-label 에서 가져온다 — 헤더는
+     화면에서 사라지기 때문이다.
+
+     data-label 이 없는 표는 이 규칙을 타지 않고 예전처럼 가로 스크롤로 남는다.
+     한 번에 다 바꾸지 않아도 되도록 한 것이다.
+     ------------------------------------------------------------- */
   .tableWrap {
     overflow-x: auto;
     overscroll-behavior-x: contain;
   }
 
   .table {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .table th,
   .table td {
     padding: 8px 10px;
+  }
+
+  /* 카드로 펼 표만 골라 적용한다 */
+  .cards .tableWrap,
+  .tableWrap:has(td[data-label]) {
+    overflow-x: visible;
+  }
+
+  .table:has(td[data-label]) {
+    display: block;
+    white-space: normal;
+  }
+
+  /* 헤더는 숨긴다. 열 이름은 각 칸이 data-label 로 들고 있다.
+     display:none 이 아니라 화면 밖으로 보내는 이유 — 스크린리더에게는 남겨야 한다. */
+  .table:has(td[data-label]) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .table:has(td[data-label]) tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* flex 로 두는 이유 — 제목을 맨 위로, 작업 버튼을 맨 아래로 order 로 옮긴다.
+     block 이면 order 가 무시되어 마크업 순서 그대로 쌓인다. */
+  .table:has(td[data-label]) tr {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+
+  .table:has(td[data-label]) td {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 4px 0;
+    border: none;
+  }
+
+  /* 열 이름. 폭을 고정해야 값이 세로로 가지런히 선다. */
+  .table:has(td[data-label]) td::before {
+    content: attr(data-label);
+    flex: none;
+    width: 68px;
+    color: var(--gray);
+    font-size: 12px;
+  }
+
+  /* 제목은 카드의 얼굴이다. 이름표를 떼고 크게 둔다 —
+     목록에서 눈이 먼저 닿는 곳이라 다른 칸과 같은 무게면 훑기 어렵다.
+
+     :first-child 가 아니라 이름으로 고르는 이유 — 문의 화면은 첫 칸이 게시판이다.
+     순서에 기대면 화면마다 다른 값이 제목 자리에 온다. */
+  .table:has(td[data-label]) td[data-label='제목'] {
+    display: block;
+    order: -1;
+    margin-bottom: 4px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* 작업 버튼은 카드 맨 아래에 나란히. 손가락으로 누를 자리를 벌린다. */
+  .table:has(td[data-label]) td[data-label='작업'] {
+    display: block;
+    order: 1;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+
+  .table:has(td[data-label]) td[data-label='제목']::before,
+  .table:has(td[data-label]) td[data-label='작업']::before {
+    content: none;
+  }
+
+  .table:has(td[data-label]) .rowActions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .table:has(td[data-label]) .rowActions > * {
+    flex: 1;
+    min-height: 40px;
   }
 
   /* 좁은 화면에서 대화상자는 화면을 거의 다 쓴다 */

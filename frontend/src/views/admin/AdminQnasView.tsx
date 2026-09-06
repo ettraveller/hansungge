@@ -132,8 +132,8 @@ export function AdminQnasView() {
             <tbody>
               {rows.map((qna) => (
                 <tr key={qna.id} className={qna.active ? undefined : styles.muted}>
-                  <td>{BOARD_LABEL[qna.boardType]}</td>
-                  <td>
+                  <td data-label="게시판">{BOARD_LABEL[qna.boardType]}</td>
+                  <td data-label="제목">
                     <span className={styles.wrapText}>
                       {qna.secret && <span className={styles.tag}>비밀</span>}
                       {qna.title}
@@ -143,14 +143,14 @@ export function AdminQnasView() {
                     )}
                     {!qna.active && <span className={styles.cellSub}>내려진 글</span>}
                   </td>
-                  <td>{qna.authorName}</td>
-                  <td>
+                  <td data-label="작성자">{qna.authorName}</td>
+                  <td data-label="상태">
                     <StatusBadge tone={qna.status === 'ANSWERED' ? 'success' : 'warning'}>
                       {qna.status === 'ANSWERED' ? '답변완료' : '답변대기'}
                     </StatusBadge>
                   </td>
-                  <td className="tabular">{formatDateTime(qna.createdAt)}</td>
-                  <td>
+                  <td data-label="등록" className="tabular">{formatDateTime(qna.createdAt)}</td>
+                  <td data-label="작업">
                     <div className={styles.rowActions}>
                       <Button small onClick={() => setAnswering(qna)}>
                         {qna.status === 'ANSWERED' ? '답변 보기' : '답변'}
