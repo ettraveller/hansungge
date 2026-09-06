@@ -121,7 +121,12 @@ function Section({ section }: { section: PolicySection }) {
         </div>
       )}
 
-      {section.callout && <p className={styles.callout}>{section.callout}</p>}
+      {section.callout &&
+        (Array.isArray(section.callout) ? section.callout : [section.callout]).map((text) => (
+          <p key={text} className={styles.callout}>
+            {text}
+          </p>
+        ))}
     </section>
   );
 }
