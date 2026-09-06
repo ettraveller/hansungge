@@ -21,10 +21,15 @@ import java.time.OffsetDateTime;
 /**
  * 회원 ({@code users}).
  *
- * <h2>모든 회원은 검증된 이메일과 DI 를 갖는다</h2>
- * 가입 경로가 둘(자체·소셜)이지만 <b>둘 다 이메일 인증과 휴대폰 본인확인을 거친다.</b>
- * 그래서 "본인확인을 안 한 회원"이라는 상태가 없고, 주문·매입·이벤트 어디에도 그
- * 상태를 위한 분기가 없다. 한쪽만 면제하면 그 예외가 코드 전체로 번진다.
+ * <h2>가입 경로는 둘, 인증은 같다</h2>
+ * 자체(이메일+비밀번호)든 소셜이든 <b>이메일 인증과 휴대폰 본인확인을 모두 거친다.</b>
+ * 한쪽만 면제하면 "본인확인을 안 한 회원"이라는 상태가 생기고, 그 예외가 주문·매입·
+ * 이벤트 코드 전체로 번진다.
+ *
+ * <p>⚠️ <b>단 하나의 예외가 한시적으로 있다.</b> 본인확인 공급자 계약(TODO E-4)이
+ * 끝나기 전까지는 소셜 가입이 {@link #signUpWithoutIdentity} 로 이루어진다. 계약을
+ * 기다리느라 이미 되던 소셜 로그인까지 막을 수는 없기 때문이다. 그렇게 만들어진
+ * 회원은 {@link #isIdentityVerified()} 가 false 다.
  *
  * <h2>신원 정보는 회원이 고칠 수 없다</h2>
  * {@link #name}·{@link #birthDate}·{@link #gender}·{@link #foreigner}·{@link #phone}·{@link #di}
@@ -163,6 +168,34 @@ public class User {
      */
     public static User signUp(String email, VerifiedIdentity identity, String passwordHash) {
         return new User(email, identity, passwordHash);
+    }
+
+    /**
+     * 본인확인 없이 만드는 소셜 회원 — <b>한시적이다.</b>
+     *
+     * <p>휴대폰 본인확인 공급자 계약(TODO E-4)이 끝나기 전까지만 쓰인다. 그 전에도
+     * 소셜 로그인은 열어 두어야 하기 때문이다 — 계약을 기다리느라 <b>이미 되던
+     * 로그인까지 막는 것</b>은 더 나쁘다.
+     *
+     * <p>이렇게 만든 회원은 {@link #di} 와 {@link #phoneVerifiedAt} 이 null 이다.
+     * 공급자가 붙은 뒤에는 이 경로로 새 회원이 생기지 않고, 남아 있는 회원에게는
+     * 거래 시점에 본인확인을 요구해야 한다 (TODO A-11).
+     */
+    public static User signUpWithoutIdentity(String email, String name) {
+        User user = new User();
+        user.email = email;
+        user.name = name;
+        user.status = UserStatus.ACTIVE;
+        OffsetDateTime now = OffsetDateTime.now();
+        user.emailVerifiedAt = now;
+        user.createdAt = now;
+        user.updatedAt = now;
+        return user;
+    }
+
+    /** 본인확인을 마친 회원인가. 계약 전에 가입한 회원은 false 다. */
+    public boolean isIdentityVerified() {
+        return di != null;
     }
 
     /**

@@ -14,7 +14,8 @@ import com.hanseongge.domain.user.oauth.OAuthUserInfo;
  *
  * @param email                 가입할 주소. 자체 가입은 인증받은 주소, 소셜은 제공자가 준 주소
  * @param emailVerificationId   자체 가입에서만 있다. 소셜은 제공자가 이미 검증했으므로 null
- * @param identityVerificationId 휴대폰 본인확인. <b>두 경로 모두 필수다</b>
+ * @param identityVerificationId 휴대폰 본인확인. 자체 가입은 필수,
+ *                               소셜은 공급자 계약 전(TODO E-4)에 한해 null 이 허용된다
  * @param social                소셜 가입일 때만
  * @param rawPassword           자체 가입일 때만. 해싱은 서비스가 한다
  */
@@ -26,12 +27,17 @@ public record SignUpMaterial(
         String rawPassword) {
 
     public SignUpMaterial {
-        if (identityVerificationId == null) {
-            throw new IllegalArgumentException("본인확인 없이 가입할 수 없습니다.");
-        }
         if (social == null && rawPassword == null) {
             throw new IllegalArgumentException("소셜 연동도 비밀번호도 없으면 로그인할 방법이 없습니다.");
         }
+        // 자체 가입은 본인확인 없이 성립하지 않는다 — 이름도 생년월일도 그것으로만 온다.
+        if (social == null && identityVerificationId == null) {
+            throw new IllegalArgumentException("자체 가입은 본인확인이 필요합니다.");
+        }
+    }
+
+    public boolean hasIdentity() {
+        return identityVerificationId != null;
     }
 
     public boolean isSocial() {

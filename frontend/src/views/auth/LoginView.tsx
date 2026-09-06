@@ -152,9 +152,21 @@ export function LoginView() {
           </div>
         </form>
 
-        <p className={styles.foot}>
-          계정이 없으신가요? <Link href="/signup/email">이메일로 회원가입</Link>
-        </p>
+        {/*
+          로그인 폼은 늘 두고 가입 링크만 감춘다.
+
+          이미 비밀번호가 있는 회원은 <b>본인확인 공급자 상태와 무관하게</b> 들어올 수
+          있어야 한다. 공급자 설정이 잘못되거나 계약이 끊긴 순간 그 사람들이 통째로
+          로그인하지 못하면, 그건 가입이 막히는 것보다 훨씬 나쁘다.
+
+          반대로 가입은 본인확인 없이 성립하지 않으므로, 쓸 수 없을 때는 링크를 아예
+          그리지 않는다 — 눌러야만 실패를 아는 화면을 만들지 않는다.
+        */}
+        {data?.emailSignUpAvailable && (
+          <p className={styles.foot}>
+            계정이 없으신가요? <Link href="/signup/email">이메일로 회원가입</Link>
+          </p>
+        )}
 
         <h2 className={styles.sectionTitle}>소셜 계정으로 계속하기</h2>
 
@@ -186,7 +198,7 @@ export function LoginView() {
         </p>
       </div>
     </div>
-  );
+  );
 }
 
 /** 로그인 실패의 결이 다른 두 경우만 제목을 나눈다. */

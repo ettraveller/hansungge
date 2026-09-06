@@ -84,7 +84,10 @@ public class UserAuthService {
         List<AuthProvidersResponse.ProviderItem> providers = registry.available().stream()
                 .map(type -> new AuthProvidersResponse.ProviderItem(type, type.displayName()))
                 .toList();
-        return new AuthProvidersResponse(providers, agreementCatalog.all());
+        // 자체 가입은 본인확인이 있어야 성립한다. 공급자가 없으면 화면이 그 버튼을
+        // 아예 그리지 않게 한다 — 눌러야만 실패를 아는 화면을 만들지 않는다.
+        return new AuthProvidersResponse(providers, agreementCatalog.all(),
+                identityVerificationService.isAvailable());
     }
 
     // =================================================================
@@ -114,14 +117,25 @@ public class UserAuthService {
             return accountService.signIn(linked.get().getId(), info, response);
         }
 
-        // 계정을 아직 만들지 않는다. 본인확인과 약관 동의가 남았다.
-        log.info("[AUTH] 신규 소셜 신원 확인. provider={} 본인확인 대기", info.provider());
+        // 계정을 아직 만들지 않는다. 약관 동의(그리고 가능하면 본인확인)가 남았다.
         PendingSignUp pending = new PendingSignUp(info, info.email(), null, null);
-        return SignInResponse.identityRequired(
-                tokenFactory.issuePendingToken(pending),
-                agreementCatalog.all(),
-                info.name(),
-                info.email());
+        String token = tokenFactory.issuePendingToken(pending);
+
+        // 본인확인 공급자가 없으면 그 단계를 건너뛴다 (TODO E-4 계약 전).
+        //
+        // 계약을 기다리느라 <b>이미 되던 소셜 로그인까지 막을 수는 없다.</b> 배포를
+        // 몇 주 미루는 대가가 훨씬 크다. 공급자를 켜는 순간 이 분기가 사라지고
+        // 그때부터의 가입은 전부 본인확인을 거친다.
+        if (!identityVerificationService.isAvailable()) {
+            log.info("[AUTH] 신규 소셜 신원 확인. provider={} 약관 대기 (본인확인 공급자 없음)",
+                    info.provider());
+            return SignInResponse.signUpRequired(token, agreementCatalog.all(),
+                    info.name(), info.email());
+        }
+
+        log.info("[AUTH] 신규 소셜 신원 확인. provider={} 본인확인 대기", info.provider());
+        return SignInResponse.identityRequired(token, agreementCatalog.all(),
+                info.name(), info.email());
     }
 
     /**
@@ -150,11 +164,17 @@ public class UserAuthService {
 
         // 본인확인을 거치지 않은 토큰으로는 가입할 수 없다. 소셜도 예외가 아니다 —
         // 한쪽만 면제하면 "본인확인을 안 한 회원"이 생기고, 그 예외가 코드 전체로 번진다.
-        if (!pending.isIdentityVerified()) {
+        //
+        // 예외는 하나뿐이다: 본인확인 공급자 자체가 없는 기간(TODO E-4 계약 전).
+        // 그때는 소셜 가입만 허용된다 — 자체 가입은 이름·생년월일이 본인확인에서만
+        // 오므로 애초에 시작할 수 없다.
+        if (pending.isIdentityVerified()) {
+            identityVerificationService.requireUsable(
+                    pending.identityVerificationId(), IdentityPurpose.SIGNUP);
+        } else if (identityVerificationService.isAvailable() || !pending.isSocial()) {
             throw new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID,
                     "본인확인을 먼저 마쳐야 합니다.");
         }
-        identityVerificationService.requireUsable(pending.identityVerificationId(), IdentityPurpose.SIGNUP);
         if (pending.emailVerificationId() != null) {
             emailVerificationService.requireVerified(pending.emailVerificationId());
         }
@@ -202,7 +222,22 @@ public class UserAuthService {
      * 된다 — 아무 주소나 넣어 응답이 다른지 보면 된다. 중복 판정은 가입을 마치는 시점에 한다.
      */
     public void sendEmailCode(String email, RequestInfo requestInfo) {
+        requireEmailSignUpAvailable();
         emailVerificationService.issue(email, EmailVerificationPurpose.SIGNUP, requestInfo);
+    }
+
+    /**
+     * 자체 가입은 본인확인 없이 성립하지 않는다.
+     *
+     * <p>이름·생년월일·휴대폰이 전부 본인확인에서만 온다. 그것 없이 계정을 만들면
+     * <b>아무것도 확인되지 않은 이메일 계정</b>이 생기고, 그건 소셜 계정보다도 약하다.
+     * 공급자 계약(TODO E-4) 전까지는 소셜 가입만 연다.
+     */
+    private void requireEmailSignUpAvailable() {
+        if (!identityVerificationService.isAvailable()) {
+            throw new BusinessException(ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE,
+                    "이메일 회원가입은 준비 중입니다. 소셜 계정으로 가입해 주세요.");
+        }
     }
 
     /**

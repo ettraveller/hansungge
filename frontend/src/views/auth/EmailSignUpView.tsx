@@ -9,6 +9,7 @@ import {
   useConfirmEmailCode,
   useSendEmailCode,
   useStartIdentity,
+  useAuthProviders,
 } from '@/hooks/useUserSession';
 import { identityReturnUrl, pendingIdentity } from '@/utils/identityReturn';
 import { safeNext } from '@/utils/authStorage';
@@ -42,6 +43,7 @@ export function EmailSignUpView() {
   const sendCode = useSendEmailCode();
   const confirmCode = useConfirmEmailCode();
   const startIdentity = useStartIdentity();
+  const { data: config, isLoading: configLoading } = useAuthProviders();
 
   const failure = sendCode.error ?? confirmCode.error ?? startIdentity.error;
   const busy = sendCode.isPending || confirmCode.isPending || startIdentity.isPending;
@@ -96,7 +98,26 @@ export function EmailSignUpView() {
       </header>
 
       <div className={styles.card}>
-        <StepMarker current={step} />
+        {/*
+          자체 가입은 휴대폰 본인확인이 있어야 성립한다 — 이름도 생년월일도 그것으로만
+          온다. 주소를 직접 치고 들어온 경우를 대비해 여기서도 막는다. 서버도 막지만
+          화면이 폼을 다 보여준 뒤 마지막에 실패하는 것은 나쁜 안내다.
+        */}
+        {configLoading ? (
+          <p className={styles.loading}>불러오는 중…</p>
+        ) : config && !config.emailSignUpAvailable ? (
+          <>
+            <Notice tone="warn" title="이메일 회원가입은 준비 중입니다">
+              휴대폰 본인확인 연동을 준비하고 있습니다. 지금은 소셜 계정으로 가입해
+              주세요.
+            </Notice>
+            <p className={styles.foot}>
+              <Link href="/login">로그인 화면으로</Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <StepMarker current={step} />
 
         {failure && (
           <div style={{ marginBottom: 16 }}>
@@ -228,9 +249,11 @@ export function EmailSignUpView() {
           </form>
         )}
 
-        <p className={styles.foot}>
-          이미 회원이신가요? <Link href="/login">로그인</Link>
-        </p>
+            <p className={styles.foot}>
+              이미 회원이신가요? <Link href="/login">로그인</Link>
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

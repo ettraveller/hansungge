@@ -43,6 +43,14 @@ export interface AuthProviders {
   /** 지금 실제로 쓸 수 있는 제공자만 온다. 화면에 버튼을 하드코딩하지 않는 이유다. */
   providers: AuthProviderItem[];
   agreements: AgreementItem[];
+  /**
+   * 이메일+비밀번호 가입을 지금 쓸 수 있는가.
+   *
+   * <p>자체 가입은 휴대폰 본인확인이 있어야 성립한다 — 이름도 생년월일도 그것으로만
+   * 온다. 공급자 계약 전에는 false 이고, 그때 버튼을 그리면 <b>눌러야만 실패를 아는</b>
+   * 화면이 된다. 제공자 목록을 서버가 알려주는 것과 같은 이유다.
+   */
+  emailSignUpAvailable: boolean;
 }
 
 export interface OAuthAuthorize {

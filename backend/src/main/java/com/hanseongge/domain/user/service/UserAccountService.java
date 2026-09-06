@@ -146,12 +146,13 @@ public class UserAccountService {
                                         Map<AgreementType, Boolean> choices,
                                         RequestInfo requestInfo,
                                         HttpServletResponse response) {
-        IdentityVerification verification = identityRepository.findById(material.identityVerificationId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID));
-        VerifiedIdentity identity = verification.toIdentity();
+        IdentityVerification verification = material.hasIdentity()
+                ? identityRepository.findById(material.identityVerificationId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID))
+                : null;
 
         // 약관 화면에 머무는 사이 다른 탭에서 이미 가입했을 수 있다.
-        if (userRepository.findByDi(identity.di()).isPresent()) {
+        if (verification != null && userRepository.findByDi(verification.getDi()).isPresent()) {
             throw new BusinessException(ErrorCode.IDENTITY_ALREADY_REGISTERED);
         }
 
@@ -165,13 +166,20 @@ public class UserAccountService {
                 ? null
                 : passwordEncoder.encode(material.rawPassword());
 
-        User user = userRepository.save(User.signUp(material.email(), identity, passwordHash));
+        // 본인확인이 없는 경로는 공급자 계약 전의 소셜 가입뿐이다 (User#signUpWithoutIdentity).
+        User user = verification == null
+                ? userRepository.save(User.signUpWithoutIdentity(
+                        material.email(), material.social().name()))
+                : userRepository.save(User.signUp(
+                        material.email(), verification.toIdentity(), passwordHash));
 
         if (material.isSocial()) {
             attachSocial(user, material.social());
         }
 
-        verification.consume(user.getId());
+        if (verification != null) {
+            verification.consume(user.getId());
+        }
         consumeEmailVerification(material.emailVerificationId());
         recordAgreements(user.getId(), choices, requestInfo);
 
