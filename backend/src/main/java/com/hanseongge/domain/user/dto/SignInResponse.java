@@ -38,6 +38,9 @@ public record SignInResponse(
         @Schema(description = "가입 진행 토큰. 기존 회원이면 null")
         String signUpToken,
 
+        @Schema(description = "휴대폰 본인확인을 아직 거치지 않았는가", example = "true")
+        Boolean identityRequired,
+
         @Schema(description = "가입 시 동의받을 약관. 기존 회원이면 null")
         List<AuthProvidersResponse.AgreementItem> agreements,
 
@@ -49,13 +52,27 @@ public record SignInResponse(
 ) {
 
     public static SignInResponse signedIn(String accessToken, long expiresIn, UserResponse user) {
-        return new SignInResponse(false, accessToken, expiresIn, user, null, null, null, null);
+        return new SignInResponse(false, accessToken, expiresIn, user, null, null, null, null, null);
     }
 
     public static SignInResponse signUpRequired(String signUpToken,
                                                 List<AuthProvidersResponse.AgreementItem> agreements,
                                                 String suggestedName, String suggestedEmail) {
-        return new SignInResponse(true, null, null, null, signUpToken, agreements,
+        return new SignInResponse(true, null, null, null, signUpToken, null, agreements,
+                suggestedName, suggestedEmail);
+    }
+
+    /**
+     * 신원은 확인됐지만 <b>휴대폰 본인확인이 남았다.</b>
+     *
+     * <p>{@code signUpRequired} 와 나누는 이유는 화면이 갈 곳이 다르기 때문이다 —
+     * 하나는 약관 화면, 하나는 본인확인 창이다. 한 플래그로 뭉치면 프론트가 순서를
+     * 스스로 추측해야 하고, 그 추측은 서버 정책이 바뀌면 조용히 어긋난다.
+     */
+    public static SignInResponse identityRequired(String signUpToken,
+                                                  List<AuthProvidersResponse.AgreementItem> agreements,
+                                                  String suggestedName, String suggestedEmail) {
+        return new SignInResponse(true, null, null, null, signUpToken, true, agreements,
                 suggestedName, suggestedEmail);
     }
 }

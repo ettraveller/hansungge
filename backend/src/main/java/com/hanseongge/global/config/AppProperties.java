@@ -17,8 +17,52 @@ public record AppProperties(
         @DefaultValue AdminInit adminInit,
         @DefaultValue Jwt jwt,
         @DefaultValue AdminSecurity adminSecurity,
-        @DefaultValue OAuth oauth
+        @DefaultValue OAuth oauth,
+        @DefaultValue SignUp signUp,
+        @DefaultValue Mail mail
 ) {
+
+    /**
+     * 자체 가입·본인확인 설정.
+     *
+     * <p>비밀값이 없다. 여기 있는 것은 전부 정책값이라 기본값을 두는 것이 안전하다 —
+     * 빠뜨렸다고 기동을 막을 이유가 없고, 막으면 오히려 배포가 어려워진다.
+     */
+    public record SignUp(
+            /** 이메일 인증번호 유효 시간. 짧으면 메일이 늦게 올 때 못 쓰고, 길면 훑을 시간을 준다. */
+            @DefaultValue("5") int emailCodeTtlMinutes,
+            /** 인증번호 시도 허용 횟수. 6자리 숫자는 막지 않으면 만료 전에 다 훑을 수 있다. */
+            @DefaultValue("5") int emailCodeMaxAttempts,
+            /** 같은 주소로 인증번호를 다시 받기까지 기다릴 시간(초). 메일 폭탄을 막는다. */
+            @DefaultValue("60") int emailCodeResendCooldownSeconds,
+            /** 본인확인 결과를 가입에 쓸 수 있는 시간. 창을 열어둔 채 방치한 건은 버린다. */
+            @DefaultValue("30") int identityTtlMinutes,
+            /** 비밀번호 재설정 링크 유효 시간. */
+            @DefaultValue("30") int passwordResetTtlMinutes,
+            /** 회원 로그인 연속 실패 임계치. 도달하면 30분 잠긴다. */
+            @DefaultValue("5") int maxLoginFailures
+    ) {}
+
+    /**
+     * 메일 발송 설정.
+     *
+     * <p>{@code accessKey}·{@code secretKey} 는 비밀값이라 기본값을 두지 않는다. 대신
+     * 비어 있으면 {@code NcpOutboundMailSender} 가 빈으로 등록되지 않아, 운영에서
+     * 메일 기능만 조용히 죽는 대신 기동 로그에 경고가 남는다.
+     */
+    public record Mail(
+            @DefaultValue("") String accessKey,
+            @DefaultValue("") String secretKey,
+            /** 보내는 주소. SPF/DKIM/DMARC 가 이 도메인에 설정되어 있어야 스팸함으로 가지 않는다. */
+            @DefaultValue("") String fromAddress,
+            @DefaultValue("한성금거래소") String fromName,
+            @DefaultValue("5") int connectTimeoutSeconds,
+            @DefaultValue("10") int readTimeoutSeconds
+    ) {
+        public boolean isConfigured() {
+            return !accessKey.isBlank() && !secretKey.isBlank() && !fromAddress.isBlank();
+        }
+    }
 
     public record Cors(
             @DefaultValue("http://localhost:3000") List<String> allowedOrigins

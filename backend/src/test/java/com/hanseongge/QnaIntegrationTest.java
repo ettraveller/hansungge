@@ -8,8 +8,12 @@ import com.hanseongge.domain.admin.repository.AdminUserRepository;
 import com.hanseongge.global.audit.AuditActions;
 import com.hanseongge.support.AdminTestFixtures;
 import com.hanseongge.support.EmbeddedPostgresSupport;
+import com.hanseongge.support.SignUpFlow;
+import com.hanseongge.support.StubIdentityConfig;
+import com.hanseongge.support.StubIdentityVerificationProvider;
 import com.hanseongge.support.StubOAuthConfig;
 import com.hanseongge.support.StubOAuthProvider;
+import com.hanseongge.support.UserTestFixtures;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,7 +65,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(StubOAuthConfig.class)
+@Import({StubOAuthConfig.class, StubIdentityConfig.class})
 @TestPropertySource(properties = {
         "app.jwt.secret=test-secret-key-for-qna-tests-0123456789abcdef",
         "app.admin-security.login-rate-per-minute=1000",
@@ -75,6 +79,10 @@ class QnaIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired AdminUserRepository adminUserRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired StubOAuthProvider google;
+    @Autowired StubIdentityVerificationProvider identityProvider;
+
+    /** 가입 4단계를 한 줄로 태운다. 단계별 검증이 목적인 테스트는 쓰지 않는다. */
+    private SignUpFlow flow;
 
     /** 글을 쓰는 사람. 이름이 "김철수"라 마스킹 결과가 "김**" 이어야 한다. */
     private String authorToken;
@@ -86,6 +94,8 @@ class QnaIntegrationTest extends EmbeddedPostgresSupport {
     void setUp() throws Exception {
         cleanUp();
         google.reset();
+        identityProvider.reset();
+        flow = new SignUpFlow(mockMvc, objectMapper, google, identityProvider);
 
         authorToken = signUp("author-1", "author@test.local", "김철수");
         strangerToken = signUp("stranger-1", "stranger@test.local", "박영희");
@@ -103,16 +113,7 @@ class QnaIntegrationTest extends EmbeddedPostgresSupport {
     private void cleanUp() {
         jdbc.update("DELETE FROM qnas");
         jdbc.update("DELETE FROM audit_logs");
-        // 동의 이력은 UPDATE·DELETE 를 트리거가 막는다. 테스트 정리에서만 잠시 내린다.
-        jdbc.execute("ALTER TABLE user_agreements DISABLE TRIGGER trg_user_agreement_guard");
-        try {
-            jdbc.update("DELETE FROM user_agreements");
-            jdbc.update("DELETE FROM refresh_tokens");
-            jdbc.update("DELETE FROM social_accounts");
-            jdbc.update("DELETE FROM users");
-        } finally {
-            jdbc.execute("ALTER TABLE user_agreements ENABLE TRIGGER trg_user_agreement_guard");
-        }
+        UserTestFixtures.deleteAll(jdbc);
         jdbc.update("DELETE FROM admin_users WHERE login_id LIKE ?", AdminTestFixtures.PREFIX + "%");
     }
 
@@ -425,33 +426,9 @@ class QnaIntegrationTest extends EmbeddedPostgresSupport {
     // =================================================================
 
     /** 소셜 가입까지 끝내고 회원 Access 토큰을 돌려준다. */
+    /** 소셜 가입을 끝내고 회원 Access 토큰을 돌려준다. 본인확인 단계까지 포함한다. */
     private String signUp(String providerUserId, String email, String name) throws Exception {
-        google.willReturn(providerUserId, email, name);
-
-        MvcResult authorize = mockMvc.perform(post("/api/v1/auth/oauth/GOOGLE/authorize"))
-                .andExpect(status().isOk())
-                .andReturn();
-        String state = read(authorize).get("state").asText();
-
-        MvcResult callback = mockMvc.perform(post("/api/v1/auth/oauth/GOOGLE/callback")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("code", "code-" + providerUserId, "state", state))))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        MvcResult signedUp = mockMvc.perform(post("/api/v1/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "signUpToken", read(callback).get("signUpToken").asText(),
-                                "agreements", List.of(
-                                        Map.of("type", "TERMS", "agreed", true),
-                                        Map.of("type", "PRIVACY", "agreed", true),
-                                        Map.of("type", "AGE_14", "agreed", true),
-                                        Map.of("type", "MARKETING", "agreed", false))))))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        return read(signedUp).get("accessToken").asText();
+        return flow.social(providerUserId, email, name);
     }
 
     private long write(String token, String boardType, String title, boolean secret, Long productId)

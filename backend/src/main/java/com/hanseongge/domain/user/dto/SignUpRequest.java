@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
 import java.util.List;
 
@@ -22,9 +22,16 @@ public record SignUpRequest(
         @Valid
         List<AgreementChoice> agreements,
 
-        @Schema(description = "표시 이름. 비우면 소셜에서 받은 이름을 쓴다", example = "홍길동")
-        @Size(max = 100)
-        String name
+        /**
+         * 자체 가입에서만 보낸다. 소셜 가입이면 null.
+         *
+         * <p>정책은 관리자 계정과 같다 — 상한 72자는 취향이 아니라 <b>BCrypt 의 한계</b>다.
+         * BCrypt 는 72바이트를 넘는 입력을 조용히 잘라내므로, 그보다 긴 비밀번호는
+         * 뒷부분이 아무 의미가 없는데 사용자는 그것을 모른다.
+         */
+        @Schema(description = "비밀번호. 자체 가입에만 필요하다")
+        @Pattern(regexp = "^$|" + UserPasswordPolicy.PATTERN, message = UserPasswordPolicy.MESSAGE)
+        String password
 ) {
 
     @Schema(name = "AgreementChoice", description = "약관 동의 선택")

@@ -10,6 +10,7 @@ import com.hanseongge.domain.user.repository.UserRepository;
 import com.hanseongge.global.auth.UserJwtProvider;
 import com.hanseongge.global.config.CacheConfig;
 import com.hanseongge.support.EmbeddedPostgresSupport;
+import com.hanseongge.support.UserTestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -81,8 +82,8 @@ class CartIntegrationTest extends EmbeddedPostgresSupport {
     void setUp() {
         cleanUp();
 
-        User buyer = userRepository.save(User.signUp("buyer@test.local", "구매자"));
-        User other = userRepository.save(User.signUp("other@test.local", "다른사람"));
+        User buyer = userRepository.save(UserTestFixtures.socialUser("buyer@test.local", "구매자"));
+        User other = userRepository.save(UserTestFixtures.socialUser("other@test.local", "다른사람"));
         token = userJwtProvider.issueAccessToken(buyer.getId());
         otherToken = userJwtProvider.issueAccessToken(other.getId());
 

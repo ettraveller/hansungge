@@ -43,11 +43,17 @@ public class UserProfileService {
         return UserResponse.from(find(userId));
     }
 
+    /**
+     * 회원이 직접 고칠 수 있는 값.
+     *
+     * <p><b>휴대폰 번호가 여기 없다.</b> 본인확인으로 확정된 값이라 고칠 수 있으면 안 된다 —
+     * 고칠 수 있으면 "확인된 번호"가 아니라 "한 번 확인했다가 지금은 모르는 번호"가 되고,
+     * 주문 안내와 매입 연락이 그 값 위에 선다. 바꾸려면 본인확인을 다시 받아야 한다.
+     */
     @Transactional
     public UserResponse updateProfile(Long userId, ProfileUpdateRequest request) {
         User user = find(userId);
-        user.updateProfile(request.name().trim(),
-                request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
+        user.updateProfile(request.name().trim());
         return UserResponse.from(user);
     }
 

@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanseongge.domain.user.entity.AgreementType;
 import com.hanseongge.domain.user.entity.RefreshToken;
 import com.hanseongge.support.EmbeddedPostgresSupport;
+import com.hanseongge.support.SignUpFlow;
+import com.hanseongge.support.StubIdentityConfig;
+import com.hanseongge.support.StubIdentityVerificationProvider;
 import com.hanseongge.support.StubOAuthConfig;
 import com.hanseongge.support.StubOAuthProvider;
+import com.hanseongge.support.UserTestFixtures;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(StubOAuthConfig.class)
+@Import({StubOAuthConfig.class, StubIdentityConfig.class})
 @TestPropertySource(properties = {
         // 스텁 제공자가 컴포넌트 스캔이 등록한 실물 빈을 덮어쓴다.
         "spring.main.allow-bean-definition-overriding=true",
@@ -53,10 +57,16 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper objectMapper;
     @Autowired StubOAuthProvider google;
+    @Autowired StubIdentityVerificationProvider identityProvider;
+
+    /** 가입 4단계를 한 줄로 태운다. 단계별 검증이 목적인 테스트는 쓰지 않는다. */
+    private SignUpFlow flow;
 
     @BeforeEach
     void setUp() {
         google.reset();
+        identityProvider.reset();
+        flow = new SignUpFlow(mockMvc, objectMapper, google, identityProvider);
         cleanUp();
     }
 
@@ -67,15 +77,7 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
      * 테스트에서만 하는 일이고, 애플리케이션에는 이 테이블을 지우는 경로가 없다.
      */
     private void cleanUp() {
-        jdbc.execute("ALTER TABLE user_agreements DISABLE TRIGGER trg_user_agreement_guard");
-        try {
-            jdbc.update("DELETE FROM user_agreements");
-            jdbc.update("DELETE FROM refresh_tokens");
-            jdbc.update("DELETE FROM social_accounts");
-            jdbc.update("DELETE FROM users");
-        } finally {
-            jdbc.execute("ALTER TABLE user_agreements ENABLE TRIGGER trg_user_agreement_guard");
-        }
+        UserTestFixtures.deleteAll(jdbc);
     }
 
     // =================================================================
@@ -118,7 +120,9 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
     private Session signUpNewUser() throws Exception {
         MvcResult cb = callback("code-1", authorizeState());
         assertThat(cb.getResponse().getStatus()).isEqualTo(200);
-        String signUpToken = read(cb).get("signUpToken").asText();
+
+        // 소셜도 본인확인을 거친다. 한쪽만 면제하면 미인증 회원이 생긴다.
+        String signUpToken = completeIdentity(read(cb).get("signUpToken").asText());
 
         MvcResult signedUp = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,6 +133,18 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
                 .andReturn();
         return new Session(read(signedUp).get("accessToken").asText(),
                 signedUp.getResponse().getCookie("hsg_rt"));
+    }
+
+    /** 본인확인을 통과시키고 약관 단계로 갈 토큰을 돌려준다. */
+    private String completeIdentity(String signUpToken) throws Exception {
+        MvcResult done = mockMvc.perform(post("/api/v1/auth/identity/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "signUpToken", signUpToken,
+                                "providerToken", "stub-token"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        return read(done).get("signUpToken").asText();
     }
 
     private record Session(String accessToken, Cookie refreshCookie) {}
@@ -213,7 +229,10 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("필수 약관이 빠지면 400 이고, 어떤 약관이 빠졌는지 알려준다")
         void missingMandatoryAgreementIsRejected() throws Exception {
-            String signUpToken = read(callback("code-1", authorizeState())).get("signUpToken").asText();
+            // 본인확인까지 통과시킨 뒤라야 약관 검사에 도달한다 — 그 전이면 본인확인
+            // 미완료로 먼저 걸려서, 이 테스트가 무엇을 보는지 알 수 없게 된다.
+            String signUpToken = completeIdentity(
+                    read(callback("code-1", authorizeState())).get("signUpToken").asText());
 
             mockMvc.perform(post("/api/v1/auth/signup")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -523,30 +542,46 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("내 정보를 수정할 수 있다")
+        @DisplayName("이름은 고칠 수 있다")
         void updateProfile() throws Exception {
             Session session = signUpNewUser();
 
             mockMvc.perform(patch("/api/v1/me")
                             .header("Authorization", "Bearer " + session.accessToken())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("name", "김구매", "phone", "010-1234-5678"))))
+                            .content(json(Map.of("name", "김구매"))))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value("김구매"))
-                    .andExpect(jsonPath("$.phone").value("010-1234-5678"));
+                    .andExpect(jsonPath("$.name").value("김구매"));
         }
 
         @Test
-        @DisplayName("연락처 형식이 틀리면 400")
-        void invalidPhoneIsRejected() throws Exception {
+        @DisplayName("휴대폰 번호는 고칠 수 없다 — 본인확인으로 확정된 값이다")
+        void phoneCannotBeChanged() throws Exception {
+            Session session = signUpNewUser();
+            String before = jdbc.queryForObject("SELECT phone FROM users LIMIT 1", String.class);
+
+            // 보내더라도 무시되는 것이 아니라, 애초에 그 필드가 없다.
+            mockMvc.perform(patch("/api/v1/me")
+                            .header("Authorization", "Bearer " + session.accessToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("name", "김구매", "phone", "010-9999-9999"))))
+                    .andExpect(status().isOk());
+
+            assertThat(jdbc.queryForObject("SELECT phone FROM users LIMIT 1", String.class))
+                    .isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("이름이 비면 400")
+        void blankNameIsRejected() throws Exception {
             Session session = signUpNewUser();
 
             mockMvc.perform(patch("/api/v1/me")
                             .header("Authorization", "Bearer " + session.accessToken())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("name", "김구매", "phone", "전화번호"))))
+                            .content(json(Map.of("name", " "))))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors.phone").exists());
+                    .andExpect(jsonPath("$.errors.name").exists());
         }
     }
 

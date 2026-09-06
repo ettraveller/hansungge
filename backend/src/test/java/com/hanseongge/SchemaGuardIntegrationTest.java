@@ -87,11 +87,16 @@ class SchemaGuardIntegrationTest extends EmbeddedPostgresSupport {
         }
     }
 
-    /** 각 테스트가 자기 데이터를 직접 만든다. 순서 의존을 만들지 않기 위해서다. */
+    /**
+     * 각 테스트가 자기 데이터를 직접 만든다. 순서 의존을 만들지 않기 위해서다.
+     *
+     * <p>이메일을 매번 다르게 만든다 — V13 이 {@code ux_users_email_active} 를 걸어서
+     * 같은 주소로 두 번 넣을 수 없다. 한 테스트가 회원을 둘 만드는 경우가 실제로 있다.
+     */
     private long insertUser() {
-        return jdbc.queryForObject(
-                "INSERT INTO users (email, name) VALUES ('guard@test.local', '테스트') RETURNING id",
-                Long.class);
+        return jdbc.queryForObject("""
+                INSERT INTO users (email, name) VALUES (?, '테스트') RETURNING id
+                """, Long.class, "guard-" + java.util.UUID.randomUUID() + "@test.local");
     }
 
     private long insertCategory() {

@@ -47,6 +47,10 @@ public class OAuthTokenFactory {
     private static final String CLAIM_PROVIDER_USER_ID = "puid";
     private static final String CLAIM_EMAIL = "eml";
     private static final String CLAIM_NAME = "nm";
+    /** 이메일 인증 행 id. 자체 가입에만 있다. */
+    private static final String CLAIM_EMAIL_VERIFICATION = "evid";
+    /** 본인확인 행 id. 본인확인을 마친 뒤에만 있다. */
+    private static final String CLAIM_IDENTITY_VERIFICATION = "ivid";
 
     private final SecretKey key;
     private final String issuer;
@@ -128,6 +132,68 @@ public class OAuthTokenFactory {
         return new OAuthUserInfo(provider, providerUserId,
                 claims.get(CLAIM_EMAIL, String.class),
                 claims.get(CLAIM_NAME, String.class));
+    }
+
+    /**
+     * 진행 중인 가입 상태를 토큰에 담는다.
+     *
+     * <p><b>본인확인 결과는 담지 않는다.</b> JWT 는 서명될 뿐 암호화되지 않아서,
+     * 이름·생년월일·DI 를 넣으면 브라우저에서 Base64 디코딩만으로 전부 보인다.
+     * 신원은 DB 에 두고 여기에는 그 행의 id 만 담는다 ({@link PendingSignUp} 참조).
+     */
+    public String issuePendingToken(PendingSignUp pending) {
+        Instant now = Instant.now();
+        var builder = Jwts.builder()
+                .issuer(issuer)
+                .audience().add(AUD_SIGNUP).and()
+                .subject(pending.isSocial() ? pending.social().providerUserId() : pending.email())
+                .claim(CLAIM_EMAIL, pending.email())
+                .claim(CLAIM_EMAIL_VERIFICATION, pending.emailVerificationId())
+                .claim(CLAIM_IDENTITY_VERIFICATION, pending.identityVerificationId())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(signUpTtl)));
+
+        if (pending.isSocial()) {
+            builder.claim(CLAIM_PROVIDER, pending.social().provider().name())
+                    .claim(CLAIM_PROVIDER_USER_ID, pending.social().providerUserId())
+                    .claim(CLAIM_NAME, pending.social().name());
+        }
+        return builder.signWith(key).compact();
+    }
+
+    /** 가입 토큰에서 진행 상태를 복원한다. 만료·위조면 처음부터 다시 하게 한다. */
+    public PendingSignUp readPendingToken(String token) {
+        Claims claims = parse(token, AUD_SIGNUP, ErrorCode.SIGNUP_TOKEN_INVALID);
+
+        OAuthUserInfo social = null;
+        String providerName = claims.get(CLAIM_PROVIDER, String.class);
+        if (providerName != null) {
+            OAuthProviderType provider;
+            try {
+                provider = OAuthProviderType.valueOf(providerName);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "알 수 없는 제공자");
+            }
+            String providerUserId = claims.get(CLAIM_PROVIDER_USER_ID, String.class);
+            if (providerUserId == null || providerUserId.isBlank()) {
+                throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "제공자 식별자 없음");
+            }
+            social = new OAuthUserInfo(provider, providerUserId,
+                    claims.get(CLAIM_EMAIL, String.class),
+                    claims.get(CLAIM_NAME, String.class));
+        }
+
+        return new PendingSignUp(
+                social,
+                claims.get(CLAIM_EMAIL, String.class),
+                readId(claims, CLAIM_EMAIL_VERIFICATION),
+                readId(claims, CLAIM_IDENTITY_VERIFICATION));
+    }
+
+    /** JWT 숫자 claim 은 Integer 로 돌아올 수 있다. Long 으로 맞춘다. */
+    private Long readId(Claims claims, String name) {
+        Number value = claims.get(name, Number.class);
+        return value == null ? null : value.longValue();
     }
 
     public long signUpTokenTtlSeconds() {

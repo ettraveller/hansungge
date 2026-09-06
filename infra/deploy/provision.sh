@@ -169,6 +169,17 @@ OAUTH_NAVER_CLIENT_SECRET=
 OAUTH_KAKAO_CLIENT_ID=
 OAUTH_KAKAO_CLIENT_SECRET=
 
+# --- 본인확인 (TODO E-4) ---
+#     계약 전에는 켜지 않는다. 켜면 회원가입이 전부 실패한다.
+APP_IDENTITY_INICIS_ENABLED=false
+
+# --- 메일 (TODO E-5) ---
+#     NCP Cloud Outbound Mailer. 비어 있으면 인증 메일이 나가지 않아 가입이 막힌다.
+#     ⚠️ 보내는 도메인에 SPF/DKIM/DMARC 를 설정해야 한다. 없으면 대부분 스팸함으로 간다.
+APP_MAIL_ACCESS_KEY=
+APP_MAIL_SECRET_KEY=
+APP_MAIL_FROM_ADDRESS=no-reply@hanseongge.com
+
 # --- 서버 ---
 SERVER_PORT=8080
 SERVER_ADDRESS=127.0.0.1

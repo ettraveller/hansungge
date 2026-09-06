@@ -43,6 +43,33 @@ app:
       client-id: ${OAUTH_KAKAO_CLIENT_ID}
       client-secret: ${OAUTH_KAKAO_CLIENT_SECRET}
 
+  # 본인확인 (TODO E-4).
+  #
+  # 기본 비활성이다. 계약 전에 켜면 가입 요청이 전부 실패하는데, 그 실패가
+  # "설정 누락"이 아니라 "미구현"이라는 것이 로그에만 드러난다.
+  identity:
+    inicis:
+      enabled: ${APP_IDENTITY_INICIS_ENABLED:false}
+
+  # 가입 정책. 비밀값이 아니라 전부 정책값이라 기본값을 둔다 —
+  # 빠뜨렸다고 기동을 막을 이유가 없고, 막으면 배포만 어려워진다.
+  sign-up:
+    email-code-ttl-minutes: ${SIGNUP_EMAIL_CODE_TTL_MINUTES:5}
+    email-code-max-attempts: ${SIGNUP_EMAIL_CODE_MAX_ATTEMPTS:5}
+    identity-ttl-minutes: ${SIGNUP_IDENTITY_TTL_MINUTES:30}
+    max-login-failures: ${SIGNUP_MAX_LOGIN_FAILURES:5}
+
+  # 메일 (TODO E-5).
+  #
+  # ⚠️ 여기는 기본값을 둔다. 소셜 로그인 클라이언트와 같은 판단이다 — 비어 있으면
+  # 기동은 되되 그 기능만 죽고, 기동 로그에 무엇이 없는지가 남는다. 메일이 없다고
+  # 시세 조회까지 멈추는 것이 더 나쁘다. 대신 발송 시점에 명확히 실패한다.
+  mail:
+    access-key: ${APP_MAIL_ACCESS_KEY:}
+    secret-key: ${APP_MAIL_SECRET_KEY:}
+    from-address: ${APP_MAIL_FROM_ADDRESS:}
+    from-name: ${APP_MAIL_FROM_NAME:한성금거래소}
+
 # 운영에서 Swagger / API 문서 전면 차단 (설계서 §15).
 # SwaggerConfig 자체가 @Profile({"local","dev"}) 이라 로드되지 않지만,
 # springdoc 자동설정까지 확실히 끄고 Nginx 도 해당 경로를 404 로 막는다 — 3중 차단.

@@ -1,6 +1,13 @@
 package com.hanseongge.domain.user.controller;
 
 import com.hanseongge.domain.user.dto.AuthProvidersResponse;
+import com.hanseongge.domain.user.dto.EmailVerificationConfirmRequest;
+import com.hanseongge.domain.user.dto.EmailVerificationConfirmResponse;
+import com.hanseongge.domain.user.dto.EmailVerificationRequest;
+import com.hanseongge.domain.user.dto.IdentityCompleteRequest;
+import com.hanseongge.domain.user.dto.IdentityStartRequest;
+import com.hanseongge.domain.user.dto.IdentityStartResponse;
+import com.hanseongge.domain.user.dto.PasswordSignInRequest;
 import com.hanseongge.domain.user.dto.OAuthAuthorizeResponse;
 import com.hanseongge.domain.user.dto.OAuthCallbackRequest;
 import com.hanseongge.domain.user.dto.SignInResponse;
@@ -77,6 +84,71 @@ public class UserAuthController {
                                                  HttpServletResponse response) {
         return ResponseEntity.ok(
                 userAuthService.signUp(request, RequestInfo.from(httpRequest), response));
+    }
+
+    // -----------------------------------------------------------------
+    // 자체 가입 — 이메일 인증 → 본인확인 → 약관
+    // -----------------------------------------------------------------
+
+    @Operation(summary = "이메일 인증번호 발송",
+            description = "가입할 주소로 6자리 인증번호를 보낸다. "
+                    + "<b>이미 가입된 주소인지는 알려주지 않는다</b> — 알려주면 회원 명단을 "
+                    + "훑는 도구가 된다. 중복 판정은 가입을 마치는 시점에 한다.")
+    @PostMapping("/email/verification")
+    public ResponseEntity<Void> sendEmailCode(@Valid @RequestBody EmailVerificationRequest request,
+                                              HttpServletRequest httpRequest) {
+        userAuthService.sendEmailCode(request.email(), RequestInfo.from(httpRequest));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "이메일 인증번호 확인",
+            description = "통과하면 다음 단계(본인확인)로 들고 갈 가입 토큰을 준다. "
+                    + "만료와 불일치를 구분해 알려주지 않는다 — 구분해 주면 유효한 번호를 "
+                    + "찾는 데 쓰인다.")
+    @PostMapping("/email/verification/confirm")
+    public ResponseEntity<EmailVerificationConfirmResponse> confirmEmailCode(
+            @Valid @RequestBody EmailVerificationConfirmRequest request) {
+        return ResponseEntity.ok(new EmailVerificationConfirmResponse(
+                userAuthService.confirmEmailCode(request.email(), request.code())));
+    }
+
+    @Operation(summary = "본인확인 시작",
+            description = "사용자를 보낼 인증창 주소를 준다. 자체 가입과 소셜 가입이 "
+                    + "<b>같은 엔드포인트</b>를 쓴다 — 한쪽만 면제하면 본인확인을 거치지 않은 "
+                    + "회원이 생긴다.")
+    @PostMapping("/identity/start")
+    public ResponseEntity<IdentityStartResponse> startIdentity(
+            @Valid @RequestBody IdentityStartRequest request) {
+        return ResponseEntity.ok(userAuthService.startIdentityVerification(
+                request.signUpToken(), request.returnUrl()));
+    }
+
+    @Operation(summary = "본인확인 결과 제출",
+            description = "공급자에 되물어 검증한다. 같은 DI 로 이미 가입한 회원이면 "
+                    + "<b>새 계정을 만들지 않고</b> 그 계정에 로그인 수단만 붙여 들여보낸다. "
+                    + "처음 보는 신원이면 약관 화면으로 갈 토큰을 준다.")
+    @PostMapping("/identity/complete")
+    public ResponseEntity<SignInResponse> completeIdentity(
+            @Valid @RequestBody IdentityCompleteRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+        String password = request.password() == null || request.password().isBlank()
+                ? null : request.password();
+        return ResponseEntity.ok(userAuthService.completeIdentityVerification(
+                request.signUpToken(), request.providerToken(), password,
+                RequestInfo.from(httpRequest), response));
+    }
+
+    @Operation(summary = "이메일 로그인",
+            description = "실패 사유를 세분해 알려주지 않는다 — 가입 여부를 확인하는 데 쓰인다. "
+                    + "다만 <b>비밀번호가 없는 계정</b>과 <b>잠긴 계정</b>은 알려준다. "
+                    + "그 둘은 사용자가 다음에 할 일이 다르다.")
+    @PostMapping("/login")
+    public ResponseEntity<SignInResponse> signInWithPassword(
+            @Valid @RequestBody PasswordSignInRequest request,
+            HttpServletResponse response) {
+        return ResponseEntity.ok(userAuthService.signInWithPassword(
+                request.email(), request.password(), response));
     }
 
     @Operation(summary = "Access 토큰 재발급",

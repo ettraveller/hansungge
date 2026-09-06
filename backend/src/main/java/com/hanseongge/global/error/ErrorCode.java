@@ -91,8 +91,40 @@ public enum ErrorCode {
     USER_BLOCKED(HttpStatus.FORBIDDEN, "이용이 제한된 계정입니다. 고객센터로 문의해 주세요."),
     /** 이미 다른 계정에 연결된 소셜 계정 (설계서 §7.2 — 이메일 자동 병합은 하지 않는다). */
     SOCIAL_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 다른 계정에 연결된 소셜 계정입니다."),
-    /** 마지막 소셜 연동을 끊으면 로그인할 방법이 사라진다. */
-    SOCIAL_LAST_CONNECTION(HttpStatus.CONFLICT, "마지막 소셜 연동은 해제할 수 없습니다."),
+    /** 마지막 로그인 수단을 끊으면 들어올 방법이 사라진다. 비밀번호가 있으면 소셜은 끊을 수 있다. */
+    SOCIAL_LAST_CONNECTION(HttpStatus.CONFLICT, "마지막 로그인 수단은 해제할 수 없습니다."),
+
+    // --- 자체 가입 · 본인확인 (STEP 9-2) ---
+    /** 계약·설정 전이라 본인확인을 쓸 수 없다. 404 가 아닌 이유는 없는 것이 아니라 준비되지 않은 것이기 때문. */
+    IDENTITY_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "현재 본인확인을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."),
+    /** 공급자 응답 검증 실패. 상세 사유는 로그에만 남긴다. */
+    IDENTITY_VERIFICATION_FAILED(HttpStatus.BAD_GATEWAY, "본인확인에 실패했습니다. 다시 시도해 주세요."),
+    /** 만료됐거나 이미 가입에 쓴 본인확인. 한 번 쓴 인증은 재사용할 수 없다. */
+    IDENTITY_VERIFICATION_INVALID(HttpStatus.BAD_REQUEST, "본인확인 정보가 만료되었습니다. 처음부터 다시 진행해 주세요."),
+    /**
+     * 만 14세 미만.
+     *
+     * <p>개인정보보호법 §22조의2 는 법정대리인 동의를 받으면 수집할 수 있다고 하지만,
+     * 그 절차를 만들지 않았으므로 가입 자체를 막는다. 절차 없이 받아 두면 그 시점부터 위법이다.
+     */
+    UNDER_MINIMUM_AGE(HttpStatus.FORBIDDEN, "만 14세 미만은 회원가입을 할 수 없습니다."),
+    /** 같은 DI 로 이미 가입한 계정이 있다. 병합할 수 없는 경우에만 쓴다. */
+    IDENTITY_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 가입된 회원입니다. 로그인해 주세요."),
+    /** 이메일은 같은데 본인확인 결과가 다르다 — 남의 이메일로 가입하려는 시도일 수 있다. */
+    EMAIL_OWNED_BY_ANOTHER(HttpStatus.CONFLICT, "이 이메일은 다른 분이 사용 중입니다. 고객센터로 문의해 주세요."),
+    EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
+    /** 코드 불일치·만료. 어느 쪽인지 알려주지 않는다 — 알려주면 유효한 코드를 찾는 데 쓰인다. */
+    EMAIL_VERIFICATION_INVALID(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않거나 만료되었습니다."),
+    /** 시도 횟수 초과. 6자리 숫자는 막지 않으면 만료 전에 다 훑을 수 있다. */
+    EMAIL_VERIFICATION_ATTEMPTS_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "인증 시도 횟수를 초과했습니다. 인증번호를 다시 받아 주세요."),
+    /** 메일 발송 실패. 설정 누락이거나 공급자 장애다. */
+    MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "인증 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    /** 소셜로만 가입한 계정에 비밀번호 로그인을 시도했다. */
+    PASSWORD_NOT_SET(HttpStatus.CONFLICT, "비밀번호가 설정되지 않은 계정입니다. 소셜 로그인으로 들어와 주세요."),
+    /** 연속 실패로 잠긴 계정. 관리자와 달리 시간이 지나면 스스로 풀린다. */
+    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "로그인 시도가 많아 계정이 잠겼습니다. 30분 후 다시 시도해 주세요."),
+    /** 비밀번호 재설정 링크가 만료됐거나 이미 사용됐다. */
+    PASSWORD_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "비밀번호 재설정 링크가 만료되었습니다. 다시 요청해 주세요."),
 
     // --- 게시판 (STEP 15~16) ---
     /** 내린 공지도 이 코드로 응답한다 — 존재 자체를 알리지 않는다. */
