@@ -41,10 +41,14 @@ export function SignUpView() {
   );
 
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [nameInput, setNameInput] = useState<string | null>(null);
-  // 사용자가 손대기 전에는 소셜에서 받아온 이름을 보여준다.
-  const name = nameInput ?? pending?.suggestedName ?? '';
-  const setName = setNameInput;
+  /**
+   * 이름은 고를 수 없다.
+   *
+   * <p>본인확인기관이 준 실명이라 회원이 바꿀 수 있으면 안 된다 — 바꿀 수 있으면
+   * "확인된 이름"이 아니라 "한 번 확인했다가 지금은 모르는 이름"이 되고, 주문서와
+   * 매입 접수가 그 값 위에 선다. 보여주기만 한다.
+   */
+  const name = pending?.suggestedName ?? '';
 
   if (pending === undefined) {
     return (
@@ -96,7 +100,6 @@ export function SignUpView() {
           type: a.code as AgreementCode,
           agreed: Boolean(checked[a.code]),
         })),
-        name: name.trim() === '' ? null : name.trim(),
       },
       {
         onSuccess: () => {
@@ -149,15 +152,8 @@ export function SignUpView() {
           <label className={styles.label} htmlFor="signup-name">
             이름
           </label>
-          <input
-            id="signup-name"
-            className={styles.input}
-            value={name}
-            maxLength={100}
-            placeholder="주문 시 사용할 이름"
-            onChange={(e) => setName(e.target.value)}
-          />
-          <span className={styles.hint}>비우면 소셜 계정의 이름을 사용합니다.</span>
+          <input id="signup-name" className={styles.input} value={name} disabled readOnly />
+          <span className={styles.hint}>본인확인으로 확인된 이름입니다. 바꿀 수 없습니다.</span>
         </div>
 
         <h2 className={styles.sectionTitle}>약관 동의</h2>

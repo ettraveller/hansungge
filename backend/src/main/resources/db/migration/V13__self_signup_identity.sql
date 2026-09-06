@@ -199,18 +199,35 @@ COMMENT ON COLUMN email_verifications.consumed_at IS '이 인증으로 가입·�
 -- ---------------------------------------------------------------------
 -- 4. 기존 회원 정리
 --
--- 개발 중 만들어진 테스트 계정 1건이 있다. 새 구조는 <b>모든 회원이 검증된 이메일과
--- DI 를 갖는다</b>는 전제 위에 서 있고, 그 전제 덕분에 "미인증 회원" 분기가 코드
--- 어디에도 없다. 전제를 만족하지 않는 행을 하나 남기면 그 행 하나를 위한 예외가
--- 주문·매입·이벤트 전체에 번진다.
+-- 개발 중 만들어진 계정만 있다. 새 구조는 <b>모든 회원이 검증된 이메일과 DI 를
+-- 갖는다</b>는 전제 위에 서 있고, 그 전제 덕분에 "미인증 회원" 분기가 코드 어디에도
+-- 없다. 전제를 만족하지 않는 행을 하나 남기면 그 행 하나를 위한 예외가 주문·매입·
+-- 이벤트 전체에 번진다. 소급으로 본인확인을 받아 채울 수도 없다 — 본인확인은 그
+-- 사람이 직접 해야 한다.
 --
--- 소급으로 본인확인을 받아 채울 수도 없다 — 본인확인은 그 사람이 직접 해야 한다.
---
--- user_agreements 는 전면 거부 트리거가 걸려 있어 잠시 끈다. 테스트 코드가
--- 정리할 때 쓰는 방식과 같다 (UserAuthIntegrationTest.cleanUp).
+-- <h2>주문이 있으면 실행하지 않는다</h2>
+-- 이 마이그레이션은 회원과 그에 딸린 행을 지운다. 주문 기록은 전자상거래법상 5년
+-- 보존 의무가 있어 <b>어떤 경우에도 조용히 지워서는 안 된다.</b> 한 건이라도 있으면
+-- 여기서 멈추고 사람이 판단하게 한다 — 지우는 것보다 배포가 멈추는 편이 낫다.
 -- ---------------------------------------------------------------------
+DO $guard$
+BEGIN
+    IF EXISTS (SELECT 1 FROM orders) THEN
+        RAISE EXCEPTION '주문 기록이 있는 DB 에서는 회원 초기화를 실행할 수 없습니다. '
+                        '전자상거래법상 거래 기록은 5년 보존 대상입니다. '
+                        '이 마이그레이션의 4절을 상황에 맞게 다시 작성하세요.';
+    END IF;
+END $guard$;
+
+-- 참조의 역순으로 지운다. append-only 트리거가 걸린 동의 이력은 잠시 내린다 —
+-- 운영에서는 하지 않는 일이라 이 한 번을 위해서만 연다.
 ALTER TABLE user_agreements DISABLE TRIGGER trg_user_agreement_guard;
 
+DELETE FROM cart_items;
+DELETE FROM carts;
+DELETE FROM coupon_issues;
+DELETE FROM event_entries;
+DELETE FROM qnas;
 DELETE FROM user_agreements;
 DELETE FROM refresh_tokens WHERE subject_type = 'USER';
 DELETE FROM social_accounts;

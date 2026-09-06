@@ -8,7 +8,9 @@ import { useEffect } from 'react';
 import * as authApi from '@/api/auth';
 import { Notice } from '@/components/auth/Notice';
 import { useUserAuthStore } from '@/stores/useUserAuthStore';
+import { useStartIdentity } from '@/hooks/useUserSession';
 import { oauthState, pendingSignUp, safeNext } from '@/utils/authStorage';
+import { identityReturnUrl, pendingIdentity } from '@/utils/identityReturn';
 import { ApiError } from '@/types/api';
 import type { OAuthProviderType, SignInResult } from '@/types/user';
 import styles from '@/components/auth/auth.module.css';
@@ -49,6 +51,7 @@ export function AuthCallbackView({ provider }: { provider: OAuthProviderType }) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const signIn = useUserAuthStore((s) => s.signIn);
+  const startIdentity = useStartIdentity();
 
   const code = searchParams.get('code');
   const returnedState = searchParams.get('state');
@@ -102,8 +105,26 @@ export function AuthCallbackView({ provider }: { provider: OAuthProviderType }) 
     const next = safeNext(sessionStorage.getItem('hsg_after_login'));
     sessionStorage.removeItem('hsg_after_login');
 
+    // 처음 오는 소셜 계정이면 <b>본인확인이 먼저다.</b> 소셜만 면제하면 "본인확인을
+    // 안 한 회원"이 생기고, 그 예외가 주문·매입 코드 전체로 번진다.
+    //
+    // 약관을 여기서 받지 않는 이유 — 본인확인을 마쳐 봐야 이미 가입한 사람인지 알 수
+    // 있다. 이미 회원이면 서버가 그 자리에서 소셜만 붙이고 들여보낸다.
+    if (data.identityRequired) {
+      pendingIdentity.save({
+        signUpToken: data.signUpToken ?? '',
+        origin: 'social',
+        next,
+      });
+      startIdentity.mutate(
+        { signUpToken: data.signUpToken ?? '', returnUrl: identityReturnUrl() },
+        { onSuccess: (res) => window.location.assign(res.startUrl) },
+      );
+      return;
+    }
+
     if (data.signUpRequired) {
-      // 아직 계정이 없다. 약관 동의를 마쳐야 만들어진다.
+      // 본인확인까지 끝났고 약관만 남았다.
       pendingSignUp.save({
         signUpToken: data.signUpToken ?? '',
         agreements: data.agreements ?? [],
@@ -118,7 +139,7 @@ export function AuthCallbackView({ provider }: { provider: OAuthProviderType }) 
       signIn({ accessToken: data.accessToken, user: data.user });
     }
     router.replace(next);
-  }, [data, router, signIn]);
+  }, [data, router, signIn, startIdentity]);
 
   if (error) {
     const title = error instanceof CallbackError ? error.title : '로그인에 실패했습니다';

@@ -106,6 +106,72 @@ export function useCompleteSignUp() {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* 자체 가입 — 이메일 인증 → 본인확인 → 약관                            */
+/* ------------------------------------------------------------------ */
+
+export function useSendEmailCode() {
+  return useMutation({ mutationFn: (email: string) => authApi.sendEmailCode(email) });
+}
+
+export function useConfirmEmailCode() {
+  return useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      authApi.confirmEmailCode(email, code),
+  });
+}
+
+export function useStartIdentity() {
+  return useMutation({
+    mutationFn: ({ signUpToken, returnUrl }: { signUpToken: string; returnUrl: string }) =>
+      authApi.startIdentity(signUpToken, returnUrl),
+  });
+}
+
+/**
+ * 본인확인 결과 제출.
+ *
+ * <p>이미 가입한 신원이면 여기서 <b>로그인이 끝난다</b>. 그래서 성공 응답에 토큰이
+ * 있으면 세션에 넣는다 — 화면이 그것을 잊으면 로그인은 됐는데 로그인 안 된 것처럼
+ * 보인다.
+ */
+export function useCompleteIdentity() {
+  const signIn = useUserAuthStore((s) => s.signIn);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      signUpToken,
+      providerToken,
+      password,
+    }: {
+      signUpToken: string;
+      providerToken: string;
+      password?: string;
+    }) => authApi.completeIdentity(signUpToken, providerToken, password),
+    onSuccess: (result) => {
+      if (result.accessToken && result.user) {
+        signIn({ accessToken: result.accessToken, user: result.user });
+        void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      }
+    },
+  });
+}
+
+export function useSignInWithPassword() {
+  const signIn = useUserAuthStore((s) => s.signIn);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      authApi.signInWithPassword(email, password),
+    onSuccess: (result) => {
+      if (result.accessToken && result.user) {
+        signIn({ accessToken: result.accessToken, user: result.user });
+        void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      }
+    },
+  });
+}
+
 export function useSignOut() {
   const signOut = useUserAuthStore((s) => s.signOut);
   const queryClient = useQueryClient();

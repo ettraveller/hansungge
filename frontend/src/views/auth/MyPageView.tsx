@@ -62,7 +62,8 @@ function ProfilePanel() {
   const update = useUpdateProfile();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
+  // 본인확인으로 확정된 값이라 상태가 아니라 표시용이다.
+  const phone = user?.phone ?? '';
 
   const error = update.error;
   const fieldErrors = error instanceof ApiError ? error.fieldErrors : undefined;
@@ -87,7 +88,7 @@ function ProfilePanel() {
             onSubmit={(e) => {
               e.preventDefault();
               update.mutate(
-                { name: name.trim(), phone: phone.trim() },
+                { name: name.trim() },
                 { onSuccess: () => setEditing(false) },
               );
             }}
@@ -108,14 +109,10 @@ function ProfilePanel() {
               <label className={styles.label} htmlFor="me-phone">
                 연락처
               </label>
-              <input
-                id="me-phone"
-                className={styles.input}
-                value={phone}
-                placeholder="010-1234-5678"
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <span className={styles.hint}>주문·배송 안내에 사용됩니다. 비워 둘 수 있습니다.</span>
+              <input id="me-phone" className={styles.input} value={phone} readOnly disabled />
+              <span className={styles.hint}>
+                본인확인으로 등록된 번호입니다. 바꾸시려면 고객센터로 문의해 주세요.
+              </span>
             </div>
             <div className={styles.actions}>
               <button
@@ -132,7 +129,6 @@ function ProfilePanel() {
                 onClick={() => {
                   setEditing(false);
                   setName(user?.name ?? '');
-                  setPhone(user?.phone ?? '');
                   update.reset();
                 }}
               >

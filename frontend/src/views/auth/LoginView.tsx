@@ -6,7 +6,12 @@ import { useEffect, useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
 import { SocialButtons } from '@/components/auth/SocialButtons';
-import { useAuthProviders, useStartOAuth, useUserSession } from '@/hooks/useUserSession';
+import {
+  useAuthProviders,
+  useSignInWithPassword,
+  useStartOAuth,
+  useUserSession,
+} from '@/hooks/useUserSession';
 import { oauthState, safeNext } from '@/utils/authStorage';
 import { ApiError } from '@/types/api';
 import type { OAuthProviderType } from '@/types/user';
@@ -15,11 +20,13 @@ import styles from '@/components/auth/auth.module.css';
 /**
  * 로그인.
  *
- * <p>아이디·비밀번호 입력란이 없다. 자체 계정을 만들지 않기로 했기 때문이다
- * (개발계획 §7.1) — 보관하지 않는 비밀번호는 유출될 수도, 재사용될 수도 없다.
+ * <p>이메일 로그인과 소셜 로그인을 함께 둔다. 소셜 계정이 없거나 쓰기 싫은 고객이
+ * 있고, 귀금속 매입 고객층은 특히 그렇다.
  *
- * <p>그래서 "로그인"과 "회원가입"이 같은 동작이다. 처음 오는 소셜 계정이면 약관 동의
- * 화면으로 이어지고, 이미 있으면 바로 들어온다.
+ * <p>실패 사유를 세분해 보여주지 않는다 — "없는 계정"과 "틀린 비밀번호"를 구분해
+ * 주면 가입 여부를 확인하는 도구가 된다. 다만 <b>비밀번호가 없는 계정</b>과
+ * <b>잠긴 계정</b>은 알려준다. 그 둘은 사용자가 다음에 할 일이 다르고, 알려주지
+ * 않으면 맞는 비밀번호를 계속 넣어보게 된다.
  */
 export function LoginView() {
   const router = useRouter();
@@ -31,6 +38,10 @@ export function LoginView() {
   const { data, isLoading, error } = useAuthProviders();
   const startOAuth = useStartOAuth();
   const [pendingProvider, setPendingProvider] = useState<OAuthProviderType | null>(null);
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const signInWithPassword = useSignInWithPassword();
 
   // 이미 로그인한 상태로 들어오면 되돌려 보낸다.
   useEffect(() => {
@@ -60,9 +71,9 @@ export function LoginView() {
       <header className={styles.head}>
         <h1 className={styles.title}>로그인 · 회원가입</h1>
         <p className={styles.lead}>
-          한성금거래소는 소셜 계정으로만 로그인합니다.
+          이메일 또는 소셜 계정으로 로그인합니다.
           <br />
-          별도 비밀번호를 만들지 않으므로 비밀번호가 새어 나갈 일이 없습니다.
+          회원가입에는 휴대폰 본인확인이 필요하며, 매입 신청에 그대로 쓰입니다.
         </p>
       </header>
 
@@ -82,6 +93,70 @@ export function LoginView() {
             </Notice>
           </div>
         )}
+
+        {signInWithPassword.error && (
+          <div style={{ marginBottom: 16 }}>
+            <Notice tone="error" title={loginErrorTitle(signInWithPassword.error)}>
+              {signInWithPassword.error instanceof ApiError
+                ? signInWithPassword.error.message
+                : '잠시 후 다시 시도해 주세요.'}
+            </Notice>
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            signInWithPassword.mutate(
+              { email: email.trim(), password },
+              { onSuccess: () => router.replace(next) },
+            );
+          }}
+        >
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="login-email">
+              이메일
+            </label>
+            <input
+              id="login-email"
+              type="email"
+              className={styles.input}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="login-password">
+              비밀번호
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              className={styles.input}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+          <div className={styles.actions}>
+            <button
+              type="submit"
+              className={styles.primary}
+              disabled={signInWithPassword.isPending}
+            >
+              {signInWithPassword.isPending ? '로그인 중…' : '로그인'}
+            </button>
+          </div>
+        </form>
+
+        <p className={styles.foot}>
+          계정이 없으신가요? <Link href="/signup/email">이메일로 회원가입</Link>
+        </p>
+
+        <h2 className={styles.sectionTitle}>소셜 계정으로 계속하기</h2>
 
         {isLoading ? (
           <p className={styles.loading}>불러오는 중…</p>
@@ -107,9 +182,22 @@ export function LoginView() {
           로그인하면 <Link href="/terms">이용약관</Link> 및{' '}
           <Link href="/privacy">개인정보 처리방침</Link>에 동의하는 것으로 봅니다.
           <br />
-          처음 오셨다면 다음 화면에서 약관 동의를 거쳐 가입이 완료됩니다.
+          처음 오셨다면 휴대폰 본인확인과 약관 동의를 거쳐 가입이 완료됩니다.
         </p>
       </div>
     </div>
-  );
+  );
+}
+
+/** 로그인 실패의 결이 다른 두 경우만 제목을 나눈다. */
+function loginErrorTitle(error: unknown): string {
+  if (!(error instanceof ApiError)) return '로그인하지 못했습니다';
+  switch (error.code) {
+    case 'PASSWORD_NOT_SET':
+      return '소셜 계정으로 가입하신 회원입니다';
+    case 'USER_ACCOUNT_LOCKED':
+      return '계정이 잠겼습니다';
+    default:
+      return '로그인하지 못했습니다';
+  }
 }

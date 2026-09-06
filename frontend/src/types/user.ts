@@ -54,7 +54,9 @@ export interface OAuthAuthorize {
 export interface User {
   id: number;
   email?: string | null;
+  /** 본인확인 실명. 회원이 고칠 수 없다 */
   name?: string | null;
+  /** 본인확인으로 확정된 번호. 회원이 고칠 수 없다 */
   phone?: string | null;
   status: UserStatus;
   createdAt: string;
@@ -77,6 +79,14 @@ export interface SignInResult {
   expiresIn?: number | null;
   user?: User | null;
   signUpToken?: string | null;
+  /**
+   * 휴대폰 본인확인이 아직 남았는가.
+   *
+   * <b>signUpRequired 와 다르다.</b> 화면이 갈 곳이 다르기 때문이다 —
+   * 하나는 약관 화면, 하나는 본인확인 창이다. 한 값으로 뭉치면 프론트가 순서를
+   * 스스로 추측해야 하고, 그 추측은 서버 정책이 바뀌면 조용히 어긋난다.
+   */
+  identityRequired?: boolean | null;
   agreements?: AgreementItem[] | null;
   suggestedName?: string | null;
   suggestedEmail?: string | null;
