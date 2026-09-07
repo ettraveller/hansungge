@@ -25,6 +25,23 @@ public final class PrivacyMask {
 
     private static final char MASK = '*';
 
+    /** 이메일 아이디에서 남기는 앞 글자 수. */
+    private static final int KEEP_LOCAL = 2;
+
+    /** 전화번호에서 남기는 앞자리(통신사 식별). */
+    private static final int KEEP_HEAD = 3;
+
+    /** 전화번호에서 남기는 뒷자리. 고객이 전화로 말하는 그 네 자리다. */
+    private static final int KEEP_TAIL = 4;
+
+    /**
+     * 전화번호에서 <b>반드시 가려야 하는</b> 최소 자릿수.
+     *
+     * <p>이보다 적게 가려지면 앞자리를 포기한다. 별표를 찍었는데 실제로는 아무것도
+     * 가려지지 않는 상태를 만들지 않기 위한 하한이다.
+     */
+    private static final int MIN_HIDDEN = 4;
+
     private PrivacyMask() {
     }
 
@@ -66,27 +83,50 @@ public final class PrivacyMask {
 
         String local = trimmed.substring(0, at);
         String domain = trimmed.substring(at);
-        int keep = Math.min(2, local.length());
-        return local.substring(0, keep) + repeat(local.length() - keep) + domain;
+
+        // ⚠️ 짧은 아이디를 그대로 흘리지 않는다.
+        //
+        // 앞 두 글자를 남기는 규칙을 그대로 적용하면 아이디가 1~2 글자일 때 가릴 것이
+        // 남지 않아 <b>주소 전체가 그대로 나간다</b>(me@company.com → me@company.com).
+        // 가려진 것처럼 보이지만 가려지지 않은 값이라, 화면을 보는 사람도 코드를 읽는
+        // 사람도 눈치채지 못한다. 남길 수 없으면 통째로 가린다.
+        if (local.length() <= KEEP_LOCAL) {
+            return repeat(local.length()) + domain;
+        }
+        return local.substring(0, KEEP_LOCAL) + repeat(local.length() - KEEP_LOCAL) + domain;
     }
 
     /**
-     * 휴대폰 — 가운데 자리만 가린다. {@code 010-1234-5678 → 010-****-5678}
+     * 휴대폰 — 가운데 자리를 가린다. {@code 010-1234-5678 → 010-****-5678}
      *
      * <p>끝 네 자리를 남기는 것은 관행이고 실용적이다. 고객이 전화로 "뒷자리 5678" 이라고
      * 말하면 그것만으로 계정을 찾을 수 있다.
+     *
+     * <h2>⚠️ 별표 개수는 실제로 가려진 자릿수여야 한다</h2>
+     * 앞 3자리와 뒤 4자리를 남기면서 별표를 <b>항상 4개</b> 찍으면, 7자리 번호가
+     * {@code 123-****-4567} 로 나온다 — 숫자는 하나도 가려지지 않았는데 가려진 것처럼
+     * 보인다. 자릿수가 짧을수록 더 많이 드러나고, 그 사실이 화면에서 드러나지 않는다.
+     *
+     * <p>그래서 가릴 자리가 {@link #MIN_HIDDEN} 개에 못 미치면 <b>앞자리를 포기하고</b>
+     * 뒤 네 자리만 남긴다. 안전한 쪽으로 실패한다.
      */
     public static String phone(String phone) {
         if (isBlank(phone)) {
             return NONE;
         }
         String digits = phone.replaceAll("[^0-9]", "");
-        if (digits.length() < 7) {
+        if (digits.length() <= KEEP_TAIL) {
             return repeat(digits.length());
         }
-        String head = digits.substring(0, 3);
-        String tail = digits.substring(digits.length() - 4);
-        return "%s-%s-%s".formatted(head, repeat(4), tail);
+
+        String tail = digits.substring(digits.length() - KEEP_TAIL);
+        int hidden = digits.length() - KEEP_HEAD - KEEP_TAIL;
+
+        if (hidden < MIN_HIDDEN) {
+            // 휴대폰(11자리)이 아닌 짧은 번호. 앞자리까지 남기면 사실상 전부 보인다
+            return repeat(digits.length() - KEEP_TAIL) + tail;
+        }
+        return "%s-%s-%s".formatted(digits.substring(0, KEEP_HEAD), repeat(hidden), tail);
     }
 
     private static boolean isBlank(String value) {

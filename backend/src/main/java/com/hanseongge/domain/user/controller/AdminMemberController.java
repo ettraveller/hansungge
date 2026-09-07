@@ -50,8 +50,25 @@ public class AdminMemberController {
 
     private final AdminMemberService memberService;
 
+    /**
+     * 회원 목록.
+     *
+     * <h2>검색은 목록보다 높은 등급이다</h2>
+     * 목록에 나가는 값은 가려져 있지만, <b>검색은 가리기 전 원본을 대상으로 한다.</b>
+     * 그래서 부분 검색을 반복하면 가려 둔 값을 한 글자씩 확인할 수 있다 — 화면에
+     * {@code 010-****-5678} 만 보여도 {@code keyword=0101}, {@code 0102} … 를 차례로
+     * 넣어 걸리는지 보면 가운데 자리가 복원된다.
+     *
+     * <p>그것은 상세 조회와 같은 열람이므로 <b>같은 등급</b>이어야 한다. 검색어가 없는
+     * 단순 열람만 {@code OPERATOR} 에게 남긴다.
+     *
+     * <p>와일드카드 주입은 별도로 막는다 —
+     * {@code AdminMemberService.likePattern} 참조.
+     */
+    @PreAuthorize("hasRole('OPERATOR') and (#keyword == null or #keyword.isBlank() or hasRole('MANAGER'))")
     @Operation(summary = "회원 목록",
-               description = "이메일·이름·휴대폰으로 검색한다. 값은 가려져서 나간다.")
+               description = "값은 가려져서 나간다. 검색(keyword)은 가리기 전 원본을 대상으로 "
+                           + "하므로 상세 조회와 같은 MANAGER 등급이 필요하다.")
     @GetMapping
     public ResponseEntity<PageResponse<AdminMemberSummaryResponse>> list(
             @RequestParam(required = false) String keyword,

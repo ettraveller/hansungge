@@ -57,8 +57,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * <p>정렬은 질의에 고정한다. {@code Pageable} 의 정렬을 그대로 받으면 인덱스를 벗어난
      * 정렬로 전건 스캔이 나고, 그 순간을 아무도 눈치채지 못한다.
      *
-     * <h2>⚠️ {@code keyword} 에 null 을 넘기지 않는다 — 빈 문자열이다</h2>
-     * {@code :keyword IS NULL} 로 분기하면 검색어가 없을 때 <b>타입이 없는 null</b> 이
+     * <h2>⚠️ 완성된 LIKE 패턴을 받는다 — 여기서 조립하지 않는다</h2>
+     * 호출부({@code AdminMemberService.findPage})가 {@code %} 와 {@code _} 를 escape 한
+     * 뒤 {@code %검색어%} 를 만들어 넘긴다. 질의 안에서 {@code concat('%', :keyword, '%')}
+     * 로 조립하면 <b>검색어에 들어 있는 와일드카드가 그대로 패턴이 된다</b> — 관리자가
+     * {@code %} 하나만 넣어도 전건이 매칭되고, {@code 010_2345} 같은 패턴으로 가려 둔
+     * 자릿수를 한 자리씩 확인할 수 있다.
+     *
+     * <h2>⚠️ {@code pattern} 에 null 을 넘기지 않는다</h2>
+     * {@code :pattern IS NULL} 로 분기하면 검색어가 없을 때 <b>타입이 없는 null</b> 이
      * 바인딩되고, PostgreSQL 은 그 타입을 {@code bytea} 로 추론한다. 그러면
      * {@code lower(...)} 가 이렇게 터진다.
      *
@@ -67,8 +74,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * </pre>
      *
      * <p>그래서 "검색어 없음"을 <b>빈 문자열</b>로 표현한다. 잃는 것도 없다 — 어차피
-     * {@code LIKE '%...%'} 는 앞이 와일드카드라 인덱스를 못 쓰고, 빈 검색어는 의미상
-     * 전건이 맞다.
+     * {@code LIKE '%...%'} 는 앞이 와일드카드라 인덱스를 못 쓴다.
      *
      * <p>{@code status} 는 함수에 넣지 않아서 null 이어도 안전하다({@code ? IS NULL} 은
      * 타입 없는 값에도 동작한다). 여기에 함수를 씌우게 되면 같은 함정에 빠진다.
@@ -76,14 +82,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("""
             SELECT u FROM User u
             WHERE (:status IS NULL OR u.status = :status)
-              AND (:keyword = ''
-                   OR lower(u.email) LIKE lower(concat('%', :keyword, '%'))
-                   OR lower(u.name) LIKE lower(concat('%', :keyword, '%'))
-                   OR u.phone LIKE concat('%', :keyword, '%'))
+              AND (:pattern = ''
+                   OR lower(u.email) LIKE lower(:pattern) ESCAPE '!'
+                   OR lower(u.name) LIKE lower(:pattern) ESCAPE '!'
+                   OR u.phone LIKE :pattern ESCAPE '!')
             ORDER BY u.id DESC
             """)
     Page<User> findAdminPage(
-            @Param("keyword") String keyword,
+            @Param("pattern") String pattern,
             @Param("status") UserStatus status,
             Pageable pageable);
 

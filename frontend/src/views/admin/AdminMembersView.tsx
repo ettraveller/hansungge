@@ -94,7 +94,7 @@ export function AdminMembersView() {
 
       {!canViewDetail && (
         <Alert tone="info">
-          상세 조회는 MANAGER 이상이 할 수 있습니다. 목록의 값은 일부가 가려져 있습니다.
+          상세 조회와 검색은 MANAGER 이상이 할 수 있습니다. 목록의 값은 가려져 있습니다.
         </Alert>
       )}
 
@@ -126,16 +126,25 @@ export function AdminMembersView() {
               changeFilter(() => setApplied(keyword));
             }}
           >
-            <input
-              className={styles.input}
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="이메일 · 이름 · 휴대폰"
-              aria-label="회원 검색"
-            />
-            <Button small type="submit">
-              검색
-            </Button>
+            {/*
+              검색은 가리기 전 원본을 대상으로 하므로 서버가 MANAGER 를 요구한다.
+              OPERATOR 에게 입력칸을 보여주면 눌렀을 때만 403 을 알게 된다 — 쓸 수 없는
+              것은 그리지 않는다.
+            */}
+            {canViewDetail && (
+              <>
+                <input
+                  className={styles.input}
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="이메일 · 이름 · 휴대폰"
+                  aria-label="회원 검색"
+                />
+                <Button small type="submit">
+                  검색
+                </Button>
+              </>
+            )}
             {applied && (
               <Button
                 small

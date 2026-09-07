@@ -67,8 +67,36 @@ public class AdminMemberService {
      */
     @Transactional(readOnly = true)
     public Page<User> findPage(String keyword, UserStatus status, Pageable pageable) {
-        String normalized = keyword == null ? "" : keyword.trim();
-        return userRepository.findAdminPage(normalized, status, pageable);
+        return userRepository.findAdminPage(likePattern(keyword), status, pageable);
+    }
+
+    /**
+     * 검색어 → LIKE 패턴.
+     *
+     * <h2>와일드카드를 막는 이유</h2>
+     * 목록은 이메일·이름·휴대폰을 가려서 내보내는데, 검색은 <b>가리기 전 원본</b>을
+     * 대상으로 한다. 그래서 검색어에 {@code %} 나 {@code _} 를 넣을 수 있으면 가려 둔
+     * 자리를 한 글자씩 확인하는 도구가 된다.
+     *
+     * <pre>
+     * 화면에 보이는 값        010-****-5678
+     * keyword=010_2345  →   걸리면 셋째 자리가 확정된다
+     * keyword=%         →   전건이 매칭된다
+     * </pre>
+     *
+     * <p>그렇게 몇십 번만 물어보면 가려 둔 번호가 통째로 복원된다. 그래서 특수문자를
+     * escape 해 <b>글자 그대로</b> 찾게 만든다. escape 문자 자체({@code !})도 먼저
+     * 치환해야 한다 — 안 그러면 {@code !} 를 넣어 escape 를 무력화할 수 있다.
+     */
+    private static String likePattern(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "";
+        }
+        String escaped = keyword.trim()
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+        return "%" + escaped + "%";
     }
 
     /** 상태별 회원 수. 목록 상단 요약에 쓴다. */
