@@ -4,6 +4,7 @@ import type { AdminNoticeSearch } from '@/api/admin/notices';
 import type { ProductSearch } from '@/api/admin/products';
 import type { AdminQnaSearch } from '@/api/admin/qnas';
 import type { PendingStatus } from '@/types/admin';
+import type { MemberSearch } from '@/types/member';
 import type { MetalType, PriceSide } from '@/types/price';
 
 /**
@@ -46,6 +47,11 @@ export const adminKeys = {
   eventList: (search: AdminEventSearch) => [...adminKeys.events(), 'list', search] as const,
   eventEntries: (id: number, page: number) =>
     [...adminKeys.events(), id, 'entries', page] as const,
+
+  members: () => [...adminKeys.all, 'members'] as const,
+  memberList: (search: MemberSearch) => [...adminKeys.members(), 'list', search] as const,
+  memberCounts: () => [...adminKeys.members(), 'counts'] as const,
+  member: (id: number) => [...adminKeys.members(), id] as const,
 
   auditLogs: (search: AuditSearch) => [...adminKeys.all, 'audit-logs', search] as const,
 

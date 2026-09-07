@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+
+import { PasswordInput as BasePasswordInput } from '@/components/ui/PasswordInput';
 import styles from './admin.module.css';
 
 /**
@@ -55,6 +57,30 @@ export function TextInput({
       className={[styles.input, invalid ? styles.inputInvalid : '', className]
         .filter(Boolean)
         .join(' ')}
+    />
+  );
+}
+
+/**
+ * 비밀번호 입력 — 오른쪽 눈 아이콘으로 보기/숨기기.
+ *
+ * <p>{@link TextInput} 에 {@code type="password"} 를 주는 대신 이것을 쓴다. 관리자
+ * 비밀번호는 생성기로 만든 10자 이상 문자열이고, <b>5회 틀리면 계정이 잠긴 뒤 자동으로
+ * 풀리지 않는다.</b> 눈으로 확인할 수단이 있어야 한다.
+ *
+ * <p>모양은 {@code admin.module.css} 의 입력칸을 그대로 쓰고, 토글만 얹는다.
+ */
+export function PasswordInput({
+  invalid,
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+  return (
+    <BasePasswordInput
+      {...props}
+      invalid={invalid}
+      inputClassName={[styles.input, className].filter(Boolean).join(' ')}
+      invalidClassName={styles.inputInvalid}
     />
   );
 }

@@ -14,6 +14,7 @@ import {
 import { identityReturnUrl, pendingIdentity } from '@/utils/identityReturn';
 import { safeNext } from '@/utils/authStorage';
 import { ApiError } from '@/types/api';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import styles from '@/components/auth/auth.module.css';
 
 /**
@@ -203,10 +204,9 @@ export function EmailSignUpView() {
               <label className={styles.label} htmlFor="su-password">
                 비밀번호
               </label>
-              <input
+              <PasswordInput
                 id="su-password"
-                type="password"
-                className={styles.input}
+                inputClassName={styles.input}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -220,10 +220,9 @@ export function EmailSignUpView() {
               <label className={styles.label} htmlFor="su-password2">
                 비밀번호 확인
               </label>
-              <input
+              <PasswordInput
                 id="su-password2"
-                type="password"
-                className={styles.input}
+                inputClassName={styles.input}
                 value={passwordAgain}
                 onChange={(e) => setPasswordAgain(e.target.value)}
                 autoComplete="new-password"

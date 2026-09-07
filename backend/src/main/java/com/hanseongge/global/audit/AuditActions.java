@@ -63,8 +63,23 @@ public final class AuditActions {
     /** 관리자가 문의글을 내림 (욕설·개인정보 노출 등) */
     public static final String QNA_HIDE = "QNA_HIDE";
 
+    // --- 회원 관리 (관리자) ---
+    /**
+     * 관리자가 회원 상세를 열었다.
+     *
+     * <p>변경이 아닌데도 남기는 이유 — 상세에는 이름·휴대폰·이메일이 <b>가려지지 않은</b>
+     * 채로 나간다. 개인정보를 열람할 수 있게 하는 것과 아무도 모르게 열람하도록 두는
+     * 것은 다른 문제다. 목록 조회는 남기지 않는다(가려서 나가고, 남기면 로그가 폭발한다).
+     */
+    public static final String MEMBER_VIEW = "MEMBER_VIEW";
+    public static final String MEMBER_STATUS_CHANGE = "MEMBER_STATUS_CHANGE";
+    /** 로그인 실패 잠금을 관리자가 즉시 해제함 */
+    public static final String MEMBER_UNLOCK = "MEMBER_UNLOCK";
+
     // --- 대상 유형 ---
     public static final String TARGET_ADMIN_USER = "ADMIN_USER";
+    /** 쇼핑몰 회원({@code users}). 관리자 계정과 구분한다 */
+    public static final String TARGET_MEMBER = "MEMBER";
     public static final String TARGET_NOTICE = "NOTICE";
     public static final String TARGET_EVENT = "EVENT";
     public static final String TARGET_QNA = "QNA";

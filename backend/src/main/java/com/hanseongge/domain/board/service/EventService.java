@@ -11,7 +11,7 @@ import com.hanseongge.global.audit.AuditContext;
 import com.hanseongge.global.audit.AuditLog;
 import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
-import com.hanseongge.global.util.NameMasker;
+import com.hanseongge.global.util.PrivacyMask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -212,7 +212,7 @@ public class EventService {
         }
         return userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getId,
-                        user -> NameMasker.mask(user.getName()),
+                        user -> PrivacyMask.name(user.getName()),
                         (a, b) -> a, LinkedHashMap::new));
     }
 

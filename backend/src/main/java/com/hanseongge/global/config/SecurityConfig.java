@@ -117,7 +117,7 @@ public class SecurityConfig {
                                 // 포괄 규칙에 걸려 인증이 필요하다 — GET 만 여기 두는 이유다.
                                 //
                                 // 다른 사람의 문의와 답변이 보여야 같은 질문을 또 하지 않는다.
-                                // 대신 작성자명은 서버가 가려서 내보내고(NameMasker), 비밀글은
+                                // 대신 작성자명은 서버가 가려서 내보내고(PrivacyMask), 비밀글은
                                 // 제목만 보이며 본문은 작성자·관리자만 받는다.
                                 "/api/v1/qnas",
                                 "/api/v1/qnas/**").permitAll()

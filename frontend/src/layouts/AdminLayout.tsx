@@ -25,13 +25,14 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin/qnas', label: '문의 관리', minRole: 'OPERATOR' },
   { href: '/admin/notices', label: '공지 관리', minRole: 'OPERATOR' },
   { href: '/admin/events', label: '이벤트 관리', minRole: 'OPERATOR' },
+  { href: '/admin/members', label: '회원관리', minRole: 'OPERATOR' },
   { href: '/admin/audit-logs', label: '감사로그', minRole: 'ADMIN' },
   { href: '/admin/admins', label: '관리자 계정', minRole: 'SUPER_ADMIN' },
   { href: '/admin/account', label: '내 계정', minRole: 'OPERATOR' },
 ];
 
 /** 아직 백엔드가 없는 영역. 링크로 만들지 않는다 — 눌러도 404 인 메뉴는 신뢰를 깎는다. */
-const PLANNED = ['주문관리', '배송관리', '결제관리', '회원관리', '쿠폰·이벤트'];
+const PLANNED = ['주문관리', '배송관리', '결제관리', '쿠폰'];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/admin') return pathname === '/admin';

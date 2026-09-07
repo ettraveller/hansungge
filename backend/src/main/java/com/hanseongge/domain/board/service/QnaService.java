@@ -12,7 +12,7 @@ import com.hanseongge.global.audit.AuditContext;
 import com.hanseongge.global.audit.AuditLog;
 import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
-import com.hanseongge.global.util.NameMasker;
+import com.hanseongge.global.util.PrivacyMask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -200,7 +200,7 @@ public class QnaService {
     @Transactional(readOnly = true)
     public Map<Long, String> maskedAuthorNames(List<Qna> qnas) {
         return authorNames(qnas).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> NameMasker.mask(e.getValue()),
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> PrivacyMask.name(e.getValue()),
                         (a, b) -> a, LinkedHashMap::new));
     }
 

@@ -136,7 +136,19 @@ public enum ErrorCode {
     QNA_ALREADY_ANSWERED(HttpStatus.CONFLICT, "답변이 등록된 문의는 수정하거나 삭제할 수 없습니다."),
     /** 기간이 지났거나 아직 시작하지 않은 이벤트. */
     EVENT_NOT_OPEN(HttpStatus.CONFLICT, "응모 기간이 아닙니다."),
-    EVENT_ALREADY_ENTERED(HttpStatus.CONFLICT, "이미 응모하셨습니다.");
+    EVENT_ALREADY_ENTERED(HttpStatus.CONFLICT, "이미 응모하셨습니다."),
+
+    // --- 회원 관리 (관리자) ---
+    /**
+     * 탈퇴는 되돌리지 않는다.
+     *
+     * <p>탈퇴는 본인이 한 의사표시이고, 관리자가 계정을 되살리는 것은 <b>본인 동의 없이
+     * 개인정보 처리를 재개</b>하는 일이다. 같은 사람이 다시 쓰려면 다시 가입하면 된다 —
+     * 이메일·DI 의 UNIQUE 인덱스가 탈퇴 행을 제외하므로 막히지 않는다.
+     */
+    MEMBER_WITHDRAWN_IMMUTABLE(HttpStatus.CONFLICT, "탈퇴한 회원의 상태는 변경할 수 없습니다."),
+    /** 관리자가 회원을 탈퇴시키지 않는다. 탈퇴는 본인만 할 수 있다. */
+    MEMBER_WITHDRAW_DENIED(HttpStatus.BAD_REQUEST, "탈퇴 처리는 회원 본인만 할 수 있습니다.");
 
     private final HttpStatus status;
     private final String message;

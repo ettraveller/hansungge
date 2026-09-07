@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useUserSession';
 import { oauthState, safeNext } from '@/utils/authStorage';
 import { ApiError } from '@/types/api';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import type { OAuthProviderType } from '@/types/user';
 import styles from '@/components/auth/auth.module.css';
 
@@ -131,10 +132,9 @@ export function LoginView() {
             <label className={styles.label} htmlFor="login-password">
               비밀번호
             </label>
-            <input
+            <PasswordInput
               id="login-password"
-              type="password"
-              className={styles.input}
+              inputClassName={styles.input}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"

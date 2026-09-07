@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
-import { Field, TextInput } from '@/components/admin/Field';
+import { Field, PasswordInput } from '@/components/admin/Field';
 import { Panel } from '@/components/admin/Panel';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAdminSession, useChangeMyPassword } from '@/hooks/admin/useAdminSession';
@@ -124,9 +124,8 @@ export function AdminAccountView() {
 
           <div className={styles.formGrid}>
             <Field label="현재 비밀번호" htmlFor="cur-pw" required>
-              <TextInput
+              <PasswordInput
                 id="cur-pw"
-                type="password"
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -146,9 +145,8 @@ export function AdminAccountView() {
                     : null
               }
             >
-              <TextInput
+              <PasswordInput
                 id="new-pw"
-                type="password"
                 autoComplete="new-password"
                 invalid={newInvalid || sameAsCurrent}
                 value={newPassword}
@@ -162,9 +160,8 @@ export function AdminAccountView() {
               required
               error={mismatch ? '입력한 두 값이 다릅니다.' : null}
             >
-              <TextInput
+              <PasswordInput
                 id="new-pw2"
-                type="password"
                 autoComplete="new-password"
                 invalid={mismatch}
                 value={confirmPassword}

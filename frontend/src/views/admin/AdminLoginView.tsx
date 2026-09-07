@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
-import { Field, TextInput } from '@/components/admin/Field';
+import { Field, PasswordInput, TextInput } from '@/components/admin/Field';
 import { useAdminLogin, useAdminSession } from '@/hooks/admin/useAdminSession';
 import { ApiError } from '@/types/api';
 import styles from './AdminLoginView.module.css';
@@ -91,10 +91,9 @@ export function AdminLoginView() {
         </Field>
 
         <Field label="비밀번호" htmlFor="login-password" required>
-          <TextInput
+          <PasswordInput
             id="login-password"
             name="password"
-            type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
