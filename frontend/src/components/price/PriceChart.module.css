@@ -1,0 +1,73 @@
+/* =====================================================================
+   시세 추이 그래프
+
+   Sparkline 과 달리 축과 눈금이 있다. 여기서는 "오르는 중인가"가 아니라
+   "얼마였나"를 읽는다.
+   ===================================================================== */
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 데스크톱용(가로 900)과 휴대폰용(가로 400) 뷰박스를 둘 다 그려 두고 하나만 보인다.
+   자세한 이유는 PriceChart 의 주석 참고 — 요약하면 SVG 는 글자도 함께 줄어들어서
+   CSS 로 font-size 만 키워서는 좁은 화면에서 축이 읽히지 않는다. */
+.narrow {
+  display: none;
+}
+
+.grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  fill: none;
+}
+
+.axis {
+  fill: #8a8578;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.line {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.area {
+  fill: rgba(201, 162, 39, 0.13);
+  stroke: none;
+}
+
+/* 지금 값이 어디인지가 이 그림의 요점이다. 흰 테두리로 선에서 떼어 놓는다 */
+.dot {
+  fill: var(--gold);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.empty {
+  padding: 56px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+}
+
+@media (max-width: 960px) {
+  .wide {
+    display: none;
+  }
+
+  .narrow {
+    display: block;
+  }
+
+  .empty {
+    padding: 36px 12px;
+    font-size: 13px;
+  }
+}

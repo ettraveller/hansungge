@@ -1,6 +1,7 @@
 import type { Loaded } from '@/api/server';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
+import { PriceHistorySection } from '@/components/price/PriceHistorySection';
 import { SectionHead } from '@/components/ui/SectionHead';
 import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
 import { formatDateTime, formatPricePerGram } from '@/utils/format';
@@ -8,7 +9,15 @@ import styles from './PriceView.module.css';
 
 interface Props {
   prices: Loaded<MarketPrice[]>;
+  /** 시세 보드의 스파크라인용 30일 추이 (5종) */
   histories: Partial<Record<MetalType, PriceHistoryPoint[]>>;
+  /** 추이 구역이 보여줄 금속·기간. URL 에서 온다 */
+  metal: MetalType;
+  days: number;
+  expanded: boolean;
+  /** 선택한 조건의 살 때 / 팔 때 이력 */
+  sell: PriceHistoryPoint[];
+  buy: PriceHistoryPoint[];
 }
 
 /**
@@ -22,7 +31,7 @@ interface Props {
  * "금시세"는 이 업종에서 검색량이 가장 큰 키워드이고, 앵커는 독립 URL 이 아니라
  * 색인되지 않는다.
  */
-export function PriceView({ prices, histories }: Props) {
+export function PriceView({ prices, histories, metal, days, expanded, sell, buy }: Props) {
   const rows = toMetalRows(prices.data ?? [], histories);
   const quotedAt = latestQuotedAt(prices.data);
   const sellable = (prices.data ?? []).filter((p) => p.available && p.priceSide === 'SELL');
@@ -38,6 +47,21 @@ export function PriceView({ prices, histories }: Props) {
           </p>
         )}
       </div>
+
+      {/*
+        추이는 시세표 바로 아래다. 읽는 순서가 오늘 → 추세 → 이력이라 질문의 순서와
+        같다. 그래프가 실패해도 위의 오늘 시세는 그대로 남는다 — 레퍼런스는 차트가
+        죽으면 페이지가 통째로 빈다.
+      */}
+      {prices.data && (
+        <PriceHistorySection
+          metal={metal}
+          days={days}
+          sell={sell}
+          buy={buy}
+          expanded={expanded}
+        />
+      )}
 
       <section className={styles.section}>
         <div className="wrap">

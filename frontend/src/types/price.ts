@@ -100,6 +100,13 @@ export interface PriceChange {
  */
 export interface PriceHistoryPoint {
   pricePerGram: number;
+  /**
+   * 1돈(3.75g) 시세(원).
+   *
+   * <p>화면이 3.75 를 곱하지 않는다 — 가격의 최종 판단은 서버가 한다(설계서 원칙 P1).
+   * 현재 시세({@link MarketPrice})도 두 단위를 함께 내려주므로 같은 규칙이다.
+   */
+  pricePerDon: number;
   effectiveFrom: string;
   current: boolean;
 }

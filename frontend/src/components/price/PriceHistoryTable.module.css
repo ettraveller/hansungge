@@ -1,0 +1,159 @@
+/* =====================================================================
+   고시 이력 표
+   ===================================================================== */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  /* 금액이 길다고 날짜 칸이 찌그러지면 줄마다 날짜 위치가 달라져 훑기 어렵다 */
+  table-layout: fixed;
+}
+
+.table thead th {
+  padding: 12px 8px;
+  border-top: 2px solid var(--dark);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+  text-align: right;
+}
+
+.table thead th:first-child {
+  text-align: left;
+}
+
+.table tbody td {
+  padding: 13px 8px;
+  border-bottom: 1px solid var(--line);
+  color: #444;
+  text-align: right;
+}
+
+.colDate {
+  width: 190px;
+  text-align: left !important;
+}
+
+.colChange {
+  width: 130px;
+}
+
+.price {
+  font-weight: 500;
+  color: var(--dark);
+}
+
+/* 넓은 화면에서는 머리글이 칸을 설명하므로 줄마다 라벨을 반복하지 않는다 */
+.cellLabel {
+  display: none;
+}
+
+.up {
+  color: var(--red);
+  font-weight: 500;
+}
+
+.down {
+  color: var(--blue);
+  font-weight: 500;
+}
+
+.flat {
+  color: #b5b0a5;
+}
+
+.empty {
+  padding: 48px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+  border-top: 2px solid var(--dark);
+  border-bottom: 1px solid var(--line);
+}
+
+/* =====================================================================
+   모바일 — 줄마다 카드로 편다.
+
+   네 칸을 390px 에 유지하면 금액이 줄바꿈된다. 머리글이 사라지므로 각 값 앞에
+   무엇인지 다시 적는다 (.cellLabel).
+   ===================================================================== */
+
+@media (max-width: 960px) {
+  .table thead {
+    /* 칸이 접히면 머리글이 가리키는 곳이 없다. caption 이 낭독기를 대신한다 */
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: auto;
+  }
+
+  .table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 13px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .table tbody tr:first-child {
+    border-top: 2px solid var(--dark);
+  }
+
+  .table tbody td {
+    padding: 0;
+    border-bottom: none;
+    text-align: left;
+  }
+
+  .colDate {
+    width: auto;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dark);
+  }
+
+  /* 날짜 오른쪽에 변동을 둔다 — 한 줄에서 "언제, 얼마나" 가 함께 읽힌다 */
+  .colChange {
+    width: auto;
+    text-align: right !important;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  /* 살 때와 팔 때를 둘째 줄에 나란히 둔다 */
+  .price {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13.5px;
+    grid-row: 2;
+  }
+
+  .sellCell {
+    grid-column: 1;
+  }
+
+  .buyCell {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+
+  .cellLabel {
+    display: inline;
+    font-size: 11.5px;
+    color: #8a8578;
+    font-weight: 400;
+  }
+
+  .empty {
+    padding: 32px 12px;
+    font-size: 13px;
+  }
+}

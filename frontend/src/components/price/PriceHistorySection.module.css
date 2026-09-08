@@ -1,0 +1,158 @@
+/* =====================================================================
+   시세 추이 — 기간별 그래프와 고시 내역
+
+   시세 보드 아래에 온다. 읽는 순서가 오늘 → 추세 → 이력이라 질문의 순서와 같다.
+   ===================================================================== */
+
+.section {
+  padding: 52px 0 60px;
+  background: var(--light-gray);
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- 금속 · 기간 선택 ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  /* 손가락 조작에서 38px 아래로 내려가지 않는다 */
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #555;
+  transition: 0.2s;
+}
+
+.chip:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+/* 금색이 아니라 먹색이다 — 금색은 이 사이트에서 금액의 색이다 */
+.chipOn {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+  font-weight: 700;
+}
+
+.chipOn:hover {
+  color: #fff;
+  border-color: var(--dark);
+}
+
+/* ---------- 그래프 ---------- */
+
+.chartBox {
+  margin-top: 14px;
+  padding: 20px 22px 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.chartHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.chartTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.chartNote {
+  font-size: 12.5px;
+  color: #8a8578;
+}
+
+/* ---------- 표 ---------- */
+
+.tableBox {
+  margin-top: 24px;
+  padding: 4px 22px 22px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.more {
+  display: block;
+  margin-top: 16px;
+  padding: 11px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  color: #555;
+  transition: 0.2s;
+}
+
+.more:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+/* ---------- 유의사항 ---------- */
+
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 24px;
+  font-size: 12.5px;
+  color: #8a8a8a;
+}
+
+.notes b {
+  color: #555;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .section {
+    padding: 28px 0 32px;
+  }
+
+  .chips {
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .chip {
+    min-height: 36px;
+    padding: 0 13px;
+    font-size: 12.5px;
+  }
+
+  .chartBox {
+    padding: 14px 12px 10px;
+  }
+
+  .tableBox {
+    padding: 2px 14px 16px;
+  }
+
+  .notes {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 18px;
+    font-size: 11.5px;
+  }
+}

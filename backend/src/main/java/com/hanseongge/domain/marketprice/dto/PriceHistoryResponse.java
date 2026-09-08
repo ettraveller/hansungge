@@ -30,6 +30,9 @@ public record PriceHistoryResponse(
         @Schema(description = "최종 적용가 (원/g)", example = "210000.00")
         BigDecimal pricePerGram,
 
+        @Schema(description = "최종 적용가 (원/돈, 3.75g)", example = "787500.00")
+        BigDecimal pricePerDon,
+
         @Schema(description = "근거 원본 ID", example = "55")
         Long baseRawId,
 
@@ -52,12 +55,20 @@ public record PriceHistoryResponse(
         String createdBy
 ) {
 
+    /**
+     * 돈 단가를 <b>여기서</b> 만든다.
+     *
+     * <p>화면이 3.75를 곱하게 두지 않는다 — 가격의 최종 판단은 항상 서버가 한다
+     * (설계서 원칙 P1). 현재 시세 응답({@code PublicPriceResponse})이 이미 같은 방식으로
+     * 두 단위를 함께 내보내므로, 이력만 g 단위로 두면 화면이 두 응답을 다르게 다뤄야 한다.
+     */
     public static PriceHistoryResponse from(MarketPriceEffective e) {
         return new PriceHistoryResponse(
                 e.getId(),
                 e.getMetalType(),
                 e.getPriceSide(),
                 e.getPricePerGram(),
+                e.getPricePerGram().multiply(MetalType.GRAMS_PER_DON),
                 e.getBaseRawId(),
                 e.getPolicyMode(),
                 e.getEffectiveFrom(),
