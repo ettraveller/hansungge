@@ -42,16 +42,28 @@ public interface MarketPriceEffectiveRepository extends JpaRepository<MarketPric
      *
      * <p>전 조합을 한 번에 읽는다. metal×side 마다 따로 부르면 시세표 한 번에 10 쿼리가
      * 나가고, 그 비용이 변동폭 하나 때문에 매 요청 발생한다.
+     *
+     * <h2>{@code DISTINCT ON} 을 쓰는 이유</h2>
+     * 원래 이 자리에는 <b>상관 서브쿼리</b>가 있었다 —
+     * {@code effectiveTo = (SELECT MAX(...) WHERE prev.metalType = e.metalType ...)}.
+     * 읽기는 좋지만 PostgreSQL 이 그 서브쿼리를 <b>바깥 행마다 한 번씩</b> 실행한다.
+     * 이력이 11,000 행일 때 {@code loops=10970}, 버퍼 507,485 회, <b>4.1초</b>였다.
+     * 결과는 10 줄인데. 이력은 고시할 때마다 쌓이기만 하므로 시간이 갈수록 느려진다.
+     *
+     * <p>{@code DISTINCT ON} 은 한 번 훑고 정렬해서 조합별 첫 줄만 남긴다 — 같은 데이터에서
+     * <b>23ms</b>. 표준 SQL 이 아니지만 이 프로젝트는 이미 PostgreSQL 에 묶여 있다
+     * (부분 UNIQUE 인덱스 {@code ux_mpe_current}, append-only 트리거, advisory lock, jsonb).
+     *
+     * <p>정렬 기준은 {@code effective_to} 다. "직전"의 뜻이 그것이라서다. 이 테이블이
+     * append-only 체인이라 {@code effective_from} 순서와 결과가 같지만, 인덱스에 맞추려고
+     * 뜻이 다른 컬럼으로 바꾸지는 않는다 — 11,000 행 기준 두 계획의 차이는 4ms 다.
      */
-    @Query("""
-            SELECT e FROM MarketPriceEffective e
-            WHERE e.effectiveTo IS NOT NULL
-              AND e.effectiveTo = (
-                    SELECT MAX(prev.effectiveTo) FROM MarketPriceEffective prev
-                    WHERE prev.metalType = e.metalType
-                      AND prev.priceSide = e.priceSide
-                      AND prev.effectiveTo IS NOT NULL)
-            """)
+    @Query(value = """
+            SELECT DISTINCT ON (metal_type, price_side) *
+            FROM market_prices_effective
+            WHERE effective_to IS NOT NULL
+            ORDER BY metal_type, price_side, effective_to DESC
+            """, nativeQuery = true)
     List<MarketPriceEffective> findLatestClosedPerMetalSide();
 
     /**
