@@ -89,7 +89,41 @@ deploy_web() {
     echo "$leaked" | sed 's|^|      |' >&2
     exit 1
   fi
-  echo "  깨끗함"
+
+  # "없어야 할 것"만 확인하면 부족하다. 실제로 겪었다 (2026-09-08):
+  # GitHub Variable 의 값이 실수로 <b>변수 이름 그 자체</b>였고, 번들에
+  #
+  #     new URL(path, "NEXT_PUBLIC_API_BASE_URL")
+  #
+  # 가 박혔다. localhost 가 아니므로 위 검사를 그대로 통과했고, 배포는 성공했으며,
+  # 브라우저에서만 TypeError: Invalid URL 로 죽었다. 로그인 화면에는 "잠시 후 다시
+  # 시도해 주세요"만 뜨고 서버 로그에는 아무것도 남지 않는다 — 요청이 브라우저를
+  # 떠나지 못하기 때문이다.
+  #
+  # 그래서 <b>있어야 할 것이 있는지</b>도 본다. .env.production 에 적힌 그 값이
+  # 번들 안에 실제로 들어갔는지 확인한다.
+  echo "==> 번들 검사 (API 주소가 제대로 박혔는지)"
+  local api_url
+  api_url="$(grep -m1 '^NEXT_PUBLIC_API_BASE_URL=' "$ROOT/frontend/.env.production" | cut -d= -f2-)"
+
+  case "$api_url" in
+    https://*|http://*) ;;
+    *)
+      echo "오류: NEXT_PUBLIC_API_BASE_URL 이 http(s):// 로 시작하지 않습니다." >&2
+      echo "      값: '${api_url}'" >&2
+      echo "      GitHub > Settings > Secrets and variables > Actions > Variables 를 확인하세요." >&2
+      exit 1
+      ;;
+  esac
+
+  if ! grep -rqF "$api_url" \
+        "$ROOT/frontend/.next/static" \
+        "$ROOT/frontend/.next/standalone/.next" 2>/dev/null; then
+    echo "오류: 번들에서 API 주소를 찾지 못했습니다: $api_url" >&2
+    echo "      값이 빌드에 주입되지 않았습니다. 배포해도 브라우저가 API 를 못 부릅니다." >&2
+    exit 1
+  fi
+  echo "  깨끗함 (API 주소: $api_url)"
 
   local dest="/opt/hanseongge/web/releases/$STAMP"
   mkdir -p "$dest/.next"

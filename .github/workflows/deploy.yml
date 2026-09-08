@@ -64,6 +64,27 @@ jobs:
             echo "::error::비어 있으면 번들에 localhost 가 박혀 사이트가 데이터를 못 불러옵니다."
             exit 1
           fi
+
+          # 비어 있지 않다고 쓸 수 있는 값은 아니다. 실제로 겪었다 (2026-09-08):
+          # NEXT_PUBLIC_API_BASE_URL 의 값이 <b>변수 이름 그 자체</b>였다.
+          # 비어 있지 않으니 위 검사를 통과했고, 번들에는
+          #   new URL(path, "NEXT_PUBLIC_API_BASE_URL")
+          # 이 박혀 브라우저에서 TypeError: Invalid URL 로 죽었다. 배포는 성공으로
+          # 표시되고, 서버 로그에는 아무것도 남지 않는다 — 요청이 브라우저를 떠나지
+          # 못하기 때문이다. 화면에는 "잠시 후 다시 시도해 주세요"만 뜬다.
+          for pair in "NEXT_PUBLIC_API_BASE_URL=${API_BASE_URL}" "NEXT_PUBLIC_SITE_URL=${SITE_URL}"; do
+            name="${pair%%=*}"
+            value="${pair#*=}"
+            case "$value" in
+              https://*|http://*) ;;
+              *)
+                echo "::error::${name} 이 http(s):// 로 시작하지 않습니다: '${value}'"
+                echo "::error::변수 이름이 아니라 주소를 넣어야 합니다 (예: https://api.hanseongge.com)."
+                echo "::error::Settings > Secrets and variables > Actions > Variables"
+                exit 1
+                ;;
+            esac
+          done
           cat > frontend/.env.production <<EOF
           NEXT_PUBLIC_API_BASE_URL=${API_BASE_URL}
           NEXT_PUBLIC_SITE_URL=${SITE_URL}
