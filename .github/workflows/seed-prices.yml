@@ -1,0 +1,105 @@
+name: 시세 더미 데이터
+
+# 배포와 분리한 이유
+#
+# 이 작업은 <b>배포할 때마다 도는 일이 아니다.</b> 시연 전에 한 번 채우고, 실거래를
+# 시작하기 전에 한 번 걷어낸다. deploy.yml 에 붙이면 배포마다 실행되거나 조건 분기가
+# 붙고, 그 분기는 언젠가 잘못 걸린다.
+#
+# Flyway 마이그레이션으로 넣지 않은 이유도 같다. 마이그레이션은 <b>영구 이력</b>이라
+# 모든 환경에서 영원히 재실행되고, 운영을 새로 세우면 경쟁사 시세가 다시 들어간다.
+# 지우려면 또 마이그레이션을 하나 더 써야 한다. 임시 데이터는 임시 경로로 넣는다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: '무엇을 할까'
+        required: true
+        type: choice
+        default: seed
+        options:
+          - seed
+          - clear
+      confirm:
+        description: '확인 — 정확히 hanseongge 라고 입력'
+        required: true
+        type: string
+
+jobs:
+  seed:
+    runs-on: [self-hosted, hanseongge]
+    timeout-minutes: 10
+
+    steps:
+      - name: 확인 문구 검사
+        # 실수로 누르는 것을 막는다. 이 작업은 운영 DB 의 시세를 통째로 바꾼다.
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "hanseongge" ]; then
+            echo "::error::확인 문구가 다릅니다. 'hanseongge' 를 정확히 입력하세요."
+            exit 1
+          fi
+          echo "요청: ${{ inputs.action }}"
+
+      - uses: actions/checkout@v5
+
+      - name: 실행
+        run: |
+          set -euo pipefail
+
+          # DB 접속 정보는 서버의 api.env 에만 있다. 저장소에도 GitHub 에도 두지 않는다.
+          # 파일 권한이 root:hanseongge 640 이라 러너 계정이 hanseongge 그룹이어야 읽힌다.
+          if [ ! -r /etc/hanseongge/api.env ]; then
+            echo "::error::/etc/hanseongge/api.env 를 읽을 수 없습니다."
+            echo "::error::러너 계정이 hanseongge 그룹에 있는지 확인하세요: id \$(whoami)"
+            exit 1
+          fi
+
+          # jdbc:postgresql://host:port/db 에서 호스트·포트·DB 이름을 꺼낸다
+          DB_URL="$(grep -m1 '^DB_URL=' /etc/hanseongge/api.env | cut -d= -f2-)"
+          DB_USER="$(grep -m1 '^DB_USERNAME=' /etc/hanseongge/api.env | cut -d= -f2-)"
+          DB_PASS="$(grep -m1 '^DB_PASSWORD=' /etc/hanseongge/api.env | cut -d= -f2-)"
+
+          hostport="${DB_URL#jdbc:postgresql://}"
+          PGHOST="${hostport%%:*}"
+          rest="${hostport#*:}"
+          PGPORT="${rest%%/*}"
+          PGDATABASE="${rest#*/}"
+
+          if [ -z "$PGHOST" ] || [ -z "$DB_PASS" ]; then
+            echo "::error::api.env 에서 DB 접속 정보를 읽지 못했습니다."
+            exit 1
+          fi
+          echo "대상: $PGHOST:$PGPORT/$PGDATABASE"
+
+          case "${{ inputs.action }}" in
+            seed)  FILE=infra/seed/dummy-prices.sql ;;
+            clear) FILE=infra/seed/clear-dummy-prices.sql ;;
+            *)     echo "::error::알 수 없는 action"; exit 1 ;;
+          esac
+
+          # ON_ERROR_STOP 이 없으면 SQL 안의 안전장치(RAISE EXCEPTION)가 걸려도
+          # psql 이 계속 진행하고 성공으로 끝난다.
+          PGPASSWORD="$DB_PASS" psql \
+            -h "$PGHOST" -p "$PGPORT" -U "$DB_USER" -d "$PGDATABASE" \
+            -v ON_ERROR_STOP=1 -f "$FILE"
+
+      - name: 결과 확인
+        if: success()
+        run: |
+          set -euo pipefail
+          DB_URL="$(grep -m1 '^DB_URL=' /etc/hanseongge/api.env | cut -d= -f2-)"
+          DB_USER="$(grep -m1 '^DB_USERNAME=' /etc/hanseongge/api.env | cut -d= -f2-)"
+          DB_PASS="$(grep -m1 '^DB_PASSWORD=' /etc/hanseongge/api.env | cut -d= -f2-)"
+          hostport="${DB_URL#jdbc:postgresql://}"
+          PGHOST="${hostport%%:*}"; rest="${hostport#*:}"
+          PGPORT="${rest%%/*}"; PGDATABASE="${rest#*/}"
+
+          PGPASSWORD="$DB_PASS" psql -h "$PGHOST" -p "$PGPORT" -U "$DB_USER" -d "$PGDATABASE" -c \
+            "SELECT metal_type, price_side, count(*) AS rows,
+                    count(*) FILTER (WHERE effective_to IS NULL) AS open_rows
+               FROM market_prices_effective GROUP BY 1,2 ORDER BY 1,2;"
+
+          # 시세 캐시가 60초라 화면에 바로 반영되지 않을 수 있다.
+          echo "시세 캐시(60초)가 지나면 화면에 반영됩니다."
