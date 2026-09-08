@@ -45,7 +45,10 @@ jobs:
 
     steps:
       - name: 코드 받기
-        uses: actions/checkout@v4
+        # v4 는 Node 20 위에서 도는데 GitHub 이 그것을 종료 예정으로 표시했다.
+        # 당장은 러너가 Node 24 로 강제 실행해 주지만 매 배포마다 경고가 쌓이고,
+        # 강제 실행이 끝나는 날 조용히 깨진다. 지금 올려 둔다.
+        uses: actions/checkout@v5
 
       - name: 운영 빌드 값 준비
         # NEXT_PUBLIC_* 는 빌드 시점에 번들에 박힌다. 서버 환경변수로는 못 바꾼다.
