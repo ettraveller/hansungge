@@ -112,7 +112,7 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
         '자동으로 낼지 손으로 낼지, 그리고 받아온 값에 얼마를 더하거나 뺄지를 여기서 정한다. ' +
         '자동으로 켜 두면 받아온 값에 아래 설정을 적용해 바로 고시한다. ' +
         '설정을 바꿔도 이미 나간 시세는 그대로다 — 새 보정은 다음 고시부터 적용된다. ' +
-        '지금 값에 바로 반영하려면 금속별 [지금 적용] 을 쓴다.'
+        '지금 값에 바로 반영하려면 [즉시 적용] 을 쓴다 — 금속 단위로 살 때·팔 때가 함께 다시 발행된다.'
       }
       flush
     >
@@ -159,7 +159,6 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                         policy={policy}
                         canEdit={canEdit}
                         onSwitch={(to) => setSwitching({ metalType: policy.metalType, to })}
-                        onReapply={() => setReapplying(policy.metalType)}
                       />
                     </td>
                   )}
@@ -169,9 +168,28 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                   <td data-label="변경 시각" className={styles.muted}>{formatDateTime(policy.updatedAt)}</td>
                   {canEdit && (
                     <td data-label="작업" data-card-actions>
-                      <Button small onClick={() => setEditing(policy)}>
-                        값 변경
-                      </Button>
+                      <div className={styles.rowActions}>
+                        <Button small onClick={() => setEditing(policy)}>
+                          값 변경
+                        </Button>
+                        {/*
+                          바꾼 값은 다음 고시부터 적용된다. 다음 고시가 언제 올지
+                          모르는 동안 "고쳐도 아무 일도 안 일어난다"로 보이므로,
+                          바로 적용하는 버튼을 값 변경 바로 옆에 둔다.
+
+                          다만 이 조작은 금속 단위다(살 때·팔 때가 함께 다시 발행된다).
+                          줄마다 두면 한쪽만 적용하는 것으로 읽히므로, 금속의 첫 줄에만
+                          두고 구분선으로 갈라 놓는다.
+                        */}
+                        {isFirstOfMetal(list, i) && (
+                          <>
+                            <span className={styles.actionDivider} aria-hidden="true" />
+                            <Button small onClick={() => setReapplying(policy.metalType)}>
+                              즉시 적용
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -218,9 +236,9 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
         <ReasonDialog
           key={`${reapplying}-reapply`}
           open
-          title="바뀐 보정값을 지금 시세에 적용"
+          title="바뀐 값을 즉시 적용"
           description={`${METAL_LABEL[reapplying]} — 가장 최근에 받은 원본 시세에 지금 보정값을 적용해 새로 고시합니다. 지난 이력은 그대로 남고 새 행이 쌓입니다. 원본이 오래되었으면 거절되며, 그때는 새로 고시해야 합니다.`}
-          confirmLabel="지금 적용"
+          confirmLabel="즉시 적용"
           placeholder="예: 마진 조정분 즉시 반영"
           pending={reapply.isPending}
           error={
@@ -285,12 +303,10 @@ function QuoteModeCell({
   policy,
   canEdit,
   onSwitch,
-  onReapply,
 }: {
   policy: PricePolicy;
   canEdit: boolean;
   onSwitch: (to: boolean) => void;
-  onReapply: () => void;
 }) {
   return (
     <div className={styles.quoteMode}>
@@ -298,19 +314,9 @@ function QuoteModeCell({
         {policy.autoQuote ? '자동' : '수동'}
       </span>
       {canEdit && (
-        <>
-          <Button small onClick={() => onSwitch(!policy.autoQuote)}>
-            {policy.autoQuote ? '수동으로' : '자동으로'}
-          </Button>
-          {/*
-            보정값을 바꿔도 이미 나간 시세는 그대로다. 다음 고시가 언제 올지 모르는
-            동안 "고쳐도 아무 일도 안 일어난다"로 보이므로, 지금 값에 바로 적용하는
-            길을 같은 자리에 둔다.
-          */}
-          <Button small onClick={onReapply}>
-            지금 적용
-          </Button>
-        </>
+        <Button small onClick={() => onSwitch(!policy.autoQuote)}>
+          {policy.autoQuote ? '수동으로' : '자동으로'}
+        </Button>
       )}
     </div>
   );

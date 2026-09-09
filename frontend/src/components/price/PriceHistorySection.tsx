@@ -174,18 +174,23 @@ function toRows(sell: PriceHistoryPoint[], buy: PriceHistoryPoint[]): HistoryRow
     return buys[best];
   };
 
-  // 변동은 오래된 순으로 훑어야 "직전"이 정해진다
+  // 변동은 오래된 순으로 훑어야 "직전"이 정해진다.
+  // 살 때와 팔 때를 각각 따로 잰다 — 두 값은 같이 움직이지만 폭이 다르다.
   let prevSell: number | null = null;
+  let prevBuy: number | null = null;
   const rows: HistoryRow[] = sells.map((s) => {
     const b = takeBuyNear(s.effectiveFrom);
     const change = prevSell != null ? s.pricePerDon - prevSell : null;
+    const buyChange = b && prevBuy != null ? b.pricePerDon - prevBuy : null;
     prevSell = s.pricePerDon;
+    if (b) prevBuy = b.pricePerDon;
 
     return {
       at: s.effectiveFrom,
       sellPerDon: s.pricePerDon,
       buyPerDon: b?.pricePerDon ?? null,
       changePerDon: change,
+      buyChangePerDon: buyChange,
     };
   });
 
@@ -193,7 +198,13 @@ function toRows(sell: PriceHistoryPoint[], buy: PriceHistoryPoint[]): HistoryRow
   // 통째로 사라지면, 그날 매입가가 얼마였는지 되짚을 방법이 없어진다.
   buys.forEach((b, i) => {
     if (usedBuy.has(i)) return;
-    rows.push({ at: b.effectiveFrom, sellPerDon: null, buyPerDon: b.pricePerDon, changePerDon: null });
+    rows.push({
+      at: b.effectiveFrom,
+      sellPerDon: null,
+      buyPerDon: b.pricePerDon,
+      changePerDon: null,
+      buyChangePerDon: null,
+    });
   });
 
   rows.sort((a, b) => a.at.localeCompare(b.at));

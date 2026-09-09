@@ -12,7 +12,6 @@ import {
 import {
   formatDeltaWithPercent,
   formatKrw,
-  formatPercent,
   PRICE_INQUIRY_LABEL,
 } from '@/utils/format';
 import styles from './MarketPriceBoard.module.css';
@@ -241,14 +240,8 @@ function PriceTable({
             <th scope="col" className={styles.numCol}>
               내가 살 때
             </th>
-            <th scope="col" className={styles.deltaCol}>
-              변동
-            </th>
             <th scope="col" className={styles.numCol}>
               내가 팔 때
-            </th>
-            <th scope="col" className={styles.deltaCol}>
-              변동
             </th>
           </tr>
         </thead>
@@ -276,28 +269,29 @@ function PriceTable({
   );
 }
 
-/** 금액 칸 + 변동 칸. 한 쌍이라 항상 같이 나온다. */
+/**
+ * 금액 칸. 변동을 <b>금액 바로 옆</b>에 작게 붙인다.
+ *
+ * <p>변동을 별도 열로 두면 열이 다섯이 되어 좁은 화면에서 숫자끼리 붙고, 무엇보다
+ * "이 변동이 어느 값의 변동인가"를 눈이 한 칸 건너가서 맞춰야 한다. 값 옆에 붙이면
+ * 살 때가 얼마 올랐고 팔 때가 얼마 내렸는지가 한눈에 들어온다.
+ */
 function PriceCells({ price }: { price: MarketPrice | null }) {
   const available = price?.available === true && price.pricePerDon != null;
   const dir = directionOf(price?.change);
 
   return (
-    <>
-      <td className={`${styles.numCol} tabular ${available ? styles.cellPrice : styles.cellText}`}>
-        {available ? formatKrw(price.pricePerDon) : (price?.displayText ?? PRICE_INQUIRY_LABEL)}
-        {/* 좁은 화면에서는 변동 열이 통째로 접히고, 변동률만 금액 아래로 내려온다.
-            5열은 390px 에 들어가지 않아 숫자끼리 붙어버린다. */}
+    <td className={`${styles.numCol} tabular ${available ? styles.cellPrice : styles.cellText}`}>
+      <span className={styles.priceWithDelta}>
+        <span>
+          {available ? formatKrw(price.pricePerDon) : (price?.displayText ?? PRICE_INQUIRY_LABEL)}
+        </span>
         {price?.change && (
-          <span className={`${styles.deltaInline} ${styles[dir.toLowerCase()]}`}>
-            {formatPercent(price.change.changePercent)}
-          </span>
+          <small className={`${styles.deltaBeside} ${styles[dir.toLowerCase()]}`}>
+            {formatDeltaWithPercent(price.change.changePerDon, price.change.changePercent)}
+          </small>
         )}
-      </td>
-      <td className={`${styles.deltaCol} tabular ${styles[dir.toLowerCase()]}`}>
-        {price?.change
-          ? formatDeltaWithPercent(price.change.changePerDon, price.change.changePercent)
-          : '—'}
-      </td>
-    </>
+      </span>
+    </td>
   );
 }

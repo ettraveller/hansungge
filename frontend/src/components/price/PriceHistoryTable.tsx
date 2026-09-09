@@ -8,6 +8,8 @@ export interface HistoryRow {
   buyPerDon: number | null;
   /** 직전 고시 대비 살 때 변동액(원/돈). 첫 줄이면 null */
   changePerDon: number | null;
+  /** 직전 고시 대비 팔 때 변동액(원/돈). 첫 줄이면 null */
+  buyChangePerDon: number | null;
 }
 
 interface Props {
@@ -41,9 +43,6 @@ export function PriceHistoryTable({ rows, metalName }: Props) {
           </th>
           <th scope="col">내가 살 때</th>
           <th scope="col">내가 팔 때</th>
-          <th scope="col" className={styles.colChange}>
-            변동
-          </th>
         </tr>
       </thead>
       <tbody>
@@ -52,14 +51,17 @@ export function PriceHistoryTable({ rows, metalName }: Props) {
             <td className={`${styles.colDate} tabular`}>{formatDateTime(row.at)}</td>
             <td className={`${styles.price} ${styles.sellCell} tabular`}>
               <span className={styles.cellLabel}>살 때</span>
-              {formatKrw(row.sellPerDon)}
+              <span className={styles.priceWithDelta}>
+                <span>{formatKrw(row.sellPerDon)}</span>
+                <Change amount={row.changePerDon} />
+              </span>
             </td>
             <td className={`${styles.price} ${styles.buyCell} tabular`}>
               <span className={styles.cellLabel}>팔 때</span>
-              {formatKrw(row.buyPerDon)}
-            </td>
-            <td className={`${styles.colChange} tabular`}>
-              <Change amount={row.changePerDon} />
+              <span className={styles.priceWithDelta}>
+                <span>{formatKrw(row.buyPerDon)}</span>
+                <Change amount={row.buyChangePerDon} />
+              </span>
             </td>
           </tr>
         ))}
@@ -76,18 +78,20 @@ export function PriceHistoryTable({ rows, metalName }: Props) {
  * ({@code utils/format} 의 {@code formatDelta} 와 같은 판단이다.)
  */
 function Change({ amount }: { amount: number | null }) {
-  if (amount == null) return <span className={styles.flat}>—</span>;
+  // 값 옆에 붙는 자리다. 변동이 없으면 아무것도 그리지 않는다 —
+  // "—" 를 남기면 금액 옆에 의미 없는 기호가 붙어 읽는 속도만 떨어진다.
+  if (amount == null) return null;
 
   // 원 미만을 먼저 버린다. 1g 시세가 소수점 두 자리라 3.75 를 곱한 돈 단가에는 자리가
   // 남고, 그 차를 그대로 찍으면 "4,999.988" 같은 금액이 나온다. 옆 칸의 금액은 이미
   // formatKrw 가 원 단위로 맞추고 있어서, 안 맞추면 같은 줄에서 단위가 어긋난다.
   const won = Math.round(amount);
-  if (won === 0) return <span className={styles.flat}>— 0</span>;
+  if (won === 0) return <small className={`${styles.delta} ${styles.flat}`}>0</small>;
 
   const up = won > 0;
   return (
-    <span className={up ? styles.up : styles.down}>
+    <small className={`${styles.delta} ${up ? styles.up : styles.down}`}>
       {up ? '▲' : '▼'} {Math.abs(won).toLocaleString('ko-KR')}
-    </span>
+    </small>
   );
 }

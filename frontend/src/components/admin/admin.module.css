@@ -1081,3 +1081,16 @@
   color: var(--ink-700);
   text-wrap: pretty;
 }
+
+/* 작업 칸의 버튼 구분선.
+   [값 변경] 은 그 줄(살 때 또는 팔 때) 하나에 대한 조작이고,
+   [즉시 적용] 은 금속 전체에 대한 조작이다. 범위가 다른 두 버튼이 붙어 있으면
+   같은 것으로 읽히므로 선으로 갈라 둔다. */
+.actionDivider {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  min-height: 18px;
+  margin: 0 2px;
+  background: var(--line-strong);
+}
