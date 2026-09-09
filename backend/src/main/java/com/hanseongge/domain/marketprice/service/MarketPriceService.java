@@ -241,6 +241,68 @@ public class MarketPriceService {
     }
 
     /**
+     * 바뀐 보정값을 <b>지금 시세에 다시 적용</b>한다.
+     *
+     * <h2>왜 필요한가</h2>
+     * 보정값을 바꿔도 이미 발행된 시세는 바뀌지 않는다. append-only 이력이 과거
+     * 시점의 판매가를 그대로 증명해야 하기 때문이다. 그래서 새 보정은 <b>다음
+     * 고시부터</b> 적용된다.
+     *
+     * <p>그런데 다음 고시가 언제 올지 모르는 상황(자동 수집이 없을 때)에서는 그
+     * 규칙이 "고쳐도 아무 일도 안 일어난다"로 보인다. 마진을 바꿨는데 파는 값은
+     * 그대로인 상태가 며칠 갈 수 있다.
+     *
+     * <p>그래서 <b>가장 최근 원본에 새 보정을 적용해 새로 발행</b>하는 길을 둔다.
+     * 과거 행은 그대로 두고 새 행을 쌓으므로 이력은 온전하다.
+     *
+     * <h2>오래된 원본으로는 하지 않는다</h2>
+     * 노후 판정은 발행 시각({@code effective_from}) 기준이다. 그래서 오래된 원본을
+     * 다시 발행하면 <b>옛 값이 방금 것처럼 되살아난다</b> — 시세문의로 막혀 있던
+     * 상품이 낡은 가격으로 다시 팔리기 시작한다.
+     *
+     * <p>원본의 기준시각이 이미 노후 한계를 넘었으면 거절한다. 그 경우 할 일은
+     * 재적용이 아니라 새로 고시하는 것이다.
+     */
+    @Transactional
+    public PairedApplyResult reapplyCurrentPolicy(MetalType metalType, String changeReason,
+                                                  String adminLoginId) {
+        requireReason(changeReason);
+
+        MarketPriceRaw sellRaw = latestRawFor(metalType, PriceSide.SELL);
+        MarketPriceRaw buyRaw = latestRawFor(metalType, PriceSide.BUY);
+
+        int staleMinutes = systemSettingService.getInt(SETTING_STALE_MINUTES, DEFAULT_STALE_MINUTES);
+        OffsetDateTime threshold = OffsetDateTime.now().minusMinutes(staleMinutes);
+
+        requireFresh(sellRaw, threshold, staleMinutes, "살 때");
+        requireFresh(buyRaw, threshold, staleMinutes, "팔 때");
+
+        log.info("[MARKET-PRICE] 보정값 재적용 — {} 원본 살때={} 팔때={} by={}",
+                metalType, sellRaw.getId(), buyRaw.getId(), adminLoginId);
+
+        return applyPricePair(metalType, sellRaw.getId(), buyRaw.getId(), changeReason, adminLoginId);
+    }
+
+    private MarketPriceRaw latestRawFor(MetalType metalType, PriceSide priceSide) {
+        return rawRepository
+                .findLatestForSide(metalType, priceSide, org.springframework.data.domain.PageRequest.of(0, 1))
+                .stream().findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_RAW_NOT_FOUND,
+                        "%s 의 원본 시세가 없습니다. 먼저 고시해 주세요.".formatted(metalType)));
+    }
+
+    private void requireFresh(MarketPriceRaw raw, OffsetDateTime threshold, int staleMinutes,
+                              String label) {
+        if (raw.getQuoteAt().isBefore(threshold)) {
+            throw new BusinessException(ErrorCode.PRICE_INVALID_VALUE,
+                    ("%s 원본이 %d분(노후 한계)보다 오래되었습니다 (기준시각 %s). "
+                            + "오래된 값을 다시 발행하면 방금 고시한 것처럼 보여 낡은 가격으로 "
+                            + "팔리게 됩니다. 재적용 대신 새로 고시해 주세요.")
+                            .formatted(label, staleMinutes, raw.getQuoteAt()));
+        }
+    }
+
+    /**
      * 승인된 보류건을 적용한다.
      *
      * <p>변동률 검사를 <b>다시 하지 않는다.</b> 임계값을 넘었다는 사실을 알고도 관리자가

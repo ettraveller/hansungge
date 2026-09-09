@@ -10,6 +10,7 @@ import { Panel } from '../Panel';
 import { ReasonDialog } from '../ReasonDialog';
 import {
   usePolicies,
+  useReapplyPolicy,
   useStartAutoQuote,
   useSwitchQuoteMode,
   useUpdatePolicy,
@@ -100,14 +101,18 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
   // 전환 대상은 금속이다. 살 때만 자동으로 두는 상태를 만들 수 없다.
   const [switching, setSwitching] = useState<{ metalType: MetalType; to: boolean } | null>(null);
   const switchMode = useSwitchQuoteMode();
+  // 보정값을 바꾼 뒤 "왜 안 바뀌지"가 되지 않도록, 지금 값에 바로 적용하는 길을 둔다.
+  const [reapplying, setReapplying] = useState<MetalType | null>(null);
+  const reapply = useReapplyPolicy();
 
   return (
     <Panel
       title="자동고시 설정"
       note={
         '자동으로 낼지 손으로 낼지, 그리고 받아온 값에 얼마를 더하거나 뺄지를 여기서 정한다. ' +
-        '자동으로 켜 두면 10분마다 받아온 값에 아래 설정을 적용해 바로 고시한다. ' +
-        '설정을 바꿔도 이미 나간 시세는 그대로이고, 다음 고시부터 반영된다.'
+        '자동으로 켜 두면 받아온 값에 아래 설정을 적용해 바로 고시한다. ' +
+        '설정을 바꿔도 이미 나간 시세는 그대로다 — 새 보정은 다음 고시부터 적용된다. ' +
+        '지금 값에 바로 반영하려면 금속별 [지금 적용] 을 쓴다.'
       }
       flush
     >
@@ -154,6 +159,7 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                         policy={policy}
                         canEdit={canEdit}
                         onSwitch={(to) => setSwitching({ metalType: policy.metalType, to })}
+                        onReapply={() => setReapplying(policy.metalType)}
                       />
                     </td>
                   )}
@@ -208,6 +214,32 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
         />
       )}
 
+      {reapplying && (
+        <ReasonDialog
+          key={`${reapplying}-reapply`}
+          open
+          title="바뀐 보정값을 지금 시세에 적용"
+          description={`${METAL_LABEL[reapplying]} — 가장 최근에 받은 원본 시세에 지금 보정값을 적용해 새로 고시합니다. 지난 이력은 그대로 남고 새 행이 쌓입니다. 원본이 오래되었으면 거절되며, 그때는 새로 고시해야 합니다.`}
+          confirmLabel="지금 적용"
+          placeholder="예: 마진 조정분 즉시 반영"
+          pending={reapply.isPending}
+          error={
+            reapply.error instanceof ApiError
+              ? reapply.error.message
+              : reapply.error
+                ? '적용하지 못했습니다.'
+                : null
+          }
+          onConfirm={(reason) =>
+            reapply.mutate(
+              { metalType: reapplying, reason },
+              { onSuccess: () => setReapplying(null) },
+            )
+          }
+          onClose={() => setReapplying(null)}
+        />
+      )}
+
       {switching && !switching.to && (
         <ReasonDialog
           key={`${switching.metalType}-off`}
@@ -253,10 +285,12 @@ function QuoteModeCell({
   policy,
   canEdit,
   onSwitch,
+  onReapply,
 }: {
   policy: PricePolicy;
   canEdit: boolean;
   onSwitch: (to: boolean) => void;
+  onReapply: () => void;
 }) {
   return (
     <div className={styles.quoteMode}>
@@ -264,9 +298,19 @@ function QuoteModeCell({
         {policy.autoQuote ? '자동' : '수동'}
       </span>
       {canEdit && (
-        <Button small onClick={() => onSwitch(!policy.autoQuote)}>
-          {policy.autoQuote ? '수동으로' : '자동으로'}
-        </Button>
+        <>
+          <Button small onClick={() => onSwitch(!policy.autoQuote)}>
+            {policy.autoQuote ? '수동으로' : '자동으로'}
+          </Button>
+          {/*
+            보정값을 바꿔도 이미 나간 시세는 그대로다. 다음 고시가 언제 올지 모르는
+            동안 "고쳐도 아무 일도 안 일어난다"로 보이므로, 지금 값에 바로 적용하는
+            길을 같은 자리에 둔다.
+          */}
+          <Button small onClick={onReapply}>
+            지금 적용
+          </Button>
+        </>
       )}
     </div>
   );

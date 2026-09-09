@@ -87,6 +87,22 @@ export function declarePair(input: DeclarePairInput) {
   return adminApi.post<PriceApplyPairResult>('/api/admin/prices/apply-pair', { body: input });
 }
 
+/**
+ * 바뀐 보정값을 지금 시세에 다시 적용한다.
+ *
+ * <p>보정값을 바꿔도 이미 발행된 시세는 바뀌지 않는다(append-only). 새 보정은
+ * 다음 고시부터 적용되는데, 다음 고시가 언제 올지 모르면 "고쳐도 아무 일도 안
+ * 일어난다"로 보인다. 이 호출이 가장 최근 원본에 새 보정을 적용해 새로 발행한다.
+ *
+ * <p>원본이 노후 한계보다 오래되었으면 서버가 거절한다.
+ */
+export function reapplyPolicy(metalType: MetalType, reason: string) {
+  return adminApi.post<PriceApplyPairResult>(
+    `/api/admin/prices/reapply?metal=${metalType}`,
+    { body: { reason } },
+  );
+}
+
 export interface AutoQuoteStartInput {
   metalType: MetalType;
   mode: PricePolicyMode;

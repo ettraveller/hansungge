@@ -59,6 +59,7 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired AutoQuoteService autoQuoteService;
     @Autowired MarketPriceCollectionWriter writer;
     @Autowired MarketPricePolicyService policyService;
+    @Autowired com.hanseongge.domain.marketprice.service.MarketPriceService marketPriceService;
     @Autowired MarketPriceEffectiveRepository effectiveRepository;
     @Autowired MarketPriceRawRepository rawRepository;
     @Autowired MarketPricePolicyRepository policyRepository;
@@ -365,6 +366,53 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+
+    @Nested
+    @DisplayName("바뀐 보정값을 지금 시세에 다시 적용")
+    class Reapply {
+
+        @Test
+        @DisplayName("보정값을 바꾸고 재적용하면 새 값으로 다시 발행된다")
+        void reappliesWithNewAdjustment() {
+            setPolicy(PriceSide.SELL, PolicyMode.FIXED_ADJ, new BigDecimal("3000"), true);
+            setPolicy(PriceSide.BUY, PolicyMode.FIXED_ADJ, new BigDecimal("-1500"), true);
+
+            OffsetDateTime at = now();
+            autoQuoteService.publishPair(MetalType.GOLD_24K,
+                    store(PriceSide.SELL, "220800", at),
+                    store(PriceSide.BUY, "188000", at));
+            assertThat(current(PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("223800.00");
+
+            // 마진을 올린다. 이 시점에는 아직 발행된 시세가 그대로다.
+            policyService.update(MetalType.GOLD_24K, PriceSide.SELL, PolicyMode.FIXED_ADJ,
+                    new BigDecimal("5000"), BigDecimal.ZERO, null, "마진 인상", "admin");
+            assertThat(current(PriceSide.SELL).getPricePerGram())
+                    .as("보정값만 바꿔서는 이미 나간 시세가 바뀌지 않는다")
+                    .isEqualByComparingTo("223800.00");
+
+            marketPriceService.reapplyCurrentPolicy(MetalType.GOLD_24K, "마진 즉시 반영", "admin");
+
+            assertThat(current(PriceSide.SELL).getPricePerGram())
+                    .as("220,800 + 5,000")
+                    .isEqualByComparingTo("225800.00");
+        }
+
+        @Test
+        @DisplayName("원본이 노후 한계보다 오래되면 거절한다 — 옛 값이 방금 것처럼 되살아나면 안 된다")
+        void staleRawRejected() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            // 노후 한계(기본 240분)를 훌쩍 넘긴 원본만 있는 상태
+            OffsetDateTime old = now().minusDays(2);
+            store(PriceSide.SELL, "220800", old);
+            store(PriceSide.BUY, "188000", old);
+
+            assertThatThrownBy(() -> marketPriceService.reapplyCurrentPolicy(
+                    MetalType.GOLD_24K, "재적용 시도", "admin"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("오래되었습니다");
+        }
+    }
 
     @Nested
     @DisplayName("전환 API")

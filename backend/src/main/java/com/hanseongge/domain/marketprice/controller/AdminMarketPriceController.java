@@ -166,6 +166,22 @@ public class AdminMarketPriceController {
                 request.changeReason(), actor.loginId())));
     }
 
+    @Operation(summary = "바뀐 보정값을 지금 시세에 다시 적용",
+            description = "가장 최근 원본에 현재 보정 정책을 적용해 새로 발행한다. "
+                    + "과거 행은 그대로 두고 새 행을 쌓으므로 이력은 온전하다. "
+                    + "원본이 노후 한계보다 오래되었으면 거절한다 — 오래된 값을 다시 "
+                    + "발행하면 방금 고시한 것처럼 보여 낡은 가격으로 팔리게 된다.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/reapply")
+    public ResponseEntity<PriceApplyPairResponse> reapply(
+            @Valid @RequestBody PendingDecisionRequest request,
+            @RequestParam MetalType metal,
+            @AuthenticationPrincipal AdminPrincipal actor) {
+
+        return ResponseEntity.ok(PriceApplyPairResponse.from(
+                marketPriceService.reapplyCurrentPolicy(metal, request.reason(), actor.loginId())));
+    }
+
     @Operation(summary = "자동고시 시작 (보정값 포함)",
             description = "한 금속의 살 때·팔 때 보정값을 정하면서 자동고시를 켠다. "
                     + "값과 전환이 한 트랜잭션이라, 값을 정하지 않은 채 자동이 켜지는 "

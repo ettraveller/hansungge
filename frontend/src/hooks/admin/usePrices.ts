@@ -92,6 +92,16 @@ export function useDeclarePair() {
 }
 
 /** 자동고시 시작 — 보정값과 전환이 한 번에 간다. */
+/** 바뀐 보정값을 지금 시세에 다시 적용한다. 시세가 실제로 움직이므로 전부 무효화한다. */
+export function useReapplyPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ metalType, reason }: { metalType: MetalType; reason: string }) =>
+      pricesApi.reapplyPolicy(metalType, reason),
+    onSuccess: () => invalidatePriceDependents(queryClient),
+  });
+}
+
 export function useStartAutoQuote() {
   const queryClient = useQueryClient();
   return useMutation({

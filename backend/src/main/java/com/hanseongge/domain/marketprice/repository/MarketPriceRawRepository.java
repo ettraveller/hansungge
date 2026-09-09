@@ -4,7 +4,10 @@ import com.hanseongge.domain.marketprice.entity.MarketPriceRaw;
 import com.hanseongge.domain.marketprice.entity.MetalType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.hanseongge.domain.marketprice.entity.PriceSide;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -36,6 +39,22 @@ public interface MarketPriceRawRepository extends JpaRepository<MarketPriceRaw, 
      * <p>유니크 인덱스는 그대로 둔다 — 이 확인은 흔한 경로를 위한 것이고, 인덱스는
      * 동시 수집이라는 드문 경로를 위한 것이다. 둘은 대체재가 아니다.
      */
+    /**
+     * 그 금속·그 쪽의 <b>가장 최근 원본</b>. 보정값을 바꾼 뒤 지금 시세에 다시 적용할 때 쓴다.
+     *
+     * <p>{@code priceSide} 가 null 인 행(양측 공통 기준가)도 후보다. 한쪽 전용 원본이
+     * 없던 시절의 데이터가 그렇고, 수동 고시도 그렇게 쌓인다.
+     */
+    @Query("""
+            SELECT r FROM MarketPriceRaw r
+            WHERE r.metalType = :metalType
+              AND (r.priceSide = :priceSide OR r.priceSide IS NULL)
+            ORDER BY r.quoteAt DESC, r.id DESC
+            """)
+    List<MarketPriceRaw> findLatestForSide(@Param("metalType") MetalType metalType,
+                                           @Param("priceSide") PriceSide priceSide,
+                                           Pageable pageable);
+
     boolean existsBySourceIdAndMetalTypeAndPriceSideAndQuoteAt(
             Long sourceId, MetalType metalType,
             com.hanseongge.domain.marketprice.entity.PriceSide priceSide, OffsetDateTime quoteAt);
