@@ -193,6 +193,48 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
     class InquiryOnly {
 
         @Test
+        @DisplayName("시세문의로 지정한 상품은 시세가 멀쩡해도 금액을 만들지 않는다")
+        void deliberateInquiryProduct() {
+            declareMarketPrice("200000");
+            Product product = saveProduct(ProductTestFixtures.inquiryProduct(CATEGORY_ID, "주문제작 목걸이"));
+
+            PriceQuote quote = priceCalculationService.quote(product.getId(), null);
+
+            assertThat(quote.status()).isEqualTo(PriceStatus.INQUIRY_ONLY);
+            assertThat(quote.status().isOrderable()).isFalse();
+            assertThat(quote.finalUnitPrice()).isNull();
+            assertThat(quote.subtotal()).isNull();
+            assertThat(quote.components()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("의도한 시세문의와 시세가 끊긴 시세문의는 문구가 다르다 — 장애를 정상으로 착각하지 않게")
+        void inquiryReasonsAreDistinct() {
+            // 시세를 고시해 둔다. 아래 두 상품의 차이가 시세 유무가 아니라
+            // 상품 설정이라는 점을 분명히 하기 위해서다.
+            declareMarketPrice("200000");
+
+            Product deliberate = saveProduct(
+                    ProductTestFixtures.inquiryProduct(CATEGORY_ID, "주문제작"));
+            String deliberateReason =
+                    priceCalculationService.quote(deliberate.getId(), null).unavailableReason();
+
+            // 시세가 없는 금속으로 연동한 상품 — 사고 쪽 경로다.
+            Product broken = saveProduct(ProductTestFixtures.marketProduct(
+                    CATEGORY_ID, "은괴", MetalType.SILVER,
+                    PriceType.MARKET_LINKED, "3.75", "0", "1"));
+            String brokenReason =
+                    priceCalculationService.quote(broken.getId(), null).unavailableReason();
+
+            assertThat(deliberateReason)
+                    .as("의도한 시세문의는 '문의로 안내한다'고 말한다")
+                    .contains("문의");
+            assertThat(brokenReason)
+                    .as("두 문구가 같으면 화면만 보고 장애와 정상을 구분할 수 없다")
+                    .isNotEqualTo(deliberateReason);
+        }
+
+        @Test
         @DisplayName("시세가 고시된 적 없으면 INQUIRY_ONLY 이고 금액은 null 이다 — 0 이 아니다")
         void noMarketPrice() {
             Product product = saveProduct(ProductTestFixtures.marketProduct(

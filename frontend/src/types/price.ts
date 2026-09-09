@@ -21,7 +21,9 @@ export type ProductPriceType =
   | 'MARKET_LINKED'
   | 'MARKET_PLUS'
   | 'MARKET_MULTIPLIER'
-  | 'MANUAL';
+  | 'MANUAL'
+  /** 값을 내걸지 않고 문의로만 판다. 시세가 멀쩡해도 가격을 만들지 않는다 */
+  | 'INQUIRY';
 
 /**
  * 가격 표시 가능 여부.

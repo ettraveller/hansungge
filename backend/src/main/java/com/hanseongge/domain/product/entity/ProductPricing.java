@@ -58,6 +58,17 @@ public record ProductPricing(
                 throw new BusinessException(ErrorCode.INVALID_INPUT,
                         "시세 연동 상품에는 0보다 큰 중량이 필요합니다.");
             }
+        } else if (priceType == PriceType.INQUIRY) {
+            // 아무것도 요구하지 않는다. 값을 내걸지 않기로 한 상품이라 판매가가 없고,
+            // 금속·중량도 모르는 채로 먼저 등록하는 경우가 있다(주문제작). 여기서
+            // 무언가를 강제하면 등록하려고 없는 값을 지어내게 되고, 그 순간 이 컬럼의
+            // 데이터는 믿을 수 없게 된다.
+            //
+            // 적어 두는 것 자체는 막지 않는다 — 알면 적고, 모르면 비운다.
+            if (weightG != null && weightG.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT,
+                        "중량을 적는다면 0보다 커야 합니다.");
+            }
         } else {
             if (fixedPrice == null || fixedPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT,
