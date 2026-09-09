@@ -71,6 +71,21 @@ export function useUpdatePolicy() {
   });
 }
 
+/**
+ * 자동/수동 고시 전환.
+ *
+ * <p>정책 목록만 무효화하는 {@link useUpdatePolicy} 와 달리 시세에 딸린 것을 전부
+ * 무효화한다 — 자동으로 켜는 순간 다음 수집분이 바로 발행될 수 있고, 그러면
+ * 현재 시세·상품가·이력이 다 같이 움직인다.
+ */
+export function useSwitchQuoteMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: pricesApi.switchQuoteMode,
+    onSuccess: () => invalidatePriceDependents(queryClient),
+  });
+}
+
 export function useApprovePending() {
   const queryClient = useQueryClient();
   return useMutation({

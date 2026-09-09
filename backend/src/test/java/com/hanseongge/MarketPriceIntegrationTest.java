@@ -472,7 +472,8 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
             var before = collector.status(true);
             assertThat(before.neverSucceeded()).isTrue();
             assertThat(before.lastAttemptAt()).isNull();
-            assertThat(before.cron()).isEqualTo("0 0/30 10-18 * * MON-FRI");
+            // V14 가 30분 → 10분으로 낮췄다. 발주 요구가 10분 간격이다.
+            assertThat(before.cron()).isEqualTo("0 0/10 10-18 * * MON-FRI");
 
             MarketPriceSource krx = source(MarketPriceSource.CODE_KRX);
             collector.collectOne(failingProvider(FetchResult.HTTP_ERROR, "503"), krx, MetalType.GOLD_24K);

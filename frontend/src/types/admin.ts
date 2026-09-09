@@ -106,6 +106,8 @@ export interface PricePolicy {
   manualPrice?: number | null;
   updatedBy?: string | null;
   updatedAt: string;
+  /** true 면 자동고시 — 수집값에 보정을 적용해 즉시 발행한다 */
+  autoQuote: boolean;
 }
 
 export interface PriceApplyResult {
