@@ -18,6 +18,7 @@ import com.hanseongge.domain.marketprice.service.AutoQuoteService;
 import com.hanseongge.domain.marketprice.service.MarketPriceCollectionWriter;
 import com.hanseongge.domain.marketprice.service.MarketPricePolicyService;
 import com.hanseongge.domain.setting.service.SystemSettingService;
+import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.util.PricePerGram;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +35,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 자동고시 검증 — 외부 피드 수집값이 어떤 조건에서 판매가가 되는가.
@@ -367,6 +369,53 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
     @Nested
     @DisplayName("전환 API")
     class SwitchApi {
+
+        @Test
+        @DisplayName("자동고시를 켜면서 보정값을 함께 정한다 — 값 없이 켜지는 길이 없다")
+        void startsWithAdjustment() {
+            policyService.startAutoQuote(MetalType.GOLD_24K, PolicyMode.FIXED_ADJ,
+                    new BigDecimal("3000"), new BigDecimal("-1500"), "오전 마진", "admin");
+
+            MarketPricePolicy sell = policyRepository
+                    .findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.SELL).orElseThrow();
+            MarketPricePolicy buy = policyRepository
+                    .findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.BUY).orElseThrow();
+
+            assertThat(sell.isAutoQuote()).isTrue();
+            assertThat(buy.isAutoQuote()).isTrue();
+            assertThat(sell.getAdjAmount()).isEqualByComparingTo("3000");
+            assertThat(buy.getAdjAmount())
+                    .as("매입은 빼는 쪽이다 — 음수도 그대로 저장된다")
+                    .isEqualByComparingTo("-1500");
+        }
+
+        @Test
+        @DisplayName("켜면서 정한 값이 곧바로 다음 고시에 적용된다")
+        void adjustmentAppliesImmediately() {
+            policyService.startAutoQuote(MetalType.GOLD_24K, PolicyMode.FIXED_ADJ,
+                    new BigDecimal("3000"), new BigDecimal("-1500"), "오전 마진", "admin");
+
+            OffsetDateTime at = now();
+            autoQuoteService.publishPair(MetalType.GOLD_24K,
+                    store(PriceSide.SELL, "220800", at),
+                    store(PriceSide.BUY, "188000", at));
+
+            assertThat(current(PriceSide.SELL).getPricePerGram())
+                    .as("220,800 + 3,000")
+                    .isEqualByComparingTo("223800.00");
+            assertThat(current(PriceSide.BUY).getPricePerGram())
+                    .as("188,000 - 1,500")
+                    .isEqualByComparingTo("186500.00");
+        }
+
+        @Test
+        @DisplayName("지정가로는 자동고시를 켤 수 없다 — 수집값을 받아 놓고 무시하는 셈이다")
+        void manualModeRejected() {
+            assertThatThrownBy(() -> policyService.startAutoQuote(MetalType.GOLD_24K,
+                    PolicyMode.MANUAL, new BigDecimal("200000"), new BigDecimal("180000"),
+                    "실수", "admin"))
+                    .isInstanceOf(BusinessException.class);
+        }
 
         @Test
         @DisplayName("보정값을 건드리지 않고 자동/수동만 바꾼다")

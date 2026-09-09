@@ -91,6 +91,15 @@ export function useDeclarePair() {
   });
 }
 
+/** 자동고시 시작 — 보정값과 전환이 한 번에 간다. */
+export function useStartAutoQuote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: pricesApi.startAutoQuote,
+    onSuccess: () => invalidatePriceDependents(queryClient),
+  });
+}
+
 export function useSwitchQuoteMode() {
   const queryClient = useQueryClient();
   return useMutation({

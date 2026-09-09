@@ -1,5 +1,6 @@
 package com.hanseongge.domain.marketprice.controller;
 
+import com.hanseongge.domain.marketprice.dto.AutoQuoteStartRequest;
 import com.hanseongge.domain.marketprice.dto.CollectionStatusResponse;
 import com.hanseongge.domain.marketprice.dto.CurrentPriceResponse;
 import com.hanseongge.domain.marketprice.dto.PendingBatchRequest;
@@ -163,6 +164,23 @@ public class AdminMarketPriceController {
                 request.metalType(), request.priceSide(), request.mode(),
                 request.adjAmount(), request.adjPercent(), request.manualPrice(),
                 request.changeReason(), actor.loginId())));
+    }
+
+    @Operation(summary = "자동고시 시작 (보정값 포함)",
+            description = "한 금속의 살 때·팔 때 보정값을 정하면서 자동고시를 켠다. "
+                    + "값과 전환이 한 트랜잭션이라, 값을 정하지 않은 채 자동이 켜지는 "
+                    + "상태를 만들 수 없다. 보정 0 으로 켜지면 수집값이 그대로 판매가가 "
+                    + "되고, 마진 없이 파는 상태는 판 뒤에야 드러난다.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/policies/auto-quote")
+    public ResponseEntity<List<PolicyResponse>> startAutoQuote(
+            @Valid @RequestBody AutoQuoteStartRequest request,
+            @AuthenticationPrincipal AdminPrincipal actor) {
+
+        return ResponseEntity.ok(policyService.startAutoQuote(
+                        request.metalType(), request.mode(), request.sellAdj(), request.buyAdj(),
+                        request.changeReason(), actor.loginId())
+                .stream().map(PolicyResponse::from).toList());
     }
 
     @Operation(summary = "자동/수동 고시 전환 (금속 단위)",

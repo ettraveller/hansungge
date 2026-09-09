@@ -81,6 +81,70 @@ public class MarketPricePolicyService {
     }
 
     /**
+     * 자동고시를 <b>값과 함께</b> 켠다.
+     *
+     * <h2>왜 한 번에 받는가</h2>
+     * 전에는 "자동으로 전환"과 "보정값 변경"이 따로였다. 그러면 값을 정하지 않은 채
+     * 자동이 켜지고, 보정 0 인 상태로 수집값이 그대로 판매가가 된다. 마진 없이 파는
+     * 상태이고, 그 사실은 판 뒤에야 드러난다.
+     *
+     * <p>자동으로 켜는 순간 반드시 답해야 하는 질문이 "얼마를 더할 것인가"다.
+     * 그 질문을 화면에서 건너뛸 수 없게 한 흐름으로 묶는다.
+     *
+     * <h2>한 트랜잭션</h2>
+     * 살 때·팔 때의 보정값과 두 쪽의 자동 전환이 함께 저장된다. 하나라도 실패하면
+     * 전부 되돌아간다 — 값만 바뀌고 자동은 안 켜지거나, 그 반대인 상태를 만들지 않는다.
+     *
+     * @param sellAdj 살 때 보정값. mode 에 따라 금액(원/1g) 또는 비율(%)이다
+     * @param buyAdj  팔 때 보정값
+     */
+    @Transactional
+    @AuditLog(action = AuditActions.PRICE_POLICY_UPDATE,
+              targetType = AuditActions.TARGET_MARKET_PRICE,
+              targetId = "#metalType.name()")
+    public java.util.List<MarketPricePolicy> startAutoQuote(MetalType metalType, PolicyMode mode,
+                                                            BigDecimal sellAdj, BigDecimal buyAdj,
+                                                            String changeReason, String adminLoginId) {
+        if (changeReason == null || changeReason.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "자동고시 시작 사유는 필수입니다.");
+        }
+        if (mode != PolicyMode.AUTO && mode != PolicyMode.FIXED_ADJ && mode != PolicyMode.PERCENT_ADJ) {
+            // MANUAL(지정가)은 자동고시와 뜻이 부딪힌다 — 수집값을 받아 놓고 무시하는 셈이다.
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "자동고시에는 '받아온 값 그대로' 또는 '금액/비율 더하기·빼기'만 쓸 수 있습니다.");
+        }
+
+        MarketPricePolicy sell = find(metalType, PriceSide.SELL);
+        MarketPricePolicy buy = find(metalType, PriceSide.BUY);
+
+        AuditContext.before(java.util.Map.of("sell", snapshot(sell), "buy", snapshot(buy)));
+
+        applyAdjustment(sell, mode, sellAdj, adminLoginId);
+        applyAdjustment(buy, mode, buyAdj, adminLoginId);
+
+        sell.switchQuoteMode(true, adminLoginId);
+        buy.switchQuoteMode(true, adminLoginId);
+
+        calculator.resetWarning(sell);
+        calculator.resetWarning(buy);
+
+        log.info("[MARKET-PRICE] 자동고시 시작 {} mode={} 살때={} 팔때={} by={} 사유={}",
+                metalType, mode, sellAdj, buyAdj, adminLoginId, changeReason);
+        return java.util.List.of(sell, buy);
+    }
+
+    /** 모드에 맞는 칸에만 값을 넣는다. 나머지는 0 으로 지운다 — 옛 값이 되살아나지 않게. */
+    private void applyAdjustment(MarketPricePolicy policy, PolicyMode mode,
+                                 BigDecimal adj, String adminLoginId) {
+        BigDecimal value = adj == null ? BigDecimal.ZERO : adj;
+        switch (mode) {
+            case FIXED_ADJ -> policy.change(mode, value, BigDecimal.ZERO, null, adminLoginId);
+            case PERCENT_ADJ -> policy.change(mode, BigDecimal.ZERO, value, null, adminLoginId);
+            default -> policy.change(PolicyMode.AUTO, BigDecimal.ZERO, BigDecimal.ZERO, null, adminLoginId);
+        }
+    }
+
+    /**
      * 자동고시 / 수동고시 전환.
      *
      * <p>{@link #update} 와 분리한 이유 — 사고가 났을 때 관리자가 가장 먼저 하는 조작이

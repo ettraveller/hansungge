@@ -87,6 +87,24 @@ export function declarePair(input: DeclarePairInput) {
   return adminApi.post<PriceApplyPairResult>('/api/admin/prices/apply-pair', { body: input });
 }
 
+export interface AutoQuoteStartInput {
+  metalType: MetalType;
+  mode: PricePolicyMode;
+  sellAdj: string;
+  buyAdj: string;
+  changeReason: string;
+}
+
+/**
+ * 자동고시 시작 — <b>보정값과 함께</b> 켠다.
+ *
+ * <p>값을 정하지 않은 채 자동이 켜지는 경로를 두지 않는다. 보정 0 으로 켜지면
+ * 수집값이 그대로 판매가가 되고, 마진 없이 파는 상태는 판 뒤에야 드러난다.
+ */
+export function startAutoQuote(input: AutoQuoteStartInput) {
+  return adminApi.post<PricePolicy[]>('/api/admin/prices/policies/auto-quote', { body: input });
+}
+
 export interface QuoteModeInput {
   metalType: MetalType;
   autoQuote: boolean;

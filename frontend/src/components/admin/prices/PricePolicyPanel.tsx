@@ -8,7 +8,12 @@ import { DecimalInput, Field, MoneyInput, SelectInput, TextArea } from '../Field
 import { Modal } from '../Modal';
 import { Panel } from '../Panel';
 import { ReasonDialog } from '../ReasonDialog';
-import { usePolicies, useSwitchQuoteMode, useUpdatePolicy } from '@/hooks/admin/usePrices';
+import {
+  usePolicies,
+  useStartAutoQuote,
+  useSwitchQuoteMode,
+  useUpdatePolicy,
+} from '@/hooks/admin/usePrices';
 import { formatAdjustment, formatDateTime, formatPricePerGram } from '@/utils/format';
 import {
   METAL_LABEL,
@@ -187,19 +192,31 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
         조건부로 마운트한다 — open 을 false 로 걸어두면 닫힌 동안에도 이전 대상의
         상태가 남아, 다음에 열 때 옛 값이 잠깐 비친다.
       */}
-      {switching && (
+      {/*
+        자동으로 켤 때는 보정값을 함께 받는다. 값을 정하지 않은 채 켜지면 보정 0 으로
+        수집값이 그대로 판매가가 되고, 마진 없이 파는 상태는 판 뒤에야 드러난다.
+
+        끄는 쪽은 사유만 받는다 — 사고 대응 중에 값을 함께 요구하면 급한 손이
+        엉뚱한 값을 밀어 넣는다.
+      */}
+      {switching?.to && (
+        <AutoQuoteStartDialog
+          key={`${switching.metalType}-on`}
+          metalType={switching.metalType}
+          policies={data ?? []}
+          onClose={() => setSwitching(null)}
+        />
+      )}
+
+      {switching && !switching.to && (
         <ReasonDialog
-          key={`${switching.metalType}-${String(switching.to)}`}
+          key={`${switching.metalType}-off`}
           open
-          title={switching.to ? '자동고시로 전환' : '수동고시로 전환'}
-          description={
-            switching.to
-              ? `${METAL_LABEL[switching.metalType]} — 살 때와 팔 때가 함께 자동으로 발행됩니다. 한쪽이라도 변동률이 허용치를 넘으면 양쪽 모두 발행하지 않고 승인 대기로 넘어갑니다.`
-              : `${METAL_LABEL[switching.metalType]} — 수집은 계속되지만 발행은 멈춥니다. 시세는 관리자가 직접 고시할 때까지 지금 값 그대로입니다.`
-          }
-          confirmLabel={switching.to ? '자동고시 시작' : '수동고시로 전환'}
-          danger={!switching.to}
-          placeholder={switching.to ? '예: 피드 정상 확인, 자동고시 재개' : '예: 피드 이상값 확인, 수동 전환'}
+          title="수동고시로 전환"
+          description={`${METAL_LABEL[switching.metalType]} — 수집은 계속되지만 발행은 멈춥니다. 시세는 관리자가 직접 고시할 때까지 지금 값 그대로입니다.`}
+          confirmLabel="수동고시로 전환"
+          danger
+          placeholder="예: 수집값 이상 확인, 수동 전환"
           pending={switchMode.isPending}
           error={
             switchMode.error instanceof ApiError
@@ -212,7 +229,7 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
             switchMode.mutate(
               {
                 metalType: switching.metalType,
-                autoQuote: switching.to,
+                autoQuote: false,
                 changeReason: reason,
               },
               { onSuccess: () => setSwitching(null) },
@@ -404,4 +421,183 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
       </div>
     </Modal>
   );
+}
+
+/**
+ * 자동고시 시작 — 보정값을 함께 받는다.
+ *
+ * <p>"자동으로 켠다"와 "얼마를 더한다"를 따로 두면, 값을 정하지 않은 채 자동이
+ * 켜진다. 그러면 보정 0 으로 수집값이 그대로 판매가가 되고, 마진 없이 파는 상태는
+ * 판 뒤에야 드러난다. 켜는 순간 반드시 답해야 하는 질문이므로 건너뛸 수 없게 둔다.
+ *
+ * <p>지금 설정된 값을 기본으로 채운다. 대개는 그 값을 그대로 쓰고, 바꿀 때만 고친다.
+ */
+function AutoQuoteStartDialog({
+  metalType,
+  policies,
+  onClose,
+}: {
+  metalType: MetalType;
+  policies: PricePolicy[];
+  onClose: () => void;
+}) {
+  const start = useStartAutoQuote();
+
+  const sellPolicy = policies.find((p) => p.metalType === metalType && p.priceSide === 'SELL');
+  const buyPolicy = policies.find((p) => p.metalType === metalType && p.priceSide === 'BUY');
+
+  // 자동고시에 쓸 수 없는 모드(지정가)로 설정돼 있으면 금액 보정을 기본으로 잡는다.
+  const initialMode: PricePolicyMode =
+    sellPolicy && AUTO_MODES.includes(sellPolicy.mode) ? sellPolicy.mode : 'FIXED_ADJ';
+
+  const [mode, setMode] = useState<PricePolicyMode>(initialMode);
+  const [sellAdj, setSellAdj] = useState(() => initialAdj(sellPolicy, initialMode));
+  const [buyAdj, setBuyAdj] = useState(() => initialAdj(buyPolicy, initialMode));
+  const [reason, setReason] = useState('');
+
+  const needsValue = mode !== 'AUTO';
+  const sellInvalid = needsValue && !DECIMAL_PATTERN.test(sellAdj);
+  const buyInvalid = needsValue && !DECIMAL_PATTERN.test(buyAdj);
+  const canSubmit = !sellInvalid && !buyInvalid && reason.trim().length > 0 && !start.isPending;
+
+  const unit = mode === 'PERCENT_ADJ' ? '%' : '원 / 1g';
+
+  return (
+    <Modal
+      open
+      title={`${METAL_LABEL[metalType]} 자동고시 시작`}
+      onClose={onClose}
+    >
+      <form
+        className={styles.form}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!canSubmit) return;
+          start.mutate(
+            {
+              metalType,
+              mode,
+              sellAdj: needsValue ? sellAdj : '0',
+              buyAdj: needsValue ? buyAdj : '0',
+              changeReason: reason.trim(),
+            },
+            { onSuccess: onClose },
+          );
+        }}
+      >
+        {start.error && (
+          <Alert tone="danger" title="자동고시를 시작하지 못했습니다">
+            {start.error instanceof ApiError ? start.error.message : '알 수 없는 오류입니다.'}
+          </Alert>
+        )}
+
+        <Alert tone="info" title="켜면 이렇게 동작합니다">
+          수집한 값에 아래 보정을 적용해 <strong>살 때와 팔 때가 함께</strong> 발행됩니다.
+          한쪽이라도 변동률이 허용치를 넘으면 양쪽 모두 발행하지 않고 승인 대기로
+          넘어갑니다.
+        </Alert>
+
+        <Field label="계산 방식" htmlFor="auto-mode" required hint={MODE_HINT[mode]}>
+          <SelectInput
+            id="auto-mode"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as PricePolicyMode)}
+          >
+            {AUTO_MODES.map((m) => (
+              <option key={m} value={m}>
+                {MODE_LABEL[m]}
+              </option>
+            ))}
+          </SelectInput>
+        </Field>
+
+        {needsValue && (
+          <div className={styles.formGrid}>
+            <Field
+              label={`내가 살 때 보정 (${unit})`}
+              htmlFor="auto-sell-adj"
+              required
+              hint="앞에 - 를 붙이면 뺀다."
+              error={sellInvalid ? '숫자를 입력해 주세요.' : null}
+            >
+              {mode === 'PERCENT_ADJ' ? (
+                <DecimalInput
+                  id="auto-sell-adj"
+                  value={sellAdj}
+                  invalid={sellInvalid}
+                  onChange={(e) => setSellAdj(e.target.value)}
+                />
+              ) : (
+                <MoneyInput
+                  id="auto-sell-adj"
+                  value={sellAdj}
+                  invalid={sellInvalid}
+                  onValueChange={setSellAdj}
+                />
+              )}
+            </Field>
+
+            <Field
+              label={`내가 팔 때 보정 (${unit})`}
+              htmlFor="auto-buy-adj"
+              required
+              hint="매입가는 보통 빼는 쪽이다."
+              error={buyInvalid ? '숫자를 입력해 주세요.' : null}
+            >
+              {mode === 'PERCENT_ADJ' ? (
+                <DecimalInput
+                  id="auto-buy-adj"
+                  value={buyAdj}
+                  invalid={buyInvalid}
+                  onChange={(e) => setBuyAdj(e.target.value)}
+                />
+              ) : (
+                <MoneyInput
+                  id="auto-buy-adj"
+                  value={buyAdj}
+                  invalid={buyInvalid}
+                  onValueChange={setBuyAdj}
+                />
+              )}
+            </Field>
+          </div>
+        )}
+
+        <Field
+          label="시작 사유"
+          htmlFor="auto-reason"
+          required
+          hint="정책 이력과 감사로그에 그대로 남는다."
+        >
+          <TextArea
+            id="auto-reason"
+            value={reason}
+            placeholder="예: 오전 마진 정책 반영, 자동고시 시작"
+            maxLength={300}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </Field>
+
+        <div className={styles.formActions}>
+          <Button type="submit" variant="gold" disabled={!canSubmit}>
+            {start.isPending ? '시작하는 중…' : '자동고시 시작'}
+          </Button>
+          <Button type="button" onClick={onClose}>
+            취소
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** 자동고시에 쓸 수 있는 계산 방식. 지정가는 수집값을 무시하는 셈이라 뺀다. */
+const AUTO_MODES: PricePolicyMode[] = ['FIXED_ADJ', 'PERCENT_ADJ', 'AUTO'];
+
+/** 지금 설정된 값을 문자열로. 모드가 다르면 빈 값에서 시작한다. */
+function initialAdj(policy: PricePolicy | undefined, mode: PricePolicyMode): string {
+  if (!policy) return '0';
+  if (mode === 'FIXED_ADJ') return String(policy.adjAmount ?? '0');
+  if (mode === 'PERCENT_ADJ') return String(policy.adjPercent ?? '0');
+  return '0';
 }
