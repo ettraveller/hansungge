@@ -158,7 +158,13 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                       <QuoteModeCell
                         policy={policy}
                         canEdit={canEdit}
-                        onSwitch={(to) => setSwitching({ metalType: policy.metalType, to })}
+                        onSwitch={(to) => {
+                          // 창을 열 때 지난 오류를 지운다. 뮤테이션이 부모에 있어서
+                          // 창만 닫으면 오류 상태가 남고, 다음에 열었을 때 이미
+                          // 해결된 오류가 그대로 떠 있다.
+                          switchMode.reset();
+                          setSwitching({ metalType: policy.metalType, to });
+                        }}
                       />
                     </td>
                   )}
@@ -184,7 +190,13 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                         {isFirstOfMetal(list, i) && (
                           <>
                             <span className={styles.actionDivider} aria-hidden="true" />
-                            <Button small onClick={() => setReapplying(policy.metalType)}>
+                            <Button
+                              small
+                              onClick={() => {
+                                reapply.reset();
+                                setReapplying(policy.metalType);
+                              }}
+                            >
                               즉시 적용
                             </Button>
                           </>

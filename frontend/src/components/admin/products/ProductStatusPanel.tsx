@@ -101,7 +101,12 @@ export function ProductStatusPanel({
             </div>
 
             <div className={styles.formActions}>
-              <Button variant="primary" disabled={!dirty} onClick={() => setConfirming(true)}>
+              <Button variant="primary" disabled={!dirty} onClick={() => {
+                  // 창을 열 때 지난 오류를 지운다 — 뮤테이션이 이 패널에 있어
+                  // 창만 닫으면 오류가 남는다.
+                  change.reset();
+                  setConfirming(true);
+                }}>
                 상태 변경
               </Button>
               {!dirty && <span className={styles.hint}>바뀐 값이 없다.</span>}

@@ -224,14 +224,24 @@ export function PricePendingPanel({ canDecide }: { canDecide: boolean }) {
                           <Button
                             small
                             variant="gold"
-                            onClick={() => setDecision({ group: g, kind: 'approve' })}
+                            onClick={() => {
+                              // 창을 열 때 지난 오류를 지운다 — 뮤테이션이 부모에 있어
+                              // 창만 닫으면 오류가 남는다.
+                              approve.reset();
+                              reject.reset();
+                              setDecision({ group: g, kind: 'approve' });
+                            }}
                           >
                             승인
                           </Button>
                           <Button
                             small
                             variant="danger"
-                            onClick={() => setDecision({ group: g, kind: 'reject' })}
+                            onClick={() => {
+                              approve.reset();
+                              reject.reset();
+                              setDecision({ group: g, kind: 'reject' });
+                            }}
                           >
                             반려
                           </Button>
