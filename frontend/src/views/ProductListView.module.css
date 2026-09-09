@@ -33,7 +33,7 @@
 .tab {
   border: 1px solid var(--line);
   background: #fff;
-  color: #555;
+  color: var(--ink-600);
 }
 
 .tab:hover {

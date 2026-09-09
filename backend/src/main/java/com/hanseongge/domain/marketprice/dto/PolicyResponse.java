@@ -41,7 +41,11 @@ public record PolicyResponse(
         String updatedBy,
 
         @Schema(description = "마지막 변경 시각")
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+
+        @Schema(description = "자동고시 여부. true 면 수집값에 보정을 적용해 즉시 발행한다",
+                example = "false")
+        boolean autoQuote
 ) {
 
     public static PolicyResponse from(MarketPricePolicy policy) {
@@ -55,6 +59,7 @@ public record PolicyResponse(
                 policy.getAdjPercent(),
                 policy.getManualPrice(),
                 policy.getUpdatedBy(),
-                policy.getUpdatedAt());
+                policy.getUpdatedAt(),
+                policy.isAutoQuote());
     }
 }

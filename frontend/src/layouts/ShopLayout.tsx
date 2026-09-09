@@ -99,7 +99,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
 
-      <main>{children}</main>
+      <main id="main">{children}</main>
 
       <MobileTabBar />
 

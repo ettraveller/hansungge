@@ -49,6 +49,21 @@ public final class ProductTestFixtures {
         return product;
     }
 
+    /**
+     * 시세문의 상품 — 값을 내걸지 않기로 <b>정한</b> 상품.
+     *
+     * <p>금속·중량·판매가를 전부 비운다. 시세문의는 그 셋 중 어느 것도 요구하지
+     * 않는다는 사실 자체가 고정할 동작이다.
+     */
+    public static Product inquiryProduct(Long categoryId, String name) {
+        Product product = Product.create(categoryId, name,
+                new ProductPricing(null, PriceType.INQUIRY, null, null,
+                        BigDecimal.ZERO, BigDecimal.ONE, null),
+                null, null, CREATED_BY);
+        product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
+        return product;
+    }
+
     public static ProductOption option(Long productId, String name, String weightG,
                                        String additionalLaborCost, int stock) {
         return ProductOption.create(productId, name,

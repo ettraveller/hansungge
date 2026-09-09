@@ -20,7 +20,7 @@ export const HERO_SLIDES: Slide[] = [
     eyebrow: 'HANSUNG GOLD EXCHANGE',
     title: '오늘의 정확한 시세로',
     highlight: '안심하고 거래하세요',
-    desc: '고시 시세를 그대로 반영한 판매가. 주문 시점에 서버가 다시 계산해 확정합니다.',
+    desc: '당사가 고시한 시세를 그대로 적용합니다. 최종 금액은 주문하시는 시각의 고시 시세로 확정됩니다.',
     // 바로 아래가 시세표라 "시세 확인"으로 보내면 이미 도착한 곳을 다시 가리킨다.
     // 배너의 역할은 다음 행동을 만드는 것이다.
     href: '/shop?categoryId=1',
@@ -39,7 +39,7 @@ export const HERO_SLIDES: Slide[] = [
     eyebrow: 'BUY-BACK SERVICE',
     title: '보유하신 귀금속',
     highlight: '최고가 매입',
-    desc: '돌반지·목걸이 등 귀금속을 투명한 고시 시세로 매입해 드립니다.',
+    desc: '돌반지·목걸이 등 보유하신 귀금속을 당일 고시 시세로 매입해 드립니다.',
     href: '/purchase-guide',
     cta: '매입 절차 안내',
   },

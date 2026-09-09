@@ -7,6 +7,7 @@ import com.hanseongge.domain.marketprice.dto.PendingResponse;
 import com.hanseongge.domain.marketprice.dto.PolicyResponse;
 import com.hanseongge.domain.marketprice.dto.PolicyUpdateRequest;
 import com.hanseongge.domain.marketprice.dto.PriceApplyResponse;
+import com.hanseongge.domain.marketprice.dto.QuoteModeRequest;
 import com.hanseongge.domain.marketprice.dto.PriceDeclareRequest;
 import com.hanseongge.domain.marketprice.dto.PriceHistoryResponse;
 import com.hanseongge.domain.marketprice.entity.MetalType;
@@ -142,6 +143,19 @@ public class AdminMarketPriceController {
         return ResponseEntity.ok(PolicyResponse.from(policyService.update(
                 request.metalType(), request.priceSide(), request.mode(),
                 request.adjAmount(), request.adjPercent(), request.manualPrice(),
+                request.changeReason(), actor.loginId())));
+    }
+
+    @Operation(summary = "자동/수동 고시 전환",
+            description = "자동고시로 켜면 수집된 원본에 보정 정책을 적용해 즉시 발행한다. "
+                    + "이미 발행된 시세는 바뀌지 않는다. 자동이어도 변동률 임계를 넘으면 "
+                    + "발행되지 않고 승인 대기로 간다.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/policies/quote-mode")
+    public ResponseEntity<PolicyResponse> switchQuoteMode(@Valid @RequestBody QuoteModeRequest request,
+                                                          @AuthenticationPrincipal AdminPrincipal actor) {
+        return ResponseEntity.ok(PolicyResponse.from(policyService.switchQuoteMode(
+                request.metalType(), request.priceSide(), request.autoQuote(),
                 request.changeReason(), actor.loginId())));
     }
 

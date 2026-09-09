@@ -85,9 +85,22 @@ public class MarketPriceRaw {
     @Column(name = "created_by", length = 60)
     private String createdBy;
 
+    /**
+     * 이 원본이 어느 쪽 값인가. <b>{@code null} 이면 양측 공통 기준가</b>다.
+     *
+     * <p>수동 고시와 V14 이전의 모든 행이 {@code null} 이다. 그 값들은 "기준가 하나에서
+     * 매수·매도 정책이 각각 갈라져 나온다"는 뜻이었고, 사후에 한쪽으로 적어 넣으면
+     * 없던 의미를 만들어내는 셈이 된다.
+     *
+     * <p>외부 피드는 살 때와 팔 때를 <b>각각</b> 고시하므로 그 쪽 값을 채운다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "price_side", length = 4)
+    private PriceSide priceSide;
+
     private MarketPriceRaw(MarketPriceSource source, MetalType metalType, PricePerGram pricePerGram,
                            OffsetDateTime collectedAt, OffsetDateTime quoteAt,
-                           String rawPayload, String createdBy) {
+                           String rawPayload, String createdBy, PriceSide priceSide) {
         this.source = source;
         this.metalType = metalType;
         // PricePerGram 을 거쳐야만 값이 들어온다 — 0 이하는 그 타입이 생성 자체를 거부한다.
@@ -97,6 +110,7 @@ public class MarketPriceRaw {
         this.status = RawStatus.NORMAL;
         this.rawPayload = rawPayload;
         this.createdBy = createdBy;
+        this.priceSide = priceSide;
     }
 
     /**
@@ -112,12 +126,29 @@ public class MarketPriceRaw {
         return collected(source, metalType, pricePerGram, collectedAt, collectedAt, rawPayload);
     }
 
-    /** 기준시각이 수집시각과 다른 자동 수집 원본. */
+    /** 기준시각이 수집시각과 다른 자동 수집 원본. 양측 공통 기준가로 쌓인다. */
     public static MarketPriceRaw collected(MarketPriceSource source, MetalType metalType,
                                            PricePerGram pricePerGram, OffsetDateTime collectedAt,
                                            OffsetDateTime quoteAt, String rawPayload) {
         return new MarketPriceRaw(source, metalType, pricePerGram, collectedAt, quoteAt,
-                rawPayload, null);
+                rawPayload, null, null);
+    }
+
+    /**
+     * 살 때/팔 때를 각각 고시하는 피드의 원본.
+     *
+     * <p>{@link #collected} 와 달리 {@code priceSide} 가 채워진다. 그래야 계산기가
+     * "매도 정책은 매도 원본에서" 출발할 수 있다.
+     */
+    public static MarketPriceRaw collectedForSide(MarketPriceSource source, MetalType metalType,
+                                                  PriceSide priceSide, PricePerGram pricePerGram,
+                                                  OffsetDateTime collectedAt,
+                                                  OffsetDateTime quoteAt, String rawPayload) {
+        if (priceSide == null) {
+            throw new IllegalArgumentException("priceSide 는 필수입니다 — 공통 기준가는 collected() 를 쓴다");
+        }
+        return new MarketPriceRaw(source, metalType, pricePerGram, collectedAt, quoteAt,
+                rawPayload, null, priceSide);
     }
 
     /** 관리자 수동 고시 원본 (개발계획 §12.3 — 수동도 L1 을 반드시 통과한다). */
@@ -126,7 +157,7 @@ public class MarketPriceRaw {
                                           String rawPayload) {
         OffsetDateTime now = OffsetDateTime.now();
         return new MarketPriceRaw(source, metalType, pricePerGram, now, now,
-                rawPayload, adminLoginId);
+                rawPayload, adminLoginId, null);
     }
 
     /**

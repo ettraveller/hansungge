@@ -67,6 +67,18 @@ public class MarketPricePolicy {
     private OffsetDateTime updatedAt;
 
     /**
+     * 자동고시 여부.
+     *
+     * <p>{@code true} 면 수집기가 새 원본을 받을 때마다 이 정책의 보정을 적용해
+     * <b>바로 발행한다.</b> {@code false} 면 원본만 쌓이고, 발행은 관리자가 직접 한다.
+     *
+     * <p>자동이어도 변동률 임계값은 그대로 걸린다 — 넘으면 발행 대신 승인 대기로 간다.
+     * "자동"은 사람 손을 덜자는 것이지 안전장치를 끄자는 뜻이 아니다.
+     */
+    @Column(name = "auto_quote", nullable = false)
+    private boolean autoQuote;
+
+    /**
      * 정책 변경. 모드에 무관한 필드까지 한꺼번에 덮어쓰는 이유는, 부분 갱신을 허용하면
      * "PERCENT_ADJ 로 바꿨는데 예전 adj_amount 가 남아 있는" 상태가 생기고
      * 그 값이 나중에 모드를 되돌릴 때 조용히 되살아나기 때문이다.
@@ -77,6 +89,19 @@ public class MarketPricePolicy {
         this.adjAmount = adjAmount == null ? BigDecimal.ZERO : adjAmount;
         this.adjPercent = adjPercent == null ? BigDecimal.ZERO : adjPercent;
         this.manualPrice = manualPrice;
+        this.updatedBy = updatedBy;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    /**
+     * 자동/수동 고시 전환.
+     *
+     * <p>{@link #change} 와 나눠 둔다. 보정값을 만지지 않고 스위치만 내리는 일이
+     * 잦기 때문이다 — 사고가 났을 때 관리자가 제일 먼저 하는 조작이 이것이고,
+     * 그 순간에 보정값까지 같이 넘기도록 강요하면 실수로 값이 초기화된다.
+     */
+    public void switchQuoteMode(boolean autoQuote, String updatedBy) {
+        this.autoQuote = autoQuote;
         this.updatedBy = updatedBy;
         this.updatedAt = OffsetDateTime.now();
     }

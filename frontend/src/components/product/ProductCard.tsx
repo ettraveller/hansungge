@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PRICE_INQUIRY_LABEL, formatKrw } from '@/utils/format';
 import { METAL_LABEL } from '@/types/price';
-import type { ProductSummary } from '@/types/product';
+import { PRODUCT_STATUS_LABEL, type ProductSummary } from '@/types/product';
 import styles from './ProductCard.module.css';
 
 interface Props {
@@ -21,7 +21,7 @@ interface Props {
  * 금액이 서로 어긋날 수 있다 (설계서 원칙 P1).
  */
 export function ProductCard({ product, flag }: Props) {
-  const soldOut = product.status === 'SOLD_OUT' || !product.orderable;
+  const blockedLabel = blockedReason(product);
 
   return (
     <Link href={`/shop/product/${product.id}`} className={styles.prod}>
@@ -32,9 +32,9 @@ export function ProductCard({ product, flag }: Props) {
           </span>
         )}
         <div className={barClassName(product)}>{barLabel(product)}</div>
-        {soldOut && (
+        {blockedLabel && (
           <span className={styles.soldOut}>
-            <b className={styles.soldOutLabel}>품절</b>
+            <b className={styles.soldOutLabel}>{blockedLabel}</b>
           </span>
         )}
       </div>
@@ -59,6 +59,25 @@ export function ProductCard({ product, flag }: Props) {
 }
 
 /** 은은 은색 바, 소형(3g 미만)은 원형 — 시안의 `.bar.silver` / `.bar.round`. */
+/**
+ * 썸네일을 덮는 막에 적을 문구. 덮지 않아야 하면 null.
+ *
+ * <p>`orderable` 하나로 판단하지 않는다. 이 값은 품절·판매종료뿐 아니라
+ * <b>시세가 없거나 오래되어 값을 확정할 수 없을 때</b>도 false 가 된다
+ * (설계서 P6 — 값을 0 이나 NULL 로 만들지 않고 "시세문의"로 물러난다).
+ * 그 경우까지 "품절"을 찍으면, 가격 줄에는 "시세문의"라고 적혀 있는데
+ * 사진 위에는 "품절"이라고 적힌 카드가 나온다. 두 문구가 서로 다른 말을
+ * 하면 사용자는 어느 쪽도 믿지 않는다.
+ *
+ * <p>재고 문제가 아닌 경우에는 덮지 않는다 — 가격 줄의 "시세문의"가
+ * 이미 살 수 없는 이유를 말하고 있다.
+ */
+function blockedReason(product: ProductSummary): string | null {
+  if (product.status === 'SOLD_OUT') return PRODUCT_STATUS_LABEL.SOLD_OUT;
+  if (product.status === 'DISCONTINUED') return PRODUCT_STATUS_LABEL.DISCONTINUED;
+  return null;
+}
+
 function barClassName(product: ProductSummary): string {
   if (product.metalType === 'SILVER') return `${styles.bar} ${styles.barSilver}`;
   if (product.weightG != null && product.weightG < 3) return `${styles.bar} ${styles.barRound}`;

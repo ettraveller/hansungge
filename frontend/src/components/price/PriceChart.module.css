@@ -25,7 +25,7 @@
 }
 
 .axis {
-  fill: #8a8578;
+  fill: var(--ink-400);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }

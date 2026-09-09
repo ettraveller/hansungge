@@ -130,7 +130,7 @@
   margin: 12px 0 0;
   padding: 12px 14px;
   border-left: 3px solid var(--gold);
-  background: #fffdf5;
+  background: var(--ink-50);
   font-size: 14px;
   line-height: 1.75;
   color: #444;

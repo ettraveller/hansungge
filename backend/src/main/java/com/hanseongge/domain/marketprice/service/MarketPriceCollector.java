@@ -4,6 +4,7 @@ import com.hanseongge.domain.marketprice.entity.FetchResult;
 import com.hanseongge.domain.marketprice.entity.MarketPriceFetchLog;
 import com.hanseongge.domain.marketprice.entity.MarketPriceSource;
 import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.marketprice.provider.FeedMarketPriceProvider;
 import com.hanseongge.domain.marketprice.provider.MarketPriceFetchException;
 import com.hanseongge.domain.marketprice.provider.MarketPriceProvider;
 import com.hanseongge.domain.marketprice.provider.RawPrice;
@@ -53,6 +54,7 @@ public class MarketPriceCollector {
     private final MarketPriceSourceRepository sourceRepository;
     private final MarketPriceFetchLogRepository fetchLogRepository;
     private final MarketPriceCollectionWriter writer;
+    private final AutoQuoteService autoQuoteService;
     private final SystemSettingService systemSettingService;
 
     /**
@@ -100,6 +102,24 @@ public class MarketPriceCollector {
             OffsetDateTime startedAt = OffsetDateTime.now();
             long startNanos = System.nanoTime();
             try {
+                // 살 때·팔 때를 각각 고시하는 피드는 두 값을 함께 받는다. 그런 원천에서
+                // 한쪽만 저장하면, 저장되지 않은 쪽 정책이 반대편 값을 기준으로 삼는다.
+                if (provider instanceof FeedMarketPriceProvider feed) {
+                    List<FeedMarketPriceProvider.SidedPrice> both = feed.fetchBothSides(metal);
+                    if (both.isEmpty()) {
+                        log.debug("[MARKET-PRICE] {} {} 신규 시세 없음", provider.sourceCode(), metal);
+                        return;
+                    }
+                    for (FeedMarketPriceProvider.SidedPrice sided : both) {
+                        Long rawId = writer.store(source, metal, sided.side(), sided.raw(),
+                                elapsedMs(startNanos), attempt, startedAt);
+                        // 자동고시로 설정된 조합만 발행된다. rawId 가 null 이면 검증에
+                        // 걸렸거나 이미 받아 둔 고시라, 발행할 새 값이 없다.
+                        autoQuoteService.publish(metal, sided.side(), rawId);
+                    }
+                    return;
+                }
+
                 Optional<RawPrice> fetched = provider.fetch(metal);
                 if (fetched.isEmpty()) {
                     // 실패가 아니다. 가져올 새 값이 없을 뿐이므로 재시도도 실패기록도 하지 않는다.

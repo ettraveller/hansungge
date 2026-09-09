@@ -1,6 +1,7 @@
 import type { Loaded } from '@/api/server';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
+import { GlobalPriceWidgets } from '@/components/price/GlobalPriceWidgets';
 import { PriceHistorySection } from '@/components/price/PriceHistorySection';
 import { SectionHead } from '@/components/ui/SectionHead';
 import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
@@ -77,7 +78,7 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
               <>
                 <SectionHead
                   title="1g 기준 시세"
-                  desc="상품 판매가는 이 시세에 중량·공임을 반영해 산출됩니다"
+                  desc="판매가는 이 시세에 중량과 공임을 반영해 산정됩니다"
                 />
                 <ul className={styles.gramList}>
                   {sellable.map((p) => (
@@ -92,6 +93,18 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
               </>
             )
           )}
+        </div>
+      </section>
+
+      {/* 국제 시세 — 우리 고시가 아래에 둔다. 순서를 뒤집으면 국제가가 우리
+          판매 기준인 것처럼 읽힌다. 실제 거래 기준은 위의 고시 시세다. */}
+      <section className={styles.sectionTinted}>
+        <div className="wrap">
+          <SectionHead
+            title="국제 시세"
+            desc="런던·뉴욕 시장의 현물 시세입니다. 당사 고시 시세와는 다릅니다"
+          />
+          <GlobalPriceWidgets />
         </div>
       </section>
 
@@ -115,9 +128,9 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
               title="가격은 주문 시점에 확정"
               body={
                 <>
-                  상품 판매가는 시세에 중량·공임을 반영해{' '}
-                  <strong>주문 시점에 서버가 계산</strong>합니다. 화면 금액과 결제 금액이 다를
-                  수 없습니다.
+                  판매가는 고시 시세에 중량과 공임을 반영해 산정되며,{' '}
+                  <strong>주문하시는 시각의 시세로 확정</strong>됩니다. 화면에 보신 금액과
+                  결제 금액은 다르지 않습니다.
                 </>
               }
             />
@@ -126,8 +139,9 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
               title="시세문의 표시"
               body={
                 <>
-                  시세가 확인되지 않거나 오래된 경우 금액 대신{' '}
-                  <strong>&ldquo;시세문의&rdquo;</strong>가 표시되고 주문이 제한됩니다.
+                  시세가 확인되지 않은 경우 금액 대신{' '}
+                  <strong>&ldquo;시세문의&rdquo;</strong>로 안내드립니다. 확인되지 않은 가격으로
+                  거래하지 않기 위한 원칙입니다.
                 </>
               }
             />
@@ -136,7 +150,7 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
           <p className={styles.notes}>
             <span>· 시세는 당사 기준이며, 시장 상황에 따라 변동될 수 있습니다.</span>
             <span>· 1돈은 3.75g 입니다.</span>
-            <span>· 부가세 정책 확정 전이며, 현재 표시가는 부가세가 포함되지 않은 금액입니다.</span>
+            <span>· 표시 금액은 부가세가 포함되지 않은 금액입니다.</span>
           </p>
         </div>
       </section>

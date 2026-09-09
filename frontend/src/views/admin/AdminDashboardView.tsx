@@ -181,10 +181,10 @@ export function AdminDashboardView() {
                         }
                       >
                         {row.availability === 'AVAILABLE'
-                          ? '정상'
+                          ? '판매중'
                           : row.availability === 'STALE'
-                            ? '노후'
-                            : '미고시'}
+                            ? '오래됨'
+                            : '고시 안 됨'}
                       </StatusBadge>
                     </td>
                     <td data-label="고시 시각" className={styles.muted}>{formatDateTime(row.effectiveFrom)}</td>

@@ -38,7 +38,7 @@
     min-height: 52px;
     padding: 6px 0;
     font-size: 11px;
-    color: #9a958a;
+    color: var(--ink-400);
     text-decoration: none;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;

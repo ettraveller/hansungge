@@ -12,8 +12,8 @@ export function TrustStrip() {
     <section className={styles.strip} aria-label="거래 원칙">
       <div className={styles.inner}>
         <Item
-          title="고시 시세를 그대로 반영"
-          desc="보정 내역과 원본 시세를 모두 보관합니다"
+          title="투명한 고시 시세"
+          desc="당사 고시 시세를 그대로 적용합니다"
           icon={
             <>
               <path d="M12 3l7 3v6c0 4-3 7.5-7 9-4-1.5-7-5-7-9V6l7-3z" />
@@ -22,8 +22,8 @@ export function TrustStrip() {
           }
         />
         <Item
-          title="주문 시점에 다시 계산"
-          desc="결제 금액은 서버가 확정합니다"
+          title="주문 시점 가격 확정"
+          desc="주문하시는 시각의 시세로 확정됩니다"
           icon={
             <>
               <circle cx="12" cy="12" r="9" />

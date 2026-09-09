@@ -134,6 +134,21 @@ app:
       # KRX 자동 수집기는 미구현이다. 수집 방식 확정(TODO B-1) 전까지 켜지 않는다.
       # 켜더라도 market_price_sources 의 KRX 행이 active=false 면 동작하지 않는다 (2중 차단).
       enabled: ${MARKET_PRICE_KRX_ENABLED:false}
+    feed:
+      # 외부 고시 피드 수집기 (자동고시의 기준값).
+      #
+      # 기본 false 다. 이 값과 market_price_sources 의 KGX 행 active 가 <b>둘 다</b>
+      # 켜져야 외부로 요청이 나간다. 그리고 실제 판매가가 바뀌려면 정책의
+      # auto_quote 까지 켜야 한다 — 스위치가 셋이고, 전부 사람이 켜는 것이다.
+      #
+      # ⚠️ 수집 대상의 이용약관 확인은 발주처 책임이다 (TODO B-1).
+      enabled: ${MARKET_PRICE_FEED_ENABLED:false}
+      endpoint: ${MARKET_PRICE_FEED_ENDPOINT:}
+      # 피드가 구분하는 금속 코드. Au=금 (은·백금 값도 같은 응답에 함께 온다)
+      type: ${MARKET_PRICE_FEED_TYPE:Au}
+      # 피드 가격 1건의 기준 중량. 한국 귀금속 고시 관행은 1돈=3.75g 이다.
+      unit-grams: ${MARKET_PRICE_FEED_UNIT_GRAMS:3.75}
+      timeout-seconds: ${MARKET_PRICE_FEED_TIMEOUT:8}
 
 logging:
   level:

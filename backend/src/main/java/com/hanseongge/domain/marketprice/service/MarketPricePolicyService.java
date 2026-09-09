@@ -81,6 +81,37 @@ public class MarketPricePolicyService {
     }
 
     /**
+     * 자동고시 / 수동고시 전환.
+     *
+     * <p>{@link #update} 와 분리한 이유 — 사고가 났을 때 관리자가 가장 먼저 하는 조작이
+     * "자동을 끈다"이고, 그 순간에 보정값·모드까지 함께 보내라고 요구하면 급한 손이
+     * 엉뚱한 값을 밀어 넣는다. 스위치만 내리는 길을 따로 둔다.
+     *
+     * <p>사유는 여기서도 필수다. 자동에서 수동으로 내린 기록이 남지 않으면, 나중에
+     * "왜 그날 시세가 멈춰 있었는가"를 아무도 설명하지 못한다.
+     */
+    @Transactional
+    @AuditLog(action = AuditActions.PRICE_POLICY_UPDATE,
+              targetType = AuditActions.TARGET_MARKET_PRICE,
+              targetId = "#metalType.name() + '/' + #priceSide.name()")
+    public MarketPricePolicy switchQuoteMode(MetalType metalType, PriceSide priceSide,
+                                             boolean autoQuote, String changeReason,
+                                             String adminLoginId) {
+        if (changeReason == null || changeReason.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "고시 방식 변경 사유는 필수입니다.");
+        }
+
+        MarketPricePolicy policy = find(metalType, priceSide);
+        AuditContext.before(snapshot(policy));
+
+        policy.switchQuoteMode(autoQuote, adminLoginId);
+
+        log.info("[MARKET-PRICE] 고시 방식 변경 {}/{} → {} by={} 사유={}",
+                metalType, priceSide, autoQuote ? "자동고시" : "수동고시", adminLoginId, changeReason);
+        return policy;
+    }
+
+    /**
      * 모드와 값의 정합성 검사.
      *
      * <p>모드에 맞지 않는 값이 들어오는 것을 막는다. 예컨대 {@code MANUAL} 인데 지정가가

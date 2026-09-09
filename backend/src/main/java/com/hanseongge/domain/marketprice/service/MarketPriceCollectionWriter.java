@@ -48,11 +48,25 @@ public class MarketPriceCollectionWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Long store(MarketPriceSource source, MetalType metal, RawPrice fetched,
                       int elapsedMs, int attempt, OffsetDateTime startedAt) {
+        return store(source, metal, null, fetched, elapsedMs, attempt, startedAt);
+    }
 
-        // 검증 기준은 판매가 쪽 현재 시세다. 단위 오입력 판정에 직전값이 필요한데,
-        // 원본에는 매입/판매 구분이 없으므로 대표로 SELL 을 쓴다.
+    /**
+     * 어느 쪽(살 때/팔 때) 값인지 아는 원본을 저장한다.
+     *
+     * <p>{@code side} 가 null 이면 종전대로 양측 공통 기준가로 쌓인다.
+     *
+     * @return 저장된 원본 id. 검증에 걸렸거나 이미 있는 고시면 null
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Long store(MarketPriceSource source, MetalType metal, PriceSide side, RawPrice fetched,
+                      int elapsedMs, int attempt, OffsetDateTime startedAt) {
+
+        // 직전값 비교는 같은 쪽끼리 해야 뜻이 있다. 살 때 값을 팔 때 값과 견주면
+        // 정상적인 매매 스프레드가 매번 "급변동"으로 잡힌다.
+        PriceSide compareSide = side == null ? PriceSide.SELL : side;
         PricePerGram previous = marketPriceService
-                .findLatestPriceForValidation(metal, PriceSide.SELL)
+                .findLatestPriceForValidation(metal, compareSide)
                 .orElse(null);
 
         PriceValidation validation = validator.validate(metal, fetched.price(), previous);
@@ -64,14 +78,38 @@ public class MarketPriceCollectionWriter {
             return null;
         }
 
-        MarketPriceRaw raw = rawRepository.save(MarketPriceRaw.collected(
-                source, metal, fetched.price(), OffsetDateTime.now(), fetched.payloadJson()));
+        // 고시시각(quotedAt)을 그대로 넘긴다. 여기서 now() 를 넣으면 ux_mpr_dedup 이
+        // 무력해져, 같은 고시가 수집 주기마다 새 행으로 쌓인다 — 10분 주기면
+        // 하루 50행이 같은 값으로 들어찬다.
+        OffsetDateTime now = OffsetDateTime.now();
+        MarketPriceRaw entity = side == null
+                ? MarketPriceRaw.collected(source, metal, fetched.price(), now,
+                        fetched.quotedAt(), fetched.payloadJson())
+                : MarketPriceRaw.collectedForSide(source, metal, side, fetched.price(), now,
+                        fetched.quotedAt(), fetched.payloadJson());
+
+        // 넣기 전에 확인한다. 제약 위반을 잡는 방식은 쓰지 않는다 — REQUIRES_NEW
+        // 트랜잭션은 위반이 나는 순간 rollback-only 로 표시되고, 예외를 잡아도 그
+        // 표시는 지워지지 않아 커밋에서 UnexpectedRollbackException 으로 다시 터진다.
+        //
+        // 이미 받아 둔 고시는 실패가 아니라 "새 값이 없음"이다. 실패 로그를 남기지
+        // 않는 이유는, 남기면 10분마다 도는 정상 운영에서 실패율이 90% 로 보이고
+        // 그 안에 묻힌 진짜 장애를 아무도 찾지 못하기 때문이다.
+        if (rawRepository.existsBySourceIdAndMetalTypeAndPriceSideAndQuoteAt(
+                source.getId(), metal, side, entity.getQuoteAt())) {
+            log.debug("[MARKET-PRICE] {} {} {} 이미 적재된 고시({}) — 건너뜁니다",
+                    source.getCode(), metal, side, entity.getQuoteAt());
+            return null;
+        }
+
+        MarketPriceRaw raw = rawRepository.save(entity);
 
         fetchLogRepository.save(MarketPriceFetchLog.success(
                 source.getId(), metal, raw.getId(), elapsedMs, attempt, startedAt));
 
-        log.info("[MARKET-PRICE] 수집 성공 — {} {} {}원/g rawId={}",
-                source.getCode(), metal, fetched.price().value(), raw.getId());
+        log.info("[MARKET-PRICE] 수집 성공 — {} {} {} {}원/g rawId={}",
+                source.getCode(), metal, side == null ? "공통" : side,
+                fetched.price().value(), raw.getId());
         return raw.getId();
     }
 

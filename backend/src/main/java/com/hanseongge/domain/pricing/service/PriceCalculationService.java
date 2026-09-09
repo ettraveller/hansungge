@@ -5,6 +5,7 @@ import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.CurrentPriceView;
 import com.hanseongge.domain.marketprice.service.MarketPriceService;
 import com.hanseongge.domain.marketprice.service.PriceBreakdown;
+import com.hanseongge.domain.product.entity.PriceType;
 import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductOption;
 import com.hanseongge.domain.product.entity.ProductStatus;
@@ -66,6 +67,7 @@ public class PriceCalculationService {
     private final ProductOptionRepository optionRepository;
     private final ProductComponentNormalizer normalizer;
     private final MarketPriceService marketPriceService;
+    private final com.hanseongge.domain.marketprice.service.AutoQuoteService autoQuoteService;
     private final PriceRoundingResolver roundingResolver;
     private final VatPolicyResolver vatPolicyResolver;
 
@@ -176,12 +178,33 @@ public class PriceCalculationService {
 
     /** 시세 연동 상품의 시세 확보. 미연동 상품이면 빈 컨텍스트다. */
     private MarketContext resolveMarket(Product product) {
+        // 값을 내걸지 않기로 <b>정한</b> 상품. 시세가 멀쩡해도 값을 만들지 않는다.
+        //
+        // 시세가 끊겨서 물러나는 시세문의와 문구를 달리한다. 둘을 같은 말로 두면
+        // 화면만 보고는 "장애"와 "원래 그런 상품"을 구분할 수 없고, 그러면 앞의
+        // 장애를 뒤의 정상으로 착각하고 지나치게 된다.
+        if (product.getPriceType() == PriceType.INQUIRY) {
+            return MarketContext.inquiryOnly("가격은 문의로 안내해 드립니다.");
+        }
         if (!product.getPriceType().isMarketLinked()) {
             return MarketContext.notLinked();
         }
         if (product.getMetalType() == null) {
             throw new BusinessException(ErrorCode.PRICE_CALCULATION_FAILED,
                     "시세 연동 상품에 metal_type 이 없습니다: productId=" + product.getId());
+        }
+
+        // 전역 차단기. 상품이 MARKET_* 로 설정돼 있어도, 운영이 허용한 금속이 아니면
+        // 시세를 따르지 않는다.
+        //
+        // 상품마다 price_type 이 있는데 왜 또 막는가 — 그것은 상품 한 건의 설정이고
+        // 이것은 범위 전체의 결정이다. "지금은 순금만 연동한다"를 상품 수백 건의
+        // price_type 을 일일이 되돌리지 않고 한 줄로 정할 수 있어야 하고, 되돌릴 때도
+        // 마찬가지여야 한다.
+        if (!autoQuoteService.linkedMetals().contains(product.getMetalType())) {
+            log.debug("[PRICING] 연동 대상 금속이 아님 — productId={} metal={}",
+                    product.getId(), product.getMetalType());
+            return MarketContext.inquiryOnly("시세문의 후 주문해 주세요.");
         }
 
         CurrentPriceView view = marketPriceService.describeCurrent(product.getMetalType(), SALE_SIDE);

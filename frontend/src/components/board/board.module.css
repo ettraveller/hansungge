@@ -104,7 +104,7 @@
 .lock {
   flex-shrink: 0;
   display: inline-flex;
-  color: #9a958a;
+  color: var(--ink-400);
 }
 
 .badgeSlot {
@@ -174,7 +174,7 @@
 
 .pageGap {
   padding: 0 2px;
-  color: #b5b0a5;
+  color: var(--ink-300);
   font-size: 13px;
 }
 
@@ -205,7 +205,7 @@
   flex-wrap: wrap;
   gap: 6px 18px;
   font-size: 13px;
-  color: #8a8a8a;
+  color: var(--ink-400);
 }
 
 .detailBody {
@@ -387,7 +387,7 @@
     gap: 8px;
     margin-top: 7px;
     font-size: 12px;
-    color: #8a8a8a;
+    color: var(--ink-400);
   }
 
   /* 접힌 번호 칸을 대신해 여기에 "공지"가 온다 */

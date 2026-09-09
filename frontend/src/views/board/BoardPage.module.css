@@ -121,7 +121,7 @@
   margin-top: 12px;
   font-size: 12.5px;
   line-height: 1.7;
-  color: #8a8a8a;
+  color: var(--ink-400);
 }
 
 /* ---------- 이벤트 응모 폼 ---------- */
@@ -186,7 +186,7 @@
 .siblingLabel {
   flex-shrink: 0;
   width: 46px;
-  color: #9a958a;
+  color: var(--ink-400);
   font-size: 12.5px;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .siblingNone {
-  color: #b5b0a5;
+  color: var(--ink-300);
 }
 
 @media (max-width: 960px) {

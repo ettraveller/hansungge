@@ -64,7 +64,7 @@
 
   .item + .item {
     border-left: none;
-    border-top: 1px solid #f0ede5;
+    border-top: 1px solid var(--line);
   }
 
   .title {

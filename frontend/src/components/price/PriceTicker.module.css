@@ -1,7 +1,7 @@
 .strip {
   background: var(--strip-bg);
-  border-top: 1px solid #242424;
-  border-bottom: 1px solid #242424;
+  border-top: 1px solid var(--ink-800);
+  border-bottom: 1px solid var(--ink-800);
   color: #fff;
 }
 

@@ -23,8 +23,10 @@ const MODE_LABEL: Record<PricePolicyMode, string> = {
  * 원본 → 보정 → 최종 3단으로 나눠 보여준다. 한 칸에 최종가만 있으면 정책이 잘못 걸려
  * 있어도 알아채지 못한다.
  *
- * <p>노후(STALE)·없음(NONE)은 <b>오류가 아니라 안전장치가 작동한 상태</b>다. 이때 쇼핑몰은
- * 금액 대신 "시세문의"를 노출하고 주문을 막는다 — 그 사실을 관리자가 바로 알아야 한다.
+ * <p>화면에 "시세문의"가 나가는 상태는 <b>오류가 아니라 안전장치가 작동한 것</b>이다.
+ * 다만 관리자에게는 그 사실이 <b>사람 말로</b> 보여야 한다. "노후"나 "STALE" 같은
+ * 말은 내부 용어이고, 그 말을 읽은 사람은 시스템이 고장 났다고 생각한다.
+ * 실제로 벌어진 일은 "고시한 지 오래돼서 값을 내리지 않고 있다"이다.
  */
 export function CurrentPriceTable() {
   const { data, isLoading, error } = useCurrentPrices();
@@ -48,9 +50,16 @@ export function CurrentPriceTable() {
 
       {unusable.length > 0 && (
         <div className={styles.panelBody}>
-          <Alert tone="warning" title={`${unusable.length}건이 판매에 쓸 수 없는 상태입니다`}>
-            아래 표에서 <strong>시세문의</strong> 로 표시된 조합은 쇼핑몰에서 금액 대신
-            &quot;시세문의&quot;가 나가고 주문이 막힌다. 새로 고시하면 즉시 풀린다.
+          <Alert
+            tone="warning"
+            title={`${unusable.length}건이 지금 쇼핑몰에서 "시세문의"로 나가고 있습니다`}
+          >
+            금액 대신 &quot;시세문의&quot;가 표시되고 주문이 막힙니다. 값이 틀린 것이 아니라,
+            <strong> 마지막 고시로부터 시간이 너무 지나 값을 내걸지 않고 있는 것</strong>입니다.
+            오래된 시세로 금을 팔면 손해가 나기 때문입니다.
+            <br />
+            아래에서 새로 고시하면 즉시 풀립니다. 매번 손으로 고시하지 않으려면
+            보정 정책에서 <strong>자동고시</strong>를 켜 두세요.
           </Alert>
         </div>
       )}
@@ -109,10 +118,16 @@ function PriceRow({ row }: { row: AdminCurrentPrice }) {
   );
 }
 
+/**
+ * 상태 배지.
+ *
+ * 내부 값(AVAILABLE / STALE / NONE)을 그대로 옮겨 적지 않는다. "노후"는 이 표를 보는
+ * 사람의 말이 아니고, 읽는 순간 고장으로 오해된다. 무슨 일이 벌어졌는지를 적는다.
+ */
 function AvailabilityBadge({ row }: { row: AdminCurrentPrice }) {
-  if (row.availability === 'AVAILABLE') return <StatusBadge tone="success">정상</StatusBadge>;
+  if (row.availability === 'AVAILABLE') return <StatusBadge tone="success">판매중</StatusBadge>;
   if (row.availability === 'STALE') {
-    return <StatusBadge tone="warning">노후 · 시세문의</StatusBadge>;
+    return <StatusBadge tone="warning">고시한 지 오래됨</StatusBadge>;
   }
-  return <StatusBadge tone="neutral">미고시 · 시세문의</StatusBadge>;
+  return <StatusBadge tone="neutral">고시 안 됨</StatusBadge>;
 }

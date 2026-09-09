@@ -93,7 +93,7 @@
 
 /* 주문할 수 없는 줄은 눈에 띄게 두되 읽을 수는 있어야 한다 */
 .rowBlocked {
-  background: #fdfbf7;
+  background: var(--ink-50);
 }
 
 .rowBlocked .amount strong {

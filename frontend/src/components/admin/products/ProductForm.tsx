@@ -13,22 +13,61 @@ import { ApiError } from '@/types/api';
 import styles from '../admin.module.css';
 
 const PRICE_TYPE_LABEL: Record<ProductPriceType, string> = {
-  MARKET_LINKED: '시세 연동 (시세 × 중량 + 공임)',
-  MARKET_PLUS: '시세 연동 + 옵션공임',
-  MARKET_MULTIPLIER: '시세 연동 × 배수',
+  MARKET_LINKED: '시세 × 중량 + 공임',
+  MARKET_PLUS: '시세 × 중량 + 공임 + 옵션공임',
+  MARKET_MULTIPLIER: '(시세 × 중량) × 배수 + 공임',
   FIXED: '고정가',
   MANUAL: '관리자 지정가',
+  INQUIRY: '시세문의',
 };
 
 const PRICE_TYPE_HINT: Record<ProductPriceType, string> = {
-  MARKET_LINKED: '시세 × 중량 + 공임. 시세가 바뀌면 판매가도 함께 바뀐다.',
+  MARKET_LINKED: '시세 × 중량 + 공임. 옵션마다 공임이 같은 상품에 쓴다.',
   MARKET_PLUS: '시세 × 중량 + 공임 + 옵션별 추가공임. 옵션마다 공임이 다른 상품에 쓴다.',
   MARKET_MULTIPLIER: '(시세 × 중량) × 배수 + 공임.',
   FIXED: '시세를 보지 않는다. 시세가 없어도 판매된다.',
   MANUAL: '시세를 보지 않는다. 관리자가 정한 값 그대로 판다.',
+  INQUIRY: '값을 내걸지 않는다. 고객은 문의로만 가격을 확인한다.',
 };
 
 const MARKET_LINKED: ProductPriceType[] = ['MARKET_LINKED', 'MARKET_PLUS', 'MARKET_MULTIPLIER'];
+const MANUAL_TYPES: ProductPriceType[] = ['FIXED', 'MANUAL'];
+
+/** 상품이 가격을 정하는 세 갈래. */
+type PriceMode = 'AUTO' | 'MANUAL' | 'INQUIRY';
+
+/**
+ * 갈래를 바꿀 때 기본으로 잡는 계산 방식.
+ *
+ * <p>자동은 옵션별 공임이 흔하므로 MARKET_PLUS 를, 수동은 그냥 값 하나를 파는
+ * FIXED 를 기본으로 둔다. 시세문의는 계산이 없어 갈래와 방식이 같다.
+ */
+const DEFAULT_OF: Record<PriceMode, ProductPriceType> = {
+  AUTO: 'MARKET_PLUS',
+  MANUAL: 'FIXED',
+  INQUIRY: 'INQUIRY',
+};
+
+const MODE_OF: Record<ProductPriceType, PriceMode> = {
+  MARKET_LINKED: 'AUTO',
+  MARKET_PLUS: 'AUTO',
+  MARKET_MULTIPLIER: 'AUTO',
+  FIXED: 'MANUAL',
+  MANUAL: 'MANUAL',
+  INQUIRY: 'INQUIRY',
+};
+
+const MODE_CHOICES: { mode: PriceMode; title: string; desc: string }[] = [
+  { mode: 'AUTO', title: '자동 시세', desc: '고시 시세를 따라 바뀜' },
+  { mode: 'MANUAL', title: '수동 가격', desc: '관리자가 정한 값 고정' },
+  { mode: 'INQUIRY', title: '시세문의', desc: '값을 내걸지 않음' },
+];
+
+const MODE_HINT: Record<PriceMode, string> = {
+  AUTO: '고시 시세가 바뀌면 판매가도 함께 바뀝니다. 고시가는 1돈(3.75g) 단위로 들어와 1g 으로 환산해 적용됩니다.',
+  MANUAL: '시세와 무관하게 정한 값으로 판매합니다. 시세가 없어도 주문할 수 있습니다.',
+  INQUIRY: '가격을 표시하지 않고 "시세문의"로 안내합니다. 주문은 받지 않습니다. 중량·금속은 알면 적고 모르면 비워 둡니다.',
+};
 
 const DECIMAL = /^\d{1,13}(\.\d{1,4})?$/;
 
@@ -87,11 +126,17 @@ export function ProductForm({
   const [defaultOptionName, setDefaultOptionName] = useState('');
   const [initialStock, setInitialStock] = useState('0');
 
+  const priceMode = MODE_OF[priceType];
   const marketLinked = MARKET_LINKED.includes(priceType);
+  const inquiryOnly = priceType === 'INQUIRY';
 
   const weightInvalid = marketLinked && (weightG === '' || !DECIMAL.test(weightG) || Number(weightG) <= 0);
+  // 시세문의는 값을 내걸지 않으므로 판매가를 요구하지 않는다. 요구하면 등록하려고
+  // 없는 값을 지어내게 되고, 그 순간 이 컬럼의 데이터는 믿을 수 없어진다.
   const fixedInvalid =
-    !marketLinked && (fixedPrice === '' || !DECIMAL.test(fixedPrice) || Number(fixedPrice) <= 0);
+    !marketLinked &&
+    !inquiryOnly &&
+    (fixedPrice === '' || !DECIMAL.test(fixedPrice) || Number(fixedPrice) <= 0);
   const laborInvalid = laborCost !== '' && !DECIMAL.test(laborCost);
   const multiplierInvalid =
     priceType === 'MARKET_MULTIPLIER' && (!DECIMAL.test(multiplier) || Number(multiplier) <= 0);
@@ -174,24 +219,59 @@ export function ProductForm({
         </Field>
       </div>
 
+      {/*
+        가격을 시세가 정하느냐, 사람이 정하느냐 — 이것이 첫 질문이다.
+        전에는 다섯 가지를 한 목록에 늘어놓아, 어느 것이 시세를 따르는지
+        문구를 읽어야 알 수 있었다. 두 갈래로 먼저 가르고 세부는 그 안에서 고른다.
+      */}
       <Field
-        label="가격 방식"
-        htmlFor="p-price-type"
+        label="시세 반영"
         required
-        hint={PRICE_TYPE_HINT[priceType]}
+        hint={MODE_HINT[priceMode]}
       >
-        <SelectInput
-          id="p-price-type"
-          value={priceType}
-          onChange={(e) => setPriceType(e.target.value as ProductPriceType)}
-        >
-          {(Object.keys(PRICE_TYPE_LABEL) as ProductPriceType[]).map((t) => (
-            <option key={t} value={t}>
-              {PRICE_TYPE_LABEL[t]}
-            </option>
+        <div className={styles.choiceRow}>
+          {MODE_CHOICES.map((c) => (
+            <label
+              key={c.mode}
+              className={priceMode === c.mode ? styles.choiceOn : styles.choice}
+            >
+              <input
+                type="radio"
+                name="p-price-mode"
+                checked={priceMode === c.mode}
+                onChange={() => setPriceType(DEFAULT_OF[c.mode])}
+              />
+              <span>
+                <b>{c.title}</b>
+                <em>{c.desc}</em>
+              </span>
+            </label>
           ))}
-        </SelectInput>
+        </div>
       </Field>
+
+      {/* 시세문의는 계산할 것이 없어 이 칸을 두지 않는다. 선택지가 하나뿐인
+          드롭다운은 고를 것이 있는 것처럼 보이기만 하고 아무 일도 하지 않는다. */}
+      {!inquiryOnly && (
+        <Field
+          label="계산 방식"
+          htmlFor="p-price-type"
+          required
+          hint={PRICE_TYPE_HINT[priceType]}
+        >
+          <SelectInput
+            id="p-price-type"
+            value={priceType}
+            onChange={(e) => setPriceType(e.target.value as ProductPriceType)}
+          >
+            {(marketLinked ? MARKET_LINKED : MANUAL_TYPES).map((t) => (
+              <option key={t} value={t}>
+                {PRICE_TYPE_LABEL[t]}
+              </option>
+            ))}
+          </SelectInput>
+        </Field>
+      )}
 
       {marketLinked ? (
         <div className={styles.formGrid}>
@@ -262,6 +342,13 @@ export function ProductForm({
             </Field>
           )}
         </div>
+      ) : inquiryOnly ? (
+        /* 시세문의 — 금액 칸을 아예 두지 않는다. 비활성으로 남겨 두면
+           "언젠가 쓰는 칸"으로 보여 무엇이 필요한지 흐려진다. */
+        <p className={styles.inquiryNote}>
+          이 상품은 가격 대신 <b>&ldquo;시세문의&rdquo;</b>가 표시되고, 장바구니·주문이
+          열리지 않습니다. 입력할 금액이 없습니다.
+        </p>
       ) : (
         <div className={styles.formGrid}>
           <Field

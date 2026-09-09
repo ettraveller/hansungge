@@ -110,7 +110,7 @@ export function MarketPriceBoard({ rows, quotedAt }: Props) {
 
       <p className={styles.notes}>
         <span>· 시세는 당사 기준이며, 시장 상황에 따라 변동될 수 있습니다.</span>
-        <span>· 최종 결제 금액은 주문 시점에 서버가 다시 계산합니다.</span>
+        <span>· 최종 결제 금액은 주문하시는 시각의 고시 시세로 확정됩니다.</span>
       </p>
     </section>
   );

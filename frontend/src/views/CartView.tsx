@@ -259,7 +259,7 @@ function Summary({
       </button>
 
       <p className={styles.disclaimer}>
-        표시 금액은 현재 시세 기준이며, 주문하는 순간 서버가 다시 계산합니다.
+        표시 금액은 현재 고시 시세 기준이며, 최종 금액은 주문하시는 시각의 시세로 확정됩니다.
         {!orderable && ' 지금은 주문할 수 있는 상품이 없습니다.'}
       </p>
     </aside>

@@ -53,6 +53,13 @@ public class ProductComponentNormalizer {
         return switch (product.getPriceType()) {
             case FIXED, MANUAL -> fixedPriceLines(product);
             case MARKET_LINKED, MARKET_PLUS, MARKET_MULTIPLIER -> marketLines(product, option, marketPrice);
+
+            // INQUIRY 는 여기까지 오면 안 된다. 호출자(PriceCalculationService)가
+            // 값을 만들기 전에 INQUIRY_ONLY 로 끝냈어야 한다. 도달했다면 그 분기가
+            // 빠진 것이므로, 조용히 빈 목록을 돌려주지 않는다 — 빈 목록은 소계 0원이
+            // 되어 "0원짜리 상품"이 화면에 걸린다.
+            case INQUIRY -> throw new BusinessException(ErrorCode.PRICE_CALCULATION_FAILED,
+                    "시세문의 상품은 금액을 산출하지 않습니다: productId=" + product.getId());
         };
     }
 

@@ -1,0 +1,368 @@
+package com.hanseongge;
+
+import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
+import com.hanseongge.domain.marketprice.entity.MarketPricePolicy;
+import com.hanseongge.domain.marketprice.entity.MarketPriceRaw;
+import com.hanseongge.domain.marketprice.entity.MarketPriceSource;
+import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.marketprice.entity.PendingStatus;
+import com.hanseongge.domain.marketprice.entity.PolicyMode;
+import com.hanseongge.domain.marketprice.entity.PriceSide;
+import com.hanseongge.domain.marketprice.provider.RawPrice;
+import com.hanseongge.domain.marketprice.repository.MarketPriceEffectiveRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPricePendingRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPricePolicyRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPriceRawRepository;
+import com.hanseongge.domain.marketprice.repository.MarketPriceSourceRepository;
+import com.hanseongge.domain.marketprice.service.AutoQuoteService;
+import com.hanseongge.domain.marketprice.service.MarketPriceCollectionWriter;
+import com.hanseongge.domain.marketprice.service.MarketPricePolicyService;
+import com.hanseongge.domain.setting.service.SystemSettingService;
+import com.hanseongge.global.util.PricePerGram;
+import com.hanseongge.support.EmbeddedPostgresSupport;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 자동고시 검증 — 외부 피드 수집값이 어떤 조건에서 판매가가 되는가.
+ *
+ * <p>고정하는 것:
+ * <ul>
+ *   <li>살 때·팔 때가 <b>각각의 원본</b>으로 쌓이고, 각 쪽 정책이 제 원본에서 출발한다</li>
+ *   <li>자동고시가 켜진 조합만 발행된다. 수동고시면 원본만 쌓이고 시세는 그대로다</li>
+ *   <li>연동 대상 금속이 아니면 자동고시가 켜져 있어도 발행되지 않는다</li>
+ *   <li>같은 고시시각은 두 번 적재되지 않는다 (10분마다 같은 값이 쌓이지 않는다)</li>
+ *   <li>변동률 임계를 넘으면 <b>자동이어도</b> 발행 대신 승인 대기로 간다</li>
+ * </ul>
+ */
+@SpringBootTest
+@DisplayName("자동고시 — 피드 수집값이 판매가가 되기까지")
+class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
+
+    /** V14 가 넣어 둔 피드 원천 코드. */
+    private static final String FEED = "KGX";
+
+    @Autowired AutoQuoteService autoQuoteService;
+    @Autowired MarketPriceCollectionWriter writer;
+    @Autowired MarketPricePolicyService policyService;
+    @Autowired MarketPriceEffectiveRepository effectiveRepository;
+    @Autowired MarketPriceRawRepository rawRepository;
+    @Autowired MarketPricePolicyRepository policyRepository;
+    @Autowired MarketPricePendingRepository pendingRepository;
+    @Autowired MarketPriceSourceRepository sourceRepository;
+    @Autowired SystemSettingService systemSettingService;
+    @Autowired JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    @AfterEach
+    void reset() {
+        jdbcTemplate.execute("ALTER TABLE market_prices_effective DISABLE TRIGGER trg_mpe_guard");
+        jdbcTemplate.execute("ALTER TABLE market_price_fetch_logs DISABLE TRIGGER trg_mpfl_guard");
+        try {
+            jdbcTemplate.update("DELETE FROM market_prices_effective");
+            jdbcTemplate.update("DELETE FROM market_price_pending");
+            jdbcTemplate.update("DELETE FROM market_price_fetch_logs");
+            jdbcTemplate.update("DELETE FROM market_price_raw");
+            jdbcTemplate.update(
+                    "UPDATE market_price_policies SET mode='MANUAL', adj_amount=0, adj_percent=0, "
+                            + "manual_price=NULL, auto_quote=FALSE, updated_by=NULL");
+            jdbcTemplate.update(
+                    "UPDATE system_settings SET value='GOLD_24K' WHERE key='PRICE_LINKED_METALS'");
+
+            // 정책 행을 지우는 테스트가 있어 시드 상태로 되살린다. 지운 채로 두면
+            // 그 다음에 도는 테스트가 "정책 없음"으로 무더기로 깨진다 —
+            // 실제로 그렇게 깨뜨려 보고 넣은 코드다.
+            for (String metal : new String[]{"GOLD_24K", "GOLD_18K", "GOLD_14K", "SILVER", "PLATINUM"}) {
+                for (String side : new String[]{"SELL", "BUY"}) {
+                    jdbcTemplate.update(
+                            "INSERT INTO market_price_policies(metal_type, price_side, mode, "
+                                    + "adj_amount, adj_percent, auto_quote, updated_at) "
+                                    + "VALUES (?, ?, 'MANUAL', 0, 0, FALSE, now()) "
+                                    + "ON CONFLICT (metal_type, price_side) DO NOTHING",
+                            metal, side);
+                }
+            }
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard");
+            jdbcTemplate.execute("ALTER TABLE market_price_fetch_logs ENABLE TRIGGER trg_mpfl_guard");
+        }
+        systemSettingService.evictAll();
+    }
+
+    // =================================================================
+
+    @Nested
+    @DisplayName("살 때와 팔 때가 각각의 원본으로 쌓인다")
+    class SidedRaw {
+
+        @Test
+        @DisplayName("같은 고시시각의 두 side 가 서로를 밀어내지 않고 둘 다 저장된다")
+        void bothSidesStored() {
+            OffsetDateTime quotedAt = OffsetDateTime.parse("2026-09-09T09:53:38+09:00");
+
+            // 828,000원/돈 ÷ 3.75 = 220,800원/g (살 때)
+            // 705,000원/돈 ÷ 3.75 = 188,000원/g (팔 때)
+            Long sellId = store(PriceSide.SELL, "220800", quotedAt);
+            Long buyId = store(PriceSide.BUY, "188000", quotedAt);
+
+            assertThat(sellId).isNotNull();
+            assertThat(buyId)
+                    .as("같은 고시시각이라도 side 가 다르면 별개의 원본이다")
+                    .isNotNull()
+                    .isNotEqualTo(sellId);
+
+            List<MarketPriceRaw> all = rawRepository.findAll();
+            assertThat(all).hasSize(2);
+            assertThat(all).extracting(MarketPriceRaw::getPriceSide)
+                    .containsExactlyInAnyOrder(PriceSide.SELL, PriceSide.BUY);
+        }
+
+        @Test
+        @DisplayName("같은 side·같은 고시시각을 다시 받으면 적재하지 않는다")
+        void duplicateQuoteIsSkipped() {
+            OffsetDateTime quotedAt = OffsetDateTime.parse("2026-09-09T09:53:38+09:00");
+
+            assertThat(store(PriceSide.SELL, "220800", quotedAt)).isNotNull();
+
+            // 10분 뒤 수집기가 다시 돌았지만 저쪽은 아직 새 고시를 내지 않았다.
+            assertThat(store(PriceSide.SELL, "220800", quotedAt))
+                    .as("같은 고시를 두 번 적재하면 하루에 같은 값이 50행 쌓인다")
+                    .isNull();
+
+            assertThat(rawRepository.findAll()).hasSize(1);
+        }
+    }
+
+    // =================================================================
+
+    @Nested
+    @DisplayName("자동고시 스위치")
+    class QuoteMode {
+
+        @Test
+        @DisplayName("자동고시가 켜져 있으면 수집값에 정액 보정을 더해 즉시 발행한다")
+        void autoQuotePublishes() {
+            setPolicy(PriceSide.SELL, PolicyMode.FIXED_ADJ, new BigDecimal("3000"), true);
+
+            Long rawId = store(PriceSide.SELL, "220800", now());
+            boolean published = autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL, rawId);
+
+            assertThat(published).isTrue();
+
+            MarketPriceEffective current = current(PriceSide.SELL);
+            assertThat(current.getPricePerGram())
+                    .as("220,800 + 3,000 = 223,800")
+                    .isEqualByComparingTo("223800.00");
+            // 원본가는 이 행에 없다(D-11). base_raw_id 로 되짚는다 — 정보가 사라지지는 않는다.
+            MarketPriceRaw base = rawRepository.findById(current.getBaseRawId()).orElseThrow();
+            assertThat(base.getPricePerGram())
+                    .as("원본은 보정 전 값 그대로 남는다")
+                    .isEqualByComparingTo("220800.00");
+        }
+
+        @Test
+        @DisplayName("수동고시면 원본만 쌓이고 시세는 움직이지 않는다")
+        void manualQuoteDoesNotPublish() {
+            setPolicy(PriceSide.SELL, PolicyMode.FIXED_ADJ, new BigDecimal("3000"), false);
+
+            Long rawId = store(PriceSide.SELL, "220800", now());
+            boolean published = autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL, rawId);
+
+            assertThat(published).isFalse();
+            assertThat(rawRepository.findAll())
+                    .as("발행하지 않아도 원본은 남는다 — 관리자가 나중에 이 값으로 고시할 수 있어야 한다")
+                    .hasSize(1);
+            assertThat(effectiveRepository.findAll())
+                    .as("수동고시 조합은 사람이 고시하기 전까지 시세가 없다")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("매도는 자동, 매수는 수동으로 따로 둘 수 있다")
+        void sidesAreIndependent() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+            setPolicy(PriceSide.BUY, PolicyMode.AUTO, BigDecimal.ZERO, false);
+
+            OffsetDateTime at = now();
+            autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL,
+                    store(PriceSide.SELL, "220800", at));
+            autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.BUY,
+                    store(PriceSide.BUY, "188000", at));
+
+            assertThat(effectiveRepository.findAll())
+                    .as("자동으로 켠 매도만 발행된다")
+                    .hasSize(1);
+            assertThat(current(PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("220800.00");
+        }
+    }
+
+    // =================================================================
+
+    @Nested
+    @DisplayName("연동 대상 금속 차단기")
+    class LinkedMetals {
+
+        @Test
+        @DisplayName("연동 목록에 없는 금속은 자동고시가 켜져 있어도 발행되지 않는다")
+        void unlistedMetalIsBlocked() {
+            setPolicy(MetalType.SILVER, PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            Long rawId = store(MetalType.SILVER, PriceSide.SELL, "3184", now());
+            boolean published = autoQuoteService.publish(MetalType.SILVER, PriceSide.SELL, rawId);
+
+            assertThat(published)
+                    .as("PRICE_LINKED_METALS 가 GOLD_24K 뿐이므로 은은 막힌다")
+                    .isFalse();
+            assertThat(effectiveRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("설정이 비어 있으면 전부 차단된다 — 모르는 값에서 전체 허용으로 넘어가지 않는다")
+        void emptySettingBlocksEverything() {
+            jdbcTemplate.update("UPDATE system_settings SET value='' WHERE key='PRICE_LINKED_METALS'");
+            systemSettingService.evictAll();
+
+            assertThat(autoQuoteService.linkedMetals()).isEmpty();
+
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+            Long rawId = store(PriceSide.SELL, "220800", now());
+
+            assertThat(autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL, rawId)).isFalse();
+        }
+
+        @Test
+        @DisplayName("오타가 섞여 있어도 나머지는 살아 있고, 오타만 무시된다")
+        void unknownTokenIsIgnored() {
+            jdbcTemplate.update(
+                    "UPDATE system_settings SET value='GOLD_24K, GOLD_9K ,SILVER' "
+                            + "WHERE key='PRICE_LINKED_METALS'");
+            systemSettingService.evictAll();
+
+            assertThat(autoQuoteService.linkedMetals())
+                    .containsExactlyInAnyOrder(MetalType.GOLD_24K, MetalType.SILVER);
+        }
+    }
+
+    // =================================================================
+
+    @Nested
+    @DisplayName("자동이어도 안전장치는 그대로다")
+    class SafetyHolds {
+
+        @Test
+        @DisplayName("변동률 임계를 넘으면 발행하지 않고 승인 대기로 간다 — 기존 시세가 유지된다")
+        void spikeGoesToPending() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            // 첫 고시로 기준을 만든다.
+            autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL,
+                    store(PriceSide.SELL, "220800", now().minusHours(1)));
+            assertThat(current(PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("220800.00");
+
+            // 피드가 이상한 값을 준 상황. 발주 요구의 "사고가 터질 시"가 이것이다.
+            Long spikeId = store(PriceSide.SELL, "441600", now());
+            boolean published = autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL, spikeId);
+
+            assertThat(published).isFalse();
+            assertThat(current(PriceSide.SELL).getPricePerGram())
+                    .as("판매가는 직전 값 그대로다 — 자동이라고 검증을 건너뛰지 않는다")
+                    .isEqualByComparingTo("220800.00");
+            assertThat(pendingRepository.findAll())
+                    .as("사람이 판단하도록 승인 대기로 넘어간다")
+                    .anyMatch(p -> p.getStatus() == PendingStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("정책 행이 없으면 발행하지 않는다 — 보정 없이 원본이 그대로 나가지 않는다")
+        void missingPolicyBlocks() {
+            // GOLD_24K/SELL 정책을 지운다. 시드에는 있지만, 없을 때의 동작을 고정해 둔다.
+            policyRepository.findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.SELL)
+                    .ifPresent(policyRepository::delete);
+
+            Long rawId = store(PriceSide.SELL, "220800", now());
+            assertThat(autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL, rawId)).isFalse();
+            assertThat(effectiveRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("rawId 가 null 이면 (검증 탈락·중복) 조용히 아무것도 하지 않는다")
+        void nullRawIsNoop() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+            assertThat(autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL, null)).isFalse();
+        }
+    }
+
+    // =================================================================
+
+    @Nested
+    @DisplayName("전환 API")
+    class SwitchApi {
+
+        @Test
+        @DisplayName("보정값을 건드리지 않고 자동/수동만 바꾼다")
+        void switchKeepsAdjustment() {
+            policyService.update(MetalType.GOLD_24K, PriceSide.SELL, PolicyMode.FIXED_ADJ,
+                    new BigDecimal("3000"), BigDecimal.ZERO, null, "마진 설정", "admin");
+
+            policyService.switchQuoteMode(MetalType.GOLD_24K, PriceSide.SELL, true,
+                    "자동고시 시작", "admin");
+
+            MarketPricePolicy policy = policyRepository
+                    .findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.SELL).orElseThrow();
+
+            assertThat(policy.isAutoQuote()).isTrue();
+            assertThat(policy.getMode())
+                    .as("스위치만 내렸는데 보정 방식이 초기화되면 급할 때 사고가 난다")
+                    .isEqualTo(PolicyMode.FIXED_ADJ);
+            assertThat(policy.getAdjAmount()).isEqualByComparingTo("3000");
+        }
+    }
+
+    // =================================================================
+    // 헬퍼
+    // =================================================================
+
+    private OffsetDateTime now() {
+        return OffsetDateTime.now();
+    }
+
+    private Long store(PriceSide side, String pricePerGram, OffsetDateTime quotedAt) {
+        return store(MetalType.GOLD_24K, side, pricePerGram, quotedAt);
+    }
+
+    /** 수집기가 피드에서 한 건 받아 저장한 상황을 그대로 재현한다. */
+    private Long store(MetalType metal, PriceSide side, String pricePerGram, OffsetDateTime quotedAt) {
+        MarketPriceSource feed = sourceRepository.findByCode(FEED).orElseThrow();
+        RawPrice raw = new RawPrice(metal, PricePerGram.of(new BigDecimal(pricePerGram)),
+                quotedAt, "{\"test\":true}");
+        return writer.store(feed, metal, side, raw, 12, 1, OffsetDateTime.now());
+    }
+
+    private void setPolicy(PriceSide side, PolicyMode mode, BigDecimal adj, boolean autoQuote) {
+        setPolicy(MetalType.GOLD_24K, side, mode, adj, autoQuote);
+    }
+
+    private void setPolicy(MetalType metal, PriceSide side, PolicyMode mode,
+                           BigDecimal adj, boolean autoQuote) {
+        policyService.update(metal, side, mode, adj, BigDecimal.ZERO, null, "테스트 설정", "admin");
+        policyService.switchQuoteMode(metal, side, autoQuote, "테스트 설정", "admin");
+    }
+
+    private MarketPriceEffective current(PriceSide side) {
+        return effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveToIsNull(MetalType.GOLD_24K, side)
+                .orElseThrow(() -> new AssertionError("현재 시세가 없습니다: " + side));
+    }
+}

@@ -69,6 +69,23 @@ export function updatePolicy(input: PolicyInput) {
   return adminApi.put<PricePolicy>('/api/admin/prices/policies', { body: input });
 }
 
+export interface QuoteModeInput {
+  metalType: MetalType;
+  priceSide: PriceSide;
+  autoQuote: boolean;
+  changeReason: string;
+}
+
+/**
+ * 자동고시 / 수동고시 전환.
+ *
+ * <p>보정값을 함께 보내지 않는다 — 화면에 남아 있던 옛 값이 딸려 들어가는 사고를 막는다.
+ * 자동으로 켜도 변동률 임계를 넘는 값은 발행되지 않고 승인 대기로 간다.
+ */
+export function switchQuoteMode(input: QuoteModeInput) {
+  return adminApi.put<PricePolicy>('/api/admin/prices/policies/quote-mode', { body: input });
+}
+
 export function approvePending(id: number, reason: string) {
   return adminApi.post<PriceApplyResult>(`/api/admin/prices/pending/${id}/approve`, {
     body: { reason },
