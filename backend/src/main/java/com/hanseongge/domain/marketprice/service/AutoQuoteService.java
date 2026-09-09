@@ -29,7 +29,7 @@ import java.util.Set;
  * 자동이라도 {@link MarketPriceService#applyPrice} 를 그대로 통과한다. 즉
  * <b>변동률 임계값을 넘으면 발행되지 않고 승인 대기로 간다.</b> 자동고시는 사람 손을
  * 더는 장치이지, 검증을 건너뛰는 지름길이 아니다. 발주 요구의 "사고가 터질 시"에
- * 대비하는 것이 바로 이 경로다 — 피드가 이상한 값을 주면 자동으로 멈춘다.
+ * 대비하는 것이 바로 이 경로다 — 수집값이 이상하면 자동으로 멈춘다.
  *
  * <h2>두 겹의 스위치</h2>
  * <ol>
@@ -67,6 +67,10 @@ public class AutoQuoteService {
      *
      * <p>둘 다 자동이고 원본도 둘 다 있으면 {@link MarketPriceService#applyPricePair}
      * 가 변동률까지 함께 판단한다 — 한쪽이라도 임계를 넘으면 둘 다 보류다.
+     *
+     * <p>⚠️ 지금은 이 경로를 태울 수집 공급자가 없다. 자동 수집 원천이 정해지면
+     * {@code SidedMarketPriceProvider} 를 구현하는 것만으로 여기까지 연결된다
+     * (TODO B-1 / B-4).
      *
      * @return 둘 다 발행되었으면 true
      */
@@ -193,6 +197,6 @@ public class AutoQuoteService {
     }
 
     /** 고시 사유는 필수값이다. 자동 발행분을 이력에서 한눈에 가려낼 수 있게 고정 문구를 쓴다. */
-    private static final String AUTO_REASON = "자동고시 — 외부 피드 수집값에 보정 정책 적용";
+    private static final String AUTO_REASON = "자동고시 — 수집값에 보정 정책 적용";
     private static final String AUTO_ACTOR = "SYSTEM/AUTO-QUOTE";
 }

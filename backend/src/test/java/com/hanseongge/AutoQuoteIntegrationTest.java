@@ -51,8 +51,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("자동고시 — 피드 수집값이 판매가가 되기까지")
 class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
 
-    /** V14 가 넣어 둔 피드 원천 코드. */
-    private static final String FEED = "KGX";
+    /** 자동 수집 원천 코드 (V14 가 넣고 V17 이 중립적인 이름으로 바꿨다). */
+    private static final String FEED = "AUTO_FEED";
 
     @Autowired AutoQuoteService autoQuoteService;
     @Autowired MarketPriceCollectionWriter writer;

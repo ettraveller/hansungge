@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * STEP 3 완료 검증 — 실제 PostgreSQL 위에서 전체 기동을 확인한다.
  *
- * <p>검증 범위: Flyway V1~V16 적용 → 스키마 정합성(ddl-auto=validate) → 설정 캐시 →
+ * <p>검증 범위: Flyway V1~V17 적용 → 스키마 정합성(ddl-auto=validate) → 설정 캐시 →
  * 최초 관리자 생성 → 헬스체크 응답.
  *
  * <p>관리자 인증·권한·감사로그는 {@link AdminAuthIntegrationTest} 가 맡는다.
@@ -51,7 +51,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("Flyway V1~V16 가 적용되고 43개 테이블이 생성된다")
+    @DisplayName("Flyway V1~V17 가 적용되고 43개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
@@ -67,9 +67,9 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V14(자동고시)는 market_price_raw 에 price_side, market_price_policies 에
         // auto_quote 컬럼을 더하고 설정·원천 행만 넣는다 — 테이블은 늘지 않는다.
         // V15(상품 시세문의)는 products 의 CHECK 제약 두 개만 다시 건다.
-        // V16 은 설정 설명 문구만 고친다.
+        // V16 은 설정 설명 문구만, V17 은 수집 원천 이름만 고친다.
         assertThat(versions)
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17");
 
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables "
@@ -163,7 +163,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
                 .andExpect(jsonPath("$.service").value("hanseongge-api"))
                 .andExpect(jsonPath("$.profile").value("test"))
                 .andExpect(jsonPath("$.database").value("UP"))
-                .andExpect(jsonPath("$.schemaVersion").value("16"))
+                .andExpect(jsonPath("$.schemaVersion").value("17"))
                 // A-2 확정값이 V11 로 반영되어 있으므로 임시 정책이 아니다.
                 .andExpect(jsonPath("$.roundingPolicy").value(RoundingPolicy.CEIL_100.name()))
                 .andExpect(jsonPath("$.roundingPolicyTemporary").value(false))
