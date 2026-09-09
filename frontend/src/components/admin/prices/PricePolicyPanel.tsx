@@ -16,17 +16,17 @@ import { ApiError } from '@/types/api';
 import styles from '../admin.module.css';
 
 const MODE_LABEL: Record<PricePolicyMode, string> = {
-  AUTO: '보정 없음',
-  FIXED_ADJ: '정액 보정',
-  PERCENT_ADJ: '정률 보정',
-  MANUAL: '지정가',
+  AUTO: '받아온 값 그대로',
+  FIXED_ADJ: '금액 더하기 / 빼기',
+  PERCENT_ADJ: '비율 더하기 / 빼기',
+  MANUAL: '내가 정한 값',
 };
 
 const MODE_HINT: Record<PricePolicyMode, string> = {
-  AUTO: '원본 시세를 그대로 쓴다.',
-  FIXED_ADJ: '원본 시세에 정해진 금액을 더한다. 음수면 뺀다.',
-  PERCENT_ADJ: '원본 시세에 비율을 적용한다. -7 이면 7% 차감.',
-  MANUAL: '원본 시세와 무관하게 지정한 값을 쓴다.',
+  AUTO: '받아온 시세를 손대지 않고 그대로 고시한다.',
+  FIXED_ADJ: '받아온 시세에 정한 금액을 더한다. 앞에 - 를 붙이면 뺀다. (예: 3000, -1500)',
+  PERCENT_ADJ: '받아온 시세에 비율을 적용한다. -7 이면 7% 를 뺀다.',
+  MANUAL: '받아온 시세와 무관하게 내가 적은 값으로 고시한다.',
 };
 
 const DECIMAL_PATTERN = /^-?\d{1,13}(\.\d{1,4})?$/;
@@ -50,7 +50,7 @@ function sideLabelOf(side: PriceSide): string {
 }
 
 /**
- * 시세 보정 정책.
+ * 자동고시 설정.
  *
  * ⚠️ 정책을 바꿔도 <b>이미 발행된 시세는 바뀌지 않는다.</b> 다음 고시부터 반영된다 —
  * append-only 이력이 과거 시점의 판매가를 그대로 증명해야 하기 때문이다.
@@ -64,8 +64,12 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
 
   return (
     <Panel
-      title="보정 정책"
-      note="정책을 바꿔도 이미 발행된 시세는 그대로다. 다음 고시부터 반영된다."
+      title="자동고시 설정"
+      note={
+        '자동으로 낼지 손으로 낼지, 그리고 받아온 값에 얼마를 더하거나 뺄지를 여기서 정한다. ' +
+        '자동으로 켜 두면 10분마다 받아온 값에 아래 설정을 적용해 바로 고시한다. ' +
+        '설정을 바꿔도 이미 나간 시세는 그대로이고, 다음 고시부터 반영된다.'
+      }
       flush
     >
       {error && (
@@ -88,8 +92,8 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                 <th>금속</th>
                 <th>구분</th>
                 <th>고시 방식</th>
-                <th>보정 방식</th>
-                <th className={styles.num}>보정값</th>
+                <th>계산 방식</th>
+                <th className={styles.num}>더하거나 뺄 값</th>
                 <th>변경자</th>
                 <th>변경 시각</th>
                 {canEdit && <th aria-label="작업" />}
@@ -107,14 +111,14 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                       onSwitch={(to) => setSwitching({ policy, to })}
                     />
                   </td>
-                  <td data-label="보정 방식">{MODE_LABEL[policy.mode]}</td>
-                  <td data-label="보정값" className={styles.num}>{describe(policy)}</td>
+                  <td data-label="계산 방식">{MODE_LABEL[policy.mode]}</td>
+                  <td data-label="더하거나 뺄 값" className={styles.num}>{describe(policy)}</td>
                   <td data-label="변경자" className={styles.muted}>{policy.updatedBy ?? '-'}</td>
                   <td data-label="변경 시각" className={styles.muted}>{formatDateTime(policy.updatedAt)}</td>
                   {canEdit && (
                     <td data-label="작업" data-card-actions>
                       <Button small onClick={() => setEditing(policy)}>
-                        변경
+                        값 변경
                       </Button>
                     </td>
                   )}
@@ -251,7 +255,7 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
   return (
     <Modal
       open
-      title={`${METAL_LABEL[policy.metalType as MetalType]} · ${sideLabelOf(policy.priceSide)} 보정 정책`}
+      title={`${METAL_LABEL[policy.metalType as MetalType]} ${sideLabelOf(policy.priceSide)} · 자동고시 값 설정`}
       onClose={onClose}
       footer={
         <>
@@ -277,7 +281,7 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
           저장해도 현재 고시된 시세는 바뀌지 않는다. 다음 고시부터 적용된다.
         </Alert>
 
-        <Field label="보정 방식" htmlFor="policy-mode" required hint={MODE_HINT[mode]}>
+        <Field label="계산 방식" htmlFor="policy-mode" required hint={MODE_HINT[mode]}>
           <SelectInput
             id="policy-mode"
             value={mode}
@@ -293,10 +297,10 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
 
         {mode === 'FIXED_ADJ' && (
           <Field
-            label="정액 보정 (원/1g)"
+            label="더하거나 뺄 금액 (원 / 1g)"
             htmlFor="policy-adj-amount"
             required
-            hint="음수를 넣으면 차감된다. 예: -3000"
+            hint="받아온 시세에 이 금액을 더한다. 앞에 - 를 붙이면 뺀다. 예: 3000, -1500"
             error={valueInvalid ? '숫자를 입력해 주세요.' : null}
           >
             <MoneyInput
@@ -310,10 +314,10 @@ function PolicyEditDialog({ policy, onClose }: { policy: PricePolicy; onClose: (
 
         {mode === 'PERCENT_ADJ' && (
           <Field
-            label="정률 보정 (%)"
+            label="더하거나 뺄 비율 (%)"
             htmlFor="policy-adj-percent"
             required
-            hint="-7 이면 원본에서 7% 차감."
+            hint="받아온 시세에 이 비율을 적용한다. -7 이면 7% 를 뺀다."
             error={valueInvalid ? '숫자를 입력해 주세요.' : null}
           >
             <DecimalInput

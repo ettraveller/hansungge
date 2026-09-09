@@ -41,11 +41,16 @@ export function AdminPricesView() {
         </Alert>
       )}
 
+      {/*
+        순서는 "지금 어떤 상태인가 → 무엇을 바꾸는가 → 무엇이 남았는가"다.
+        자동고시 설정을 아래쪽에 두었더니 찾지 못한다는 말이 나왔다.
+        가장 자주 손대는 것이 이 설정이므로 현재 시세 바로 밑에 둔다.
+      */}
       <CurrentPriceTable />
-      <CollectionStatusCard />
+      <PricePolicyPanel canEdit={canWrite} />
       {canWrite && <PriceDeclareForm />}
       <PricePendingPanel canDecide={canWrite} />
-      <PricePolicyPanel canEdit={canWrite} />
+      <CollectionStatusCard />
       <PriceHistoryPanel />
     </div>
   );
