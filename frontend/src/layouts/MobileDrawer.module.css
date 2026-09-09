@@ -138,7 +138,7 @@
   font-weight: 600;
   text-align: left;
   border: none;
-  border-bottom: 1px solid #f2efe8;
+  border-bottom: 1px solid var(--ink-100);
   background: none;
   color: inherit;
   /* 더블탭 확대를 끄면 브라우저가 "두 번째 탭"을 기다리지 않고 즉시 click 을 낸다.
@@ -174,7 +174,7 @@
 /* 하위 목록 — 상위와 확실히 구분되게 배경을 깐다 */
 .drawerSub {
   background: var(--light-gray);
-  border-bottom: 1px solid #f2efe8;
+  border-bottom: 1px solid var(--ink-100);
 }
 
 .drawerSub a {

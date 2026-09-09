@@ -11,27 +11,18 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--ink-50);
+  border: 1px solid transparent;
   transition:
-    box-shadow var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-spring),
+    border-color var(--dur) var(--ease-out),
     background var(--dur) var(--ease-out);
 }
 
+/* 카드를 띄우지 않는다. 목록에서 12개가 하나씩 떠오르는 것은 소비재
+   쇼핑몰의 반응이고, 여기서 파는 것은 시세에 연동된 금이다.
+   바탕이 밝아지고 테두리가 생기는 것으로 충분히 "지금 이것"이라고 말한다. */
 .prod:hover {
   background: #fff;
-  box-shadow: var(--shadow-md);
-  transform: translateY(-4px);
-}
-
-.prod:active {
-  transform: translateY(-1px) scale(0.995);
-  box-shadow: var(--shadow-sm);
-}
-
-/* 마우스를 올리면 금괴가 아주 살짝 커진다 — 카드 전체가 아니라 사진만
-   움직여서, 무엇을 가리키고 있는지가 분명해진다. */
-.prod:hover .bar {
-  transform: translateY(-2px) scale(1.03);
+  border-color: var(--line-strong);
 }
 
 /* ---------- 썸네일 (CSS 금괴 일러스트) ----------
@@ -43,7 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f2efe7;
+  background: var(--ink-100);
   position: relative;
 }
 
@@ -63,12 +54,11 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
-  transition: transform var(--dur) var(--ease-spring);
 }
 
 .barSilver {
   background: linear-gradient(160deg, #f2f2f2, #c9c9c9 50%, #9e9e9e);
-  color: #555;
+  color: var(--ink-600);
 }
 
 .barRound {
@@ -136,7 +126,7 @@
   font-size: 11.5px;
   font-weight: 500;
   color: var(--gold-deep);
-  background: #f9f4e4;
+  background: var(--gold-50);
   border-radius: 3px;
   padding: 3px 7px;
   margin-bottom: 9px;
@@ -169,7 +159,7 @@
 
 .price small {
   font-size: 11.5px;
-  color: #9a958a;
+  color: var(--ink-400);
   font-weight: 400;
 }
 
@@ -180,7 +170,7 @@
 
 .inquiry {
   font-size: 16px;
-  color: #9a958a;
+  color: var(--ink-400);
 }
 
 @media (max-width: 960px) {

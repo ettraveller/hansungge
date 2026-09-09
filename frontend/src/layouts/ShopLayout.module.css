@@ -80,7 +80,7 @@
   left: 18px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9a958a;
+  color: var(--ink-400);
   pointer-events: none;
 }
 
@@ -105,7 +105,7 @@
   align-items: center;
   gap: 22px;
   font-size: 13.5px;
-  color: #555;
+  color: var(--ink-600);
   white-space: nowrap;
 }
 

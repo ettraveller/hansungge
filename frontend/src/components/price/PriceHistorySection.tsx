@@ -58,7 +58,7 @@ export function PriceHistorySection({ metal, days, sell, buy, expanded }: Props)
       <div className="wrap">
         <SectionHead
           title="시세 추이"
-          desc="고시할 때마다 한 점입니다 — 일별 종가가 아닙니다"
+          desc="당사가 고시한 시각마다 기록된 실제 거래 기준가입니다"
         />
 
         {/* 금속 선택. 위 시세 보드의 호버는 큰 카드만 바꾸고, 그래프는 여기서 고른다 */}
@@ -112,7 +112,7 @@ export function PriceHistorySection({ metal, days, sell, buy, expanded }: Props)
 
         <p className={styles.notes}>
           <span>· 표시 금액은 1돈(3.75g) 기준입니다. 그래프의 세로축은 1g 기준입니다.</span>
-          <span>· 변동은 <b>직전 고시</b> 대비이며, 하루 전 같은 시각과의 비교가 아닙니다.</span>
+          <span>· 변동폭은 <b>직전 고시가</b>와 비교한 값입니다.</span>
         </p>
       </div>
     </section>

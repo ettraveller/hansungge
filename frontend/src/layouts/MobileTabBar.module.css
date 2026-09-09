@@ -31,7 +31,7 @@
     /* 손가락 조작이라 44px 아래로 내려가지 않는다 */
     min-height: 44px;
     font-size: 10.5px;
-    color: #9a958a;
+    color: var(--ink-400);
   }
 
   .on {

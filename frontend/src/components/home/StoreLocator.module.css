@@ -48,7 +48,8 @@
 }
 
 .region[open] .summary {
-  background: var(--gold-light);
+  background: var(--ink-50);
+  border-left: 2px solid var(--gold-500);
 }
 
 .region[open] .caret {

@@ -41,8 +41,8 @@
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
-  height: 3px;
-  background: var(--sheen-gold);
+  height: 2px;
+  background: var(--gold-500);
 }
 
 .brand {
@@ -61,8 +61,8 @@
   letter-spacing: var(--tracking-label);
   padding: 3px 7px;
   border-radius: var(--radius-xs);
-  background: var(--sheen-gold);
-  color: #2a1e02;
+  background: var(--gold-500);
+  color: #1a1400;
 }
 
 .lead {

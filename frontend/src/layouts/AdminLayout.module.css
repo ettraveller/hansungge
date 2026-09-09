@@ -8,11 +8,7 @@
 .sidebarOpen {
   width: 236px;
   flex: none;
-  /* 단색 검정 대신 위에서 금빛이 아주 옅게 내려온다. 관리자 화면은
-     오래 보는 곳이라 완전한 평면이면 눈이 먼저 지친다. */
-  background:
-    radial-gradient(90% 42% at 0% 0%, rgba(201, 162, 39, 0.13) 0%, transparent 60%),
-    var(--ink-900);
+  background: var(--ink-900);
   color: #fff;
   padding: 22px 0 18px;
   display: none;
@@ -97,8 +93,8 @@
   letter-spacing: var(--tracking-label);
   padding: 3px 7px;
   border-radius: var(--radius-xs);
-  background: var(--sheen-gold);
-  color: #2a1e02;
+  background: var(--gold-500);
+  color: #1a1400;
 }
 
 .nav {
@@ -241,8 +237,7 @@
   width: 3px;
   height: 18px;
   border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
-  background: var(--gold-400);
-  box-shadow: 0 0 10px rgba(201, 162, 39, 0.6);
+  background: var(--gold-500);
 }
 
 .nav a.navActive:hover {

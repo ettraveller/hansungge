@@ -244,12 +244,10 @@ table {
   pointer-events: none;
 }
 
-/* 금속 광택 문자 — 히어로 강조어에 쓴다 */
+/* 금색 강조 문자. 그라데이션을 쓰지 않는다 — 읽는 속도를 떨어뜨리고
+   금융 화면에서는 장식이 앞선 인상을 준다. */
 .sheen {
-  background: var(--sheen-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold-600);
 }
 
 /* --- 모션 --------------------------------------------------------- */
