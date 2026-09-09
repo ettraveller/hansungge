@@ -558,9 +558,29 @@ public class MarketPriceService {
         try {
             return calculator.apply(raw, policy);
         } catch (IllegalArgumentException e) {
+            // "보정 결과가 유효하지 않습니다" 만으로는 무엇을 고쳐야 할지 알 수 없다.
+            // 실제로 이 메시지를 받고 원인을 못 찾는 일이 있었다. 어떤 값에 무엇을
+            // 적용했더니 얼마가 나왔는지, 그래서 무엇을 고쳐야 하는지까지 적는다.
             throw new BusinessException(ErrorCode.PRICE_CALCULATION_FAILED,
-                    "보정 결과가 유효하지 않습니다: " + e.getMessage());
+                    ("%s %s 의 보정 결과가 0원 이하입니다. "
+                            + "원본 %s원/g 에 %s 을(를) 적용했습니다. "
+                            + "보정값이 원본보다 크게 빼고 있지 않은지 확인해 주세요.")
+                            .formatted(policy.getMetalType(),
+                                    policy.getPriceSide() == PriceSide.SELL ? "살 때" : "팔 때",
+                                    raw.value().toPlainString(),
+                                    describeAdjustment(policy)));
         }
+    }
+
+    /** 오류 메시지에 넣을 보정 설명. 관리자가 화면에서 본 말과 같아야 한다. */
+    private static String describeAdjustment(MarketPricePolicy policy) {
+        return switch (policy.getMode()) {
+            case AUTO -> "보정 없음";
+            case FIXED_ADJ -> "정액 보정 %s원".formatted(policy.getAdjAmount().toPlainString());
+            case PERCENT_ADJ -> "정률 보정 %s%%".formatted(policy.getAdjPercent().toPlainString());
+            case MANUAL -> "지정가 %s원".formatted(
+                    policy.getManualPrice() == null ? "(미설정)" : policy.getManualPrice().toPlainString());
+        };
     }
 
     private boolean exceedsLimit(BigDecimal changePercent, MetalType metalType, PriceSide priceSide) {

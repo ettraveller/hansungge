@@ -368,6 +368,59 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
     // =================================================================
 
     @Nested
+    @DisplayName("0원 이하가 되는 보정값")
+    class NonPositiveResult {
+
+        @Test
+        @DisplayName("저장 시점에 막는다 — 고시할 때가 아니라")
+        void rejectedAtSaveTime() {
+            store(PriceSide.SELL, "220800", now());
+
+            assertThatThrownBy(() -> policyService.update(MetalType.GOLD_24K, PriceSide.SELL,
+                    PolicyMode.FIXED_ADJ, new BigDecimal("-300000"), BigDecimal.ZERO, null,
+                    "실수", "admin"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("0원 이하");
+        }
+
+        @Test
+        @DisplayName("거절 메시지에 원본·보정값·결과가 모두 들어 있다")
+        void messageExplainsWhy() {
+            store(PriceSide.SELL, "220800", now());
+
+            assertThatThrownBy(() -> policyService.update(MetalType.GOLD_24K, PriceSide.SELL,
+                    PolicyMode.FIXED_ADJ, new BigDecimal("-300000"), BigDecimal.ZERO, null,
+                    "실수", "admin"))
+                    .hasMessageContaining("220800")
+                    .hasMessageContaining("-300000");
+        }
+
+        @Test
+        @DisplayName("자동고시를 켤 때도 같은 검산을 한다")
+        void autoQuoteStartAlsoChecked() {
+            store(PriceSide.SELL, "220800", now());
+            store(PriceSide.BUY, "188000", now());
+
+            assertThatThrownBy(() -> policyService.startAutoQuote(MetalType.GOLD_24K,
+                    PolicyMode.FIXED_ADJ, new BigDecimal("-300000"), new BigDecimal("-1500"),
+                    "실수", "admin"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("0원 이하");
+        }
+
+        @Test
+        @DisplayName("원본이 아직 없으면 통과시킨다 — 비교할 대상이 없다")
+        void noRawPasses() {
+            policyService.update(MetalType.PLATINUM, PriceSide.SELL, PolicyMode.FIXED_ADJ,
+                    new BigDecimal("-300000"), BigDecimal.ZERO, null, "선설정", "admin");
+
+            assertThat(policyRepository
+                    .findByMetalTypeAndPriceSide(MetalType.PLATINUM, PriceSide.SELL)
+                    .orElseThrow().getAdjAmount()).isEqualByComparingTo("-300000");
+        }
+    }
+
+    @Nested
     @DisplayName("바뀐 보정값을 지금 시세에 다시 적용")
     class Reapply {
 

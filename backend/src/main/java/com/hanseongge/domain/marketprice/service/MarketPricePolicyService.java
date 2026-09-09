@@ -12,6 +12,7 @@ import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,7 @@ import java.util.Map;
 public class MarketPricePolicyService {
 
     private final MarketPricePolicyRepository policyRepository;
+    private final com.hanseongge.domain.marketprice.repository.MarketPriceRawRepository rawRepository;
     private final MarketPriceCalculator calculator;
 
     @Transactional(readOnly = true)
@@ -67,6 +69,7 @@ public class MarketPricePolicyService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "정책 변경 사유는 필수입니다.");
         }
         validate(mode, adjAmount, adjPercent, manualPrice);
+        requireResultAbovezero(metalType, priceSide, mode, adjAmount, adjPercent);
 
         MarketPricePolicy policy = find(metalType, priceSide);
         AuditContext.before(snapshot(policy));
@@ -113,6 +116,9 @@ public class MarketPricePolicyService {
             throw new BusinessException(ErrorCode.INVALID_INPUT,
                     "자동고시에는 '받아온 값 그대로' 또는 '금액/비율 더하기·빼기'만 쓸 수 있습니다.");
         }
+
+        requireResultAbovezero(metalType, PriceSide.SELL, mode, sellAdj, sellAdj);
+        requireResultAbovezero(metalType, PriceSide.BUY, mode, buyAdj, buyAdj);
 
         MarketPricePolicy sell = find(metalType, PriceSide.SELL);
         MarketPricePolicy buy = find(metalType, PriceSide.BUY);
@@ -190,6 +196,37 @@ public class MarketPricePolicyService {
      * 없으면 "보정이 걸린 줄 알았는데 원본이 그대로 나가는" 상태가 되고, 그 사실은
      * 시세가 이상하다는 신고가 들어와야 드러난다.
      */
+    /**
+     * 저장하기 전에 <b>지금 원본으로 검산</b>한다.
+     *
+     * <p>정률 보정은 -100% 이하만 막으면 되지만, 정액 보정은 원본이 얼마냐에 따라
+     * 결과가 달라져 값만 보고는 판단할 수 없다. 그래서 그동안은 저장은 되고 <b>고시할
+     * 때</b> 터졌다 — 관리자는 값을 넣을 때 아무 문제가 없다가, 나중에 적용을 누르고서야
+     * "가격을 계산할 수 없습니다"를 만난다. 그 시점에는 무엇이 잘못됐는지 알기 어렵다.
+     *
+     * <p>가장 최근 원본이 있으면 그것으로 미리 재 본다. 원본이 없으면(아직 한 번도
+     * 고시하지 않은 금속) 비교할 대상이 없으므로 통과시킨다.
+     */
+    private void requireResultAbovezero(MetalType metalType, PriceSide priceSide, PolicyMode mode,
+                                        BigDecimal adjAmount, BigDecimal adjPercent) {
+        if (mode != PolicyMode.FIXED_ADJ) {
+            return;
+        }
+        rawRepository.findLatestForSide(metalType, priceSide, PageRequest.of(0, 1))
+                .stream().findFirst()
+                .ifPresent(raw -> {
+                    BigDecimal result = raw.getPricePerGram().add(adjAmount);
+                    if (result.compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new BusinessException(ErrorCode.INVALID_INPUT,
+                                ("보정 결과가 0원 이하가 됩니다. "
+                                        + "최근 원본 %s원/g 에 %s원을 더하면 %s원입니다.")
+                                        .formatted(raw.getPricePerGram().toPlainString(),
+                                                adjAmount.toPlainString(),
+                                                result.toPlainString()));
+                    }
+                });
+    }
+
     private void validate(PolicyMode mode, BigDecimal adjAmount, BigDecimal adjPercent, BigDecimal manualPrice) {
         switch (mode) {
             case MANUAL -> {
