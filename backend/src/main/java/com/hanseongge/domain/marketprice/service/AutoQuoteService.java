@@ -52,6 +52,72 @@ public class AutoQuoteService {
     private final SystemSettingService systemSettingService;
 
     /**
+     * 살 때·팔 때를 <b>함께</b> 자동고시한다.
+     *
+     * <h2>원칙</h2>
+     * 금값이 움직이면 살 때와 팔 때가 같이 움직인다. 한쪽만 새 값이 되는 상태는
+     * 시세가 아니라 고장이다.
+     *
+     * <p>그래서 한쪽만 발행하지 않는다. 다음 경우에는 <b>아무것도</b> 발행하지 않는다:
+     * <ul>
+     *   <li>연동 대상 금속이 아니다</li>
+     *   <li>두 쪽 중 하나라도 수동고시로 설정돼 있다</li>
+     *   <li>두 쪽 중 하나의 원본이 없다 (검증 탈락·중복 등)</li>
+     * </ul>
+     *
+     * <p>둘 다 자동이고 원본도 둘 다 있으면 {@link MarketPriceService#applyPricePair}
+     * 가 변동률까지 함께 판단한다 — 한쪽이라도 임계를 넘으면 둘 다 보류다.
+     *
+     * @return 둘 다 발행되었으면 true
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean publishPair(MetalType metal, Long sellRawId, Long buyRawId) {
+        if (sellRawId == null || buyRawId == null) {
+            // 한쪽 원본이 없으면 반대쪽만 낼 수 없다. 그것이 바로 막으려는 상태다.
+            log.debug("[AUTO-QUOTE] {} 한쪽 원본이 없어 건너뜁니다 (살때={} 팔때={})",
+                    metal, sellRawId, buyRawId);
+            return false;
+        }
+        if (!linkedMetals().contains(metal)) {
+            log.debug("[AUTO-QUOTE] {} 은(는) 연동 대상이 아닙니다 ({})", metal, SETTING_LINKED_METALS);
+            return false;
+        }
+
+        Optional<MarketPricePolicy> sell =
+                policyRepository.findByMetalTypeAndPriceSide(metal, PriceSide.SELL);
+        Optional<MarketPricePolicy> buy =
+                policyRepository.findByMetalTypeAndPriceSide(metal, PriceSide.BUY);
+
+        if (sell.isEmpty() || buy.isEmpty()) {
+            log.warn("[AUTO-QUOTE] {} 정책 행이 없습니다. 자동고시를 건너뜁니다.", metal);
+            return false;
+        }
+        if (!sell.get().isAutoQuote() || !buy.get().isAutoQuote()) {
+            // 한쪽만 자동이면 그쪽만 움직인다. 원칙에 어긋나므로 둘 다 내지 않는다.
+            log.debug("[AUTO-QUOTE] {} 은(는) 한쪽이 수동고시입니다 (살때={} 팔때={}). 원본만 적재합니다.",
+                    metal, sell.get().isAutoQuote(), buy.get().isAutoQuote());
+            return false;
+        }
+
+        try {
+            PairedApplyResult result = marketPriceService.applyPricePair(
+                    metal, sellRawId, buyRawId, AUTO_REASON, AUTO_ACTOR);
+
+            if (result.applied()) {
+                log.info("[AUTO-QUOTE] 자동고시 완료 — {} 살때·팔때 함께 발행", metal);
+            } else {
+                log.warn("[AUTO-QUOTE] 자동고시 보류 — {} 변동률 임계 초과. 양쪽 모두 승인 대기로 넘겼습니다.",
+                        metal);
+            }
+            return result.applied();
+
+        } catch (Exception e) {
+            log.error("[AUTO-QUOTE] 자동고시 실패 — {}. 기존 시세를 유지합니다.", metal, e);
+            return false;
+        }
+    }
+
+    /**
      * 방금 저장된 원본으로 자동고시를 시도한다.
      *
      * <p>예외를 밖으로 내보내지 않는다. 여기서 터지면 뒤따르는 금속의 수집까지 멈춘다.

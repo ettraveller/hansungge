@@ -144,6 +144,103 @@ public class MarketPriceService {
     }
 
     /**
+     * 살 때·팔 때를 <b>함께</b> 적용한다.
+     *
+     * <h2>원칙</h2>
+     * 금값이 움직이면 살 때와 팔 때가 같이 움직인다. 한쪽만 새 값이 되는 상태는
+     * 존재하지 않아야 한다 — 그것은 시세가 아니라 고장이다.
+     *
+     * <h2>그래서 먼저 재고, 그다음에 쓴다</h2>
+     * 한쪽씩 {@code applyPrice} 를 부르면 첫 쪽이 이미 발행된 뒤에야 둘째 쪽이
+     * 임계를 넘는다는 사실을 알게 된다. 그 시점에는 되돌릴 수 없다(발행은 append-only 다).
+     *
+     * <p>그래서 두 쪽의 변동률을 <b>모두 계산한 뒤에</b> 판단한다.
+     * 한쪽이라도 임계를 넘으면 <b>둘 다 보류</b>한다. 통과한 쪽만 내보내면 바로 그
+     * "한쪽만 움직인 시세표"가 된다.
+     *
+     * @return 살 때 결과와 팔 때 결과. 둘 다 발행되었거나, 둘 다 보류다
+     */
+    @Transactional
+    public PairedApplyResult applyPricePair(MetalType metalType, Long sellRawId, Long buyRawId,
+                                            String changeReason, String adminLoginId) {
+        requireReason(changeReason);
+
+        Plan sell = plan(metalType, PriceSide.SELL, sellRawId);
+        Plan buy = plan(metalType, PriceSide.BUY, buyRawId);
+
+        // 한쪽이라도 넘으면 둘 다 보류한다.
+        boolean hold = sell.exceeds() || buy.exceeds();
+
+        if (hold) {
+            log.warn("[MARKET-PRICE] {} 변동률 초과로 양쪽 모두 보류합니다 (살때 {}% / 팔때 {}%).",
+                    metalType, sell.changePercent(), buy.changePercent());
+            return new PairedApplyResult(holdOf(sell, changeReason, adminLoginId),
+                    holdOf(buy, changeReason, adminLoginId));
+        }
+
+        // 두 쪽에 같은 발행 시각을 준다. 이력 화면이 한 번의 고시를 한 줄로 묶는 근거다.
+        OffsetDateTime issuedAt = OffsetDateTime.now();
+        return new PairedApplyResult(
+                issueOf(sell, changeReason, adminLoginId, issuedAt),
+                issueOf(buy, changeReason, adminLoginId, issuedAt));
+    }
+
+    /**
+     * 적용하기 전에 계산만 해 둔 것.
+     *
+     * <p>보류 판단에는 <b>양쪽 결과가 모두</b> 필요하다. 그래서 계산과 쓰기를 나눈다.
+     */
+    private record Plan(MarketPriceRaw raw, MetalType metalType, PriceSide priceSide,
+                        MarketPricePolicy policy, PriceCalculation calculation,
+                        MarketPriceEffective current, BigDecimal changePercent, boolean exceeds) {
+    }
+
+    private Plan plan(MetalType metalType, PriceSide priceSide, Long rawId) {
+        MarketPriceRaw raw = rawRepository.findById(rawId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_RAW_NOT_FOUND, "원본 없음: " + rawId));
+        if (raw.getMetalType() != metalType) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "원본 금속 불일치: raw=%s 요청=%s".formatted(raw.getMetalType(), metalType));
+        }
+
+        MarketPricePolicy policy = findPolicy(metalType, priceSide);
+        PriceCalculation calculation = calculate(raw.price(), policy);
+
+        effectiveRepository.acquireLock(lockKey(metalType, priceSide));
+
+        MarketPriceEffective current = effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveToIsNull(metalType, priceSide)
+                .orElse(null);
+
+        BigDecimal changePercent = current == null
+                ? null
+                : calculation.result().changePercentFrom(current.price());
+
+        return new Plan(raw, metalType, priceSide, policy, calculation, current, changePercent,
+                exceedsLimit(changePercent, metalType, priceSide));
+    }
+
+    private PriceApplyResult holdOf(Plan p, String changeReason, String adminLoginId) {
+        if (p.current() == null) {
+            // 비교할 직전 값이 없으면 애초에 임계를 넘을 수 없다. 반대쪽 때문에 여기
+            // 온 것이므로, 보류 대신 그대로 발행하면 한쪽만 움직인다 — 그래서 보류로
+            // 맞춘다. 직전 값이 없으면 hold() 가 쓸 current 도 없으므로 원본만 남긴다.
+            p.raw().markAnomaly();
+            log.warn("[MARKET-PRICE] {}/{} 는 직전 값이 없어 보류 기록만 남깁니다.",
+                    p.metalType(), p.priceSide());
+            return PriceApplyResult.held(null, p.changePercent(), p.calculation());
+        }
+        return hold(p.raw(), p.metalType(), p.priceSide(), p.calculation(), p.current(),
+                p.changePercent(), changeReason, adminLoginId);
+    }
+
+    private PriceApplyResult issueOf(Plan p, String changeReason, String adminLoginId,
+                                     OffsetDateTime issuedAt) {
+        return issue(p.raw().getId(), p.metalType(), p.priceSide(), p.calculation(), p.policy(),
+                p.current(), p.changePercent(), changeReason, adminLoginId, issuedAt);
+    }
+
+    /**
      * 승인된 보류건을 적용한다.
      *
      * <p>변동률 검사를 <b>다시 하지 않는다.</b> 임계값을 넘었다는 사실을 알고도 관리자가

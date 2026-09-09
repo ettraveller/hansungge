@@ -190,21 +190,18 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("매도는 자동, 매수는 수동으로 따로 둘 수 있다")
-        void sidesAreIndependent() {
-            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
-            setPolicy(PriceSide.BUY, PolicyMode.AUTO, BigDecimal.ZERO, false);
+        @DisplayName("한쪽만 자동으로 둘 수 없다 — 전환은 금속 단위이고 두 쪽이 함께 바뀐다")
+        void quoteModeIsPerMetal() {
+            policyService.switchQuoteMode(MetalType.GOLD_24K, true, "자동 시작", "admin");
 
-            OffsetDateTime at = now();
-            autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.SELL,
-                    store(PriceSide.SELL, "220800", at));
-            autoQuoteService.publish(MetalType.GOLD_24K, PriceSide.BUY,
-                    store(PriceSide.BUY, "188000", at));
-
-            assertThat(effectiveRepository.findAll())
-                    .as("자동으로 켠 매도만 발행된다")
-                    .hasSize(1);
-            assertThat(current(PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("220800.00");
+            assertThat(policyRepository
+                    .findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.SELL)
+                    .orElseThrow().isAutoQuote()).isTrue();
+            assertThat(policyRepository
+                    .findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.BUY)
+                    .orElseThrow().isAutoQuote())
+                    .as("금값이 움직이면 두 값이 같이 움직여야 한다 — 한쪽만 자동인 상태를 만들 수 없다")
+                    .isTrue();
         }
     }
 
@@ -256,6 +253,67 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+
+    @Nested
+    @DisplayName("금값이 움직이면 살 때·팔 때가 함께 움직인다")
+    class MovesTogether {
+
+        @Test
+        @DisplayName("자동고시는 두 쪽을 같은 시각에 함께 발행한다")
+        void publishesBothAtSameInstant() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            OffsetDateTime at = now();
+            boolean ok = autoQuoteService.publishPair(MetalType.GOLD_24K,
+                    store(PriceSide.SELL, "220800", at),
+                    store(PriceSide.BUY, "188000", at));
+
+            assertThat(ok).isTrue();
+            assertThat(current(PriceSide.SELL).getEffectiveFrom())
+                    .as("발행 시각이 같아야 이력 화면이 한 줄로 묶는다")
+                    .isEqualTo(current(PriceSide.BUY).getEffectiveFrom());
+        }
+
+        @Test
+        @DisplayName("한쪽이 임계를 넘으면 둘 다 보류한다 — 통과한 쪽만 나가면 시세표가 어긋난다")
+        void oneSpikeHoldsBoth() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            OffsetDateTime base = now().minusHours(1);
+            autoQuoteService.publishPair(MetalType.GOLD_24K,
+                    store(PriceSide.SELL, "220800", base),
+                    store(PriceSide.BUY, "188000", base));
+
+            // 살 때만 두 배로 튄다. 팔 때는 정상 범위다.
+            OffsetDateTime at = now();
+            boolean ok = autoQuoteService.publishPair(MetalType.GOLD_24K,
+                    store(PriceSide.SELL, "441600", at),
+                    store(PriceSide.BUY, "188100", at));
+
+            assertThat(ok).isFalse();
+            assertThat(current(PriceSide.SELL).getPricePerGram())
+                    .isEqualByComparingTo("220800.00");
+            assertThat(current(PriceSide.BUY).getPricePerGram())
+                    .as("정상 범위였어도 반대쪽이 보류면 함께 멈춘다")
+                    .isEqualByComparingTo("188000.00");
+            assertThat(pendingRepository.findAll())
+                    .as("두 쪽 모두 승인 대기로 넘어간다")
+                    .filteredOn(x -> x.getStatus() == PendingStatus.PENDING)
+                    .hasSize(2);
+        }
+
+        @Test
+        @DisplayName("한쪽 원본이 없으면 아무것도 발행하지 않는다")
+        void missingOneSidePublishesNothing() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            assertThat(autoQuoteService.publishPair(MetalType.GOLD_24K,
+                    store(PriceSide.SELL, "220800", now()), null)).isFalse();
+            assertThat(effectiveRepository.findAll())
+                    .as("반대쪽 없이 한쪽만 내면 바로 그 어긋난 상태가 된다")
+                    .isEmpty();
+        }
+    }
 
     @Nested
     @DisplayName("자동이어도 안전장치는 그대로다")
@@ -316,8 +374,7 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
             policyService.update(MetalType.GOLD_24K, PriceSide.SELL, PolicyMode.FIXED_ADJ,
                     new BigDecimal("3000"), BigDecimal.ZERO, null, "마진 설정", "admin");
 
-            policyService.switchQuoteMode(MetalType.GOLD_24K, PriceSide.SELL, true,
-                    "자동고시 시작", "admin");
+            policyService.switchQuoteMode(MetalType.GOLD_24K, true, "자동고시 시작", "admin");
 
             MarketPricePolicy policy = policyRepository
                     .findByMetalTypeAndPriceSide(MetalType.GOLD_24K, PriceSide.SELL).orElseThrow();
@@ -357,7 +414,8 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
     private void setPolicy(MetalType metal, PriceSide side, PolicyMode mode,
                            BigDecimal adj, boolean autoQuote) {
         policyService.update(metal, side, mode, adj, BigDecimal.ZERO, null, "테스트 설정", "admin");
-        policyService.switchQuoteMode(metal, side, autoQuote, "테스트 설정", "admin");
+        // 고시 방식은 금속 단위다 — 살 때만 자동으로 둘 수 없다.
+        policyService.switchQuoteMode(metal, autoQuote, "테스트 설정", "admin");
     }
 
     private MarketPriceEffective current(PriceSide side) {

@@ -93,22 +93,30 @@ public class MarketPricePolicyService {
     @Transactional
     @AuditLog(action = AuditActions.PRICE_POLICY_UPDATE,
               targetType = AuditActions.TARGET_MARKET_PRICE,
-              targetId = "#metalType.name() + '/' + #priceSide.name()")
-    public MarketPricePolicy switchQuoteMode(MetalType metalType, PriceSide priceSide,
-                                             boolean autoQuote, String changeReason,
-                                             String adminLoginId) {
+              targetId = "#metalType.name()")
+    public java.util.List<MarketPricePolicy> switchQuoteMode(MetalType metalType,
+                                                             boolean autoQuote,
+                                                             String changeReason,
+                                                             String adminLoginId) {
         if (changeReason == null || changeReason.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "고시 방식 변경 사유는 필수입니다.");
         }
 
-        MarketPricePolicy policy = find(metalType, priceSide);
-        AuditContext.before(snapshot(policy));
+        // 금속 단위로 바꾼다. 살 때만 자동이고 팔 때는 수동인 상태를 만들 수 없다 —
+        // 금값이 움직이면 두 값이 같이 움직여야 하고, 한쪽만 자동이면 그쪽만 움직인다.
+        MarketPricePolicy sell = find(metalType, PriceSide.SELL);
+        MarketPricePolicy buy = find(metalType, PriceSide.BUY);
 
-        policy.switchQuoteMode(autoQuote, adminLoginId);
+        AuditContext.before(java.util.Map.of(
+                "sell", snapshot(sell),
+                "buy", snapshot(buy)));
 
-        log.info("[MARKET-PRICE] 고시 방식 변경 {}/{} → {} by={} 사유={}",
-                metalType, priceSide, autoQuote ? "자동고시" : "수동고시", adminLoginId, changeReason);
-        return policy;
+        sell.switchQuoteMode(autoQuote, adminLoginId);
+        buy.switchQuoteMode(autoQuote, adminLoginId);
+
+        log.info("[MARKET-PRICE] 고시 방식 변경 {} (살때·팔때) → {} by={} 사유={}",
+                metalType, autoQuote ? "자동고시" : "수동고시", adminLoginId, changeReason);
+        return java.util.List.of(sell, buy);
     }
 
     /**

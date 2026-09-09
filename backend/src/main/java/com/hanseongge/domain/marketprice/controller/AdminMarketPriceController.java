@@ -165,17 +165,21 @@ public class AdminMarketPriceController {
                 request.changeReason(), actor.loginId())));
     }
 
-    @Operation(summary = "자동/수동 고시 전환",
-            description = "자동고시로 켜면 수집된 원본에 보정 정책을 적용해 즉시 발행한다. "
-                    + "이미 발행된 시세는 바뀌지 않는다. 자동이어도 변동률 임계를 넘으면 "
+    @Operation(summary = "자동/수동 고시 전환 (금속 단위)",
+            description = "한 금속의 살 때·팔 때를 함께 전환한다. 한쪽만 자동으로 둘 수 "
+                    + "없는 이유는, 그러면 금값이 움직일 때 그쪽만 움직여 시세표가 "
+                    + "어긋나기 때문이다. 자동이어도 변동률 임계를 넘으면 양쪽 모두 "
                     + "발행되지 않고 승인 대기로 간다.")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/policies/quote-mode")
-    public ResponseEntity<PolicyResponse> switchQuoteMode(@Valid @RequestBody QuoteModeRequest request,
-                                                          @AuthenticationPrincipal AdminPrincipal actor) {
-        return ResponseEntity.ok(PolicyResponse.from(policyService.switchQuoteMode(
-                request.metalType(), request.priceSide(), request.autoQuote(),
-                request.changeReason(), actor.loginId())));
+    public ResponseEntity<List<PolicyResponse>> switchQuoteMode(
+            @Valid @RequestBody QuoteModeRequest request,
+            @AuthenticationPrincipal AdminPrincipal actor) {
+
+        return ResponseEntity.ok(policyService.switchQuoteMode(
+                        request.metalType(), request.autoQuote(),
+                        request.changeReason(), actor.loginId())
+                .stream().map(PolicyResponse::from).toList());
     }
 
     @Operation(summary = "승인 대기 일괄 승인 (살 때·팔 때 함께)",

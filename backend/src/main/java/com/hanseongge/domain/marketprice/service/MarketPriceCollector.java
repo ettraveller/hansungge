@@ -4,6 +4,7 @@ import com.hanseongge.domain.marketprice.entity.FetchResult;
 import com.hanseongge.domain.marketprice.entity.MarketPriceFetchLog;
 import com.hanseongge.domain.marketprice.entity.MarketPriceSource;
 import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.provider.FeedMarketPriceProvider;
 import com.hanseongge.domain.marketprice.provider.MarketPriceFetchException;
 import com.hanseongge.domain.marketprice.provider.MarketPriceProvider;
@@ -110,13 +111,23 @@ public class MarketPriceCollector {
                         log.debug("[MARKET-PRICE] {} {} 신규 시세 없음", provider.sourceCode(), metal);
                         return;
                     }
+                    // 두 원본을 먼저 모두 적재한 뒤 <b>짝으로</b> 발행한다.
+                    //
+                    // 한 쪽씩 저장하며 바로 발행하면, 살 때가 임계를 넘어 보류된 뒤에
+                    // 팔 때가 정상 발행되어 "한쪽만 움직인 시세표"가 된다. 금값이
+                    // 움직이면 살 때와 팔 때는 같이 움직여야 한다.
+                    Long sellRawId = null;
+                    Long buyRawId = null;
                     for (FeedMarketPriceProvider.SidedPrice sided : both) {
                         Long rawId = writer.store(source, metal, sided.side(), sided.raw(),
                                 elapsedMs(startNanos), attempt, startedAt);
-                        // 자동고시로 설정된 조합만 발행된다. rawId 가 null 이면 검증에
-                        // 걸렸거나 이미 받아 둔 고시라, 발행할 새 값이 없다.
-                        autoQuoteService.publish(metal, sided.side(), rawId);
+                        if (sided.side() == PriceSide.SELL) sellRawId = rawId;
+                        else buyRawId = rawId;
                     }
+
+                    // rawId 가 null 이면 검증에 걸렸거나 이미 받아 둔 고시다.
+                    // 한쪽이라도 없으면 publishPair 가 아무것도 발행하지 않는다.
+                    autoQuoteService.publishPair(metal, sellRawId, buyRawId);
                     return;
                 }
 

@@ -10,7 +10,13 @@ import { Panel } from '../Panel';
 import { ReasonDialog } from '../ReasonDialog';
 import { usePolicies, useSwitchQuoteMode, useUpdatePolicy } from '@/hooks/admin/usePrices';
 import { formatAdjustment, formatDateTime, formatPricePerGram } from '@/utils/format';
-import { METAL_LABEL, type MetalType, type PricePolicyMode, type PriceSide } from '@/types/price';
+import {
+  METAL_LABEL,
+  METAL_ORDER,
+  type MetalType,
+  type PricePolicyMode,
+  type PriceSide,
+} from '@/types/price';
 import type { PricePolicy } from '@/types/admin';
 import { ApiError } from '@/types/api';
 import styles from '../admin.module.css';
@@ -50,6 +56,33 @@ function sideLabelOf(side: PriceSide): string {
 }
 
 /**
+ * 금속끼리 붙이고, 금속 안에서는 살 때를 먼저 둔다.
+ *
+ * <p>서버는 {@code ORDER BY metal, priceSide} 로 돌려주는데 priceSide 는 문자열이라
+ * <b>BUY 가 SELL 보다 먼저</b> 온다. 고시 방식 칸을 금속의 첫 줄에 rowSpan 으로 두는
+ * 이상, 그 순서에 기대면 안 된다 — 정렬이 바뀌면 표가 어긋나고, 그 사실은 화면을
+ * 열어봐야만 드러난다. 여기서 못 박는다.
+ */
+function orderForDisplay(rows: PricePolicy[]): PricePolicy[] {
+  const metalRank = new Map(METAL_ORDER.map((m, i) => [m, i]));
+  return [...rows].sort((a, b) => {
+    const ma = metalRank.get(a.metalType) ?? 99;
+    const mb = metalRank.get(b.metalType) ?? 99;
+    if (ma !== mb) return ma - mb;
+    // 살 때가 먼저다. 고객이 사는 값이 이 사이트의 주력이다.
+    return a.priceSide === b.priceSide ? 0 : a.priceSide === 'SELL' ? -1 : 1;
+  });
+}
+
+function isFirstOfMetal(list: PricePolicy[], i: number): boolean {
+  return i === 0 || list[i - 1].metalType !== list[i].metalType;
+}
+
+function metalRowCount(list: PricePolicy[], metal: MetalType): number {
+  return list.filter((p) => p.metalType === metal).length;
+}
+
+/**
  * 자동고시 설정.
  *
  * ⚠️ 정책을 바꿔도 <b>이미 발행된 시세는 바뀌지 않는다.</b> 다음 고시부터 반영된다 —
@@ -59,7 +92,8 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
   const { data, isLoading, error } = usePolicies();
   const [editing, setEditing] = useState<PricePolicy | null>(null);
   // 전환 대상과 "무엇으로 바꿀지". 사유를 받아야 하므로 한 번에 실행하지 않는다.
-  const [switching, setSwitching] = useState<{ policy: PricePolicy; to: boolean } | null>(null);
+  // 전환 대상은 금속이다. 살 때만 자동으로 두는 상태를 만들 수 없다.
+  const [switching, setSwitching] = useState<{ metalType: MetalType; to: boolean } | null>(null);
   const switchMode = useSwitchQuoteMode();
 
   return (
@@ -100,17 +134,24 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
               </tr>
             </thead>
             <tbody>
-              {data.map((policy) => (
+              {orderForDisplay(data).map((policy, i, list) => (
                 <tr key={policy.id}>
                   <td data-label="금속" data-card-title className={styles.strong}>{METAL_LABEL[policy.metalType]}</td>
                   <td data-label="구분">{sideLabelOf(policy.priceSide)}</td>
-                  <td data-label="고시 방식">
-                    <QuoteModeCell
-                      policy={policy}
-                      canEdit={canEdit}
-                      onSwitch={(to) => setSwitching({ policy, to })}
-                    />
-                  </td>
+                  {/*
+                    고시 방식은 금속 단위다. 같은 금속의 두 줄에 각각 버튼을 두면
+                    한쪽만 바꾸는 조작이라고 읽힌다 — 실제로는 두 줄이 함께 바뀐다.
+                    그래서 첫 줄(판매)에만 두고 두 줄에 걸쳐 놓는다.
+                  */}
+                  {isFirstOfMetal(list, i) && (
+                    <td data-label="고시 방식" rowSpan={metalRowCount(list, policy.metalType)}>
+                      <QuoteModeCell
+                        policy={policy}
+                        canEdit={canEdit}
+                        onSwitch={(to) => setSwitching({ metalType: policy.metalType, to })}
+                      />
+                    </td>
+                  )}
                   <td data-label="계산 방식">{MODE_LABEL[policy.mode]}</td>
                   <td data-label="더하거나 뺄 값" className={styles.num}>{describe(policy)}</td>
                   <td data-label="변경자" className={styles.muted}>{policy.updatedBy ?? '-'}</td>
@@ -148,13 +189,13 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
       */}
       {switching && (
         <ReasonDialog
-          key={`${switching.policy.id}-${String(switching.to)}`}
+          key={`${switching.metalType}-${String(switching.to)}`}
           open
           title={switching.to ? '자동고시로 전환' : '수동고시로 전환'}
           description={
             switching.to
-              ? `${METAL_LABEL[switching.policy.metalType]} ${sideLabelOf(switching.policy.priceSide)} — 다음 수집분부터 보정을 적용해 자동으로 발행합니다. 변동률이 허용치를 넘으면 발행하지 않고 승인 대기로 넘어갑니다.`
-              : `${METAL_LABEL[switching.policy.metalType]} ${sideLabelOf(switching.policy.priceSide)} — 수집은 계속되지만 발행은 멈춥니다. 시세는 관리자가 직접 고시할 때까지 지금 값 그대로입니다.`
+              ? `${METAL_LABEL[switching.metalType]} — 살 때와 팔 때가 함께 자동으로 발행됩니다. 한쪽이라도 변동률이 허용치를 넘으면 양쪽 모두 발행하지 않고 승인 대기로 넘어갑니다.`
+              : `${METAL_LABEL[switching.metalType]} — 수집은 계속되지만 발행은 멈춥니다. 시세는 관리자가 직접 고시할 때까지 지금 값 그대로입니다.`
           }
           confirmLabel={switching.to ? '자동고시 시작' : '수동고시로 전환'}
           danger={!switching.to}
@@ -170,8 +211,7 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
           onConfirm={(reason) =>
             switchMode.mutate(
               {
-                metalType: switching.policy.metalType,
-                priceSide: switching.policy.priceSide,
+                metalType: switching.metalType,
                 autoQuote: switching.to,
                 changeReason: reason,
               },
