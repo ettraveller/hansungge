@@ -167,7 +167,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             {logout.isPending ? '로그아웃 중…' : '로그아웃'}
           </button>
         </header>
-        <main className={styles.main}>{children}</main>
+        <main id="main" className={styles.main}>{children}</main>
       </div>
 
       {/* 좁은 화면 전용. 자주 가는 화면만 올린다 — 메뉴 전체는 햄버거에 그대로 있다. */}

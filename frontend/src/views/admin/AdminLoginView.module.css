@@ -1,38 +1,68 @@
 .root {
-  min-height: 100vh;
+  /* 100vh 가 아니라 dvh — 모바일에서 주소창이 접힐 때 카드가 튀지 않는다 */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--dark);
+  background: var(--sheen-dark);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 넓은 단색 어둠에 그레인 한 겹. 카드만 덩그러니 뜬 인상을 없앤다. */
+.root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--grain);
+  background-size: 140px 140px;
+  opacity: 0.32;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 
 .card {
-  width: min(380px, 100%);
+  position: relative;
+  z-index: 1;
+  width: min(392px, 100%);
   background: #fff;
-  border-radius: var(--radius-md, 6px);
-  padding: 28px 24px 22px;
+  border-radius: var(--radius-lg);
+  padding: 30px 26px 22px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* 카드 윗변의 금색 실선 — 관리자 화면임을 색으로 먼저 말한다 */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--sheen-gold);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 17px;
-  font-weight: 700;
+  gap: var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: 750;
+  letter-spacing: var(--tracking-tight);
   color: var(--dark);
 }
 
 .badge {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm, 4px);
-  background: var(--gold);
-  color: var(--dark);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  padding: 3px 7px;
+  border-radius: var(--radius-xs);
+  background: var(--sheen-gold);
+  color: #2a1e02;
 }
 
 .lead {

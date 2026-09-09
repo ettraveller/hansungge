@@ -21,15 +21,15 @@
 }
 
 .title {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: var(--text-2xl);
+  font-weight: 750;
+  letter-spacing: var(--tracking-tight);
 }
 
 .meta {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--gray);
-  padding-bottom: 3px;
+  padding-bottom: 4px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -37,20 +37,24 @@
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: #4a7a4a;
-  background: #eaf2ea;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  color: var(--ok);
+  background: var(--ok-soft);
+  border: 1px solid rgba(47, 125, 91, 0.16);
   border-radius: var(--radius-pill);
-  padding: 5px 12px;
+  padding: 5px 12px 5px 10px;
 }
 
+/* 맥박. 크기가 아니라 그림자만 번지게 해서 옆 글자를 밀지 않는다. */
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #4a7a4a;
+  background: var(--ok);
+  animation: pulse-dot 2.4s var(--ease-in-out) infinite;
 }
 
 /* ---------- 카드 영역 ---------- */
@@ -62,13 +66,23 @@
 }
 
 .feature {
+  position: relative;
   background: #fff;
-  border-radius: 14px;
-  padding: 28px 30px;
+  border-radius: var(--radius-lg);
+  padding: clamp(24px, 2.4vw, 34px);
   /* 테두리 대신 색조를 입힌 그림자. 이 카드만 한 단계 띄워 위계를 만든다 */
-  box-shadow:
-    0 1px 2px rgba(60, 50, 20, 0.05),
-    0 8px 24px -8px rgba(60, 50, 20, 0.12);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+/* 카드 윗변에 금색 실선 한 줄. 테두리 전체를 두르는 것보다
+   조용하면서 "이게 주인공"이라고 말한다. */
+.feature::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--sheen-gold);
 }
 
 .featureHead {
@@ -94,7 +108,9 @@
 .sides {
   display: flex;
   align-items: flex-start;
-  gap: 40px;
+  /* 화면이 좁아지면 두 금액 사이 간격이 먼저 줄어든다 — 금액 자체보다
+     여백을 먼저 내주는 편이 읽기에 낫다 */
+  gap: clamp(20px, 2.6vw, 40px);
 }
 
 .side {
@@ -108,34 +124,47 @@
 }
 
 .sideLabel {
-  font-size: 13px;
-  color: var(--gray);
-  margin-bottom: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-400);
+  margin-bottom: var(--space-2);
 }
 
+/* 이 화면에서 가장 큰 글자. 자릿수가 흔들리면 두 값을 눈으로 비교할 수
+   없으므로 고정폭 숫자를 강제한다. */
+/* 크기는 칸 안에서 "551,250원"이 한 줄에 들어가는 선까지만 키운다.
+   숫자와 '원'이 갈라지면 금액이 두 덩어리로 읽혀서, 큰 글자로 얻은
+   존재감을 그대로 잃는다. */
 .amount {
-  font-size: 44px;
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-size: clamp(1.875rem, 1.05rem + 1.9vw, 2.625rem);
+  font-weight: 780;
+  line-height: 1.04;
+  letter-spacing: var(--tracking-display);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  white-space: nowrap;
 }
 
 .amountMuted {
-  color: #555;
+  color: var(--ink-600);
 }
 
 .inquiry {
-  font-size: 22px;
+  font-size: var(--text-2xl);
   font-weight: 700;
-  line-height: 1.05;
-  color: #9a958a;
+  line-height: 1.1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink-400);
 }
 
 .delta {
-  font-size: 14px;
-  font-weight: 500;
-  margin-top: 8px;
-  min-height: 21px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin-top: var(--space-3);
+  min-height: 22px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- 추이 그래프 ---------- */
@@ -170,32 +199,46 @@
   gap: 5px;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 18px;
   text-align: left;
   font: inherit;
   color: inherit;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-spring);
 }
 
 .sideCard:hover,
 .sideCardOn {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.14);
+  border-color: var(--gold-400);
+  box-shadow:
+    0 0 0 3px rgba(201, 162, 39, 0.14),
+    var(--shadow-sm);
+}
+
+/* 들리는 것은 마우스가 올라갔을 때뿐이다. 선택된 카드까지 떠 있으면
+   무엇이 반응이고 무엇이 상태인지 구분되지 않는다. */
+.sideCard:hover {
+  transform: translateY(-2px);
+}
+
+.sideCard:active {
+  transform: translateY(0) scale(0.99);
 }
 
 .sideCardName {
-  font-size: 13.5px;
+  font-size: var(--text-base);
   font-weight: 700;
   margin-bottom: 5px;
 }
 
 .sideCardPrice {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: var(--text-2xl);
+  font-weight: 750;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
 }
 
 .sideCardDelta {

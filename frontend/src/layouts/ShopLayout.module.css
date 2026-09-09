@@ -4,12 +4,18 @@
 
 /* ---------- 헤더 ---------- */
 
+/* 스크롤하면 아래 내용이 헤더 밑으로 비쳐 지나간다. 흰 판을 얹어 가리는
+   것보다 화면이 한 겹 더 있는 것처럼 보인다.
+   backdrop-filter 를 못 쓰는 브라우저에서는 위의 rgba 가 거의 흰색이라
+   그대로 읽힌다 — 기능이 빠져도 깨지지 않는다. */
 .header {
   border-bottom: 1px solid var(--line);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-header);
 }
 
 .headerMain {
@@ -43,20 +49,30 @@
   width: 100%;
   height: 44px;
   border: 1px solid var(--line);
-  border-radius: 22px;
+  border-radius: var(--radius-pill);
   padding: 0 20px 0 44px;
-  font-size: 13.5px;
+  font-size: var(--text-base);
   outline: none;
-  background: #fff;
-  transition: border-color 0.2s;
+  background: var(--ink-50);
+  transition:
+    border-color var(--dur) var(--ease-out),
+    background var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
+.search input:hover {
+  border-color: var(--ink-300);
+}
+
+/* 눌러 넣을 때만 흰 바탕이 된다 — 지금 여기에 쓰고 있다는 신호 */
 .search input:focus {
-  border-color: var(--gold);
+  border-color: var(--gold-500);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15);
 }
 
 .search input::placeholder {
-  color: #9a958a;
+  color: var(--ink-400);
 }
 
 .searchIcon {
@@ -148,20 +164,42 @@
 }
 
 .gnbLink {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 5px;
   padding: 0 18px;
   line-height: var(--gnb-h);
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 600;
-  border-bottom: 3px solid transparent;
+  letter-spacing: var(--tracking-snug);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+/* 밑줄을 border 가 아니라 별도 층으로 그린다. border 는 즉시 나타나 딱딱한데,
+   이 방식은 가운데에서 양옆으로 번지듯 열린다. */
+.gnbLink::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 3px;
+  border-radius: var(--radius-pill) var(--radius-pill) 0 0;
+  background: var(--gold-500);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--dur) var(--ease-out);
 }
 
 .gnbItem:hover > .gnbLink,
 .gnbItem:focus-within > .gnbLink {
   color: var(--gold-deep);
-  border-bottom-color: var(--gold);
+}
+
+.gnbItem:hover > .gnbLink::after,
+.gnbItem:focus-within > .gnbLink::after {
+  transform: scaleX(1);
 }
 
 .caret {

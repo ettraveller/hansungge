@@ -8,21 +8,30 @@
 
 .prod {
   display: block;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: #faf9f5;
+  background: var(--ink-50);
   transition:
-    box-shadow 0.2s,
-    transform 0.2s;
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-spring),
+    background var(--dur) var(--ease-out);
 }
 
 .prod:hover {
-  box-shadow: 0 8px 20px -6px rgba(60, 50, 20, 0.18);
-  transform: translateY(-2px);
+  background: #fff;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-4px);
 }
 
 .prod:active {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(0.995);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 마우스를 올리면 금괴가 아주 살짝 커진다 — 카드 전체가 아니라 사진만
+   움직여서, 무엇을 가리키고 있는지가 분명해진다. */
+.prod:hover .bar {
+  transform: translateY(-2px) scale(1.03);
 }
 
 /* ---------- 썸네일 (CSS 금괴 일러스트) ----------
@@ -41,18 +50,20 @@
 .bar {
   width: 120px;
   height: 64px;
-  border-radius: 5px;
-  background: linear-gradient(160deg, #f7e29b, #e0b93f 50%, #c39a24);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(152deg, #fbeeb8 0%, #e6c458 42%, #c39a24 74%, #a8811b 100%);
   box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.18),
-    inset 0 2px 3px rgba(255, 255, 255, 0.6);
+    0 10px 20px -6px rgba(90, 68, 12, 0.34),
+    inset 0 2px 3px rgba(255, 255, 255, 0.72),
+    inset 0 -2px 4px rgba(120, 90, 16, 0.32);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #7a5f12;
+  color: #6d5410;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
+  transition: transform var(--dur) var(--ease-spring);
 }
 
 .barSilver {
@@ -132,10 +143,11 @@
 }
 
 .info h5 {
-  font-size: 14.5px;
-  margin-bottom: 8px;
-  font-weight: 500;
+  font-size: var(--text-md);
+  margin-bottom: var(--space-2);
+  font-weight: 550;
   line-height: 1.45;
+  letter-spacing: var(--tracking-snug);
   /* 상품명 길이가 제각각이라 2줄로 고정해야 카드 높이가 맞는다 */
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -145,12 +157,13 @@
 }
 
 .price {
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: var(--text-xl);
+  font-weight: 750;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
