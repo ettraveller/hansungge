@@ -1,6 +1,7 @@
 import type { Loaded } from '@/api/server';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
+import { GlobalPriceWidgets } from '@/components/price/GlobalPriceWidgets';
 import { PriceHistorySection } from '@/components/price/PriceHistorySection';
 import { SectionHead } from '@/components/ui/SectionHead';
 import type { MarketPrice, MetalType, PriceHistoryPoint } from '@/types/price';
@@ -92,6 +93,18 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
               </>
             )
           )}
+        </div>
+      </section>
+
+      {/* 국제 시세 — 우리 고시가 아래에 둔다. 순서를 뒤집으면 국제가가 우리
+          판매 기준인 것처럼 읽힌다. 실제 거래 기준은 위의 고시 시세다. */}
+      <section className={styles.sectionTinted}>
+        <div className="wrap">
+          <SectionHead
+            title="국제 시세"
+            desc="런던·뉴욕 시장의 현물 시세입니다. 당사 고시 시세와는 다릅니다"
+          />
+          <GlobalPriceWidgets />
         </div>
       </section>
 
