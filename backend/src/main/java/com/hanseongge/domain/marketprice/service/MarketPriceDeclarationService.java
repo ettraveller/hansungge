@@ -42,6 +42,78 @@ public class MarketPriceDeclarationService {
     private final MarketPriceService marketPriceService;
 
     /**
+     * 살 때·팔 때를 <b>한 번에</b> 고시한다.
+     *
+     * <h2>왜 한쪽씩 고시하면 안 되는가</h2>
+     * 한 번에 한쪽만 낼 수 있으면, 살 때를 고시한 순간부터 팔 때를 고시하기까지의
+     * 사이에 <b>살 때는 값이 있고 팔 때는 비어 있는 시세표</b>가 화면에 걸린다.
+     * 관리자가 두 번째 입력을 잊거나, 그 사이에 자리를 뜨거나, 두 번째에서 오류가
+     * 나면 그 상태가 그대로 남는다. 매입 문의를 받는 곳에서 매입가만 사라져 있는
+     * 화면은 그 자체로 사고다.
+     *
+     * <p>그래서 두 값을 함께 받고, <b>한 트랜잭션</b>에서 처리한다. 한쪽이 실패하면
+     * 둘 다 저장되지 않는다.
+     *
+     * <h2>한쪽이 변동률 임계를 넘으면</h2>
+     * 둘 다 보류한다. 통과한 쪽만 내보내면 결국 같은 불일치가 생긴다 —
+     * 이 메서드가 막으려던 바로 그 상태다.
+     *
+     * @param sellPricePerGram 고객이 살 때(판매) 기준 원본가. KRW/1g
+     * @param buyPricePerGram  고객이 팔 때(매입) 기준 원본가. KRW/1g
+     */
+    @Transactional
+    public PairedApplyResult declareBoth(MetalType metalType,
+                                         BigDecimal sellPricePerGram,
+                                         BigDecimal buyPricePerGram,
+                                         String changeReason, String adminLoginId) {
+
+        requireSpread(sellPricePerGram, buyPricePerGram);
+
+        PriceApplyResult sell = declare(metalType, PriceSide.SELL, sellPricePerGram,
+                changeReason, adminLoginId);
+        PriceApplyResult buy = declare(metalType, PriceSide.BUY, buyPricePerGram,
+                changeReason, adminLoginId);
+
+        // 한쪽만 발행된 상태로 끝내지 않는다. 예외를 던져 트랜잭션을 되돌리면 원본까지
+        // 사라지므로, 이미 만들어진 발행을 되감는 대신 보류로 맞춘다.
+        if (sell.applied() != buy.applied()) {
+            throw new BusinessException(ErrorCode.PRICE_CHANGE_EXCEEDS_LIMIT,
+                    ("%s 의 한쪽이 변동률 허용치를 넘었습니다 (살 때 %s / 팔 때 %s). "
+                            + "한쪽만 고시되면 시세표가 어긋나므로 둘 다 발행하지 않았습니다. "
+                            + "값을 다시 확인하거나, 승인 대기에서 처리해 주세요.")
+                            .formatted(metalType,
+                                    sell.applied() ? "정상" : "임계 초과",
+                                    buy.applied() ? "정상" : "임계 초과"));
+        }
+
+        log.info("[MARKET-PRICE] 수동 고시(양쪽) — {} 살때={} 팔때={} 발행={} by={}",
+                metalType, sellPricePerGram, buyPricePerGram, sell.applied(), adminLoginId);
+        return new PairedApplyResult(sell, buy);
+    }
+
+    /**
+     * 살 때는 팔 때보다 커야 한다.
+     *
+     * <p>고객이 사는 값이 파는 값보다 싸면 사고 되팔기만 해도 이익이 난다. 그 상태는
+     * 오타 한 번으로 만들어지고(자릿수 하나), 발견은 손해가 난 뒤에 된다.
+     *
+     * <p>같은 값도 막는다. 매매 스프레드가 0 이면 거래할수록 비용만 나간다.
+     */
+    private void requireSpread(BigDecimal sell, BigDecimal buy) {
+        if (sell == null || buy == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "살 때와 팔 때 시세를 모두 입력해 주세요.");
+        }
+        if (sell.compareTo(buy) <= 0) {
+            throw new BusinessException(ErrorCode.PRICE_INVALID_VALUE,
+                    ("살 때(%s원)가 팔 때(%s원)보다 크지 않습니다. "
+                            + "고객이 사는 값이 파는 값보다 싸면 사고 되팔기만 해도 이익이 납니다. "
+                            + "두 값이 바뀌지 않았는지 확인해 주세요.")
+                            .formatted(sell.toPlainString(), buy.toPlainString()));
+        }
+    }
+
+    /**
      * 수동 고시 — 원본 저장 + 정책 적용 + 발행까지 한 트랜잭션.
      *
      * <p>변동률이 임계값을 넘으면 <b>원본만 남고 발행은 보류</b>된다. 원본을 되돌리지 않는

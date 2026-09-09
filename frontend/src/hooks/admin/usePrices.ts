@@ -78,6 +78,19 @@ export function useUpdatePolicy() {
  * 무효화한다 — 자동으로 켜는 순간 다음 수집분이 바로 발행될 수 있고, 그러면
  * 현재 시세·상품가·이력이 다 같이 움직인다.
  */
+/**
+ * 살 때·팔 때 동시 고시.
+ *
+ * <p>시세가 바뀌면 상품가·이력·현재시세가 모두 따라 움직이므로 전부 무효화한다.
+ */
+export function useDeclarePair() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: pricesApi.declarePair,
+    onSuccess: () => invalidatePriceDependents(queryClient),
+  });
+}
+
 export function useSwitchQuoteMode() {
   const queryClient = useQueryClient();
   return useMutation({

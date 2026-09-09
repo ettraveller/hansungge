@@ -652,6 +652,82 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
     // 도우미
     // =================================================================
 
+    // =================================================================
+    // 살 때·팔 때 동시 고시
+    // =================================================================
+
+    @Nested
+    @DisplayName("한쪽만 고시되는 상태를 만들지 않는다")
+    class PairedDeclaration {
+
+        @Test
+        @DisplayName("살 때와 팔 때가 한 번에 발행된다 — 둘 중 하나만 있는 시세표가 생기지 않는다")
+        void bothSidesPublishTogether() {
+            setPolicy(PolicyMode.AUTO, null, null, null);
+            setPolicyFor(PriceSide.BUY, PolicyMode.AUTO);
+
+            var result = declarationService.declareBoth(MetalType.GOLD_24K,
+                    new BigDecimal("220800"), new BigDecimal("188000"), "오전 고시", ADMIN);
+
+            assertThat(result.applied()).isTrue();
+            assertThat(current(PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("220800.00");
+            assertThat(current(PriceSide.BUY).getPricePerGram()).isEqualByComparingTo("188000.00");
+        }
+
+        @Test
+        @DisplayName("살 때가 팔 때보다 크지 않으면 거절한다 — 사고 되팔기만 해도 이익이 나는 상태다")
+        void invertedSpreadIsRejected() {
+            assertThatThrownBy(() -> declarationService.declareBoth(MetalType.GOLD_24K,
+                    new BigDecimal("188000"), new BigDecimal("220800"), "실수", ADMIN))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("살 때");
+
+            assertThat(effectiveRepository.findAll())
+                    .as("거절됐으면 어느 쪽도 발행되지 않는다")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("두 값이 같아도 거절한다 — 스프레드가 0 이면 거래할수록 비용만 나간다")
+        void zeroSpreadIsRejected() {
+            assertThatThrownBy(() -> declarationService.declareBoth(MetalType.GOLD_24K,
+                    new BigDecimal("200000"), new BigDecimal("200000"), "실수", ADMIN))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("한쪽이 변동률 임계를 넘으면 둘 다 발행하지 않는다")
+        void oneSideOverLimitHoldsBoth() {
+            setPolicy(PolicyMode.AUTO, null, null, null);
+            setPolicyFor(PriceSide.BUY, PolicyMode.AUTO);
+
+            // 기준을 만든다.
+            declarationService.declareBoth(MetalType.GOLD_24K,
+                    new BigDecimal("220800"), new BigDecimal("188000"), "기준", ADMIN);
+
+            // 살 때만 두 배로 튀게 한다. 팔 때는 정상 범위다.
+            assertThatThrownBy(() -> declarationService.declareBoth(MetalType.GOLD_24K,
+                    new BigDecimal("441600"), new BigDecimal("188100"), "오타", ADMIN))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("한쪽만 고시되면");
+
+            // 예외로 트랜잭션이 되돌아가 두 값 모두 직전 상태 그대로다.
+            assertThat(current(PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("220800.00");
+            assertThat(current(PriceSide.BUY).getPricePerGram()).isEqualByComparingTo("188000.00");
+        }
+    }
+
+    private MarketPriceEffective current(PriceSide side) {
+        return effectiveRepository
+                .findByMetalTypeAndPriceSideAndEffectiveToIsNull(MetalType.GOLD_24K, side)
+                .orElseThrow(() -> new AssertionError("현재 시세가 없습니다: " + side));
+    }
+
+    private void setPolicyFor(PriceSide side, PolicyMode mode) {
+        policyService.update(MetalType.GOLD_24K, side, mode,
+                BigDecimal.ZERO, BigDecimal.ZERO, null, "테스트 설정", ADMIN);
+    }
+
     private PriceApplyResult declare(String pricePerGram, String reason) {
         return declarationService.declare(MetalType.GOLD_24K, PriceSide.SELL,
                 new BigDecimal(pricePerGram), reason, ADMIN);

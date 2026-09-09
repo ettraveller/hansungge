@@ -110,6 +110,13 @@ export interface PricePolicy {
   autoQuote: boolean;
 }
 
+/** 살 때·팔 때를 함께 고시한 결과. applied 는 둘 다 발행됐을 때만 true 다. */
+export interface PriceApplyPairResult {
+  applied: boolean;
+  sell: PriceApplyResult;
+  buy: PriceApplyResult;
+}
+
 export interface PriceApplyResult {
   /** false 면 오류가 아니라 <b>승인 대기로 등록됨</b>을 뜻한다 */
   applied: boolean;

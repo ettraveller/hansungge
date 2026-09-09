@@ -3,6 +3,7 @@ import type {
   AdminCurrentPrice,
   CollectionStatus,
   PendingStatus,
+  PriceApplyPairResult,
   PriceApplyResult,
   PriceHistory,
   PricePending,
@@ -67,6 +68,23 @@ export interface PolicyInput {
 /** 이미 발행된 시세는 바뀌지 않는다. 다음 고시부터 반영된다. */
 export function updatePolicy(input: PolicyInput) {
   return adminApi.put<PricePolicy>('/api/admin/prices/policies', { body: input });
+}
+
+export interface DeclarePairInput {
+  metalType: MetalType;
+  sellPricePerGram: string;
+  buyPricePerGram: string;
+  changeReason: string;
+}
+
+/**
+ * 살 때·팔 때를 한 번에 고시한다.
+ *
+ * <p>한쪽씩 고시하는 경로를 화면에 두지 않는다 — 그 사이에 한쪽만 값이 있는
+ * 시세표가 고객에게 걸린다.
+ */
+export function declarePair(input: DeclarePairInput) {
+  return adminApi.post<PriceApplyPairResult>('/api/admin/prices/apply-pair', { body: input });
 }
 
 export interface QuoteModeInput {

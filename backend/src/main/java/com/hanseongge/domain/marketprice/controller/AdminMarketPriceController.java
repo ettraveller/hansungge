@@ -6,7 +6,9 @@ import com.hanseongge.domain.marketprice.dto.PendingDecisionRequest;
 import com.hanseongge.domain.marketprice.dto.PendingResponse;
 import com.hanseongge.domain.marketprice.dto.PolicyResponse;
 import com.hanseongge.domain.marketprice.dto.PolicyUpdateRequest;
+import com.hanseongge.domain.marketprice.dto.PriceApplyPairResponse;
 import com.hanseongge.domain.marketprice.dto.PriceApplyResponse;
+import com.hanseongge.domain.marketprice.dto.PriceDeclarePairRequest;
 import com.hanseongge.domain.marketprice.dto.QuoteModeRequest;
 import com.hanseongge.domain.marketprice.dto.PriceDeclareRequest;
 import com.hanseongge.domain.marketprice.dto.PriceHistoryResponse;
@@ -132,6 +134,22 @@ public class AdminMarketPriceController {
                 request.metalType(), request.priceSide(), request.pricePerGram(),
                 request.changeReason(), actor.loginId());
         return ResponseEntity.ok(PriceApplyResponse.from(result));
+    }
+
+    @Operation(summary = "수동 시세 고시 (살 때·팔 때 동시)",
+            description = "한 금속의 살 때와 팔 때를 함께 고시한다. 한쪽만 고시하는 경로를 "
+                    + "두지 않는 이유는, 그 사이에 한쪽만 값이 있는 시세표가 화면에 걸리기 "
+                    + "때문이다. 살 때가 팔 때보다 크지 않으면 400 으로 거절한다. "
+                    + "한쪽이라도 변동률 허용치를 넘으면 둘 다 발행하지 않는다(409).")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/apply-pair")
+    public ResponseEntity<PriceApplyPairResponse> applyPair(
+            @Valid @RequestBody PriceDeclarePairRequest request,
+            @AuthenticationPrincipal AdminPrincipal actor) {
+
+        return ResponseEntity.ok(PriceApplyPairResponse.from(declarationService.declareBoth(
+                request.metalType(), request.sellPricePerGram(), request.buyPricePerGram(),
+                request.changeReason(), actor.loginId())));
     }
 
     @Operation(summary = "보정 정책 변경",
