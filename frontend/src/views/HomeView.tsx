@@ -3,7 +3,6 @@ import { BoardList, type BoardPost } from '@/components/home/BoardList';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { ProductTabs, type CategoryProducts } from '@/components/home/ProductTabs';
 import { StoreLocator } from '@/components/home/StoreLocator';
-import { TrustStrip } from '@/components/home/TrustStrip';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
 import { SectionHead } from '@/components/ui/SectionHead';
@@ -65,8 +64,6 @@ export function HomeView({ prices, histories, groups, notices }: Props) {
           </p>
         )}
       </div>
-
-      <TrustStrip />
 
       {/* ---------- 시세 연동 상품 ---------- */}
       <section className={styles.section} id="products">
