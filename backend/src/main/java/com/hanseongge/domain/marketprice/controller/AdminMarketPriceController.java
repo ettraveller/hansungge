@@ -2,6 +2,7 @@ package com.hanseongge.domain.marketprice.controller;
 
 import com.hanseongge.domain.marketprice.dto.CollectionStatusResponse;
 import com.hanseongge.domain.marketprice.dto.CurrentPriceResponse;
+import com.hanseongge.domain.marketprice.dto.PendingBatchRequest;
 import com.hanseongge.domain.marketprice.dto.PendingDecisionRequest;
 import com.hanseongge.domain.marketprice.dto.PendingResponse;
 import com.hanseongge.domain.marketprice.dto.PolicyResponse;
@@ -175,6 +176,33 @@ public class AdminMarketPriceController {
         return ResponseEntity.ok(PolicyResponse.from(policyService.switchQuoteMode(
                 request.metalType(), request.priceSide(), request.autoQuote(),
                 request.changeReason(), actor.loginId())));
+    }
+
+    @Operation(summary = "승인 대기 일괄 승인 (살 때·팔 때 함께)",
+            description = "한 금속의 두 건을 한 트랜잭션에서 승인한다. 한 건씩 승인하면 "
+                    + "그 사이에 한쪽만 새 값인 시세표가 화면에 걸린다. "
+                    + "하나라도 실패하면 전부 되돌아간다.")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/pending/approve")
+    public ResponseEntity<List<PriceApplyResponse>> approveAll(
+            @Valid @RequestBody PendingBatchRequest request,
+            @AuthenticationPrincipal AdminPrincipal actor) {
+
+        return ResponseEntity.ok(
+                pendingService.approveAll(request.ids(), request.reason(), actor.loginId())
+                        .stream().map(PriceApplyResponse::from).toList());
+    }
+
+    @Operation(summary = "승인 대기 일괄 반려 (살 때·팔 때 함께)")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/pending/reject")
+    public ResponseEntity<List<PendingResponse>> rejectAll(
+            @Valid @RequestBody PendingBatchRequest request,
+            @AuthenticationPrincipal AdminPrincipal actor) {
+
+        return ResponseEntity.ok(
+                pendingService.rejectAll(request.ids(), request.reason(), actor.loginId())
+                        .stream().map(PendingResponse::from).toList());
     }
 
     @Operation(summary = "승인 대기 승인",

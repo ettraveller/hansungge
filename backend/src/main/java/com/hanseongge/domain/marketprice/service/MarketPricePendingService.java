@@ -53,6 +53,43 @@ public class MarketPricePendingService {
     }
 
     /**
+     * 여러 건을 <b>한 트랜잭션</b>에서 승인한다 — 보통 한 금속의 살 때·팔 때 두 건이다.
+     *
+     * <p>한 건씩 승인하면 그 사이에 한쪽만 새 값인 시세표가 화면에 걸린다.
+     * 수동 고시에서 두 값을 함께 받도록 고친 것과 같은 이유이고, 같은 사고다.
+     *
+     * <p>하나라도 실패하면 전부 되돌아간다.
+     */
+    @Transactional
+    public java.util.List<PriceApplyResult> approveAll(java.util.List<Long> ids, String reason,
+                                                       String adminLoginId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "승인할 건을 선택해 주세요.");
+        }
+        java.util.List<PriceApplyResult> out = new java.util.ArrayList<>(ids.size());
+        for (Long id : ids) {
+            out.add(approve(id, reason, adminLoginId));
+        }
+        return out;
+    }
+
+    /**
+     * 여러 건을 한 트랜잭션에서 반려한다. 승인과 같은 이유로 짝을 함께 처리한다.
+     */
+    @Transactional
+    public java.util.List<MarketPricePending> rejectAll(java.util.List<Long> ids, String reason,
+                                                        String adminLoginId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "반려할 건을 선택해 주세요.");
+        }
+        java.util.List<MarketPricePending> out = new java.util.ArrayList<>(ids.size());
+        for (Long id : ids) {
+            out.add(reject(id, reason, adminLoginId));
+        }
+        return out;
+    }
+
+    /**
      * 승인 → 보류됐던 값을 최종 시세로 발행한다.
      *
      * @param reason 승인 사유. 이 값이 발행되는 시세의 {@code change_reason} 이 된다

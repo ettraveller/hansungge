@@ -131,36 +131,71 @@ function hrefFor(metal: MetalType, days: number, all = false): string {
 }
 
 /**
- * 살 때·팔 때 이력을 같은 시각끼리 짝짓는다.
+ * 살 때·팔 때 이력을 <b>한 줄로</b> 짝짓는다.
  *
- * <p>두 값은 한 번의 고시에서 함께 정해지므로 {@code effectiveFrom} 이 같다. 그래도
- * 한쪽만 있는 시점이 나올 수 있어서(매입가를 고시하지 않은 금속 등) 합집합으로 모은다 —
- * 교집합만 쓰면 그 시점이 표에서 통째로 사라진다.
+ * <h2>왜 시각이 정확히 같지 않은가</h2>
+ * 지금은 두 값이 한 번의 고시에서 같은 시각으로 발행된다. 그런데 그 전에 쌓인 이력은
+ * 한쪽씩 고시하던 때의 것이라 몇 초씩 어긋나 있다. 정확히 일치하는 시각만 묶으면
+ * 그 데이터가 <b>각각 한쪽이 빈 두 줄</b>로 나온다 — 실제로 그렇게 나왔다.
+ *
+ * <p>그래서 {@link PAIR_WINDOW_MS} 안에 들어온 반대쪽을 같은 고시로 본다. 사람이 두
+ * 입력을 연달아 넣는 데 걸리는 시간이고, 그보다 짧은 간격으로 서로 다른 고시가 두 번
+ * 일어나는 일은 없다.
  *
  * <p>최신순으로 돌려준다. 이력은 위에서부터 읽는 것이 최근이다.
  */
-function toRows(sell: PriceHistoryPoint[], buy: PriceHistoryPoint[]): HistoryRow[] {
-  const buyAt = new Map(buy.map((p) => [p.effectiveFrom, p]));
-  const times = [...new Set([...sell.map((p) => p.effectiveFrom), ...buy.map((p) => p.effectiveFrom)])];
-  times.sort();
+const PAIR_WINDOW_MS = 3 * 60 * 1000;
 
-  const sellAt = new Map(sell.map((p) => [p.effectiveFrom, p]));
+function toRows(sell: PriceHistoryPoint[], buy: PriceHistoryPoint[]): HistoryRow[] {
+  // 판매 이력을 뼈대로 삼고, 그 시각 근처의 매입값을 끌어와 붙인다.
+  // 판매가 이 사이트의 주력이라 빠지는 시점이 거의 없다.
+  const asc = <T extends { effectiveFrom: string }>(a: T, b: T) =>
+    a.effectiveFrom.localeCompare(b.effectiveFrom);
+
+  const sells = [...sell].sort(asc);
+  const buys = [...buy].sort(asc);
+  const usedBuy = new Set<number>();
+
+  /** at 에 가장 가까운(창 안의) 매입 이력을 찾아 소비한다. 한 번 쓴 것은 다시 쓰지 않는다. */
+  const takeBuyNear = (at: string): PriceHistoryPoint | null => {
+    const t = Date.parse(at);
+    let best: number | null = null;
+    let bestGap = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < buys.length; i += 1) {
+      if (usedBuy.has(i)) continue;
+      const gap = Math.abs(Date.parse(buys[i].effectiveFrom) - t);
+      if (gap <= PAIR_WINDOW_MS && gap < bestGap) {
+        best = i;
+        bestGap = gap;
+      }
+    }
+    if (best == null) return null;
+    usedBuy.add(best);
+    return buys[best];
+  };
 
   // 변동은 오래된 순으로 훑어야 "직전"이 정해진다
   let prevSell: number | null = null;
-  const rows: HistoryRow[] = times.map((at) => {
-    const s = sellAt.get(at) ?? null;
-    const b = buyAt.get(at) ?? null;
-    const change = s && prevSell != null ? s.pricePerDon - prevSell : null;
-    if (s) prevSell = s.pricePerDon;
+  const rows: HistoryRow[] = sells.map((s) => {
+    const b = takeBuyNear(s.effectiveFrom);
+    const change = prevSell != null ? s.pricePerDon - prevSell : null;
+    prevSell = s.pricePerDon;
 
     return {
-      at,
-      sellPerDon: s?.pricePerDon ?? null,
+      at: s.effectiveFrom,
+      sellPerDon: s.pricePerDon,
       buyPerDon: b?.pricePerDon ?? null,
       changePerDon: change,
     };
   });
 
+  // 짝을 찾지 못한 매입 이력은 버리지 않는다. 매입만 고시한 시점이 표에서
+  // 통째로 사라지면, 그날 매입가가 얼마였는지 되짚을 방법이 없어진다.
+  buys.forEach((b, i) => {
+    if (usedBuy.has(i)) return;
+    rows.push({ at: b.effectiveFrom, sellPerDon: null, buyPerDon: b.pricePerDon, changePerDon: null });
+  });
+
+  rows.sort((a, b) => a.at.localeCompare(b.at));
   return rows.reverse();
 }

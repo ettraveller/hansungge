@@ -95,6 +95,23 @@ public class MarketPriceService {
     @Transactional
     public PriceApplyResult applyPrice(MetalType metalType, PriceSide priceSide, Long rawId,
                                        String changeReason, String adminLoginId) {
+        return applyPrice(metalType, priceSide, rawId, changeReason, adminLoginId, null);
+    }
+
+    /**
+     * 발행 시각을 지정해 적용한다.
+     *
+     * <p>살 때와 팔 때를 함께 고시할 때 <b>같은 시각</b>을 넘기기 위한 것이다.
+     * 각자 {@code now()} 를 찍으면 몇 밀리초가 어긋나고, 그 차이 때문에 이력 화면이
+     * 한 번의 고시를 <b>두 줄</b>로 — 그것도 각각 한쪽이 비어 있는 채로 — 보여준다.
+     * 실제로 그렇게 나왔다.
+     *
+     * @param issuedAt null 이면 지금 시각을 쓴다
+     */
+    @Transactional
+    public PriceApplyResult applyPrice(MetalType metalType, PriceSide priceSide, Long rawId,
+                                       String changeReason, String adminLoginId,
+                                       OffsetDateTime issuedAt) {
         requireReason(changeReason);
 
         MarketPriceRaw raw = rawRepository.findById(rawId)
@@ -123,7 +140,7 @@ public class MarketPriceService {
         }
 
         return issue(raw.getId(), metalType, priceSide, calculation, policy,
-                currentOpt.orElse(null), changePercent, changeReason, adminLoginId);
+                currentOpt.orElse(null), changePercent, changeReason, adminLoginId, issuedAt);
     }
 
     /**
@@ -204,8 +221,17 @@ public class MarketPriceService {
                                    PriceCalculation calculation, MarketPricePolicy policy,
                                    MarketPriceEffective current, BigDecimal changePercent,
                                    String changeReason, String adminLoginId) {
+        return issue(rawId, metalType, priceSide, calculation, policy, current, changePercent,
+                changeReason, adminLoginId, null);
+    }
 
-        OffsetDateTime now = OffsetDateTime.now();
+    private PriceApplyResult issue(Long rawId, MetalType metalType, PriceSide priceSide,
+                                   PriceCalculation calculation, MarketPricePolicy policy,
+                                   MarketPriceEffective current, BigDecimal changePercent,
+                                   String changeReason, String adminLoginId,
+                                   OffsetDateTime issuedAt) {
+
+        OffsetDateTime now = issuedAt == null ? OffsetDateTime.now() : issuedAt;
 
         if (current != null) {
             current.close(now);

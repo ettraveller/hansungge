@@ -99,6 +99,24 @@ export function useSwitchQuoteMode() {
   });
 }
 
+/** 짝(살 때·팔 때)을 함께 승인한다. */
+export function useApprovePendingBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: pricesApi.approvePendingBatch,
+    onSuccess: () => invalidatePriceDependents(queryClient),
+  });
+}
+
+/** 짝을 함께 반려한다. */
+export function useRejectPendingBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: pricesApi.rejectPendingBatch,
+    onSuccess: () => invalidatePriceDependents(queryClient),
+  });
+}
+
 export function useApprovePending() {
   const queryClient = useQueryClient();
   return useMutation({

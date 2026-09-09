@@ -104,6 +104,20 @@ export function switchQuoteMode(input: QuoteModeInput) {
   return adminApi.put<PricePolicy>('/api/admin/prices/policies/quote-mode', { body: input });
 }
 
+/**
+ * 승인 대기 여러 건을 한 번에 승인한다 — 보통 한 금속의 살 때·팔 때 두 건이다.
+ *
+ * <p>한 건씩 승인하면 그 사이에 한쪽만 새 값인 시세표가 화면에 걸린다.
+ * 서버가 한 트랜잭션에서 처리하므로 하나라도 실패하면 전부 되돌아간다.
+ */
+export function approvePendingBatch(input: { ids: number[]; reason: string }) {
+  return adminApi.post<PriceApplyResult[]>('/api/admin/prices/pending/approve', { body: input });
+}
+
+export function rejectPendingBatch(input: { ids: number[]; reason: string }) {
+  return adminApi.post<PricePending[]>('/api/admin/prices/pending/reject', { body: input });
+}
+
 export function approvePending(id: number, reason: string) {
   return adminApi.post<PriceApplyResult>(`/api/admin/prices/pending/${id}/approve`, {
     body: { reason },

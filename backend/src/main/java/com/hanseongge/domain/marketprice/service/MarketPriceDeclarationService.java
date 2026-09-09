@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -69,10 +70,15 @@ public class MarketPriceDeclarationService {
 
         requireSpread(sellPricePerGram, buyPricePerGram);
 
+        // 두 쪽이 <b>같은 발행 시각</b>을 갖게 한다. 각자 now() 를 찍으면 몇 밀리초가
+        // 어긋나고, 이력 화면은 그 차이 때문에 한 번의 고시를 두 줄로 — 각각 한쪽이
+        // 빈 채로 — 보여준다. 실제로 그렇게 나왔다.
+        OffsetDateTime issuedAt = OffsetDateTime.now();
+
         PriceApplyResult sell = declare(metalType, PriceSide.SELL, sellPricePerGram,
-                changeReason, adminLoginId);
+                changeReason, adminLoginId, issuedAt);
         PriceApplyResult buy = declare(metalType, PriceSide.BUY, buyPricePerGram,
-                changeReason, adminLoginId);
+                changeReason, adminLoginId, issuedAt);
 
         // 한쪽만 발행된 상태로 끝내지 않는다. 예외를 던져 트랜잭션을 되돌리면 원본까지
         // 사라지므로, 이미 만들어진 발행을 되감는 대신 보류로 맞춘다.
@@ -126,6 +132,15 @@ public class MarketPriceDeclarationService {
     public PriceApplyResult declare(MetalType metalType, PriceSide priceSide,
                                     BigDecimal declaredPricePerGram,
                                     String changeReason, String adminLoginId) {
+        return declare(metalType, priceSide, declaredPricePerGram, changeReason, adminLoginId, null);
+    }
+
+    /** 발행 시각을 지정하는 수동 고시. {@code issuedAt} 이 null 이면 지금 시각이다. */
+    @Transactional
+    public PriceApplyResult declare(MetalType metalType, PriceSide priceSide,
+                                    BigDecimal declaredPricePerGram,
+                                    String changeReason, String adminLoginId,
+                                    OffsetDateTime issuedAt) {
 
         RawPrice rawPrice = toRawPrice(metalType, declaredPricePerGram, adminLoginId);
         validate(metalType, priceSide, rawPrice.price());
@@ -140,7 +155,8 @@ public class MarketPriceDeclarationService {
         log.info("[MARKET-PRICE] 수동 고시 원본 저장 — {}/{} {}원/g rawId={} by={}",
                 metalType, priceSide, rawPrice.price().value(), raw.getId(), adminLoginId);
 
-        return marketPriceService.applyPrice(metalType, priceSide, raw.getId(), changeReason, adminLoginId);
+        return marketPriceService.applyPrice(metalType, priceSide, raw.getId(), changeReason,
+                adminLoginId, issuedAt);
     }
 
     /**
