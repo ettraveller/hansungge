@@ -140,7 +140,8 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                 <th className={styles.num}>더하거나 뺄 값</th>
                 <th>변경자</th>
                 <th>변경 시각</th>
-                {canEdit && <th aria-label="작업" />}
+                {canEdit && <th aria-label="값 변경" />}
+                {canEdit && <th aria-label="즉시 적용" />}
               </tr>
             </thead>
             <tbody>
@@ -154,7 +155,11 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                     그래서 첫 줄(판매)에만 두고 두 줄에 걸쳐 놓는다.
                   */}
                   {isFirstOfMetal(list, i) && (
-                    <td data-label="고시 방식" rowSpan={metalRowCount(list, policy.metalType)}>
+                    <td
+                      data-label="고시 방식"
+                      rowSpan={metalRowCount(list, policy.metalType)}
+                      className={styles.spanCell}
+                    >
                       <QuoteModeCell
                         policy={policy}
                         canEdit={canEdit}
@@ -173,35 +178,34 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
                   <td data-label="변경자" className={styles.muted}>{policy.updatedBy ?? '-'}</td>
                   <td data-label="변경 시각" className={styles.muted}>{formatDateTime(policy.updatedAt)}</td>
                   {canEdit && (
-                    <td data-label="작업" data-card-actions>
-                      <div className={styles.rowActions}>
-                        <Button small onClick={() => setEditing(policy)}>
-                          값 변경
-                        </Button>
-                        {/*
-                          바꾼 값은 다음 고시부터 적용된다. 다음 고시가 언제 올지
-                          모르는 동안 "고쳐도 아무 일도 안 일어난다"로 보이므로,
-                          바로 적용하는 버튼을 값 변경 바로 옆에 둔다.
-
-                          다만 이 조작은 금속 단위다(살 때·팔 때가 함께 다시 발행된다).
-                          줄마다 두면 한쪽만 적용하는 것으로 읽히므로, 금속의 첫 줄에만
-                          두고 구분선으로 갈라 놓는다.
-                        */}
-                        {isFirstOfMetal(list, i) && (
-                          <>
-                            <span className={styles.actionDivider} aria-hidden="true" />
-                            <Button
-                              small
-                              onClick={() => {
-                                reapply.reset();
-                                setReapplying(policy.metalType);
-                              }}
-                            >
-                              즉시 적용
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                    <td data-label="값 변경" data-card-actions>
+                      <Button small onClick={() => setEditing(policy)}>
+                        값 변경
+                      </Button>
+                    </td>
+                  )}
+                  {/*
+                    즉시 적용은 금속 단위다 — 살 때·팔 때가 함께 다시 발행된다.
+                    줄마다 두면 한쪽만 적용하는 것으로 읽히므로, 고시 방식과 똑같이
+                    두 줄에 걸친 한 칸으로 둔다. 버튼 하나가 두 줄 옆에 걸쳐 있으면
+                    "이 금속 전체"라는 것이 모양만으로 전달된다.
+                  */}
+                  {canEdit && isFirstOfMetal(list, i) && (
+                    <td
+                      data-label="즉시 적용"
+                      data-card-actions
+                      rowSpan={metalRowCount(list, policy.metalType)}
+                      className={styles.spanCell}
+                    >
+                      <Button
+                        small
+                        onClick={() => {
+                          reapply.reset();
+                          setReapplying(policy.metalType);
+                        }}
+                      >
+                        즉시 적용
+                      </Button>
                     </td>
                   )}
                 </tr>
