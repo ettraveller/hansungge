@@ -85,6 +85,11 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
             jdbcTemplate.execute("ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard");
             jdbcTemplate.execute("ALTER TABLE market_price_fetch_logs ENABLE TRIGGER trg_mpfl_guard");
         }
+        // 반올림 정책을 운영 확정값(V11)으로 못 박는다. 테스트끼리 DB 하나를 나눠 쓰므로,
+        // 앞선 테스트가 이 값을 바꿔 놓으면 여기 적힌 금액이 통째로 어긋난다 —
+        // 실제로 어긋난 적이 있다.
+        jdbcTemplate.update(
+                "UPDATE system_settings SET value='CEIL_100' WHERE key='PRICE_ROUNDING_MODE'");
         evictAllCaches();
     }
 
@@ -163,8 +168,9 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
             // 시세만 바꾼다. 상품은 손대지 않는다
             declareMarketPrice("205000");
 
+            // 205,000 × 3.75 = 768,750 → 백원 올림(CEIL_100) → 768,800
             assertThat(priceCalculationService.quote(product.getId(), null).finalUnitPrice().value())
-                    .isEqualByComparingTo("768750.00");
+                    .isEqualByComparingTo("768800.00");
 
             // 상품 행은 한 글자도 바뀌지 않았다 — 저장된 가격이 애초에 없기 때문이다
             assertThat(productRowSnapshot(product.getId())).isEqualTo(before);
@@ -252,8 +258,25 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("시세가 노후되면 값이 있어도 INQUIRY_ONLY 다")
-        void staleMarketPrice() {
+        @DisplayName("기본값(0)에서는 오래된 시세라도 상품 가격이 계속 나온다")
+        void lastQuoteKeepsPricing() {
+            declareMarketPrice("200000");
+            Product product = saveProduct(ProductTestFixtures.marketProduct(
+                    CATEGORY_ID, "골드바", MetalType.GOLD_24K,
+                    PriceType.MARKET_LINKED, "3.75", "0", "1"));
+
+            backdateCurrentPrice("3 days");
+
+            PriceQuote quote = priceCalculationService.quote(product.getId(), null);
+            assertThat(quote.status())
+                    .as("장이 닫혀 있던 시간까지 세어 상품을 못 팔게 하지 않는다")
+                    .isEqualTo(PriceStatus.AVAILABLE);
+            assertThat(quote.finalUnitPrice()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("PRICE_STALE_MINUTES 에 양수를 넣으면 오래된 시세는 다시 INQUIRY_ONLY 다")
+        void staleMarketPriceWhenThresholdSet() {
             declareMarketPrice("200000");
             Product product = saveProduct(ProductTestFixtures.marketProduct(
                     CATEGORY_ID, "골드바", MetalType.GOLD_24K,
@@ -263,17 +286,35 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
                     .isEqualTo(PriceStatus.AVAILABLE);
 
             try {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
-                evictAllCaches();
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "1", "test");
+                backdateCurrentPrice("1 hour");
 
                 PriceQuote quote = priceCalculationService.quote(product.getId(), null);
                 assertThat(quote.status()).isEqualTo(PriceStatus.INQUIRY_ONLY);
                 assertThat(quote.finalUnitPrice()).isNull();
                 assertThat(quote.unavailableReason()).contains("오래");
             } finally {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "240", "test");
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
                 evictAllCaches();
             }
+        }
+
+        /**
+         * 현재 시세의 발행 시각을 과거로 되돌린다.
+         *
+         * <p>append-only 트리거가 마감 외의 UPDATE 를 막으므로 잠깐 내렸다 올린다.
+         * <b>테스트에서만</b> 하는 일이다.
+         */
+        private void backdateCurrentPrice(String interval) {
+            jdbcTemplate.execute("ALTER TABLE market_prices_effective DISABLE TRIGGER trg_mpe_guard");
+            try {
+                jdbcTemplate.update(
+                        "UPDATE market_prices_effective SET effective_from = now() - interval '"
+                                + interval + "' WHERE effective_to IS NULL");
+            } finally {
+                jdbcTemplate.execute("ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard");
+            }
+            evictAllCaches();
         }
     }
 
@@ -427,8 +468,10 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
                 // 불변식 유지
                 assertThat(sum(quote.components())).isEqualByComparingTo(quote.subtotal().value());
             } finally {
-                systemSettingService.update("PRICE_ROUNDING_MODE",
-                        SystemSettingService.UNDECIDED, "test");
+                // 확정값(V11)으로 되돌린다. 'TBD' 로 돌려놓으면 이 테스트 뒤에 도는
+                // 다른 클래스가 반올림 정책이 미확정인 DB 를 보게 된다 — 테스트끼리
+                // DB 하나를 나눠 쓰므로 뒷정리는 원래 값까지 맞춰야 한다.
+                systemSettingService.update("PRICE_ROUNDING_MODE", "CEIL_100", "test");
                 evictAllCaches();
             }
         }

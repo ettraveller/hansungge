@@ -67,7 +67,13 @@ public class MarketPriceService {
     public static final String SETTING_STALE_MINUTES = "PRICE_STALE_MINUTES";
 
     private static final BigDecimal DEFAULT_MAX_CHANGE_PERCENT = new BigDecimal("5");
-    private static final int DEFAULT_STALE_MINUTES = 240;
+    /**
+     * 설정이 없을 때의 기본값. <b>0 = 노후 판정 안 함.</b>
+     *
+     * <p>240(4시간)이었다. 시간만 보고 값을 내리면 주말과 영업시간 뒤가 전부
+     * 시세문의가 되는데, 그때는 장이 닫혀 값이 바뀔 이유가 없다.
+     */
+    private static final int DEFAULT_STALE_MINUTES = 0;
 
     private final MarketPriceRawRepository rawRepository;
     private final MarketPricePolicyRepository policyRepository;
@@ -271,11 +277,14 @@ public class MarketPriceService {
         MarketPriceRaw sellRaw = latestRawFor(metalType, PriceSide.SELL);
         MarketPriceRaw buyRaw = latestRawFor(metalType, PriceSide.BUY);
 
+        // 노후 판정을 끈 운영에서는 여기서도 막지 않는다. 화면에서는 옛 값으로
+        // 계속 파는데 재적용만 거절하면, 같은 값을 두고 두 규칙이 다른 말을 한다.
         int staleMinutes = systemSettingService.getInt(SETTING_STALE_MINUTES, DEFAULT_STALE_MINUTES);
-        OffsetDateTime threshold = OffsetDateTime.now().minusMinutes(staleMinutes);
-
-        requireFresh(sellRaw, threshold, staleMinutes, "살 때");
-        requireFresh(buyRaw, threshold, staleMinutes, "팔 때");
+        if (staleMinutes > 0) {
+            OffsetDateTime threshold = OffsetDateTime.now().minusMinutes(staleMinutes);
+            requireFresh(sellRaw, threshold, staleMinutes, "살 때");
+            requireFresh(buyRaw, threshold, staleMinutes, "팔 때");
+        }
 
         log.info("[MARKET-PRICE] 보정값 재적용 — {} 원본 살때={} 팔때={} by={}",
                 metalType, sellRaw.getId(), buyRaw.getId(), adminLoginId);
@@ -536,8 +545,27 @@ public class MarketPriceService {
     // 내부
     // =================================================================
 
+    /**
+     * 발행된 시세를 지금 팔 수 있는 값으로 볼 것인가.
+     *
+     * <h2>시간만으로 값을 내리지 않는다</h2>
+     * {@code PRICE_STALE_MINUTES} 가 0 이하면 노후 판정을 하지 않는다 —
+     * <b>한 번 고시한 값은 새 고시가 나올 때까지 그대로 유효하다.</b>
+     *
+     * <p>시간만 보고 내리면 금요일 저녁에 고시한 값이 토요일 새벽에 시세문의로
+     * 빠진다. 그 사이 장이 닫혀 있어 값이 바뀔 이유가 없는데도 그렇다. 주말과
+     * 영업시간 뒤가 전부 그 상태가 되므로, 실제로는 "고시가 끊긴 것"이 아니라
+     * "아무 일도 없었던 것"에 시세문의를 붙이게 된다.
+     *
+     * <p>대신 감수하는 것 — 수집이 며칠 죽어 있어도 옛 값으로 계속 팔린다.
+     * 그래서 판정을 지우지 않고 설정으로 남겨 둔다. 값을 되돌리려면
+     * {@code PRICE_STALE_MINUTES} 를 분 단위 양수로 바꾸면 그때부터 다시 걸린다.
+     */
     private CurrentPriceView classify(MarketPriceEffective effective) {
         int staleMinutes = systemSettingService.getInt(SETTING_STALE_MINUTES, DEFAULT_STALE_MINUTES);
+        if (staleMinutes <= 0) {
+            return CurrentPriceView.available(effective);
+        }
         OffsetDateTime threshold = OffsetDateTime.now().minusMinutes(staleMinutes);
         return effective.getEffectiveFrom().isBefore(threshold)
                 ? CurrentPriceView.stale(effective)

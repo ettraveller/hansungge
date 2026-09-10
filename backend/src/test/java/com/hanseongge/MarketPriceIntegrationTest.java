@@ -59,7 +59,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li><b>S2</b> 시세 변경 → 신규 행 발행 + 이전 행 {@code effective_to} 마감 (이력 보존)</li>
  *   <li><b>S4</b> 수집 실패 → {@code fetch_logs} 기록, <b>effective 불변</b>, 0원 아님</li>
  *   <li><b>S5</b> 변동률 임계값 초과 → {@code pending} 등록, <b>effective 미발행</b>, 승인 시에만 적용</li>
- *   <li><b>S6</b> 유효 시세 없음 / 노후 → "시세문의" (500 아님)</li>
+ *   <li><b>S6</b> 유효 시세 없음 → "시세문의" (500 아님). 마지막 고시값은 시간이 지나도 유지된다</li>
  * </ul>
  *
  * <p>실제 PostgreSQL 위에서 돈다. append-only 트리거·부분 UNIQUE 인덱스·advisory lock 이
@@ -522,15 +522,35 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("PRICE_STALE_MINUTES 를 넘긴 시세는 값이 있어도 empty 다")
-        void stalePriceReturnsEmpty() {
+        @DisplayName("기본값(0)에서는 시간이 아무리 지나도 마지막 고시값을 그대로 쓴다")
+        void lastQuoteStaysValid() {
+            declare("200000", "최초 고시");
+
+            // 발행 시각을 사흘 전으로 되돌린다. 예전 기준(240분)이라면 한참 전에
+            // 시세문의로 빠졌을 값이다.
+            backdateCurrent("3 days");
+
+            CurrentPriceView view =
+                    marketPriceService.describeCurrent(MetalType.GOLD_24K, PriceSide.SELL);
+
+            assertThat(view.availability())
+                    .as("장이 닫혀 있던 시간까지 세어 값을 내리지 않는다")
+                    .isEqualTo(CurrentPriceView.Availability.AVAILABLE);
+            assertThat(view.isSellable()).isTrue();
+            assertThat(marketPriceService.getCurrentPrice(MetalType.GOLD_24K, PriceSide.SELL))
+                    .isPresent();
+        }
+
+        @Test
+        @DisplayName("PRICE_STALE_MINUTES 에 양수를 넣으면 다시 노후 판정이 걸린다")
+        void positiveThresholdStillWorks() {
             declare("200000", "최초 고시");
             assertThat(marketPriceService.getCurrentPrice(MetalType.GOLD_24K, PriceSide.SELL)).isPresent();
 
-            // 노후 판정 기준을 0분으로 낮춰 즉시 노후 상태를 만든다
             try {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
-                evictPriceCache();
+                // 1분으로 낮추고 발행 시각을 한 시간 전으로 되돌린다.
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "1", "test");
+                backdateCurrent("1 hour");
 
                 assertThat(marketPriceService.getCurrentPrice(MetalType.GOLD_24K, PriceSide.SELL)).isEmpty();
 
@@ -541,7 +561,7 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
                 assertThat(view.effective().getPricePerGram()).isEqualByComparingTo("200000.00");
                 assertThat(view.isSellable()).isFalse();
             } finally {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "240", "test");
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
                 evictPriceCache();
             }
         }
@@ -623,8 +643,10 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
                     .get(MarketPriceService.previousKey(MetalType.GOLD_24K, PriceSide.SELL));
 
             try {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
-                evictPriceCache();
+                // 노후 판정을 켜고(1분) 발행 시각을 되돌려 쓸 수 없는 상태를 만든다.
+                // 0 은 이제 "판정 안 함"이라 반대 뜻이 된다.
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "1", "test");
+                backdateCurrent("1 hour");
 
                 PublicPriceResponse response = PublicPriceResponse.of(
                         marketPriceService.describeCurrent(MetalType.GOLD_24K, PriceSide.SELL), previous);
@@ -633,7 +655,7 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
                 assertThat(response.displayText()).isEqualTo(PublicPriceResponse.UNAVAILABLE_TEXT);
                 assertThat(response.change()).isNull();
             } finally {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "240", "test");
+                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
                 evictPriceCache();
             }
         }
@@ -726,6 +748,25 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
     private void setPolicyFor(PriceSide side, PolicyMode mode) {
         policyService.update(MetalType.GOLD_24K, side, mode,
                 BigDecimal.ZERO, BigDecimal.ZERO, null, "테스트 설정", ADMIN);
+    }
+
+    /**
+     * 현재 시세의 발행 시각을 과거로 되돌린다.
+     *
+     * <p>append-only 트리거가 {@code effective_to} 마감 외의 UPDATE 를 막으므로
+     * 잠깐 내렸다 올린다. <b>테스트에서만</b> 하는 일이다 — 애플리케이션에는
+     * 발행 시각을 고치는 경로가 없다.
+     */
+    private void backdateCurrent(String interval) {
+        jdbcTemplate.execute("ALTER TABLE market_prices_effective DISABLE TRIGGER trg_mpe_guard");
+        try {
+            jdbcTemplate.update(
+                    "UPDATE market_prices_effective SET effective_from = now() - interval '" + interval
+                            + "' WHERE metal_type='GOLD_24K' AND price_side='SELL' AND effective_to IS NULL");
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard");
+        }
+        evictPriceCache();
     }
 
     private PriceApplyResult declare(String pricePerGram, String reason) {

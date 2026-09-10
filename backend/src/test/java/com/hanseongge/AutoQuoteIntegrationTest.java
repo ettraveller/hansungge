@@ -451,19 +451,46 @@ class AutoQuoteIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("원본이 노후 한계보다 오래되면 거절한다 — 옛 값이 방금 것처럼 되살아나면 안 된다")
-        void staleRawRejected() {
-            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+        @DisplayName("기본값에서는 원본이 며칠 묵었어도 보정값을 다시 얹을 수 있다")
+        void oldRawStillReappliable() {
+            setPolicy(PriceSide.SELL, PolicyMode.FIXED_ADJ, new BigDecimal("3000"), true);
+            setPolicy(PriceSide.BUY, PolicyMode.FIXED_ADJ, new BigDecimal("-2000"), true);
 
-            // 노후 한계(기본 240분)를 훌쩍 넘긴 원본만 있는 상태
+            // 금요일 저녁에 받아 둔 원본을 월요일 아침에 다시 계산하는 상황
             OffsetDateTime old = now().minusDays(2);
             store(PriceSide.SELL, "220800", old);
             store(PriceSide.BUY, "188000", old);
 
-            assertThatThrownBy(() -> marketPriceService.reapplyCurrentPolicy(
-                    MetalType.GOLD_24K, "재적용 시도", "admin"))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("오래되었습니다");
+            marketPriceService.reapplyCurrentPolicy(MetalType.GOLD_24K, "마진 반영", "admin");
+
+            assertThat(current(PriceSide.SELL).getPricePerGram())
+                    .as("장이 닫혀 있던 시간을 이유로 마지막 원본을 버리지 않는다")
+                    .isEqualByComparingTo("223800.00");
+        }
+
+        @Test
+        @DisplayName("노후 판정을 켜 두면 오래된 원본으로는 재적용할 수 없다")
+        void staleRawRejectedWhenThresholdSet() {
+            setPolicy(PriceSide.SELL, PolicyMode.AUTO, BigDecimal.ZERO, true);
+
+            OffsetDateTime old = now().minusDays(2);
+            store(PriceSide.SELL, "220800", old);
+            store(PriceSide.BUY, "188000", old);
+
+            try {
+                jdbcTemplate.update(
+                        "UPDATE system_settings SET value='240' WHERE key='PRICE_STALE_MINUTES'");
+                systemSettingService.evictAll();
+
+                assertThatThrownBy(() -> marketPriceService.reapplyCurrentPolicy(
+                        MetalType.GOLD_24K, "재적용 시도", "admin"))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessageContaining("오래되었습니다");
+            } finally {
+                jdbcTemplate.update(
+                        "UPDATE system_settings SET value='0' WHERE key='PRICE_STALE_MINUTES'");
+                systemSettingService.evictAll();
+            }
         }
     }
 
