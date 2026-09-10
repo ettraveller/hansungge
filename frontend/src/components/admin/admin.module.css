@@ -77,7 +77,7 @@
 }
 
 .panelNote {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--gray);
   font-weight: 400;
   margin-top: 3px;
@@ -189,7 +189,7 @@
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--dark);
   display: flex;
@@ -202,13 +202,13 @@
 }
 
 .hint {
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--gray);
   line-height: 1.55;
 }
 
 .error {
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--red);
   line-height: 1.55;
 }
@@ -363,9 +363,31 @@
   color: #fff;
 }
 
+/* 표 안의 [수정]·[값 변경] 이 40x26px 이었다. 표는 빽빽할수록 좋지만
+   누를 수 없으면 소용이 없다. 세로만 세우고 글자는 그대로 둔다. */
 .btnSm {
-  padding: 5px 9px;
+  min-height: 32px;
+  padding: 5px 11px;
   font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  /* 카드로 접히면 표 폭에 눌릴 일이 없다. 손가락 기준으로 키운다. */
+  .btnSm {
+    min-height: 40px;
+    padding: 8px 16px;
+  }
+}
+
+/* 표 안의 체크박스가 13x13px 이었다. 브라우저 기본 크기라 손가락으로는
+   거의 못 누른다. 크기를 키우고 주변 여백까지 누를 수 있게 한다. */
+.table input[type='checkbox'],
+.checkRow input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 8px;
+  accent-color: var(--gold-600);
+  cursor: pointer;
 }
 
 /* ---------- 알림 ---------- */
@@ -447,9 +469,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 30x30px 이었다. 숫자가 작아 옆 페이지가 눌리기 쉽다. */
 .pageBtn {
-  min-width: 30px;
-  height: 30px;
+  min-width: 36px;
+  height: 36px;
   border: 1px solid var(--line);
   background: #fff;
   border-radius: var(--radius-sm, 4px);
@@ -565,7 +588,7 @@
 }
 
 .statLabel {
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--gray);
 }
 
@@ -620,7 +643,7 @@
 }
 
 .summaryLabel {
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--gray);
 }
 
@@ -675,7 +698,7 @@
 .cellSub {
   display: block;
   margin-top: 3px;
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--gray);
 }
 
@@ -1175,4 +1198,19 @@
   .segment button {
     padding: 8px 18px;
   }
+}
+
+/* 안내문(.hint) 자리에 놓인 링크는 문장이 아니라 이동 수단이다 —
+   대시보드의 "상품관리 →" 같은 것. 글자 높이(18px)만큼만 누를 수 있으면
+   휴대폰에서 걸리지 않는다. 글자는 그대로 두고 누를 자리만 세운다. */
+a.hint {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--gold-deep);
+  font-weight: 600;
+}
+
+a.hint:hover {
+  text-decoration: underline;
 }

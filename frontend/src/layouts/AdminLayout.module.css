@@ -87,8 +87,9 @@
   gap: var(--space-2);
 }
 
+/* 9.5px 이었다. 자간을 넓힌 대문자라 더 안 읽힌다. */
 .badge {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: var(--tracking-label);
   padding: 3px 7px;
@@ -112,6 +113,11 @@
   border-radius: var(--radius-sm);
   font-size: var(--text-base);
   font-weight: 500;
+  /* 손가락으로 고르는 목록이다. 좁은 화면에서는 드로어로 열리므로
+     항목당 높이가 확실해야 한다. */
+  min-height: 40px;
+  display: flex;
+  align-items: center;
   color: rgba(250, 249, 245, 0.62);
   transition:
     background var(--dur-fast) var(--ease-out),
@@ -152,8 +158,10 @@
 
 /* 지금 보고 있는 곳이 운영인지 로컬인지 — 운영 데이터를 로컬로 착각하고
    지우는 사고를 막는 표시라, 눈에 띄어야 한다. */
+/* 10.5px 이었다. 운영인지 로컬인지 착각하고 데이터를 지우는 사고를 막는
+   표시다 — 그런 것이 안 읽히면 없는 것과 같다. */
 .env {
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
@@ -255,14 +263,14 @@
 }
 
 .plannedTitle {
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   color: rgba(250, 249, 245, 0.4);
   margin-bottom: 4px;
 }
 
 .plannedItem {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: rgba(250, 249, 245, 0.3);
   padding: 3px 0;
 }
@@ -282,16 +290,21 @@
 }
 
 .role {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--gray);
 }
 
+/* 69x29px 이었다. 상단바에 하나뿐인 버튼인데 손가락으로 겨우 닿는다.
+   글자 크기는 그대로 두고 세로만 세운다. */
 .logout {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
   border: 1px solid var(--line);
   background: #fff;
   border-radius: var(--radius-sm, 4px);
-  padding: 6px 12px;
-  font-size: 12.5px;
+  padding: 6px 14px;
+  font-size: var(--text-base);
   font-family: inherit;
   color: var(--dark);
   cursor: pointer;
