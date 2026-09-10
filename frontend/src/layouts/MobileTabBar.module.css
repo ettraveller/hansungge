@@ -30,7 +30,9 @@
     gap: 4px;
     /* 손가락 조작이라 44px 아래로 내려가지 않는다 */
     min-height: 44px;
-    font-size: 10.5px;
+    /* 10.5px 이었다. 확대하지 않고 읽기 어려워 12px 로 올린다.
+       다섯 칸이 320px 에서도 들어가는지 재고 넣은 값이다. */
+    font-size: 12px;
     color: var(--ink-400);
   }
 

@@ -67,8 +67,32 @@
 
 .toc li {
   break-inside: avoid;
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 14px;
+}
+
+/* 목차는 문장 속 링크가 아니라 이동 수단이다. 글자 높이(16px)만큼만 누를 수
+   있으면 휴대폰에서 옆 항목이 눌린다 — 실제로 재 보니 36x16px 이었다.
+   글자 크기는 그대로 두고 누를 자리만 세운다. */
+.toc a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border-radius: var(--radius-xs);
+}
+
+.toc a:hover {
+  background: var(--ink-100);
+  color: var(--gold-deep);
+}
+
+@media (max-width: 640px) {
+  /* 좁은 화면에서 2단은 항목당 폭이 너무 줄어 제목이 두 줄로 접힌다. */
+  .toc ol {
+    columns: 1;
+  }
 }
 
 .toc a {

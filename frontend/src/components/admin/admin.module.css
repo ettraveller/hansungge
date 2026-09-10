@@ -1106,3 +1106,73 @@
     border-left: none;
   }
 }
+
+/* ---------- 자동 / 수동 세그먼트 ----------
+   상태와 조작을 한 덩어리로 둔다. 지금 것을 칠하고 나머지를 누를 수 있게 하면,
+   "무엇이 켜져 있나"와 "무엇을 누를 수 있나"를 따로 읽지 않아도 된다. */
+.segment {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #fff;
+  /* 손가락으로 누를 자리. 표 안이라도 44px 아래로 내려가지 않게 한다. */
+  min-height: 34px;
+}
+
+.segment button {
+  padding: 6px 14px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: var(--tracking-snug);
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.segment button + button {
+  border-left: 1px solid var(--line-strong);
+}
+
+/* 지금 아닌 쪽 — 누를 수 있다. */
+.segmentOff {
+  color: var(--ink-500);
+  background: #fff;
+}
+
+.segmentOff:hover {
+  background: var(--ink-50);
+  color: var(--dark);
+}
+
+/* 지금 켜진 쪽. disabled 지만 흐리게 하지 않는다 — 여기서 disabled 는
+   "쓸 수 없음"이 아니라 "이미 그 상태"라는 뜻이다. 흐리면 반대로 읽힌다. */
+.segmentOnAuto,
+.segmentOnManual {
+  cursor: default;
+  font-weight: 700;
+}
+
+/* 자동 = 값이 스스로 움직인다. */
+.segmentOnAuto {
+  color: #fff;
+  background: var(--ok);
+}
+
+/* 수동 = 사람이 잡고 있다. 오류가 아니므로 붉은색을 쓰지 않는다. */
+.segmentOnManual {
+  color: #fff;
+  background: var(--ink-600);
+}
+
+@media (max-width: 900px) {
+  /* 카드로 접히면 표 폭에 눌릴 일이 없다. 손가락 기준으로 키운다. */
+  .segment {
+    min-height: 40px;
+  }
+
+  .segment button {
+    padding: 8px 18px;
+  }
+}

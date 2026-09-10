@@ -309,11 +309,20 @@ export function PricePolicyPanel({ canEdit }: { canEdit: boolean }) {
 }
 
 /**
- * 지금 자동인지 수동인지, 그리고 반대로 바꾸는 버튼.
+ * 지금 자동인지 수동인지, 그리고 바꾸는 자리.
  *
- * <p>토글 스위치를 쓰지 않는다. 스위치는 눌리는 순간 값이 바뀐다고 읽히는데
- * 여기서는 사유를 받는 창이 먼저 뜬다 — 눌렀는데 안 바뀐 것처럼 보인다.
- * 현재 상태를 글로 적고, 바꾸는 것은 버튼으로 둔다.
+ * <h2>왜 세그먼트인가</h2>
+ * 전에는 "자동" 배지 옆에 "수동으로" 버튼이 있었다. 라벨이 <b>현재 상태가 아니라
+ * 바뀔 방향</b>이라, 훑어보면 "지금 수동"으로 읽힌다. 상태와 조작이 서로 다른
+ * 말을 하고 있었다.
+ *
+ * <p>두 값을 나란히 놓고 지금 것을 칠한다. 무엇이 켜져 있는지와 무엇을 누를 수
+ * 있는지가 한 덩어리로 보이고, 방향을 읽어낼 필요가 없다.
+ *
+ * <h2>토글 스위치를 쓰지 않는 이유</h2>
+ * 스위치는 눌리는 순간 값이 바뀐다고 읽히는데, 여기서는 사유를 받는 창이 먼저
+ * 뜬다 — 눌렀는데 안 바뀐 것처럼 보인다. 누르면 창이 열린다는 것이 분명한
+ * 버튼 두 개로 둔다.
  */
 function QuoteModeCell({
   policy,
@@ -324,16 +333,42 @@ function QuoteModeCell({
   canEdit: boolean;
   onSwitch: (to: boolean) => void;
 }) {
+  const on = policy.autoQuote;
+
+  // 볼 권한만 있으면 지금 상태만 보인다. 누를 수 없는 버튼을 두면
+  // "왜 안 눌리지"를 확인하는 데 시간을 쓴다.
+  if (!canEdit) {
+    return (
+      <div className={styles.quoteMode}>
+        <span className={on ? styles.badgeAuto : styles.badgeManual}>
+          {on ? '자동' : '수동'}
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.quoteMode}>
-      <span className={policy.autoQuote ? styles.badgeAuto : styles.badgeManual}>
-        {policy.autoQuote ? '자동' : '수동'}
-      </span>
-      {canEdit && (
-        <Button small onClick={() => onSwitch(!policy.autoQuote)}>
-          {policy.autoQuote ? '수동으로' : '자동으로'}
-        </Button>
-      )}
+    <div className={styles.segment} role="group" aria-label="고시 방식">
+      <button
+        type="button"
+        className={on ? styles.segmentOnAuto : styles.segmentOff}
+        aria-pressed={on}
+        disabled={on}
+        title="수집값에 보정을 적용해 살 때·팔 때를 함께 자동으로 발행한다."
+        onClick={() => onSwitch(true)}
+      >
+        자동
+      </button>
+      <button
+        type="button"
+        className={!on ? styles.segmentOnManual : styles.segmentOff}
+        aria-pressed={!on}
+        disabled={!on}
+        title="자동 발행을 멈춘다. 시세는 직접 고시할 때까지 지금 값 그대로다."
+        onClick={() => onSwitch(false)}
+      >
+        수동
+      </button>
     </div>
   );
 }
