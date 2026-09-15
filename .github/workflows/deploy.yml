@@ -18,9 +18,16 @@
 name: 배포
 
 on:
-  # 기본은 손으로 누른다. main 에 푸시할 때마다 나가게 하지 않는 이유 —
-  # 작업 중인 커밋도 main 으로 올라오고, 그때마다 운영이 바뀌면 곤란하다.
-  # 자동으로 바꾸려면 아래 push 주석을 풀면 된다.
+  # main 에 푸시하면 자동으로 전체(all)를 배포한다.
+  #
+  # 대가: main 에 올린 커밋은 곧 운영이다. 작업 중인 코드는 main 에 올리지 않는다.
+  # 푸시가 연달아 오면 아래 concurrency 가 겹치지 않게 차례로 돌린다.
+  #
+  # 수동 실행도 남겨 둔다 — api 나 web 만 다시 올리거나, 실패한 배포를 재시도할 때 쓴다.
+  # 손으로 누르던 방식으로 되돌리려면 push 두 줄을 주석 처리한다.
+  push:
+    branches: [main]
+
   workflow_dispatch:
     inputs:
       target:
@@ -29,9 +36,6 @@ on:
         default: all
         type: choice
         options: [all, api, web]
-
-  # push:
-  #   branches: [main]
 
 concurrency:
   # 배포가 겹치면 current 심볼릭 링크를 서로 덮어써 어느 판이 도는지 알 수 없게 된다.
