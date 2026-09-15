@@ -88,9 +88,10 @@
   cursor: not-allowed;
 }
 
-/* 구글 버튼은 흰 바탕이라 테두리가 없으면 배경에 묻힌다 */
+/* 구글 버튼은 흰 바탕이라 테두리가 없으면 배경에 묻힌다.
+   색은 구글 로그인 브랜드 가이드의 Light 테마 값(Stroke #747775, 1px, inside)이다. */
 .socialOutlined {
-  border-color: #dadce0;
+  border-color: #747775;
 }
 
 .socialMark {

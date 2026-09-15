@@ -30,7 +30,9 @@ export const USER_STATUS_LABEL: Record<UserStatus, string> = {
 export const PROVIDER_STYLE: Record<OAuthProviderType, { bg: string; fg: string; label: string }> = {
   KAKAO: { bg: '#FEE500', fg: '#191600', label: '카카오로 시작하기' },
   NAVER: { bg: '#03A94D', fg: '#ffffff', label: '네이버 로그인' },
-  GOOGLE: { bg: '#ffffff', fg: '#1f1f1f', label: 'Google로 시작하기' },
+  // 구글 가이드의 한국어 문구는 「Google 계정으로 로그인 / 가입 / 계속」, 「Google로 로그인」뿐이다.
+  // 「Google로 시작하기」는 그 목록에 없다. 흰 바탕·#1F1F1F 글자는 가이드의 Light 테마 값이다.
+  GOOGLE: { bg: '#FFFFFF', fg: '#1F1F1F', label: 'Google 계정으로 로그인' },
 };
 
 export interface AuthProviderItem {

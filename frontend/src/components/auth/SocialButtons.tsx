@@ -18,16 +18,27 @@ import styles from './auth.module.css';
  * 정확히 16px 이 된다 — 가이드의 완성형 최소 크기다. 로고와 문구 사이 8px 은
  * {@code .socialBtn} 의 gap 이 맞춘다.
  *
- * <p>카카오·구글은 아직 글자 마크다. 앱 등록(TODO A-4)이 끝나면 같은 방식으로 교체한다 —
+ * <p><b>구글도 공식 로고를 쓴다.</b> 구글 로그인 브랜드 가이드는 "단색 G 를 쓰지 말 것",
+ * "직접 만든 아이콘을 쓰지 말 것", "G 의 크기·색을 바꾸지 말 것"을 명시한다 — 전에 쓰던
+ * 회색 글자 'G' 는 셋 다 어겼다. 공식 에셋(signin-assets.zip)의 SVG 는 그라데이션 G 를
+ * foreignObject·블러 필터로 그려서 <img> 로 불러오면 브라우저에 따라 빈 칸이 된다. 그래서
+ * 같은 묶음의 @4x PNG(Light, 텍스트 없음)에서 로고 칸 80px 을 그대로 잘라 20px 로 그린다.
+ * 20px 은 공식 SVG 의 로고 크기다. 흰 바탕째 잘랐는데, 버튼 바탕도 같은 흰색이라 경계가 없다.
+ * 출처: https://developers.google.com/identity/branding-guidelines
+ *
+ * <p>카카오는 아직 글자 마크다. 앱 등록(TODO A-4)이 끝나면 같은 방식으로 교체한다 —
  * 비슷하게 그린 로고를 쓰는 것이 글자보다 더 문제다.
  */
 function Mark({ code }: { code: OAuthProviderType }) {
   if (code === 'NAVER') {
     return <Image src="/brand/naver/naver-n-white.png" alt="" width={17} height={17} />;
   }
+  if (code === 'GOOGLE') {
+    return <Image src="/brand/google/google-g.png" alt="" width={20} height={20} />;
+  }
   return (
     <span className={styles.socialMark} aria-hidden="true">
-      {code === 'KAKAO' ? 'K' : 'G'}
+      K
     </span>
   );
 }
