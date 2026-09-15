@@ -1,6 +1,7 @@
 package com.hanseongge.domain.admin.controller;
 
 import com.hanseongge.domain.admin.dto.AdminCreateRequest;
+import com.hanseongge.domain.admin.dto.AdminOtpResetRequest;
 import com.hanseongge.domain.admin.dto.AdminPasswordResetRequest;
 import com.hanseongge.domain.admin.dto.AdminStatusChangeRequest;
 import com.hanseongge.domain.admin.dto.AdminUpdateRequest;
@@ -92,5 +93,15 @@ public class AdminUserController {
                                                            @Valid @RequestBody AdminPasswordResetRequest request,
                                                            @AuthenticationPrincipal AdminPrincipal actor) {
         return ResponseEntity.ok(adminUserService.resetPassword(id, request, actor));
+    }
+
+    @Operation(summary = "관리자 OTP 초기화",
+            description = "휴대폰 분실·교체 때 쓴다. 대상은 다음 로그인에서 인증 앱을 다시 등록한다. "
+                    + "잠긴 계정이면 잠금도 해제하고, 기존 토큰과 복구 코드는 전부 무효가 된다. 본인 계정은 할 수 없다.")
+    @PatchMapping("/{id}/otp-reset")
+    public ResponseEntity<AdminUserResponse> resetOtp(@PathVariable Long id,
+                                                      @Valid @RequestBody AdminOtpResetRequest request,
+                                                      @AuthenticationPrincipal AdminPrincipal actor) {
+        return ResponseEntity.ok(adminUserService.resetOtp(id, request, actor));
     }
 }

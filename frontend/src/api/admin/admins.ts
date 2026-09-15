@@ -26,6 +26,14 @@ export function changeAdminStatus(id: number, status: AdminStatus, reason: strin
   return adminApi.patch<AdminUser>(`/api/admin/admins/${id}/status`, { body: { status, reason } });
 }
 
+/**
+ * OTP 초기화 — 휴대폰 분실·교체. 대상은 다음 로그인에서 인증 앱을 다시 등록한다.
+ * 잠긴 계정이면 잠금도 풀리고, 기존 토큰·복구 코드는 전부 무효가 된다. 본인 계정은 안 된다.
+ */
+export function resetAdminOtp(id: number, reason: string) {
+  return adminApi.patch<AdminUser>(`/api/admin/admins/${id}/otp-reset`, { body: { reason } });
+}
+
 /** 잠긴 계정이면 잠금도 함께 풀린다. 대상의 기존 토큰은 전부 무효가 된다. */
 export function resetAdminPassword(id: number, newPassword: string, reason: string) {
   return adminApi.patch<AdminUser>(`/api/admin/admins/${id}/password`, {

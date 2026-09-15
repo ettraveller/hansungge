@@ -15,6 +15,7 @@ import {
   useAdminUsers,
   useChangeAdminStatus,
   useCreateAdmin,
+  useResetAdminOtp,
   useResetAdminPassword,
   useUpdateAdmin,
 } from '@/hooks/admin/useAdmins';
@@ -36,7 +37,7 @@ const LOGIN_ID_PATTERN = /^[a-z0-9_]{4,60}$/;
 
 const ROLE_HINT: Record<AdminRole, string> = {
   SUPER_ADMIN: '모든 기능 + 관리자 계정 관리',
-  ADMIN: '시세 고시·승인, 감사로그 조회',
+  ADMIN: '시세 고시, 감사로그 조회',
   MANAGER: '상품·카테고리·재고 관리',
   OPERATOR: '조회 전용',
 };
@@ -62,6 +63,7 @@ export function AdminUsersView() {
     null,
   );
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [otpResetTarget, setOtpResetTarget] = useState<AdminUser | null>(null);
 
   if (!allowed) {
     return (
@@ -81,8 +83,9 @@ export function AdminUsersView() {
         <div>
           <h1 className={styles.title}>관리자 계정</h1>
           <p className={styles.subtitle}>
-            연속 5회 로그인 실패하면 계정이 자동으로 잠긴다. 잠금 해제는 상태를 정상으로
-            바꾸거나 비밀번호를 초기화하면 된다.
+            비밀번호나 OTP 를 연속 5회 틀리면 계정이 자동으로 잠긴다. 잠금 해제는 상태를
+            정상으로 바꾸거나 비밀번호를 초기화하면 된다. 휴대폰을 잃어버린 관리자는 OTP 를
+            초기화한다.
           </p>
         </div>
         <div className={styles.headActions}>
@@ -113,6 +116,7 @@ export function AdminUsersView() {
                   <th>이름</th>
                   <th>권한</th>
                   <th>상태</th>
+                  <th>OTP</th>
                   <th className={styles.num}>실패</th>
                   <th>마지막 로그인</th>
                   <th>비밀번호 변경</th>
@@ -144,6 +148,11 @@ export function AdminUsersView() {
                           {ADMIN_STATUS_LABEL[user.status]}
                         </StatusBadge>
                       </td>
+                      <td data-label="OTP">
+                        <StatusBadge tone={user.otpEnabled ? 'success' : 'neutral'}>
+                          {user.otpEnabled ? '등록' : '미등록'}
+                        </StatusBadge>
+                      </td>
                       <td data-label="실패" className={styles.num}>{user.loginFailCount}</td>
                       <td data-label="마지막 로그인" className={styles.muted}>{formatDateTime(user.lastLoginAt)}</td>
                       <td data-label="비밀번호 변경" className={styles.muted}>{formatDateTime(user.passwordChangedAt)}</td>
@@ -172,6 +181,20 @@ export function AdminUsersView() {
                           )}
                           <Button small onClick={() => setResetTarget(user)}>
                             비번 초기화
+                          </Button>
+                          <Button
+                            small
+                            disabled={isSelf || !user.otpEnabled}
+                            title={
+                              isSelf
+                                ? '본인 OTP 는 초기화할 수 없습니다.'
+                                : !user.otpEnabled
+                                  ? '아직 인증 앱을 등록하지 않은 계정입니다.'
+                                  : undefined
+                            }
+                            onClick={() => setOtpResetTarget(user)}
+                          >
+                            OTP 초기화
                           </Button>
                         </div>
                       </td>
@@ -207,6 +230,13 @@ export function AdminUsersView() {
       )}
       {resetTarget && (
         <ResetDialog key={resetTarget.id} user={resetTarget} onClose={() => setResetTarget(null)} />
+      )}
+      {otpResetTarget && (
+        <OtpResetDialog
+          key={otpResetTarget.id}
+          user={otpResetTarget}
+          onClose={() => setOtpResetTarget(null)}
+        />
       )}
     </div>
   );
@@ -435,6 +465,34 @@ function StatusDialog({
       onConfirm={(reason) =>
         change.mutate({ id: user.id, status: next, reason }, { onSuccess: onClose })
       }
+      onClose={onClose}
+    />
+  );
+}
+
+function OtpResetDialog({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+  const reset = useResetAdminOtp();
+
+  return (
+    <ReasonDialog
+      open
+      danger
+      title={`OTP 초기화 · ${user.loginId}`}
+      confirmLabel="초기화"
+      placeholder="예: 휴대폰 분실 — 본인과 통화로 확인"
+      pending={reset.isPending}
+      error={reset.error instanceof ApiError ? reset.error.message : null}
+      description={
+        <>
+          휴대폰을 잃어버리거나 바꾼 관리자를 위한 조치입니다. <strong>{user.name}</strong>{' '}
+          계정의 인증 앱 등록과 복구 코드를 지우고, 열려 있던 로그인도 모두 끊습니다. 잠긴
+          계정이면 잠금도 풀립니다. 대상은 다음 로그인에서 새 휴대폰으로 다시 등록합니다.
+          <br />
+          <strong>본인 확인을 한 뒤에만 진행하세요</strong> — 비밀번호를 훔친 사람이 요청했다면
+          2단계 인증이 무력해집니다.
+        </>
+      }
+      onConfirm={(reason) => reset.mutate({ id: user.id, reason }, { onSuccess: onClose })}
       onClose={onClose}
     />
   );

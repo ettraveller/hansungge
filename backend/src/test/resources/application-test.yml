@@ -39,6 +39,10 @@ app:
   admin-init:
     id: ${ADMIN_INIT_ID:}
     password: ${ADMIN_INIT_PASSWORD:}
+  # 관리자 로그인이 필요한 테스트 대부분은 OTP 와 무관하다. OTP 흐름은
+  # AdminOtpIntegrationTest 가 이 값을 켜고 따로 검증한다.
+  admin-security:
+    otp-required: false
 
 logging:
   level:

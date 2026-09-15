@@ -66,16 +66,53 @@ export interface AdminUser {
   lastLoginAt?: string | null;
   lockedAt?: string | null;
   passwordChangedAt?: string | null;
+  otpEnabled: boolean;
+  otpEnabledAt?: string | null;
   createdAt: string;
 }
 
+/**
+ * 로그인 진행 단계.
+ * AUTHENTICATED = 토큰이 들어 있다 · OTP_REQUIRED = 6자리 입력 · OTP_SETUP_REQUIRED = 인증 앱 등록
+ */
+export type AdminLoginStep = 'AUTHENTICATED' | 'OTP_REQUIRED' | 'OTP_SETUP_REQUIRED';
+
 export interface AdminLoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
+  step: AdminLoginStep;
+  /** 비밀번호만 통과한 단계의 표. 관리자 API 에는 쓸 수 없다 */
+  stepToken?: string | null;
+  accessToken?: string | null;
+  refreshToken?: string | null;
+  tokenType?: string | null;
   /** Access 토큰 만료까지 남은 초 */
-  expiresIn: number;
-  admin: AdminUser;
+  expiresIn?: number | null;
+  admin?: AdminUser | null;
+  /** 복구 코드로 들어왔을 때만 온다 */
+  recoveryCodesRemaining?: number | null;
+}
+
+/** 인증 앱 등록 정보 */
+export interface AdminOtpSetup {
+  /** 직접 입력용 키 (4자리씩 띄움) */
+  secret: string;
+  /** QR 로 그릴 주소 */
+  otpauthUri: string;
+  issuer: string;
+  accountName: string;
+}
+
+export interface AdminOtpActivateResult {
+  /** 1회용 복구 코드. 이 응답에서만 볼 수 있다 */
+  recoveryCodes: string[];
+  /** 첫 로그인 도중의 등록이면 토큰 */
+  login?: AdminLoginResponse | null;
+}
+
+export interface AdminOtpStatus {
+  required: boolean;
+  enabled: boolean;
+  enabledAt?: string | null;
+  recoveryCodesRemaining: number;
 }
 
 // =====================================================================

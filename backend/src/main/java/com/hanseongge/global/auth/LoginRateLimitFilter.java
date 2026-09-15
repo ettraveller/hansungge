@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Set;
 
 /**
  * 관리자 로그인 Rate Limit (Bucket4j, 설계서 §10 보안 체크리스트).
@@ -33,7 +34,14 @@ import java.time.Duration;
 @Slf4j
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
-    private static final String LOGIN_PATH = "/api/admin/auth/login";
+    /**
+     * 제한하는 경로. 6자리는 경우의 수가 백만뿐이라 OTP 확인·등록도 막아야 한다.
+     * 버킷은 경로마다 따로 둔다 — 로그인 몇 번에 OTP 입력 기회가 줄어들면 정상 사용자가 막힌다.
+     */
+    private static final Set<String> GUARDED_PATHS = Set.of(
+            "/api/admin/auth/login",
+            "/api/admin/auth/otp/verify",
+            "/api/admin/auth/otp/activate");
 
     private final int permitsPerMinute;
     private final Cache<String, Bucket> buckets;
@@ -51,7 +59,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !(HttpMethod.POST.matches(request.getMethod())
-                && LOGIN_PATH.equals(request.getRequestURI()));
+                && GUARDED_PATHS.contains(request.getRequestURI()));
     }
 
     @Override
@@ -62,7 +70,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         String ip = RequestMetadata.ip(request);
         String key = ip == null ? "unknown" : ip;
 
-        Bucket bucket = buckets.get(key, k -> newBucket());
+        Bucket bucket = buckets.get(request.getRequestURI() + "|" + key, k -> newBucket());
         if (bucket != null && bucket.tryConsume(1)) {
             chain.doFilter(request, response);
             return;
@@ -70,7 +78,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
         // 남은 대기 시간을 알려준다. 정상 사용자가 언제 다시 시도할지 알 수 있어야 한다.
         response.setHeader("Retry-After", "60");
-        log.warn("[RATE-LIMIT] 관리자 로그인 시도 제한 초과. ip={} limit={}/분", key, permitsPerMinute);
+        log.warn("[RATE-LIMIT] 관리자 로그인 시도 제한 초과. path={} ip={} limit={}/분",
+                request.getRequestURI(), key, permitsPerMinute);
         SecurityResponseWriter.write(response, ErrorCode.TOO_MANY_REQUESTS);
     }
 

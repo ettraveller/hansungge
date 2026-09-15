@@ -26,6 +26,10 @@ import java.util.Optional;
  * 계정이 잠기지 않는다.</b> 그래서 여기서는 결과만 돌려주고, 예외 변환은 호출자
  * ({@link AdminAuthService})가 트랜잭션 밖에서 한다.
  *
+ * <h2>OTP 가 뒤따르면 여기서 로그인이 끝나지 않는다</h2>
+ * 비밀번호가 맞아도 OTP 를 통과하기 전까지는 "로그인 성공"(ADMIN_LOGIN)을 남기지 않고
+ * 마지막 로그인 시각도 바꾸지 않는다. 비밀번호 실패 횟수만 되돌린다 — OTP 실패는 따로 센다.
+ *
  * <p>감사로그는 {@link AuditLogService#record} 가 별도 트랜잭션으로 쓰므로 이 규칙과
  * 무관하게 항상 남는다. 그래도 실패 카운터까지 안전하려면 위 구조가 필요하다.
  */
@@ -55,8 +59,12 @@ public class AdminLoginAttemptService {
     private final AuditLogService auditLogService;
     private final AppProperties appProperties;
 
+    /**
+     * @param otpRequired 모든 관리자에게 OTP 를 요구하는가. 꺼져 있어도 OTP 를 등록한 계정은
+     *                    2단계를 거친다
+     */
     @Transactional
-    public Outcome attempt(String loginId, String rawPassword, RequestInfo request) {
+    public Outcome attempt(String loginId, String rawPassword, RequestInfo request, boolean otpRequired) {
         Optional<AdminUser> found = adminUserRepository.findByLoginId(loginId);
 
         if (found.isEmpty()) {
@@ -97,6 +105,15 @@ public class AdminLoginAttemptService {
         }
 
         int previousFailCount = admin.getLoginFailCount();
+
+        if (otpRequired || admin.isOtpEnabled()) {
+            admin.recordPasswordVerified();
+            auditLogService.record(base(AuditActions.ADMIN_LOGIN_PASSWORD_VERIFIED, admin, request)
+                    .after(Map.of("otpEnabled", admin.isOtpEnabled(), "clearedFailCount", previousFailCount))
+                    .build());
+            return new Outcome(Result.SUCCESS, admin);
+        }
+
         admin.recordLogin();
         auditLogService.record(base(AuditActions.ADMIN_LOGIN, admin, request)
                 .after(Map.of("role", admin.getRole().name(), "clearedFailCount", previousFailCount))

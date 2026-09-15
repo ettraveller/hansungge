@@ -23,6 +23,9 @@ const ACTION_GROUPS: { label: string; actions: [string, string][] }[] = [
     actions: [
       ['ADMIN_LOGIN', '로그인 성공'],
       ['ADMIN_LOGIN_FAILED', '로그인 실패'],
+      ['ADMIN_LOGIN_PASSWORD_VERIFIED', '비밀번호 확인 (OTP 대기)'],
+      ['ADMIN_OTP_FAILED', 'OTP 실패'],
+      ['ADMIN_OTP_RECOVERY_USED', '복구 코드로 로그인'],
       ['ADMIN_LOGIN_BLOCKED', '로그인 차단'],
       ['ADMIN_ACCOUNT_AUTO_LOCKED', '계정 자동 잠김'],
       ['ADMIN_LOGOUT', '로그아웃'],
@@ -37,6 +40,9 @@ const ACTION_GROUPS: { label: string; actions: [string, string][] }[] = [
       ['ADMIN_STATUS_CHANGE', '상태 변경'],
       ['ADMIN_PASSWORD_CHANGE', '비밀번호 변경'],
       ['ADMIN_PASSWORD_RESET', '비밀번호 초기화'],
+      ['ADMIN_OTP_ENABLED', 'OTP 등록'],
+      ['ADMIN_OTP_RECOVERY_REGENERATED', '복구 코드 재발급'],
+      ['ADMIN_OTP_RESET', 'OTP 초기화'],
     ],
   },
   {

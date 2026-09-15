@@ -1,6 +1,7 @@
 package com.hanseongge.domain.admin.service;
 
 import com.hanseongge.domain.admin.dto.AdminCreateRequest;
+import com.hanseongge.domain.admin.dto.AdminOtpResetRequest;
 import com.hanseongge.domain.admin.dto.AdminPasswordChangeRequest;
 import com.hanseongge.domain.admin.dto.AdminPasswordResetRequest;
 import com.hanseongge.domain.admin.dto.AdminStatusChangeRequest;
@@ -48,6 +49,7 @@ public class AdminUserService {
 
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AdminOtpService otpService;
 
     // ---------- 조회 ----------
 
@@ -149,6 +151,39 @@ public class AdminUserService {
         return AdminUserResponse.from(admin);
     }
 
+    // ---------- OTP ----------
+
+    /**
+     * 타인 OTP 초기화 (SUPER_ADMIN 전용) — 휴대폰 분실·교체.
+     *
+     * <p>본인 것은 못 한다. 자기 OTP 를 스스로 풀 수 있으면, 비밀번호와 잠시 열어 둔 세션만
+     * 가진 사람이 2단계 인증을 벗겨낼 수 있다. 잠긴 계정이면 잠금도 함께 푼다 — 휴대폰을 잃은
+     * 관리자는 대개 몇 번 틀려 이미 잠겨 있다(비밀번호 초기화와 같은 이유).
+     */
+    @Transactional
+    @AuditLog(action = AuditActions.ADMIN_OTP_RESET,
+              targetType = AuditActions.TARGET_ADMIN_USER,
+              targetId = "#id",
+              after = "{'reason': #request.reason()}")
+    public AdminUserResponse resetOtp(Long id, AdminOtpResetRequest request, AdminPrincipal actor) {
+        AdminUser admin = find(id);
+        AuditContext.before(snapshot(admin));
+
+        denySelf(admin, actor, "본인 OTP 초기화");
+        if (!admin.isOtpEnabled() && admin.getOtpSecret() == null) {
+            throw new BusinessException(ErrorCode.ADMIN_OTP_NOT_ENABLED,
+                    "OTP 미등록 계정 초기화 시도: " + admin.getLoginId());
+        }
+
+        otpService.reset(admin);
+        if (admin.isLocked()) {
+            admin.changeStatus(AdminStatus.ACTIVE);
+        }
+
+        log.info("[ADMIN] OTP 초기화 loginId={} by={}", admin.getLoginId(), actor.loginId());
+        return AdminUserResponse.from(admin);
+    }
+
     /** 본인 비밀번호 변경. 성공하면 자신의 기존 토큰도 전부 무효가 된다. */
     @Transactional
     @AuditLog(action = AuditActions.ADMIN_PASSWORD_CHANGE,
@@ -213,6 +248,7 @@ public class AdminUserService {
         values.put("role", admin.getRole().name());
         values.put("status", admin.getStatus().name());
         values.put("loginFailCount", admin.getLoginFailCount());
+        values.put("otpEnabled", admin.isOtpEnabled());
         return values;
     }
 }

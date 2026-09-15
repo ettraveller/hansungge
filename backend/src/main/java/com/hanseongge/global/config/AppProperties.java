@@ -167,7 +167,21 @@ public record AppProperties(
     public record AdminSecurity(
             /** 연속 실패 임계치. 도달하면 status=LOCKED (설계서 §10). */
             @DefaultValue("5") int maxLoginFailures,
-            /** 로그인 엔드포인트 IP당 분당 허용 횟수. */
-            @DefaultValue("10") int loginRatePerMinute
+            /** 로그인 엔드포인트 IP당 분당 허용 횟수. OTP 확인·등록에도 따로 같은 한도를 건다. */
+            @DefaultValue("10") int loginRatePerMinute,
+            /**
+             * 모든 관리자에게 OTP 를 요구하는가. 운영은 반드시 true 다.
+             * false 여도 OTP 를 등록한 관리자에게는 묻는다.
+             */
+            @DefaultValue("true") boolean otpRequired,
+            /** OTP 연속 실패 임계치. 비밀번호 실패와 따로 센다. */
+            @DefaultValue("5") int maxOtpFailures,
+            /**
+             * OTP 키 암호화 원본 키 (base64, 32바이트 이상). 비우면 JWT 서명키에서 파생한다 —
+             * 그 경우 JWT_SECRET 을 바꾸면 등록된 OTP 를 전부 초기화해야 한다.
+             */
+            @DefaultValue("") String otpEncryptionKey,
+            /** 인증 앱에 표시될 이름. */
+            @DefaultValue("한성금거래소 관리자") String otpIssuer
     ) {}
 }

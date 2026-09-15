@@ -20,6 +20,13 @@ public final class AuditActions {
     public static final String ADMIN_ACCOUNT_AUTO_LOCKED = "ADMIN_ACCOUNT_AUTO_LOCKED";
     public static final String ADMIN_LOGOUT = "ADMIN_LOGOUT";
     public static final String ADMIN_TOKEN_REFRESH = "ADMIN_TOKEN_REFRESH";
+    /** 비밀번호는 맞았고 OTP 단계로 넘어감. 로그인 완료(ADMIN_LOGIN)는 OTP 통과 후에 남는다. */
+    public static final String ADMIN_LOGIN_PASSWORD_VERIFIED = "ADMIN_LOGIN_PASSWORD_VERIFIED";
+    public static final String ADMIN_OTP_FAILED = "ADMIN_OTP_FAILED";
+    public static final String ADMIN_OTP_ENABLED = "ADMIN_OTP_ENABLED";
+    /** 인증 앱 대신 복구 코드로 들어옴 — 휴대폰 분실 신호일 수 있다. */
+    public static final String ADMIN_OTP_RECOVERY_USED = "ADMIN_OTP_RECOVERY_USED";
+    public static final String ADMIN_OTP_RECOVERY_REGENERATED = "ADMIN_OTP_RECOVERY_REGENERATED";
 
     // --- 관리자 계정 관리 ---
     public static final String ADMIN_CREATE = "ADMIN_CREATE";
@@ -27,6 +34,7 @@ public final class AuditActions {
     public static final String ADMIN_STATUS_CHANGE = "ADMIN_STATUS_CHANGE";
     public static final String ADMIN_PASSWORD_CHANGE = "ADMIN_PASSWORD_CHANGE";
     public static final String ADMIN_PASSWORD_RESET = "ADMIN_PASSWORD_RESET";
+    public static final String ADMIN_OTP_RESET = "ADMIN_OTP_RESET";
 
     // --- 시세 (STEP 6) ---
     /** 최종 시세 발행 */

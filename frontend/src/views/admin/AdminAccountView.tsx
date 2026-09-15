@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
 import { Field, PasswordInput } from '@/components/admin/Field';
+import { MyOtpPanel } from '@/components/admin/otp/MyOtpPanel';
 import { Panel } from '@/components/admin/Panel';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAdminSession, useChangeMyPassword } from '@/hooks/admin/useAdminSession';
@@ -46,7 +47,7 @@ export function AdminAccountView() {
       <header className={styles.head}>
         <div>
           <h1 className={styles.title}>내 계정</h1>
-          <p className={styles.subtitle}>계정 정보 확인과 비밀번호 변경.</p>
+          <p className={styles.subtitle}>계정 정보 확인, 2단계 인증, 비밀번호 변경.</p>
         </div>
       </header>
 
@@ -88,6 +89,8 @@ export function AdminAccountView() {
           </div>
         )}
       </Panel>
+
+      <MyOtpPanel />
 
       <Panel title="비밀번호 변경" note="변경하면 내 기존 토큰이 전부 무효가 된다.">
         <form

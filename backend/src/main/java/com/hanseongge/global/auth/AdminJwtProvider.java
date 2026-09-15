@@ -42,6 +42,9 @@ public class AdminJwtProvider {
     private static final String CLAIM_TYPE = "typ";
     private static final String CLAIM_TOKEN_VERSION = "tv";
 
+    private static final Duration OTP_CHALLENGE_TTL = Duration.ofMinutes(5);
+    private static final Duration OTP_SETUP_TTL = Duration.ofMinutes(15);
+
     private final SecretKey key;
     private final String issuer;
     private final Duration accessTtl;
@@ -64,6 +67,16 @@ public class AdminJwtProvider {
 
     public String issueRefreshToken(AdminUser admin) {
         return issue(admin, AdminTokenType.REFRESH, refreshTtl);
+    }
+
+    /** 로그인 2단계 — 6자리 입력용. 짧게 둔다: 할 일은 휴대폰을 꺼내 숫자를 보는 것뿐이다. */
+    public String issueOtpChallengeToken(AdminUser admin) {
+        return issue(admin, AdminTokenType.OTP_CHALLENGE, OTP_CHALLENGE_TTL);
+    }
+
+    /** 로그인 2단계 — 첫 등록용. 인증 앱을 설치하고 QR 을 찍을 시간을 준다. */
+    public String issueOtpSetupToken(AdminUser admin) {
+        return issue(admin, AdminTokenType.OTP_SETUP, OTP_SETUP_TTL);
     }
 
     public long accessTtlSeconds() {

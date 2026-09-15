@@ -16,6 +16,7 @@ export const adminKeys = {
   all: ['admin'] as const,
 
   session: () => [...adminKeys.all, 'session'] as const,
+  otpStatus: () => [...adminKeys.all, 'session', 'otp'] as const,
 
   prices: () => [...adminKeys.all, 'prices'] as const,
   currentPrices: () => [...adminKeys.prices(), 'current'] as const,

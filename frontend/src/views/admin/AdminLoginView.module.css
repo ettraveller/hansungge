@@ -65,6 +65,23 @@
   color: #1a1400;
 }
 
+/* 단계마다 바뀌는 본문. 카드의 간격을 그대로 이어받는다 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stepFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--text-sm);
+  color: var(--gray);
+}
+
 .lead {
   font-size: var(--text-base);
   color: var(--gray);

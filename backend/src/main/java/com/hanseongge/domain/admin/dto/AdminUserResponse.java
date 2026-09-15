@@ -43,6 +43,12 @@ public record AdminUserResponse(
         @Schema(description = "마지막 비밀번호 변경 시각")
         OffsetDateTime passwordChangedAt,
 
+        @Schema(description = "OTP 등록 여부")
+        boolean otpEnabled,
+
+        @Schema(description = "OTP 등록 시각")
+        OffsetDateTime otpEnabledAt,
+
         @Schema(description = "생성 시각")
         OffsetDateTime createdAt
 ) {
@@ -58,6 +64,8 @@ public record AdminUserResponse(
                 admin.getLastLoginAt(),
                 admin.getLockedAt(),
                 admin.getPasswordChangedAt(),
+                admin.isOtpEnabled(),
+                admin.getOtpEnabledAt(),
                 admin.getCreatedAt());
     }
 }

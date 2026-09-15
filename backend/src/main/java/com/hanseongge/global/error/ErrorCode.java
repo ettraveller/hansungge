@@ -72,6 +72,17 @@ public enum ErrorCode {
     /** 마지막 SUPER_ADMIN 을 잠그면 아무도 관리자 계정을 만들 수 없게 된다. */
     ADMIN_LAST_SUPER_ADMIN(HttpStatus.CONFLICT, "마지막 최고관리자 계정은 변경할 수 없습니다."),
 
+    // --- 관리자 OTP ---
+    /**
+     * 401 이 아니라 400 이다. 관리자 화면은 401 을 "토큰 만료"로 보고 재발급 후 재시도하다
+     * 로그아웃시키는데, 로그인한 채 복구 코드를 재발급하다 숫자 하나 틀렸다고 쫓겨나면 안 된다.
+     */
+    ADMIN_OTP_INVALID(HttpStatus.BAD_REQUEST,"인증 코드가 올바르지 않습니다. 인증 앱의 6자리 숫자를 다시 확인해 주세요."),
+    /** 2단계 표가 만료·위조·무효화됨. 화면은 처음부터 다시 로그인하게 한다. */
+    ADMIN_OTP_STEP_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인 진행 시간이 지났습니다. 처음부터 다시 로그인해 주세요."),
+    ADMIN_OTP_ALREADY_ENABLED(HttpStatus.CONFLICT, "이미 OTP 를 등록한 계정입니다."),
+    ADMIN_OTP_NOT_ENABLED(HttpStatus.CONFLICT, "OTP 를 등록하지 않은 계정입니다."),
+
     // --- 회원 인증 (STEP 9) ---
     /** 클라이언트 ID/시크릿이 주입되지 않아 그 소셜 로그인을 쓸 수 없다 (TODO A-4 검수 대기). */
     OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "현재 이 방식의 로그인을 사용할 수 없습니다."),

@@ -70,6 +70,21 @@ public class AdminUser {
     @Column(name = "token_version", nullable = false)
     private int tokenVersion;
 
+    /** OTP 키 암호문 (V20). 등록 중에도 값이 있다 — 켜졌는지는 {@link #otpEnabledAt} 이 말한다. */
+    @Column(name = "otp_secret", length = 200)
+    private String otpSecret;
+
+    @Column(name = "otp_enabled_at")
+    private OffsetDateTime otpEnabledAt;
+
+    /** 마지막으로 통과한 30초 구간. 같은 6자리 재사용을 막는다. */
+    @Column(name = "otp_last_step")
+    private Long otpLastStep;
+
+    /** OTP 연속 실패. 비밀번호 실패와 따로 센다. */
+    @Column(name = "otp_fail_count", nullable = false)
+    private int otpFailCount;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -99,9 +114,19 @@ public class AdminUser {
 
     // ---------- 로그인 ----------
 
-    /** 로그인 성공. 실패 카운터를 리셋한다. */
+    /** 로그인 성공(OTP 까지 통과). 실패 카운터를 모두 리셋한다. */
     public void recordLogin() {
         this.lastLoginAt = OffsetDateTime.now();
+        this.loginFailCount = 0;
+        this.otpFailCount = 0;
+        touch();
+    }
+
+    /**
+     * 비밀번호만 통과. 비밀번호 실패 횟수만 되돌린다 — OTP 실패 횟수를 여기서 되돌리면
+     * 비밀번호를 아는 사람이 로그인을 반복하며 6자리를 무한히 찍어 볼 수 있다.
+     */
+    public void recordPasswordVerified() {
         this.loginFailCount = 0;
         touch();
     }
@@ -125,6 +150,76 @@ public class AdminUser {
         return false;
     }
 
+    // ---------- OTP ----------
+
+    public boolean isOtpEnabled() {
+        return this.otpEnabledAt != null;
+    }
+
+    /** 등록 시작 — 새 키를 둔다. 아직 켜지지 않았다. */
+    public void prepareOtp(String encryptedSecret) {
+        this.otpSecret = encryptedSecret;
+        this.otpEnabledAt = null;
+        this.otpLastStep = null;
+        touch();
+    }
+
+    /**
+     * 통과한 30초 구간을 기록한다.
+     *
+     * @return 이미 쓴 구간(또는 그 이전)이면 false — 같은 6자리를 다시 넣은 것이다
+     */
+    public boolean acceptOtpStep(long step) {
+        if (this.otpLastStep != null && step <= this.otpLastStep) {
+            return false;
+        }
+        this.otpLastStep = step;
+        touch();
+        return true;
+    }
+
+    /** 등록 완료. 키는 {@link #prepareOtp} 에서 이미 들어와 있어야 한다(DB 제약도 같다). */
+    public void enableOtp() {
+        this.otpEnabledAt = OffsetDateTime.now();
+        this.otpFailCount = 0;
+        touch();
+    }
+
+    public void recordRecoveryCodeUse() {
+        touch();
+    }
+
+    /**
+     * OTP 실패 1회. 임계치에서 스스로 잠긴다.
+     *
+     * @return 이번 실패로 잠겼으면 true
+     */
+    public boolean recordOtpFailure(int maxFailures) {
+        this.otpFailCount++;
+        touch();
+
+        if (this.otpFailCount >= maxFailures && this.status == AdminStatus.ACTIVE) {
+            this.status = AdminStatus.LOCKED;
+            this.lockedAt = OffsetDateTime.now();
+            this.tokenVersion++;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * OTP 초기화 — 다음 로그인에서 다시 등록한다. 기존 토큰도 끊는다: 잃어버린 휴대폰에
+     * 열려 있던 관리자 화면까지 막아야 한다.
+     */
+    public void resetOtp() {
+        this.otpSecret = null;
+        this.otpEnabledAt = null;
+        this.otpLastStep = null;
+        this.otpFailCount = 0;
+        this.tokenVersion++;
+        touch();
+    }
+
     // ---------- 계정 관리 ----------
 
     /** 비밀번호 교체. 기존에 발급된 모든 토큰을 무효화한다. */
@@ -143,6 +238,7 @@ public class AdminUser {
         this.status = newStatus;
         if (newStatus == AdminStatus.ACTIVE) {
             this.loginFailCount = 0;
+            this.otpFailCount = 0;
             this.lockedAt = null;
         } else {
             if (newStatus == AdminStatus.LOCKED) {

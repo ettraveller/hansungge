@@ -125,6 +125,11 @@ app:
   admin-security:
     max-login-failures: ${ADMIN_MAX_LOGIN_FAILURES:5}
     login-rate-per-minute: ${ADMIN_LOGIN_RATE_PER_MINUTE:10}
+    # 관리자 2단계 인증. 휴대폰으로도 관리 화면을 쓰므로 IP 제한 대신 이것으로 막는다.
+    otp-required: ${ADMIN_OTP_REQUIRED:true}
+    max-otp-failures: ${ADMIN_MAX_OTP_FAILURES:5}
+    # 비우면 JWT 서명키에서 파생한다 (AdminOtpCipher).
+    otp-encryption-key: ${ADMIN_OTP_ENCRYPTION_KEY:}
 
 logging:
   level:

@@ -45,6 +45,12 @@ export function useChangeAdminStatus() {
   );
 }
 
+export function useResetAdminOtp() {
+  return useAdminUserMutation(({ id, reason }: { id: number; reason: string }) =>
+    adminsApi.resetAdminOtp(id, reason),
+  );
+}
+
 export function useResetAdminPassword() {
   return useAdminUserMutation(
     ({ id, newPassword, reason }: { id: number; newPassword: string; reason: string }) =>

@@ -152,6 +152,13 @@ DB_POOL_SIZE=20
 #     생성: openssl rand -base64 48
 JWT_SECRET=
 
+# --- 관리자 OTP (2단계 인증) ---
+#     관리자는 첫 로그인에서 휴대폰 인증 앱(Google Authenticator 등)을 등록해야 들어온다.
+#     암호화 키를 비우면 JWT_SECRET 에서 파생한다 — 그때는 JWT_SECRET 을 바꾸면 OTP 를 전부 초기화해야 한다.
+#     생성: openssl rand -base64 32
+ADMIN_OTP_REQUIRED=true
+ADMIN_OTP_ENCRYPTION_KEY=
+
 # --- 최초 관리자 (admin_users 가 비어 있을 때만 1회 생성) ---
 #     첫 로그인 후 비밀번호를 바꾸고 이 두 줄을 지운 뒤 재기동할 것.
 ADMIN_INIT_ID=

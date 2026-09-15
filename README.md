@@ -186,7 +186,14 @@ API 문서는 **기본이 차단**이고 `local`/`dev` 에서만 열립니다. `
 ### 관리자 인증 (STEP 5)
 
 ```
-POST   /api/admin/auth/login        아이디+비밀번호 → Access(30분) / Refresh(8시간)
+POST   /api/admin/auth/login        아이디+비밀번호 → step 으로 다음 단계를 알려준다
+                                    OTP_REQUIRED       → /otp/verify
+                                    OTP_SETUP_REQUIRED → /otp/setup → /otp/activate
+POST   /api/admin/auth/otp/verify   인증 앱 6자리 또는 복구 코드 → Access(30분) / Refresh(8시간)
+POST   /api/admin/auth/otp/setup    인증 앱 등록 시작 (QR 주소·키)
+POST   /api/admin/auth/otp/activate 등록 확인 6자리 → 복구 코드 10개 (+첫 로그인이면 토큰)
+GET    /api/admin/auth/otp          내 OTP 상태
+POST   /api/admin/auth/otp/recovery-codes  복구 코드 재발급 (지금 6자리 필요)
 POST   /api/admin/auth/refresh      Refresh → Access 재발급
 POST   /api/admin/auth/logout       토큰 세대 증가 = 발급된 토큰 즉시 무효화
 GET    /api/admin/auth/me           내 정보
@@ -197,6 +204,7 @@ POST   /api/admin/admins
 PUT    /api/admin/admins/{id}
 PATCH  /api/admin/admins/{id}/status      잠금 해제·정지 (사유 필수)
 PATCH  /api/admin/admins/{id}/password    비밀번호 초기화 (사유 필수)
+PATCH  /api/admin/admins/{id}/otp-reset   OTP 초기화 — 휴대폰 분실 (사유 필수, 본인 불가)
 
 GET    /api/admin/audit-logs        감사로그 검색 (ADMIN 이상)
 ```

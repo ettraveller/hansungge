@@ -65,9 +65,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 로그인·재발급은 토큰이 없는 상태에서 호출된다.
                         // 재발급의 자격 증명은 Refresh 토큰 자체이므로 서비스에서 검증한다.
+                        // OTP 확인·등록은 비밀번호만 통과한 상태(Access 토큰 없음)에서도 불린다.
+                        // 자격 증명은 본문의 2단계 표이고 서비스가 검증한다. 등록은 로그인한
+                        // 관리자도 부르므로 헤더가 있으면 필터가 그대로 인증한다.
                         .requestMatchers(HttpMethod.POST,
                                 "/api/admin/auth/login",
-                                "/api/admin/auth/refresh").permitAll()
+                                "/api/admin/auth/refresh",
+                                "/api/admin/auth/otp/verify",
+                                "/api/admin/auth/otp/setup",
+                                "/api/admin/auth/otp/activate").permitAll()
                         .anyRequest().authenticated())
                 // Rate Limit 을 인증보다 앞에 둔다. 인증을 먼저 시도하면 제한을 걸어야 할
                 // 요청까지 BCrypt 검증 비용을 치르게 된다.

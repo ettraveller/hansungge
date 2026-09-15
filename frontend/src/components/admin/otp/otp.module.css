@@ -1,0 +1,147 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 16px 미만이면 iOS 가 입력칸을 누를 때 화면을 확대한다 */
+.codeInput {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.32em;
+  text-align: center;
+}
+
+.codeInputRecovery {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* 전역 초기화가 목록 번호를 지운다. 순서가 중요한 안내라 되살린다 */
+.steps {
+  margin: 0;
+  padding-left: 1.25em;
+  list-style: decimal;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--dark);
+}
+
+.qrBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.qr {
+  width: 184px;
+  height: 184px;
+  image-rendering: pixelated;
+}
+
+.qrPlaceholder {
+  width: 184px;
+  height: 184px;
+  border-radius: var(--radius-xs);
+  background: var(--line);
+}
+
+.caption {
+  font-size: var(--text-sm);
+  color: var(--gray);
+  line-height: 1.55;
+  text-align: center;
+}
+
+.secretRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.secret {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: var(--radius-xs);
+  background: #f6f5f1;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  /* 4자리 묶음 사이의 공백에서 줄을 바꾼다. 묶음 가운데서 끊기면 옮겨 적다 틀린다 */
+  overflow-wrap: anywhere;
+  color: var(--dark);
+}
+
+.codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+  padding: 14px;
+  list-style: none;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: #fbfaf7;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--dark);
+}
+
+.codes li {
+  text-align: center;
+}
+
+.codeUsed {
+  color: var(--gray);
+  text-decoration: line-through;
+}
+
+/* 손가락으로 누를 수 있게 높이를 준다 */
+.linkButton {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--gold-700, #7a5f00);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions > * {
+  flex: 1 1 auto;
+}
+
+.heading {
+  font-size: var(--text-lg, 17px);
+  font-weight: 700;
+  color: var(--dark);
+  letter-spacing: var(--tracking-tight);
+}
+
+.lead {
+  font-size: var(--text-base);
+  color: var(--gray);
+  line-height: 1.6;
+}
