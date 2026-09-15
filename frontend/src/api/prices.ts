@@ -32,6 +32,14 @@ export const priceApi = {
       cache: 'no-store',
     }),
 
+  /**
+   * 시세 버전. 새로 고시되면 달라지는 숫자 하나다.
+   *
+   * 열어 둔 화면이 "시세가 바뀌었나"만 묻는 데 쓴다. 값의 뜻을 해석하지 말고 지난번과
+   * 같은지만 비교한다.
+   */
+  version: () => api.get<{ version: number }>('/api/v1/prices/version', { cache: 'no-store' }),
+
   /** 상품 가격. optionId 를 주지 않으면 상품 대표 산출이다. */
   forProduct: (productId: number, optionId?: number) =>
     api.get<ProductPrice>(`/api/v1/products/${productId}/price`, {

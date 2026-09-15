@@ -353,6 +353,23 @@ public class MarketPriceService {
         return current(metalType, priceSide);
     }
 
+    /**
+     * 시세 버전 — 가장 최근에 발행된 시세 행의 번호. 고시된 적 없으면 0.
+     *
+     * <p>열어 둔 쇼핑몰 화면이 "시세가 바뀌었나"만 묻는 데 쓴다. 시세표 전체를 주기적으로
+     * 받게 하면 방문자 수만큼 시세·직전 시세 조회가 돈다. 이 번호는 고시할 때마다 커지고
+     * 그 외에는 변하지 않으므로, 화면은 숫자 하나를 비교해 바뀌었을 때만 다시 그린다.
+     *
+     * <p>캐시된다. 발행 이벤트가 커밋 뒤에 {@code MARKET_PRICES} 를 통째로 비우므로 고시 직후
+     * 첫 조회부터 새 번호다. 그 사이의 조회는 DB 에 닿지 않는다.
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.MARKET_PRICES, key = "'version'")
+    public long currentVersion() {
+        Long latest = effectiveRepository.findLatestIssuedId();
+        return latest == null ? 0L : latest;
+    }
+
     // =================================================================
     // 검증 — 정책 서비스도 같은 규칙을 쓴다
     // =================================================================

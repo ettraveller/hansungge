@@ -35,6 +35,14 @@ public interface MarketPriceEffectiveRepository extends JpaRepository<MarketPric
             MetalType metalType, PriceSide priceSide, OffsetDateTime from);
 
     /**
+     * 가장 최근에 발행된 행의 번호. 시세 버전으로 쓴다.
+     *
+     * <p>append-only 라 발행할 때마다 커지고 그 외에는 변하지 않는다. 기본키 인덱스 끝을 한 번 읽는다.
+     */
+    @Query("SELECT MAX(e.id) FROM MarketPriceEffective e")
+    Long findLatestIssuedId();
+
+    /**
      * {@code before} 시점에 적용 중이던 행 — 그 시각 전에 발행된 가장 최근 행.
      *
      * <p>이 테이블은 마감과 발행이 끊김 없이 이어지는 체인이라, 그 시각 직전에 발행된 행이

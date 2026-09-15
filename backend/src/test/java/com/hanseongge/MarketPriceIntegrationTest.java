@@ -724,6 +724,49 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 시세 버전
+    // =================================================================
+
+    @Nested
+    @DisplayName("시세 버전 — 열어 둔 화면이 새 고시를 알아채는 근거")
+    class Version {
+
+        @Test
+        @DisplayName("고시할 때마다 버전이 바뀌고, 조회나 거절된 고시로는 바뀌지 않는다")
+        void changesOnlyWhenPublished() {
+            long never = marketPriceService.currentVersion();
+            assertThat(never).as("고시된 적 없으면 0").isZero();
+
+            declare("200000", "180000");
+            long first = marketPriceService.currentVersion();
+            assertThat(first)
+                    .as("발행 이벤트가 캐시를 비워, 고시 직후 첫 조회부터 새 버전이다")
+                    .isNotEqualTo(never);
+            assertThat(marketPriceService.currentVersion()).isEqualTo(first);
+
+            assertThatThrownBy(() -> declare("260000", "234000")).isInstanceOf(BusinessException.class);
+            assertThat(marketPriceService.currentVersion())
+                    .as("거절된 고시는 아무것도 쓰지 않았으므로 화면이 다시 그려질 이유가 없다")
+                    .isEqualTo(first);
+
+            declare("204000", "183600");
+            assertThat(marketPriceService.currentVersion()).isGreaterThan(first);
+        }
+
+        @Test
+        @DisplayName("환산 비율만 바꿔도 버전이 바뀐다 — 18K·14K 가 다시 발행되기 때문이다")
+        void changesWhenDerivationRepublishes() {
+            derive(MetalType.GOLD_18K, "0.735");
+            declare("220800", "188000");
+            long before = marketPriceService.currentVersion();
+
+            derive(MetalType.GOLD_18K, "0.75");
+
+            assertThat(marketPriceService.currentVersion()).isGreaterThan(before);
+        }
+    }
+
+    // =================================================================
     // 도우미
     // =================================================================
 

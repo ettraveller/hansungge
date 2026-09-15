@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { HeaderAuth } from '@/layouts/HeaderAuth';
@@ -8,6 +9,7 @@ import { CartIcon, SearchIcon } from '@/layouts/icons';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { buildNav } from '@/layouts/navigation';
+import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
 import styles from './ShopLayout.module.css';
 
 /**
@@ -36,9 +38,17 @@ import styles from './ShopLayout.module.css';
  * 카테고리를 코드에 박아두면 관리자가 카테고리를 추가할 때마다 배포해야 한다.
  * 조회 실패 시에는 고정 메뉴(시세조회·매입절차·지점안내·고객센터)만 남는다 —
  * 헤더가 통째로 사라지는 것보다 낫다.
+ *
+ * <h2>열어 둔 화면에 새 시세를 반영한다</h2>
+ * 시세는 메인·시세조회·상품·장바구니 어디에나 나온다. 그래서 감시를 페이지마다 두지 않고
+ * 여기 한 곳에 둔다({@link PriceChangeWatcher}). 이 화면을 그릴 때의 시세 버전을 함께 넘겨,
+ * 그리는 사이에 고시가 끼어도 놓치지 않게 한다.
  */
 export async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const categories = await load(() => productApi.categories(), 'GNB 카테고리');
+  const [categories, priceVersion] = await Promise.all([
+    load(() => productApi.categories(), 'GNB 카테고리'),
+    load(() => priceApi.version(), '시세 버전'),
+  ]);
   const nav = buildNav(categories.data);
 
   return (
@@ -100,6 +110,8 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main id="main">{children}</main>
+
+      <PriceChangeWatcher initialVersion={priceVersion.data?.version ?? null} />
 
       <MobileTabBar />
 
