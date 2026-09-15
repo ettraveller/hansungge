@@ -2,53 +2,210 @@
    시세 추이 그래프
 
    Sparkline 과 달리 축과 눈금이 있다. 여기서는 "오르는 중인가"가 아니라
-   "얼마였나"를 읽는다.
+   "언제 얼마였나"를 읽는다.
+
+   금색은 선과 지금 값에만 쓴다. 눈금·띠·안내선은 전부 옅은 잉크색이다 —
+   금색을 넓게 칠하면 정작 읽어야 할 선이 묻힌다.
    ===================================================================== */
 
 .chart {
   display: block;
   width: 100%;
   height: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* 데스크톱용(가로 900)과 휴대폰용(가로 400) 뷰박스를 둘 다 그려 두고 하나만 보인다.
-   자세한 이유는 PriceChart 의 주석 참고 — 요약하면 SVG 는 글자도 함께 줄어들어서
-   CSS 로 font-size 만 키워서는 좁은 화면에서 축이 읽히지 않는다. */
+   요약하면 SVG 는 글자도 함께 줄어들어서 CSS 로 font-size 만 키워서는 좁은 화면에서
+   축이 읽히지 않는다. */
 .narrow {
   display: none;
 }
 
-.grid {
-  stroke: var(--line);
-  stroke-width: 1;
-  fill: none;
+/* ---------- 바탕 ---------- */
+
+/* 하루씩 번갈아 칠한 띠 — 1주 그래프에서 날짜 칸을 셀 수 있다 */
+.band {
+  fill: var(--ink-50);
 }
 
-.axis {
+.grid {
+  stroke: var(--ink-100);
+  stroke-width: 1;
+}
+
+.gridX {
+  stroke: var(--ink-100);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+/* 자정·월요일·월초 — 기간을 나누는 선이라 한 단계 진하다 */
+.gridXMajor {
+  stroke: var(--ink-200);
+  stroke-width: 1;
+}
+
+.axis,
+.axisMajor {
   fill: var(--ink-400);
-  font-size: 13px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.axisMajor {
+  fill: var(--ink-600);
+  font-weight: 600;
+}
+
+/* ---------- 선 ---------- */
+
+.areaTop {
+  stop-color: var(--gold);
+  stop-opacity: 0.2;
+}
+
+.areaBottom {
+  stop-color: var(--gold);
+  stop-opacity: 0.01;
+}
+
+.area {
+  stroke: none;
 }
 
 .line {
   fill: none;
-  stroke: var(--gold);
-  stroke-width: 2.5;
+  stroke: var(--gold-600);
+  stroke-width: 2.25;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
-.area {
-  fill: rgba(201, 162, 39, 0.13);
-  stroke: none;
+/* 지금 값 높이의 안내선. 과거 어느 시점보다 높은지 낮은지를 눈으로 바로 잰다 */
+.guide {
+  stroke: var(--gold-400);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.85;
 }
 
-/* 지금 값이 어디인지가 이 그림의 요점이다. 흰 테두리로 선에서 떼어 놓는다 */
+/* 고시 시점 */
+.marker {
+  fill: #fff;
+  stroke: var(--gold-600);
+  stroke-width: 1.5;
+}
+
+/* 흰 테두리로 선·띠 위에서도 읽히게 한다 */
+.extreme {
+  fill: var(--ink-500);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+/* ---------- 지금 값 ---------- */
+
 .dot {
-  fill: var(--gold);
+  fill: var(--gold-600);
   stroke: #fff;
   stroke-width: 2;
 }
+
+.pulse {
+  fill: var(--gold);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 2.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.38;
+  }
+  70%,
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.pill {
+  fill: var(--gold-600);
+}
+
+.pillText {
+  fill: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 짚기 ---------- */
+
+.overlay {
+  fill: transparent;
+  cursor: crosshair;
+  /* 세로 스크롤은 막지 않는다 — 휴대폰에서 그래프 위를 지나 내려가다 멈추면 안 된다 */
+  touch-action: pan-y;
+}
+
+.hoverLine {
+  stroke: var(--ink-400);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.hoverDot {
+  fill: #fff;
+  stroke: var(--gold-600);
+  stroke-width: 2.5;
+}
+
+.tip {
+  fill: var(--ink-900);
+  opacity: 0.94;
+}
+
+.tipTime {
+  fill: var(--ink-300);
+  font-size: 11.5px;
+}
+
+.tipValue {
+  fill: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tipUnit {
+  fill: var(--ink-300);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.tipSub {
+  fill: var(--gold-200);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 비었을 때 ---------- */
 
 .empty {
   padding: 56px 16px;

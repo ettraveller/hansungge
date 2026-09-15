@@ -103,6 +103,7 @@ export function PriceHistorySection({ metal, days, range, sell, buy, expanded }:
             </h3>
             <span className={styles.chartNote}>최근 {rangeLabel} · 원/g</span>
           </div>
+          <ChartStats points={sell} since={range.since} />
           <PriceChart
             points={sell}
             label={`${metalName} 내가 살 때 최근 ${rangeLabel} 추이`}
@@ -124,6 +125,7 @@ export function PriceHistorySection({ metal, days, range, sell, buy, expanded }:
         <p className={styles.notes}>
           <span>· 표시 금액은 1돈(3.75g) 기준입니다. 그래프의 세로축은 1g 기준입니다.</span>
           <span>· 변동폭은 <b>직전 고시가</b>와 비교한 값입니다.</span>
+          <span>· 고시한 시세는 다음 고시까지 유지되어 그래프가 계단 모양입니다. 그래프를 누르면 그때의 시세가 보입니다.</span>
         </p>
       </div>
     </section>
@@ -220,4 +222,61 @@ function toRows(sell: PriceHistoryPoint[], buy: PriceHistoryPoint[]): HistoryRow
 
   rows.sort((a, b) => a.at.localeCompare(b.at));
   return rows.reverse();
+}
+
+/**
+ * 그래프 위 요약 — 지금 값, 기간 변동, 최고·최저, 고시 횟수.
+ *
+ * <p>그래프에서 눈으로 찾아야 할 것을 숫자로 먼저 준다. 값은 서버가 준 이력에서 고르기만
+ * 한다. 기간 변동은 표의 변동폭과 같은 방식(뒤 값 − 앞 값)으로 뺀 <b>표시용</b> 숫자다.
+ *
+ * <p>맨 앞 값은 기간이 시작할 때 적용 중이던 값이다(이력 API 가 붙여 준다). 그래서 "기간 변동"은
+ * 기간 첫머리에 팔던 값에서 지금 파는 값까지다. 고시 횟수는 기간 안에서 고시한 것만 센다.
+ */
+function ChartStats({ points, since }: { points: PriceHistoryPoint[]; since: string }) {
+  if (points.length === 0) return null;
+
+  const values = points.map((p) => p.pricePerGram);
+  const first = values[0];
+  const last = values[values.length - 1];
+  const change = last - first;
+  const percent = first > 0 ? (Math.abs(change) / first) * 100 : 0;
+  const sinceAt = Date.parse(since);
+  const quotes = points.filter((p) => Date.parse(p.effectiveFrom) >= sinceAt).length;
+
+  return (
+    <dl className={styles.stats}>
+      <div className={styles.stat}>
+        <dt>현재</dt>
+        <dd>
+          {won(last)}
+          <small>원/g</small>
+        </dd>
+      </div>
+      <div className={styles.stat}>
+        <dt>기간 변동</dt>
+        <dd className={change > 0 ? styles.statUp : change < 0 ? styles.statDown : undefined}>
+          {change === 0
+            ? '변동 없음'
+            : `${change > 0 ? '▲' : '▼'} ${won(Math.abs(change))} (${change > 0 ? '+' : '-'}${percent.toFixed(2)}%)`}
+        </dd>
+      </div>
+      <div className={styles.stat}>
+        <dt>최고</dt>
+        <dd>{won(Math.max(...values))}</dd>
+      </div>
+      <div className={styles.stat}>
+        <dt>최저</dt>
+        <dd>{won(Math.min(...values))}</dd>
+      </div>
+      <div className={styles.stat}>
+        <dt>고시</dt>
+        <dd>{quotes}회</dd>
+      </div>
+    </dl>
+  );
+}
+
+function won(v: number): string {
+  return Math.round(v).toLocaleString('ko-KR');
 }

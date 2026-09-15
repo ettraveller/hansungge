@@ -82,6 +82,57 @@
   color: var(--ink-400);
 }
 
+/* ---------- 그래프 요약 ---------- */
+
+/* 칸 사이 1px 선은 배경이 비쳐 만든다 — 테두리를 칸마다 두면 모서리에서 두 겹이 된다 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  margin: 2px 0 14px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.stat {
+  min-width: 0;
+  padding: 10px 14px;
+  background: var(--ink-50);
+}
+
+.stat dt {
+  margin-bottom: 3px;
+  font-size: 11.5px;
+  color: var(--ink-400);
+}
+
+.stat dd {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stat dd small {
+  margin-left: 2px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-400);
+}
+
+.stat dd.statUp {
+  color: var(--red);
+}
+
+.stat dd.statDown {
+  color: var(--blue);
+}
+
 /* ---------- 표 ---------- */
 
 .tableBox {
@@ -143,6 +194,24 @@
 
   .chartBox {
     padding: 14px 12px 10px;
+  }
+
+  /* 지금 값을 한 줄로 크게, 나머지는 두 칸씩 */
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 10px;
+  }
+
+  .stat:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .stat {
+    padding: 8px 12px;
+  }
+
+  .stat dd {
+    font-size: 14px;
   }
 
   .tableBox {
