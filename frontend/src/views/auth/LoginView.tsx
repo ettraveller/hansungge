@@ -168,7 +168,12 @@ export function LoginView() {
           </p>
         )}
 
-        <h2 className={styles.sectionTitle}>소셜 계정으로 계속하기</h2>
+        {/*
+          제목 대신 「또는」 구분선이다. 전에는 제목이었는데 위쪽 여백을 바로 위 가입 링크에
+          기대고 있었다 — 본인확인 공급자가 없어 그 링크가 숨으면 제목이 로그인 버튼에 붙었다.
+          구분선은 여백을 스스로 가져서 링크가 있든 없든 간격이 같다.
+        */}
+        <p className={styles.divider}>또는</p>
 
         {isLoading ? (
           <p className={styles.loading}>불러오는 중…</p>
