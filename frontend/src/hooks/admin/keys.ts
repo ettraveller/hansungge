@@ -3,7 +3,6 @@ import type { AdminEventSearch } from '@/api/admin/events';
 import type { AdminNoticeSearch } from '@/api/admin/notices';
 import type { ProductSearch } from '@/api/admin/products';
 import type { AdminQnaSearch } from '@/api/admin/qnas';
-import type { PendingStatus } from '@/types/admin';
 import type { MemberSearch } from '@/types/member';
 import type { MetalType, PriceSide } from '@/types/price';
 
@@ -20,12 +19,9 @@ export const adminKeys = {
 
   prices: () => [...adminKeys.all, 'prices'] as const,
   currentPrices: () => [...adminKeys.prices(), 'current'] as const,
-  collectionStatus: () => [...adminKeys.prices(), 'collection-status'] as const,
-  policies: () => [...adminKeys.prices(), 'policies'] as const,
+  derivations: () => [...adminKeys.prices(), 'derivations'] as const,
   priceHistory: (metal: MetalType, side: PriceSide, page: number) =>
     [...adminKeys.prices(), 'history', metal, side, page] as const,
-  pending: (status: PendingStatus, page: number) =>
-    [...adminKeys.prices(), 'pending', status, page] as const,
 
   products: () => [...adminKeys.all, 'products'] as const,
   productList: (search: ProductSearch) => [...adminKeys.products(), 'list', search] as const,

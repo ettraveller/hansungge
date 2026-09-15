@@ -76,12 +76,6 @@ export function MarketPriceBoard({ rows, quotedAt }: Props) {
         <p className={styles.meta}>
           {quotedAt ? `${quotedAt} 기준` : '고시 대기'} · 1돈(3.75g)
         </p>
-        {quotedAt && (
-          <p className={styles.live}>
-            <span className={styles.dot} aria-hidden="true" />
-            실시간 반영 중
-          </p>
-        )}
       </header>
 
       <div className={styles.grid}>

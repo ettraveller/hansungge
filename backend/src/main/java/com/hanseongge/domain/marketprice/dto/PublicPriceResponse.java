@@ -14,8 +14,7 @@ import java.time.OffsetDateTime;
  *
  * <h2>관리자 응답과 다른 점</h2>
  * <ol>
- *   <li><b>사용할 수 없는 시세는 가격을 아예 담지 않는다.</b> 노후된 값이라도 관리자에게는
- *       보여줘야 하지만, 고객에게 보이면 그 가격으로 주문하려 한다</li>
+ *   <li><b>고시되지 않은 시세는 가격을 아예 담지 않는다.</b></li>
  *   <li><b>원본가·보정액·적용자를 내보내지 않는다.</b> 회사의 마진 정책이다</li>
  *   <li>가격이 없을 때 {@code 0} 이 아니라 {@code null} + {@link #displayText} 를 준다.
  *       0 은 화면에서 "0원"으로 그려질 수 있고, 그것이 이 시스템이 가장 피해야 할 표시다</li>
@@ -55,7 +54,7 @@ public record PublicPriceResponse(
         PriceChange change
 ) {
 
-    /** 유효 시세가 없거나 노후일 때의 표시 문구 (개발계획 §12.4). */
+    /** 고시된 적 없는 시세의 표시 문구 (개발계획 §12.4). */
     public static final String UNAVAILABLE_TEXT = "시세문의";
 
     /** 직전 시세를 모르는 자리에서 쓰는 형태. 변동폭 없이 현재값만 담는다. */

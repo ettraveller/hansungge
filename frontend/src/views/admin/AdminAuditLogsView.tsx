@@ -43,10 +43,12 @@ const ACTION_GROUPS: { label: string; actions: [string, string][] }[] = [
     label: '시세',
     actions: [
       ['PRICE_APPLY', '시세 고시'],
-      ['PRICE_APPLY_HELD', '시세 보류(승인 대기)'],
-      ['PRICE_POLICY_UPDATE', '보정 정책 변경'],
-      ['PRICE_PENDING_APPROVE', '승인'],
-      ['PRICE_PENDING_REJECT', '반려'],
+      ['PRICE_DERIVATION_UPDATE', '18K·14K 환산 설정 변경'],
+      // 아래는 외부 시세를 보정하던 시절의 기록이다. 새로 생기지 않지만 지난 기록을 읽어야 한다.
+      ['PRICE_APPLY_HELD', '시세 보류 (예전 승인 대기)'],
+      ['PRICE_POLICY_UPDATE', '보정 정책 변경 (예전)'],
+      ['PRICE_PENDING_APPROVE', '승인 (예전)'],
+      ['PRICE_PENDING_REJECT', '반려 (예전)'],
     ],
   },
   {

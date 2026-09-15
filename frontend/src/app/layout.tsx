@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     default: '한성금거래소',
     template: '%s | 한성금거래소',
   },
-  description: '금·은·귀금속 온라인 쇼핑몰. 실시간 시세 기반 골드바·주얼리 판매.',
+  description: '금·은·귀금속 온라인 쇼핑몰. 매일 고시하는 시세로 골드바·주얼리를 판매합니다.',
   openGraph: {
     type: 'website',
     siteName: '한성금거래소',

@@ -31,11 +31,13 @@ public final class AuditActions {
     // --- 시세 (STEP 6) ---
     /** 최종 시세 발행 */
     public static final String PRICE_APPLY = "PRICE_APPLY";
-    /** 변동률 초과로 발행하지 않고 승인 대기로 돌림 */
-    public static final String PRICE_APPLY_HELD = "PRICE_APPLY_HELD";
-    public static final String PRICE_POLICY_UPDATE = "PRICE_POLICY_UPDATE";
-    public static final String PRICE_PENDING_APPROVE = "PRICE_PENDING_APPROVE";
-    public static final String PRICE_PENDING_REJECT = "PRICE_PENDING_REJECT";
+    /**
+     * 18K·14K 고시 방식(직접 입력 / 24K 환산) 변경.
+     *
+     * <p>V19 이전 기록에는 PRICE_APPLY_HELD·PRICE_POLICY_UPDATE·PRICE_PENDING_APPROVE·
+     * PRICE_PENDING_REJECT 가 남아 있다. 더는 쓰지 않지만 감사로그 화면이 이름을 붙여 보여준다.
+     */
+    public static final String PRICE_DERIVATION_UPDATE = "PRICE_DERIVATION_UPDATE";
 
     // --- 상품 (STEP 8) ---
     public static final String CATEGORY_CREATE = "CATEGORY_CREATE";

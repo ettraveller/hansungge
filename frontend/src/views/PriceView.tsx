@@ -15,6 +15,8 @@ interface Props {
   /** 추이 구역이 보여줄 금속·기간. URL 에서 온다 */
   metal: MetalType;
   days: number;
+  /** 그래프가 덮는 구간 (요청 시각 기준) */
+  range: { since: string; until: string };
   expanded: boolean;
   /** 선택한 조건의 살 때 / 팔 때 이력 */
   sell: PriceHistoryPoint[];
@@ -32,7 +34,7 @@ interface Props {
  * "금시세"는 이 업종에서 검색량이 가장 큰 키워드이고, 앵커는 독립 URL 이 아니라
  * 색인되지 않는다.
  */
-export function PriceView({ prices, histories, metal, days, expanded, sell, buy }: Props) {
+export function PriceView({ prices, histories, metal, days, range, expanded, sell, buy }: Props) {
   const rows = toMetalRows(prices.data ?? [], histories);
   const quotedAt = latestQuotedAt(prices.data);
   const sellable = (prices.data ?? []).filter((p) => p.available && p.priceSide === 'SELL');
@@ -58,6 +60,7 @@ export function PriceView({ prices, histories, metal, days, expanded, sell, buy 
         <PriceHistorySection
           metal={metal}
           days={days}
+          range={range}
           sell={sell}
           buy={buy}
           expanded={expanded}

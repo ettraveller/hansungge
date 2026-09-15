@@ -24,9 +24,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *
  * <h2>감사로그를 여기서 쓰지 않는 이유</h2>
  * §12.7 은 이 지점에서 {@code audit_logs} 도 기록하도록 그렸지만, 실제 기록은
- * {@code MarketPriceService} 가 한다. 행위자·사유·보류 여부 같은 맥락이 서비스에 있고,
- * 이벤트에는 없기 때문이다. 발행뿐 아니라 <b>보류(pending)로 끝난 경우</b>도 남겨야 하는데
- * 그때는 이 이벤트 자체가 발행되지 않는다.
+ * {@code MarketPriceService} 가 한다. 행위자·사유·환산 비율 같은 맥락이 서비스에 있고,
+ * 이벤트에는 없기 때문이다.
  */
 @Slf4j
 @Component

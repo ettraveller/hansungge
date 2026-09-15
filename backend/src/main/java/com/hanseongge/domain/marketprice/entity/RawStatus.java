@@ -1,19 +1,16 @@
 package com.hanseongge.domain.marketprice.entity;
 
 /**
- * 원본 시세 상태. V2 마이그레이션의 CHECK 제약과 값이 일치해야 한다.
+ * 원본 판정 표시. V8 마이그레이션의 CHECK 제약과 값이 일치해야 한다.
  *
- * <p>{@link #FAILED} 는 <b>V2 제약에는 있으나 이 코드가 만들지 않는다.</b>
- * {@code price_per_gram > 0} CHECK 와 모순되기 때문이다 — 실패에는 가격이 없는데
- * 컬럼은 양수를 요구한다(결함 D-3). 수집 실패는 원본이 아니라
- * {@link MarketPriceFetchLog} 에 남는다.
+ * <p>관리자 입력은 언제나 {@link #NORMAL} 로 들어온다. 나머지는 외부 수집 시절(V19 이전)
+ * 행을 읽기 위해 남겨 둔 값이다.
  */
 public enum RawStatus {
 
     NORMAL,
-    /** 이상 변동으로 감지됨. <b>원본 값 자체는 그대로 보존된다.</b> */
+    /** 과거 자동 수집 때 이상 변동으로 표시된 행. 원본 값 자체는 그대로 보존되어 있다. */
     ANOMALY,
-    /** @deprecated 사용하지 않는다. 실패는 {@link MarketPriceFetchLog} 로 간다 (D-3). */
-    @Deprecated
+    /** 쓰이지 않는다. DB 제약(V8)이 넣지 못하게 막는다. */
     FAILED
 }

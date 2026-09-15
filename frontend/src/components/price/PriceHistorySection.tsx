@@ -6,8 +6,12 @@ import { SectionHead } from '@/components/ui/SectionHead';
 import { METAL_LABEL, METAL_ORDER, type MetalType, type PriceHistoryPoint } from '@/types/price';
 import styles from './PriceHistorySection.module.css';
 
-/** 기간 선택지. 레퍼런스는 5개월부터 시작하는데, 오늘 사려는 사람이 궁금한 건 지난주다. */
+/**
+ * 기간 선택지. 레퍼런스는 5개월부터 시작하는데, 오늘 사려는 사람이 궁금한 건 오늘과 지난주다.
+ * 1일은 "오늘 몇 번 고시했고 얼마나 움직였나"를 본다.
+ */
 export const RANGES = [
+  { days: 1, label: '1일' },
   { days: 7, label: '1주' },
   { days: 30, label: '1개월' },
   { days: 90, label: '3개월' },
@@ -23,7 +27,9 @@ const TABLE_ROWS = 20;
 interface Props {
   metal: MetalType;
   days: number;
-  /** 선택한 금속·기간의 판매(살 때) 이력. 오래된 순 */
+  /** 그래프가 덮는 구간 (요청 시각 기준, ISO-8601) */
+  range: { since: string; until: string };
+  /** 선택한 금속·기간의 판매(살 때) 이력. 오래된 순. 기간 시작 때 적용 중이던 값이 맨 앞에 온다 */
   sell: PriceHistoryPoint[];
   /** 같은 조건의 매입(팔 때) 이력 */
   buy: PriceHistoryPoint[];
@@ -45,7 +51,7 @@ interface Props {
  * 한국금거래소는 날짜 두 개를 고르고 <b>검색을 눌러야</b> 값이 나온다. 답을 보기 전에
  * 두 단계를 요구하는 셈이라, 여기서는 기간을 눌러 둔 상태로 시작한다(1개월).
  */
-export function PriceHistorySection({ metal, days, sell, buy, expanded }: Props) {
+export function PriceHistorySection({ metal, days, range, sell, buy, expanded }: Props) {
   const rangeLabel = RANGES.find((r) => r.days === days)?.label ?? `${days}일`;
   const metalName = METAL_LABEL[metal];
 
@@ -97,7 +103,12 @@ export function PriceHistorySection({ metal, days, sell, buy, expanded }: Props)
             </h3>
             <span className={styles.chartNote}>최근 {rangeLabel} · 원/g</span>
           </div>
-          <PriceChart points={sell} label={`${metalName} 내가 살 때 최근 ${rangeLabel} 추이`} />
+          <PriceChart
+            points={sell}
+            label={`${metalName} 내가 살 때 최근 ${rangeLabel} 추이`}
+            since={range.since}
+            until={range.until}
+          />
         </div>
 
         <div className={styles.tableBox}>

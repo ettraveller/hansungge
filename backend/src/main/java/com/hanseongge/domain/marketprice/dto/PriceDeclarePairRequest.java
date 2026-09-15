@@ -23,14 +23,14 @@ public record PriceDeclarePairRequest(
         @NotNull(message = "금속을 선택해 주세요.")
         MetalType metalType,
 
-        @Schema(description = "고객이 살 때(판매) 원본 시세. KRW/1g, 돈 단위가 아니다",
+        @Schema(description = "고객이 살 때(판매) 시세. KRW/1g, 돈 단위가 아니다",
                 example = "220800", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "살 때 시세를 입력해 주세요.")
         @DecimalMin(value = "0.01", message = "살 때 시세는 0보다 커야 합니다.")
         @Digits(integer = 13, fraction = 2, message = "살 때 시세 형식이 올바르지 않습니다.")
         BigDecimal sellPricePerGram,
 
-        @Schema(description = "고객이 팔 때(매입) 원본 시세. KRW/1g",
+        @Schema(description = "고객이 팔 때(매입) 시세. KRW/1g",
                 example = "188000", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "팔 때 시세를 입력해 주세요.")
         @DecimalMin(value = "0.01", message = "팔 때 시세는 0보다 커야 합니다.")
@@ -41,6 +41,10 @@ public record PriceDeclarePairRequest(
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "고시 사유를 입력해 주세요.")
         @Size(max = 300)
-        String changeReason
+        String changeReason,
+
+        @Schema(description = "직전 대비 확인 기준을 넘는 값이 있다는 것을 확인했는가. "
+                + "미리보기에서 needsConfirm 이 true 였다면 true 로 보내야 발행된다", example = "false")
+        Boolean confirmLargeChange
 ) {
 }

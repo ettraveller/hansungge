@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
  * 운영 설정값 ({@code system_settings}).
  *
  * <p>코드 재배포 없이 바꿔야 하는 값만 담는다.
- * 예: {@code MAX_PRICE_CHANGE_PERCENT}, {@code PRICE_STALE_MINUTES},
+ * 예: {@code MAX_PRICE_CHANGE_PERCENT},
  * {@code PRICE_ROUNDING_MODE}(TODO A-2), {@code VAT_MODE}(TODO A-1).
  *
  * <p>V1 마이그레이션이 만든 테이블에는 {@code created_at} 이 없으므로

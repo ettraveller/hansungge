@@ -11,26 +11,22 @@ import { formatDateTime, formatPricePerGram } from '@/utils/format';
 import {
   METAL_LABEL,
   METAL_ORDER,
+  POLICY_MODE_LABEL,
   type MetalType,
-  type PricePolicyMode,
   type PriceSide,
 } from '@/types/price';
 import { ApiError } from '@/types/api';
 import styles from '../admin.module.css';
 
-const MODE_LABEL: Record<PricePolicyMode, string> = {
-  AUTO: '보정 없음',
-  FIXED_ADJ: '정액',
-  PERCENT_ADJ: '정률',
-  MANUAL: '지정가',
-};
-
 /**
  * 시세 변경 이력.
  *
- * 이 표는 append-only 테이블을 그대로 보여준다 — 수정도 삭제도 없다. 과거 주문의
- * 판매가가 어떤 시세에서 나왔는지 증명하는 것이 목적이라, "지금 값"보다 "그때 값"이 중요하다.
- * {@code effectiveTo} 가 비어 있는 행이 현재 적용 중인 값이다.
+ * 수정도 삭제도 없는 기록을 그대로 보여준다. 과거 주문의 판매가가 어떤 시세에서 나왔는지
+ * 증명하는 것이 목적이라, "지금 값"보다 "그때 값"이 중요하다. 마감 시각이 비어 있는 행이
+ * 지금 쓰이는 값이다.
+ *
+ * <p>방식 칸에는 예전 기록의 "정액 보정" 같은 이름도 그대로 나온다. 그때 그렇게 계산됐다는
+ * 사실이라 지금 방식으로 바꿔 적지 않는다.
  */
 export function PriceHistoryPanel() {
   const [metal, setMetal] = useState<MetalType>('GOLD_24K');
@@ -43,7 +39,7 @@ export function PriceHistoryPanel() {
   return (
     <Panel
       title="시세 변경 이력"
-      note="수정도 삭제도 없는 기록이다. 마감 시각이 비어 있는 행이 현재 적용값이다."
+      note="수정도 삭제도 없는 기록이다. 마감 시각이 비어 있는 행이 지금 쓰이는 값이다."
       actions={
         <>
           <select
@@ -70,8 +66,8 @@ export function PriceHistoryPanel() {
               setPage(0);
             }}
           >
-            <option value="SELL">판매</option>
-            <option value="BUY">매입</option>
+            <option value="SELL">살 때</option>
+            <option value="BUY">팔 때</option>
           </select>
         </>
       }
@@ -95,8 +91,8 @@ export function PriceHistoryPanel() {
             <thead>
               <tr>
                 <th className={styles.num}>#</th>
-                <th className={styles.num}>최종 시세</th>
-                <th>보정</th>
+                <th className={styles.num}>고시가</th>
+                <th>방식</th>
                 <th>적용 시작</th>
                 <th>적용 마감</th>
                 <th>고시자</th>
@@ -107,10 +103,10 @@ export function PriceHistoryPanel() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td data-label="#" className={`${styles.num} ${styles.muted}`}>{row.id}</td>
-                  <td data-label="최종 시세" data-card-title className={`${styles.num} ${styles.strong}`}>
+                  <td data-label="고시가" data-card-title className={`${styles.num} ${styles.strong}`}>
                     {formatPricePerGram(row.pricePerGram)}
                   </td>
-                  <td data-label="보정">{MODE_LABEL[row.policyMode]}</td>
+                  <td data-label="방식">{POLICY_MODE_LABEL[row.policyMode] ?? row.policyMode}</td>
                   <td data-label="적용 시작">{formatDateTime(row.effectiveFrom)}</td>
                   <td data-label="적용 마감">
                     {row.effectiveTo == null ? (
@@ -120,7 +116,9 @@ export function PriceHistoryPanel() {
                     )}
                   </td>
                   <td data-label="고시자" className={styles.muted}>{row.createdBy}</td>
-                  <td data-label="사유" className={`${styles.muted} ${styles.wrapText}`}>{row.changeReason}</td>
+                  <td data-label="사유" className={`${styles.muted} ${styles.wrapText}`}>
+                    {row.changeReason}
+                  </td>
                 </tr>
               ))}
             </tbody>

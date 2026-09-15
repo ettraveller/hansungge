@@ -16,15 +16,20 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
- * L2 — 관리자 보정 정책 ({@code market_price_policies}, 개발계획 §12.1).
+ * L2 — 금속×side 별 고시 방식 ({@code market_price_policies}).
  *
- * <p>{@code (metal_type, price_side)} 당 정확히 1행이며 <b>현재값만</b> 담는다.
- * V2 가 전 금속 × SELL/BUY 10행을 {@code MANUAL} 로 시드한다.
+ * <p>{@code (metal_type, price_side)} 당 정확히 1행이며 <b>지금 설정만</b> 담는다.
  *
- * <p>변경 이력은 {@code market_price_policy_history}(결함 D-4)가 맡을 예정이나 V2 에는
- * 아직 없다. 그 전까지는 정책 변경이 {@code audit_logs} 에 before/after 로 남고,
- * 적용 시점 정책은 {@link MarketPriceEffective#getPolicySnapshot()} 에 통째로 복사된다 —
- * 이력 테이블이 없어도 "이 시세가 어떤 정책으로 나왔나"는 언제나 답할 수 있다.
+ * <h2>두 가지뿐이다</h2>
+ * <ul>
+ *   <li>{@link PolicyMode#DIRECT} — 관리자가 입력한 값이 곧 고시가</li>
+ *   <li>{@link PolicyMode#DERIVED} — 24K 고시가에 비율을 곱한 값 (18K·14K 만)</li>
+ * </ul>
+ * 외부 시세에 보정을 얹던 방식은 V19 에서 걷어냈다. 받아올 값이 없으면 더하거나 뺄
+ * 대상도 없다.
+ *
+ * <p>설정을 바꾼 기록은 {@code audit_logs} 에, 그 설정으로 나간 시세의 근거는
+ * {@link MarketPriceEffective#getPolicySnapshot()} 에 남는다.
  */
 @Entity
 @Getter
@@ -48,17 +53,19 @@ public class MarketPricePolicy {
     @Column(name = "mode", length = 15, nullable = false)
     private PolicyMode mode;
 
-    /** FIXED_ADJ: 원본 + 이 금액. 음수 가능(매입 마진). */
-    @Column(name = "adj_amount", precision = 15, scale = 2, nullable = false)
-    private BigDecimal adjAmount;
+    /**
+     * 환산 기준 금속. 지금은 24K 뿐이다.
+     *
+     * <p>직접 입력으로 돌려도 지우지 않는다. 다시 환산으로 켤 때 화면이 직전 비율을
+     * 채워 주면, 매번 비율을 찾아 다시 적는 일이 없다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "derive_from", length = 20)
+    private MetalType deriveFrom;
 
-    /** PERCENT_ADJ: 원본 × (1 + 이 값/100). -7 이면 7% 차감. */
-    @Column(name = "adj_percent", precision = 7, scale = 4, nullable = false)
-    private BigDecimal adjPercent;
-
-    /** MANUAL: 최종가 직접 지정. null 이면 오버라이드가 설정되지 않은 상태다. */
-    @Column(name = "manual_price", precision = 15, scale = 2)
-    private BigDecimal manualPrice;
+    /** 환산 비율. 예: 18K 0.7350 — 24K 220,800원이면 18K 162,288원 */
+    @Column(name = "derive_ratio", precision = 6, scale = 4)
+    private BigDecimal deriveRatio;
 
     @Column(name = "updated_by", length = 60)
     private String updatedBy;
@@ -66,48 +73,26 @@ public class MarketPricePolicy {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    /**
-     * 자동고시 여부.
-     *
-     * <p>{@code true} 면 수집기가 새 원본을 받을 때마다 이 정책의 보정을 적용해
-     * <b>바로 발행한다.</b> {@code false} 면 원본만 쌓이고, 발행은 관리자가 직접 한다.
-     *
-     * <p>자동이어도 변동률 임계값은 그대로 걸린다 — 넘으면 발행 대신 승인 대기로 간다.
-     * "자동"은 사람 손을 덜자는 것이지 안전장치를 끄자는 뜻이 아니다.
-     */
-    @Column(name = "auto_quote", nullable = false)
-    private boolean autoQuote;
-
-    /**
-     * 정책 변경. 모드에 무관한 필드까지 한꺼번에 덮어쓰는 이유는, 부분 갱신을 허용하면
-     * "PERCENT_ADJ 로 바꿨는데 예전 adj_amount 가 남아 있는" 상태가 생기고
-     * 그 값이 나중에 모드를 되돌릴 때 조용히 되살아나기 때문이다.
-     */
-    public void change(PolicyMode mode, BigDecimal adjAmount, BigDecimal adjPercent,
-                       BigDecimal manualPrice, String updatedBy) {
-        this.mode = mode;
-        this.adjAmount = adjAmount == null ? BigDecimal.ZERO : adjAmount;
-        this.adjPercent = adjPercent == null ? BigDecimal.ZERO : adjPercent;
-        this.manualPrice = manualPrice;
-        this.updatedBy = updatedBy;
-        this.updatedAt = OffsetDateTime.now();
+    /** 관리자가 직접 입력한다. 비율은 남겨 둔다 — 다시 켤 때 쓴다. */
+    public void useDirect(String updatedBy) {
+        this.mode = PolicyMode.DIRECT;
+        touch(updatedBy);
     }
 
-    /**
-     * 자동/수동 고시 전환.
-     *
-     * <p>{@link #change} 와 나눠 둔다. 보정값을 만지지 않고 스위치만 내리는 일이
-     * 잦기 때문이다 — 사고가 났을 때 관리자가 제일 먼저 하는 조작이 이것이고,
-     * 그 순간에 보정값까지 같이 넘기도록 강요하면 실수로 값이 초기화된다.
-     */
-    public void switchQuoteMode(boolean autoQuote, String updatedBy) {
-        this.autoQuote = autoQuote;
-        this.updatedBy = updatedBy;
-        this.updatedAt = OffsetDateTime.now();
+    /** {@code base} 고시가에 {@code ratio} 를 곱해 낸다. 검증은 서비스와 DB 제약이 한다. */
+    public void useDerived(MetalType base, BigDecimal ratio, String updatedBy) {
+        this.mode = PolicyMode.DERIVED;
+        this.deriveFrom = base;
+        this.deriveRatio = ratio;
+        touch(updatedBy);
     }
 
-    /** MANUAL 오버라이드가 실제로 설정되어 있는가. */
-    public boolean hasManualPrice() {
-        return manualPrice != null && manualPrice.compareTo(BigDecimal.ZERO) > 0;
+    public boolean isDerived() {
+        return mode == PolicyMode.DERIVED;
+    }
+
+    private void touch(String updatedBy) {
+        this.updatedBy = updatedBy;
+        this.updatedAt = OffsetDateTime.now();
     }
 }

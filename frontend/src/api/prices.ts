@@ -23,6 +23,8 @@ export const priceApi = {
    *
    * 이 테이블이 append-only 라 <b>고시가 일어난 시점마다 한 행</b>이다. 하루에 여러 번
    * 고시하면 그날 점이 여러 개고, 고시가 없던 날은 점이 없다 — 일별 종가가 아니다.
+   *
+   * 기간이 시작할 때 적용 중이던 값이 <b>맨 앞에</b> 온다. 그 점의 시각은 기간보다 앞선다.
    */
   history: (metal: MetalType, days = 30, side: PriceSide = 'SELL') =>
     api.get<PriceHistoryPoint[]>('/api/v1/prices/history', {

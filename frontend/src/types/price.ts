@@ -14,7 +14,19 @@ export type MetalType = 'GOLD_24K' | 'GOLD_18K' | 'GOLD_14K' | 'SILVER' | 'PLATI
 
 export type PriceSide = 'SELL' | 'BUY';
 
-export type PricePolicyMode = 'AUTO' | 'FIXED_ADJ' | 'PERCENT_ADJ' | 'MANUAL';
+/**
+ * 시세가 나온 방식.
+ *  DIRECT   관리자가 입력한 값
+ *  DERIVED  24K × 환산 비율 (18K·14K)
+ * 나머지 넷은 외부 시세를 보정하던 시절(V19 이전)의 기록에만 남아 있다.
+ */
+export type PricePolicyMode =
+  | 'DIRECT'
+  | 'DERIVED'
+  | 'AUTO'
+  | 'FIXED_ADJ'
+  | 'PERCENT_ADJ'
+  | 'MANUAL';
 
 export type ProductPriceType =
   | 'FIXED'
@@ -28,7 +40,7 @@ export type ProductPriceType =
 /**
  * 가격 표시 가능 여부.
  *  AVAILABLE     정상
- *  INQUIRY_ONLY  시세 없음/노후 → "시세문의", 주문 차단
+ *  INQUIRY_ONLY  시세 고시 전 → "시세문의", 주문 차단
  *  SOLD_OUT      품절 (가격은 표시하되 주문만 차단)
  *  NOT_FOR_SALE  비노출 상품
  */
@@ -44,6 +56,16 @@ export const METAL_LABEL: Record<MetalType, string> = {
 
 /** 시세표에 이 순서로 노출한다. 24K 가 주력이라 맨 앞이다. */
 export const METAL_ORDER: MetalType[] = ['GOLD_24K', 'GOLD_18K', 'GOLD_14K', 'SILVER', 'PLATINUM'];
+
+/** 이력에는 옛 방식 이름도 그대로 나온다 — 그때 그렇게 계산됐다는 사실이다. */
+export const POLICY_MODE_LABEL: Record<PricePolicyMode, string> = {
+  DIRECT: '직접 입력',
+  DERIVED: '24K 환산',
+  AUTO: '보정 없음 (예전)',
+  FIXED_ADJ: '정액 보정 (예전)',
+  PERCENT_ADJ: '정률 보정 (예전)',
+  MANUAL: '최종가 지정 (예전)',
+};
 
 /**
  * 공개 시세 한 줄 (`GET /api/v1/prices/current`).

@@ -2,42 +2,36 @@
 
 import { Alert } from '../Alert';
 import { Panel } from '../Panel';
+import { deltaClass, sideLabel } from './QuoteChangeTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useCurrentPrices } from '@/hooks/admin/usePrices';
-import { formatAdjustment, formatDateTime, formatPricePerGram } from '@/utils/format';
-import { METAL_LABEL, type PricePolicyMode } from '@/types/price';
+import { formatDateTime, formatDeltaWithPercent, formatPricePerGram } from '@/utils/format';
+import { METAL_LABEL, POLICY_MODE_LABEL } from '@/types/price';
 import type { AdminCurrentPrice } from '@/types/admin';
 import { ApiError } from '@/types/api';
 import styles from '../admin.module.css';
 
-const MODE_LABEL: Record<PricePolicyMode, string> = {
-  AUTO: '보정 없음',
-  FIXED_ADJ: '정액',
-  PERCENT_ADJ: '정률',
-  MANUAL: '지정가',
-};
-
 /**
  * 현재 시세 현황.
  *
- * 원본 → 보정 → 최종 3단으로 나눠 보여준다. 한 칸에 최종가만 있으면 정책이 잘못 걸려
- * 있어도 알아채지 못한다.
+ * 쇼핑몰이 지금 이 값으로 상품 가격을 계산한다. 한 번 고시한 값은 새로 고시할 때까지
+ * 그대로 쓰인다 — 시간이 지났다고 내려가지 않는다.
  *
- * <p>화면에 "시세문의"가 나가는 상태는 <b>오류가 아니라 안전장치가 작동한 것</b>이다.
- * 다만 관리자에게는 그 사실이 <b>사람 말로</b> 보여야 한다. "노후"나 "STALE" 같은
- * 말은 내부 용어이고, 그 말을 읽은 사람은 시스템이 고장 났다고 생각한다.
- * 실제로 벌어진 일은 "고시한 지 오래돼서 값을 내리지 않고 있다"이다.
+ * <p>변동은 금액 바로 옆에 작게 붙인다. 따로 칸을 두면 눈이 금액과 변동 사이를 오가야 하고,
+ * 방금 고시한 값이 자릿수를 잘못 친 것인지 한눈에 들어오지 않는다.
+ *
+ * <p>"시세문의"로 나가는 줄은 이제 <b>아직 한 번도 고시하지 않은</b> 금속뿐이다.
  */
 export function CurrentPriceTable() {
   const { data, isLoading, error } = useCurrentPrices();
 
   const rows = data ?? [];
-  const unusable = rows.filter((r) => !r.available);
+  const unquoted = rows.filter((r) => !r.available);
 
   return (
     <Panel
       title="현재 시세"
-      note="원본 시세에 보정 정책을 적용한 값이 최종가다. 쇼핑몰은 이 최종가로 계산한다."
+      note="쇼핑몰은 이 값으로 상품 가격을 계산한다. 새로 고시할 때까지 이 값이 그대로 쓰인다."
       flush
     >
       {error && (
@@ -48,18 +42,14 @@ export function CurrentPriceTable() {
         </div>
       )}
 
-      {unusable.length > 0 && (
+      {unquoted.length > 0 && (
         <div className={styles.panelBody}>
-          <Alert
-            tone="warning"
-            title={`${unusable.length}건이 지금 쇼핑몰에서 "시세문의"로 나가고 있습니다`}
-          >
-            금액 대신 &quot;시세문의&quot;가 표시되고 주문이 막힙니다. 값이 틀린 것이 아니라,
-            <strong> 마지막 고시로부터 시간이 너무 지나 값을 내걸지 않고 있는 것</strong>입니다.
-            오래된 시세로 금을 팔면 손해가 나기 때문입니다.
-            <br />
-            아래에서 새로 고시하면 즉시 풀립니다. 매번 손으로 고시하지 않으려면
-            보정 정책에서 <strong>자동고시</strong>를 켜 두세요.
+          <Alert tone="warning" title={`${unquoted.length}건이 아직 고시되지 않았습니다`}>
+            {unquoted
+              .map((r) => `${METAL_LABEL[r.metalType] ?? r.metalName} ${sideLabel(r.priceSide)}`)
+              .join(', ')}
+            {' — '}이 금속을 쓰는 상품은 금액 대신 &quot;시세문의&quot;가 나가고 주문이
+            막힙니다. 고시하면 바로 풀립니다.
           </Alert>
         </div>
       )}
@@ -75,10 +65,8 @@ export function CurrentPriceTable() {
               <tr>
                 <th>금속</th>
                 <th>구분</th>
-                <th className={styles.num}>원본</th>
-                <th className={styles.num}>보정</th>
-                <th className={styles.num}>최종</th>
-                <th>정책</th>
+                <th className={styles.num}>고시가 · 변동</th>
+                <th>방식</th>
                 <th>상태</th>
                 <th>고시 시각</th>
                 <th>고시자 · 사유</th>
@@ -99,35 +87,38 @@ export function CurrentPriceTable() {
 function PriceRow({ row }: { row: AdminCurrentPrice }) {
   return (
     <tr>
-      <td data-label="금속" data-card-title className={styles.strong}>{METAL_LABEL[row.metalType] ?? row.metalName}</td>
-      <td data-label="구분">{row.priceSide === 'SELL' ? '판매' : '매입'}</td>
-      <td data-label="원본" className={styles.num}>{formatPricePerGram(row.rawPricePerGram)}</td>
-      <td data-label="보정" className={styles.num}>{formatAdjustment(row.adjustment)}</td>
-      <td data-label="최종" className={`${styles.num} ${styles.strong}`}>
-        {row.available ? formatPricePerGram(row.pricePerGram) : '-'}
+      <td data-label="금속" data-card-title className={styles.strong}>
+        {METAL_LABEL[row.metalType] ?? row.metalName}
       </td>
-      <td data-label="정책">{row.policyMode ? MODE_LABEL[row.policyMode] : '-'}</td>
+      <td data-label="구분">{sideLabel(row.priceSide)}</td>
+      <td data-label="고시가" className={styles.num}>
+        {row.available ? (
+          <>
+            <span className={styles.strong}>{formatPricePerGram(row.pricePerGram)}</span>
+            {row.change != null && (
+              <span className={deltaClass(row.change.changePerGram)}>
+                {formatDeltaWithPercent(row.change.changePerGram, row.change.changePercent)}
+              </span>
+            )}
+          </>
+        ) : (
+          '-'
+        )}
+      </td>
+      <td data-label="방식">{row.mode ? POLICY_MODE_LABEL[row.mode] : '-'}</td>
       <td data-label="상태">
-        <AvailabilityBadge row={row} />
+        {row.available ? (
+          <StatusBadge tone="success">판매중</StatusBadge>
+        ) : (
+          <StatusBadge tone="neutral">고시 안 됨</StatusBadge>
+        )}
       </td>
-      <td data-label="고시 시각" className={styles.muted}>{formatDateTime(row.effectiveFrom)}</td>
+      <td data-label="고시 시각" className={styles.muted}>
+        {formatDateTime(row.effectiveFrom)}
+      </td>
       <td data-label="고시자" className={`${styles.muted} ${styles.wrapText}`}>
         {row.createdBy ? `${row.createdBy} · ${row.changeReason ?? '-'}` : '-'}
       </td>
     </tr>
   );
-}
-
-/**
- * 상태 배지.
- *
- * 내부 값(AVAILABLE / STALE / NONE)을 그대로 옮겨 적지 않는다. "노후"는 이 표를 보는
- * 사람의 말이 아니고, 읽는 순간 고장으로 오해된다. 무슨 일이 벌어졌는지를 적는다.
- */
-function AvailabilityBadge({ row }: { row: AdminCurrentPrice }) {
-  if (row.availability === 'AVAILABLE') return <StatusBadge tone="success">판매중</StatusBadge>;
-  if (row.availability === 'STALE') {
-    return <StatusBadge tone="warning">고시한 지 오래됨</StatusBadge>;
-  }
-  return <StatusBadge tone="neutral">고시 안 됨</StatusBadge>;
 }

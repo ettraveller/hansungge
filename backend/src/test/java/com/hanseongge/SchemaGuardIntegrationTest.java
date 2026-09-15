@@ -70,16 +70,14 @@ class SchemaGuardIntegrationTest extends EmbeddedPostgresSupport {
                     "DELETE FROM categories WHERE name = '테스트분류'",
                     "DELETE FROM market_price_policy_history",
                     "DELETE FROM market_prices_effective",
-                    "DELETE FROM market_price_pending",
                     "DELETE FROM market_price_raw")) {
                 jdbc.update(sql);
             }
             // 정책은 metal×side 당 1행인 시드 데이터라 지우지 않고 되돌린다.
             jdbc.update("""
                     UPDATE market_price_policies
-                    SET mode = 'MANUAL', adj_amount = 0, adj_percent = 0, manual_price = NULL,
-                        max_change_percent = NULL, derive_from = NULL, derive_ratio = NULL,
-                        auto_apply = TRUE, active = TRUE, updated_by = NULL
+                    SET mode = 'DIRECT', max_change_percent = NULL, derive_from = NULL, derive_ratio = NULL,
+                        active = TRUE, updated_by = NULL
                     """);
         } finally {
             guarded.forEach(pair -> jdbc.execute(
@@ -372,7 +370,7 @@ class SchemaGuardIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("원본에 FAILED 상태를 넣을 수 없다 — 실패는 fetch_logs 가 받는다 (D-3)")
+        @DisplayName("원본에 FAILED 상태를 넣을 수 없다 (D-3)")
         void failedStatusIsNoLongerAllowed() {
             assertThatThrownBy(() -> jdbc.update("""
                     INSERT INTO market_price_raw (source_id, metal_type, price_per_gram, quote_at, status)
@@ -433,24 +431,62 @@ class SchemaGuardIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("같은 금속·구분의 승인 대기는 한 건만 존재한다")
-        void onlyOnePendingPerMetalSide() {
-            long sourceId = manualSourceId();
-            long rawId = jdbc.queryForObject("""
-                    INSERT INTO market_price_raw (source_id, metal_type, price_per_gram, quote_at)
-                    VALUES (?, 'SILVER', 1650, '2026-08-27T12:00:00+09:00'::timestamptz) RETURNING id
-                    """, Long.class, sourceId);
-
-            jdbc.update("""
-                    INSERT INTO market_price_pending (raw_id, metal_type, price_side, calc_price)
-                    VALUES (?, 'SILVER', 'SELL', 2000)
-                    """, rawId);
-
-            assertThatThrownBy(() -> jdbc.update("""
-                    INSERT INTO market_price_pending (raw_id, metal_type, price_side, calc_price)
-                    VALUES (?, 'SILVER', 'SELL', 2100)
-                    """, rawId))
+        @DisplayName("시세 방식은 직접 입력과 24K 환산만 넣을 수 있다 — 보정 방식은 V19 에서 닫혔다")
+        void onlyDirectOrDerivedModes() {
+            assertThatThrownBy(() -> jdbc.update(
+                    "UPDATE market_price_policies SET mode = 'FIXED_ADJ' "
+                            + "WHERE metal_type = 'GOLD_24K' AND price_side = 'SELL'"))
                     .isInstanceOf(DataAccessException.class);
+        }
+
+        @Test
+        @DisplayName("24K 환산은 18K·14K 만, 24K 에서만, 1 이하 비율로만 된다")
+        void derivationIsConstrained() {
+            // 은은 순금 값에 비율로 이어지지 않는다
+            assertThatThrownBy(() -> jdbc.update("""
+                    UPDATE market_price_policies
+                    SET mode = 'DERIVED', derive_from = 'GOLD_24K', derive_ratio = 0.5
+                    WHERE metal_type = 'SILVER' AND price_side = 'SELL'
+                    """)).isInstanceOf(DataAccessException.class);
+
+            // 1 을 넘으면 18K 가 순금보다 비싸진다
+            assertThatThrownBy(() -> jdbc.update("""
+                    UPDATE market_price_policies
+                    SET mode = 'DERIVED', derive_from = 'GOLD_24K', derive_ratio = 1.2
+                    WHERE metal_type = 'GOLD_18K' AND price_side = 'SELL'
+                    """)).isInstanceOf(DataAccessException.class);
+
+            // 기준은 24K 뿐이다
+            assertThatThrownBy(() -> jdbc.update("""
+                    UPDATE market_price_policies
+                    SET mode = 'DERIVED', derive_from = 'GOLD_14K', derive_ratio = 0.7
+                    WHERE metal_type = 'GOLD_18K' AND price_side = 'SELL'
+                    """)).isInstanceOf(DataAccessException.class);
+
+            // 비율 없는 환산은 없다
+            assertThatThrownBy(() -> jdbc.update("""
+                    UPDATE market_price_policies
+                    SET mode = 'DERIVED', derive_from = 'GOLD_24K', derive_ratio = NULL
+                    WHERE metal_type = 'GOLD_18K' AND price_side = 'SELL'
+                    """)).isInstanceOf(DataAccessException.class);
+
+            // 올바른 설정은 들어간다
+            jdbc.update("""
+                    UPDATE market_price_policies
+                    SET mode = 'DERIVED', derive_from = 'GOLD_24K', derive_ratio = 0.735
+                    WHERE metal_type = 'GOLD_18K' AND price_side = 'SELL'
+                    """);
+        }
+
+        @Test
+        @DisplayName("승인 대기·수집 로그 테이블은 V19 에서 사라졌다")
+        void retiredTablesAreGone() {
+            Integer n = jdbc.queryForObject("""
+                    SELECT count(*) FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name IN ('market_price_pending', 'market_price_fetch_logs')
+                    """, Integer.class);
+            assertThat(n).isZero();
         }
     }
 
@@ -564,11 +600,10 @@ class SchemaGuardIntegrationTest extends EmbeddedPostgresSupport {
                 WHERE metal_type = 'GOLD_18K' AND price_side = 'SELL'
                 """, java.math.BigDecimal.class)).isEqualByComparingTo("0.75");
 
-        // 다른 테스트에 영향을 주지 않도록 되돌린다. 이 정책은 애플리케이션이 아직
-        // 읽을 수 없는 모드다 (TODO A-7 미확정).
+        // 다른 테스트에 영향을 주지 않도록 직접 입력으로 되돌린다.
         jdbc.update("""
                 UPDATE market_price_policies
-                SET mode = 'MANUAL', derive_from = NULL, derive_ratio = NULL
+                SET mode = 'DIRECT', derive_from = NULL, derive_ratio = NULL
                 WHERE metal_type = 'GOLD_18K' AND price_side = 'SELL'
                 """);
     }

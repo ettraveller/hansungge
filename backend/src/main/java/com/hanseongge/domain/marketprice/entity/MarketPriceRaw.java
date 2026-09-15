@@ -22,18 +22,19 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
- * L1 — 수집/입력 원본 ({@code market_price_raw}, 개발계획 §12.1).
+ * L1 — 관리자가 입력한 원본 ({@code market_price_raw}).
  *
- * <h2>절대 원칙</h2>
- * <b>이 값은 저장된 뒤 어떤 경우에도 변하지 않는다.</b> 관리자가 보정을 몇 번 바꾸든,
- * 최종가를 몇 번 갱신하든 원본은 그대로 남는다. "원본과 관리자 수정 시세를 절대로 하나의
- * 값으로 덮어쓰지 않는다"는 요구사항이 <b>물리적으로 다른 테이블</b>로 구현된 것이 여기다.
+ * <h2>왜 발행 시세와 따로 두는가</h2>
+ * 발행 시세({@link MarketPriceEffective})는 "지금 얼마에 파는가"이고, 이 행은
+ * "누가 언제 무엇을 입력했는가"다. 입력값이 곧 고시가인 지금도 둘을 한 행으로 합치지
+ * 않는다. 18K·14K 는 입력이 아니라 24K 입력에서 환산되어 나가므로, 발행 행만으로는
+ * 사람이 친 숫자가 무엇이었는지 남지 않는다.
  *
- * <p>그래서 이 클래스에는 가격을 바꾸는 메서드가 없다. 유일한 상태 변경은
- * {@link #markAnomaly()} 이며, 그것도 <b>가격이 아니라 판정 표시</b>를 바꾼다.
+ * <p><b>저장된 뒤 어떤 경우에도 변하지 않는다.</b> 그래서 이 클래스에는 가격을 바꾸는
+ * 메서드가 없다.
  *
- * <p>매입/판매 구분이 없는 이유: 원본에는 그 개념이 없다. 하나의 시장가일 뿐이고
- * 매입가·판매가는 L2(정책)에서 갈라진다.
+ * <p>V19 이전 행에는 외부 수집 원본도 섞여 있다({@code created_by} 가 비어 있는 행).
+ * 지금은 만들어지지 않지만, 과거 시세의 근거라 그대로 둔다.
  */
 @Entity
 @Getter
@@ -53,22 +54,14 @@ public class MarketPriceRaw {
     @Column(name = "metal_type", length = 20, nullable = false)
     private MetalType metalType;
 
-    /** KRW / 1g 고정. 돈 단위 입력은 저장 전에 환산된다. */
+    /** KRW / 1g 고정. */
     @Column(name = "price_per_gram", precision = 15, scale = 2, nullable = false)
     private BigDecimal pricePerGram;
 
     @Column(name = "collected_at", nullable = false)
     private OffsetDateTime collectedAt;
 
-    /**
-     * 시세 <b>기준</b> 시각. {@link #collectedAt}(수집 시각)과 다를 수 있다.
-     *
-     * <p>KRX 일별 시세는 "장 마감가"를 밤에 가져오는 식이라 둘이 어긋난다. 한 값으로
-     * 뭉개면 중복 판정({@code ux_mpr_dedup})이 기준시각이 아니라 수집시각으로 걸려
-     * 같은 시세를 매 주기 새로 적재하게 된다.
-     *
-     * <p>수동 고시는 고시하는 순간이 곧 기준시각이라 두 값이 같다.
-     */
+    /** 시세 기준 시각. 관리자 입력은 입력한 순간이 곧 기준시각이다. */
     @Column(name = "quote_at", nullable = false)
     private OffsetDateTime quoteAt;
 
@@ -76,98 +69,45 @@ public class MarketPriceRaw {
     @Column(name = "status", length = 10, nullable = false)
     private RawStatus status;
 
-    /** 응답 원문 JSONB. 분쟁 시 근거가 된다. */
+    /** 입력 당시의 기록 JSONB. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_payload")
     private String rawPayload;
 
-    /** 수동 고시 시 관리자 login_id. 자동 수집이면 null. */
+    /** 입력한 관리자 login_id. */
     @Column(name = "created_by", length = 60)
     private String createdBy;
 
-    /**
-     * 이 원본이 어느 쪽 값인가. <b>{@code null} 이면 양측 공통 기준가</b>다.
-     *
-     * <p>수동 고시와 V14 이전의 모든 행이 {@code null} 이다. 그 값들은 "기준가 하나에서
-     * 매수·매도 정책이 각각 갈라져 나온다"는 뜻이었고, 사후에 한쪽으로 적어 넣으면
-     * 없던 의미를 만들어내는 셈이 된다.
-     *
-     * <p>외부 피드는 살 때와 팔 때를 <b>각각</b> 고시하므로 그 쪽 값을 채운다.
-     */
+    /** 살 때 값인가 팔 때 값인가. V14 이전 행은 비어 있다(양측 공통 기준가). */
     @Enumerated(EnumType.STRING)
     @Column(name = "price_side", length = 4)
     private PriceSide priceSide;
 
-    private MarketPriceRaw(MarketPriceSource source, MetalType metalType, PricePerGram pricePerGram,
-                           OffsetDateTime collectedAt, OffsetDateTime quoteAt,
-                           String rawPayload, String createdBy, PriceSide priceSide) {
+    private MarketPriceRaw(MarketPriceSource source, MetalType metalType, PriceSide priceSide,
+                           PricePerGram pricePerGram, OffsetDateTime declaredAt,
+                           String adminLoginId, String rawPayload) {
         this.source = source;
         this.metalType = metalType;
+        this.priceSide = priceSide;
         // PricePerGram 을 거쳐야만 값이 들어온다 — 0 이하는 그 타입이 생성 자체를 거부한다.
         this.pricePerGram = pricePerGram.value();
-        this.collectedAt = collectedAt;
-        this.quoteAt = quoteAt == null ? collectedAt : quoteAt;
+        this.collectedAt = declaredAt;
+        this.quoteAt = declaredAt;
         this.status = RawStatus.NORMAL;
+        this.createdBy = adminLoginId;
         this.rawPayload = rawPayload;
-        this.createdBy = createdBy;
-        this.priceSide = priceSide;
     }
 
-    /**
-     * 자동 수집 원본.
-     *
-     * <p>기준시각을 따로 주지 않으면 수집시각과 같다고 본다. 제공처가 기준시각을
-     * 알려주는 경우(KRX 장 마감가 등)에는 {@link #collected(MarketPriceSource, MetalType,
-     * PricePerGram, OffsetDateTime, OffsetDateTime, String)} 를 쓴다.
-     */
-    public static MarketPriceRaw collected(MarketPriceSource source, MetalType metalType,
-                                           PricePerGram pricePerGram, OffsetDateTime collectedAt,
-                                           String rawPayload) {
-        return collected(source, metalType, pricePerGram, collectedAt, collectedAt, rawPayload);
-    }
-
-    /** 기준시각이 수집시각과 다른 자동 수집 원본. 양측 공통 기준가로 쌓인다. */
-    public static MarketPriceRaw collected(MarketPriceSource source, MetalType metalType,
-                                           PricePerGram pricePerGram, OffsetDateTime collectedAt,
-                                           OffsetDateTime quoteAt, String rawPayload) {
-        return new MarketPriceRaw(source, metalType, pricePerGram, collectedAt, quoteAt,
-                rawPayload, null, null);
-    }
-
-    /**
-     * 살 때/팔 때를 각각 고시하는 피드의 원본.
-     *
-     * <p>{@link #collected} 와 달리 {@code priceSide} 가 채워진다. 그래야 계산기가
-     * "매도 정책은 매도 원본에서" 출발할 수 있다.
-     */
-    public static MarketPriceRaw collectedForSide(MarketPriceSource source, MetalType metalType,
-                                                  PriceSide priceSide, PricePerGram pricePerGram,
-                                                  OffsetDateTime collectedAt,
-                                                  OffsetDateTime quoteAt, String rawPayload) {
-        if (priceSide == null) {
-            throw new IllegalArgumentException("priceSide 는 필수입니다 — 공통 기준가는 collected() 를 쓴다");
-        }
-        return new MarketPriceRaw(source, metalType, pricePerGram, collectedAt, quoteAt,
-                rawPayload, null, priceSide);
-    }
-
-    /** 관리자 수동 고시 원본 (개발계획 §12.3 — 수동도 L1 을 반드시 통과한다). */
+    /** 관리자가 입력한 값. 살 때·팔 때를 각각 한 행씩 남긴다. */
     public static MarketPriceRaw declared(MarketPriceSource source, MetalType metalType,
-                                          PricePerGram pricePerGram, String adminLoginId,
+                                          PriceSide priceSide, PricePerGram pricePerGram,
+                                          OffsetDateTime declaredAt, String adminLoginId,
                                           String rawPayload) {
-        OffsetDateTime now = OffsetDateTime.now();
-        return new MarketPriceRaw(source, metalType, pricePerGram, now, now,
-                rawPayload, adminLoginId, null);
-    }
-
-    /**
-     * 이상 변동으로 판정. <b>가격은 건드리지 않는다.</b>
-     *
-     * <p>이상값이라도 원본은 보존한다 — 나중에 "그때 실제로 얼마가 들어왔는가"를
-     * 되짚을 수 없으면 이상 판정이 옳았는지도 검증할 수 없다.
-     */
-    public void markAnomaly() {
-        this.status = RawStatus.ANOMALY;
+        if (priceSide == null) {
+            throw new IllegalArgumentException("priceSide 는 필수입니다");
+        }
+        return new MarketPriceRaw(source, metalType, priceSide, pricePerGram, declaredAt,
+                adminLoginId, rawPayload);
     }
 
     public PricePerGram price() {
@@ -175,12 +115,11 @@ public class MarketPriceRaw {
     }
 
     /**
-     * 관리자가 직접 고시한 원본인가.
+     * 관리자가 직접 입력한 원본인가.
      *
      * <p>{@code source.getCode()} 로 판정하지 않는다. {@code source} 는 지연로딩이라
-     * 트랜잭션 밖(컨트롤러·테스트)에서 부르면 {@code LazyInitializationException} 이 난다 —
-     * 판정 하나 때문에 응답 전체가 500 이 되는 함정이다. 이 스키마에서
-     * {@code created_by} 가 있다는 것과 수동 고시라는 것은 같은 뜻이므로 그 값을 본다.
+     * 트랜잭션 밖(컨트롤러·테스트)에서 부르면 {@code LazyInitializationException} 이 난다.
+     * 이 스키마에서 {@code created_by} 가 있다는 것과 관리자 입력이라는 것은 같은 뜻이다.
      */
     public boolean isDeclaredByAdmin() {
         return createdBy != null && !createdBy.isBlank();

@@ -5,6 +5,12 @@ interface Props {
   points: PriceHistoryPoint[];
   /** 접근성 설명. "순금 24K 내가 살 때 최근 1개월 추이" 처럼 무엇의 그래프인지 적는다 */
   label: string;
+  /**
+   * 그래프가 덮는 구간(ISO-8601). 주면 가로축이 이 구간에 맞춰지고, 마지막 고시값이
+   * {@code until} 까지 이어진다. 주지 않으면 첫 고시부터 마지막 고시까지다.
+   */
+  since?: string;
+  until?: string;
 }
 
 /** 그리기 영역. 축 글자가 들어갈 자리를 먼저 빼 둔다 — 안 그러면 뷰박스 밖으로 잘린다. */
@@ -27,6 +33,9 @@ const MOBILE: Box = { w: 400, h: 260, pad: { top: 14, right: 12, bottom: 26, lef
 /** 가로 눈금 개수. 3줄이면 최저·중간·최고가 되어 읽는 데 충분하다. */
 const GRID = 3;
 
+/** 이보다 짧은 구간이면 축에 시각까지 적는다. 날짜만 쓰면 양 끝이 같은 글자가 된다. */
+const SHOW_TIME_WITHIN_MS = 2 * 24 * 60 * 60 * 1000;
+
 /**
  * 시세 추이 그래프.
  *
@@ -45,6 +54,12 @@ const GRID = 3;
  * 없다. 그래서 x 축을 <b>시간에 비례</b>해 놓는다 — 점을 같은 간격으로 늘어놓으면
  * 고시가 잦았던 구간이 실제보다 넓게 보인다.
  *
+ * <h2>구간이 주어지면 마지막 값을 지금까지 잇는다</h2>
+ * 고시한 값은 다음 고시까지 그대로 적용된다. 점만 잇고 끝내면 "1일" 그래프는 아침 고시
+ * 한 번 뒤로 오른쪽이 비어 버리는데, 실제로는 그 값으로 지금도 팔고 있다. 그래서 마지막
+ * 값을 {@code until} 까지 수평으로 늘인다. 기간 시작 전에 고시돼 기간 첫머리에 적용 중이던
+ * 값(이력 API 가 맨 앞에 붙여 준다)은 가로축 왼쪽 끝에 놓는다.
+ *
  * <h2>뷰박스를 둘 그린다</h2>
  * SVG 는 뷰박스째로 줄어든다. 가로 900 짜리 그림이 휴대폰에서 340px 로 들어가면
  * <b>축 글자도 0.38배</b>가 되어 13px 글자가 5px 로 찍힌다. CSS 로 글자만 키우는 것은
@@ -55,20 +70,21 @@ const GRID = 3;
  * 되어 위에 적은 것(초기 HTML 에 그래프가 실린다)을 통째로 잃는다. 두 벌의 경로 문자열은
  * 합쳐 3KB 남짓이라 그 값을 치를 만하다.
  */
-export function PriceChart({ points, label }: Props) {
+export function PriceChart({ points, label, since, until }: Props) {
   if (points.length === 0) {
     return <p className={styles.empty}>이 기간에 고시된 시세가 없습니다.</p>;
   }
 
-  // 점이 하나면 선이 그려지지 않는다. 값 하나를 글자로 보여주는 편이 정직하다.
-  if (points.length === 1) {
+  // 구간이 없으면 점 하나로는 선을 그릴 수 없다. 구간이 있으면 그 값이 지금까지
+  // 이어지는 수평선이 되므로 그린다.
+  if (points.length === 1 && (since == null || until == null)) {
     return <p className={styles.empty}>이 기간의 고시가 1건뿐이라 추이를 그릴 수 없습니다.</p>;
   }
 
   return (
     <>
-      <Plot points={points} label={label} box={DESKTOP} className={styles.wide} />
-      <Plot points={points} label={label} box={MOBILE} className={styles.narrow} />
+      <Plot points={points} label={label} since={since} until={until} box={DESKTOP} className={styles.wide} />
+      <Plot points={points} label={label} since={since} until={until} box={MOBILE} className={styles.narrow} />
     </>
   );
 }
@@ -77,14 +93,28 @@ export function PriceChart({ points, label }: Props) {
 function Plot({
   points,
   label,
+  since,
+  until,
   box,
   className,
 }: Props & { box: Box; className: string }) {
   const { w: W, h: H, pad: PAD } = box;
 
-  const values = points.map((p) => p.pricePerGram);
-  const times = points.map((p) => new Date(p.effectiveFrom).getTime());
+  const firstAt = Date.parse(points[0].effectiveFrom);
+  const lastAt = Date.parse(points[points.length - 1].effectiveFrom);
 
+  // 가로축 구간. 구간이 주어지면 그것을, 아니면 첫 고시~마지막 고시를 쓴다.
+  const t0 = since != null ? Math.min(Date.parse(since), lastAt) : firstAt;
+  const tEnd = until != null ? Math.max(Date.parse(until), lastAt) : lastAt;
+
+  // 기간 시작 전에 고시된 값은 왼쪽 끝에 놓고, 마지막 값은 구간 끝까지 늘인다.
+  const series = points.map((p) => ({ t: Math.max(Date.parse(p.effectiveFrom), t0), v: p.pricePerGram }));
+  const last = series[series.length - 1];
+  if (tEnd > last.t) {
+    series.push({ t: tEnd, v: last.v });
+  }
+
+  const values = series.map((s) => s.v);
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   // 위아래가 딱 붙으면 선이 테두리에 닿는다. 폭의 8% 를 여백으로 둔다.
@@ -93,8 +123,7 @@ function Plot({
   const min = lo - span * 0.08;
   const max = hi + span * 0.08;
 
-  const t0 = times[0];
-  const tSpan = times[times.length - 1] - t0 || 1;
+  const tSpan = tEnd - t0 || 1;
 
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
@@ -102,18 +131,19 @@ function Plot({
   const x = (t: number) => PAD.left + ((t - t0) / tSpan) * plotW;
   const y = (v: number) => PAD.top + plotH - ((v - min) / (max - min)) * plotH;
 
-  const line = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(times[i]).toFixed(1)} ${y(p.pricePerGram).toFixed(1)}`)
+  const line = series
+    .map((s, i) => `${i === 0 ? 'M' : 'L'}${x(s.t).toFixed(1)} ${y(s.v).toFixed(1)}`)
     .join(' ');
 
   const baseline = PAD.top + plotH;
-  const area = `${line} L${x(times[times.length - 1]).toFixed(1)} ${baseline} L${PAD.left} ${baseline} Z`;
+  const end = series[series.length - 1];
+  const area = `${line} L${x(end.t).toFixed(1)} ${baseline} L${x(series[0].t).toFixed(1)} ${baseline} Z`;
 
   // 눈금은 실제 값 범위 안에서만 잡는다. 라벨이 가리키는 높이에 선이 지나가야 한다.
   // 값이 전부 같으면 세 눈금이 같은 값이 되므로 키는 순번으로 잡는다.
   const ticks = Array.from({ length: GRID }, (_, i) => lo + ((hi - lo) / (GRID - 1)) * i);
 
-  const last = points[points.length - 1];
+  const withTime = tEnd - t0 <= SHOW_TIME_WITHIN_MS;
 
   return (
     <svg
@@ -134,19 +164,14 @@ function Plot({
       <path className={styles.area} d={area} />
       <path className={styles.line} d={line} />
 
-      {/* 마지막 점만 찍는다. 전 지점에 점을 찍으면 선보다 점이 먼저 보인다 */}
-      <circle
-        className={styles.dot}
-        cx={x(times[times.length - 1])}
-        cy={y(last.pricePerGram)}
-        r={5}
-      />
+      {/* 끝점만 찍는다. 전 지점에 점을 찍으면 선보다 점이 먼저 보인다 */}
+      <circle className={styles.dot} cx={x(end.t)} cy={y(end.v)} r={5} />
 
       <text className={styles.axis} x={PAD.left} y={H - 8}>
-        {formatDay(points[0].effectiveFrom)}
+        {formatTick(t0, withTime)}
       </text>
       <text className={styles.axis} x={W - PAD.right} y={H - 8} textAnchor="end">
-        {formatDay(last.effectiveFrom)}
+        {formatTick(tEnd, withTime)}
       </text>
     </svg>
   );
@@ -159,17 +184,17 @@ function formatAxis(perGram: number): string {
 }
 
 /**
- * 축의 날짜.
+ * 축의 날짜(와 짧은 구간이면 시각).
  *
- * <p>{@code Intl} 에 시간대를 못 박는다. 서버와 브라우저의 시간대가 다르면 서버가 그린
- * 글자와 하이드레이션 후의 글자가 달라져 경고가 난다.
+ * <p>{@code Intl} 에 시간대를 못 박는다. 서버의 시간대가 한국이 아니면 하루 경계가
+ * 어긋난 날짜가 찍힌다.
  */
-function formatDay(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+function formatTick(ms: number, withTime: boolean): string {
+  if (Number.isNaN(ms)) return '';
   return new Intl.DateTimeFormat('ko-KR', {
     month: '2-digit',
     day: '2-digit',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}),
     timeZone: 'Asia/Seoul',
-  }).format(d);
+  }).format(new Date(ms));
 }

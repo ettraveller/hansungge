@@ -125,15 +125,6 @@ app:
   admin-security:
     max-login-failures: ${ADMIN_MAX_LOGIN_FAILURES:5}
     login-rate-per-minute: ${ADMIN_LOGIN_RATE_PER_MINUTE:10}
-  market-price:
-    scheduler:
-      # 수집 주기(cron)는 여기가 아니라 system_settings.MARKET_FETCH_CRON 이다.
-      # 운영 중 바꿀 값이라 재배포가 필요한 곳에 두지 않는다.
-      enabled: ${MARKET_PRICE_SCHEDULER_ENABLED:true}
-    krx:
-      # KRX 자동 수집기는 미구현이다. 수집 방식 확정(TODO B-1) 전까지 켜지 않는다.
-      # 켜더라도 market_price_sources 의 KRX 행이 active=false 면 동작하지 않는다 (2중 차단).
-      enabled: ${MARKET_PRICE_KRX_ENABLED:false}
 
 logging:
   level:

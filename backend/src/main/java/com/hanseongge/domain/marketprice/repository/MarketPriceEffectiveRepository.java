@@ -35,6 +35,15 @@ public interface MarketPriceEffectiveRepository extends JpaRepository<MarketPric
             MetalType metalType, PriceSide priceSide, OffsetDateTime from);
 
     /**
+     * {@code before} 시점에 적용 중이던 행 — 그 시각 전에 발행된 가장 최근 행.
+     *
+     * <p>이 테이블은 마감과 발행이 끊김 없이 이어지는 체인이라, 그 시각 직전에 발행된 행이
+     * 곧 그 시각의 값이다. {@code idx_mpe_history} 를 거꾸로 한 줄만 읽는다.
+     */
+    Optional<MarketPriceEffective> findFirstByMetalTypeAndPriceSideAndEffectiveFromLessThanOrderByEffectiveFromDescIdDesc(
+            MetalType metalType, PriceSide priceSide, OffsetDateTime before);
+
+    /**
      * metal×side 별 <b>직전</b> 최종 시세 (마감된 행 중 가장 최근).
      *
      * <p>공개 시세표의 변동폭을 계산하는 근거다. 이 테이블이 append-only 라서 별도 이력

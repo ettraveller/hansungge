@@ -105,8 +105,8 @@ class CartIntegrationTest extends EmbeddedPostgresSupport {
             jdbc.update("DELETE FROM products");
             jdbc.update("DELETE FROM market_prices_effective");
             jdbc.update("DELETE FROM market_price_raw");
-            jdbc.update("UPDATE market_price_policies SET mode='MANUAL', adj_amount=0, "
-                    + "adj_percent=0, manual_price=NULL");
+            jdbc.update("UPDATE market_price_policies "
+                    + "SET mode='DIRECT', derive_from=NULL, derive_ratio=NULL");
         } finally {
             jdbc.execute("ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard");
         }
@@ -118,8 +118,10 @@ class CartIntegrationTest extends EmbeddedPostgresSupport {
     // =================================================================
 
     private void declarePrice(String pricePerGram) {
-        declarationService.declare(MetalType.GOLD_24K, PriceSide.SELL,
-                new BigDecimal(pricePerGram), "장바구니 테스트 고시", "tester");
+        declarationService.declareBoth(MetalType.GOLD_24K, new BigDecimal(pricePerGram),
+                new BigDecimal(pricePerGram).multiply(new BigDecimal("0.9"))
+                        .setScale(0, java.math.RoundingMode.DOWN),
+                "장바구니 테스트 고시", "tester", true);
         evictPriceCache();
     }
 

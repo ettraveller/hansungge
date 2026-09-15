@@ -12,7 +12,7 @@ import { PriceView } from '@/views/PriceView';
 export const metadata: Metadata = {
   title: '금 시세',
   description:
-    '한성금거래소 금·은·백금 실시간 고시 시세. 1g 기준 매입가·판매가와 기간별 추이를 확인하세요.',
+    '한성금거래소 금·은·백금 오늘의 고시 시세. 1g 기준 매입가·판매가와 기간별 추이를 확인하세요.',
 };
 
 /**
@@ -42,6 +42,7 @@ export default async function PricePage({ searchParams }: PageProps) {
   const metal = toMetal(params.metal);
   const days = toDays(params.days);
   const expanded = params.all === '1';
+  const range = rangeOf(days);
 
   const [prices, boardHistories, sell, buy] = await Promise.all([
     load(() => priceApi.current(), '시세 페이지'),
@@ -58,6 +59,7 @@ export default async function PricePage({ searchParams }: PageProps) {
       histories={boardHistories}
       metal={metal}
       days={days}
+      range={range}
       expanded={expanded}
       sell={slim(sell.data)}
       buy={slim(buy.data)}
@@ -101,6 +103,20 @@ async function loadBoardHistories(): Promise<Partial<Record<MetalType, PriceHist
     }),
   );
   return Object.fromEntries(entries);
+}
+
+/**
+ * 그래프가 덮는 구간. 요청 시각 기준이다.
+ *
+ * <p>그래프는 마지막 고시값이 <b>지금까지</b> 이어진다는 것을 그린다. 고시는 하루 한두 번이라
+ * 점만 잇고 끝내면 "1일" 그래프가 오후 내내 비어 보인다 — 그 사이에도 그 값으로 팔고 있었다.
+ */
+function rangeOf(days: number): { since: string; until: string } {
+  const until = new Date();
+  return {
+    since: new Date(until.getTime() - days * 24 * 60 * 60 * 1000).toISOString(),
+    until: until.toISOString(),
+  };
 }
 
 /** 주소창에 아무 값이나 넣어도 API 로 넘어가지 않게 막는다. */

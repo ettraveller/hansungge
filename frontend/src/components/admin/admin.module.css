@@ -989,42 +989,6 @@
   }
 }
 
-/* ---------- 고시 방식 (자동/수동) ----------
-   시세관리 표에서 지금 어느 쪽인지 한눈에 보여야 하는 칸이다.
-   사고가 났을 때 관리자가 제일 먼저 훑는 열이라 색으로 먼저 말한다. */
-.quoteMode {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.badgeAuto,
-.badgeManual {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: var(--tracking-wide);
-  white-space: nowrap;
-}
-
-/* 자동 = 지금 값이 스스로 움직이고 있다. 초록은 "돌고 있다"는 뜻으로 읽힌다. */
-.badgeAuto {
-  color: var(--ok);
-  background: var(--ok-soft);
-  border: 1px solid rgba(47, 125, 91, 0.2);
-}
-
-/* 수동 = 멈춰 있다. 오류가 아니라 사람이 잡고 있는 상태이므로 붉은색을 쓰지 않는다. */
-.badgeManual {
-  color: var(--ink-600);
-  background: var(--ink-100);
-  border: 1px solid var(--line-strong);
-}
-
 /* ---------- 두 갈래 선택 (자동 시세 / 수동 가격) ----------
    드롭다운으로 두면 무엇을 고를 수 있는지 열어봐야 안다.
    갈림길이 둘뿐이고 결과가 크게 다를 때는 둘 다 펼쳐 두는 편이 낫다. */
@@ -1106,31 +1070,7 @@
 }
 
 
-/* ---------- 두 줄에 걸친 칸 ----------
-   금속 단위 조작(고시 방식·즉시 적용)이 놓이는 자리다. 살 때·팔 때 두 줄에
-   걸쳐 있어야 "이 금속 전체"라는 것이 모양만으로 전달된다.
-
-   세로 가운데에 둔다. 위로 붙으면 첫 줄에만 딸린 것처럼 보여, 병합한 뜻이
-   사라진다. */
-.spanCell {
-  vertical-align: middle;
-  border-left: 1px solid var(--line);
-}
-
-/* 병합 칸은 두 줄 사이 가로선을 넘어간다. 그 선이 칸 안을 가로지르면
-   한 칸이 아니라 두 칸으로 보인다. */
-.table td.spanCell {
-  border-bottom-color: var(--line);
-}
-
-@media (max-width: 900px) {
-  /* 카드로 접히면 병합이 의미를 잃는다. 테두리를 지워 다른 항목과 같은 줄로 둔다. */
-  .table:has(td[data-label]) td.spanCell {
-    border-left: none;
-  }
-}
-
-/* ---------- 자동 / 수동 세그먼트 ----------
+/* ---------- 두 값 세그먼트 (직접 입력 / 24K 환산) ----------
    상태와 조작을 한 덩어리로 둔다. 지금 것을 칠하고 나머지를 누를 수 있게 하면,
    "무엇이 켜져 있나"와 "무엇을 누를 수 있나"를 따로 읽지 않아도 된다. */
 .segment {
@@ -1171,20 +1111,20 @@
 
 /* 지금 켜진 쪽. disabled 지만 흐리게 하지 않는다 — 여기서 disabled 는
    "쓸 수 없음"이 아니라 "이미 그 상태"라는 뜻이다. 흐리면 반대로 읽힌다. */
-.segmentOnAuto,
-.segmentOnManual {
+.segmentOnDerived,
+.segmentOnDirect {
   cursor: default;
   font-weight: 700;
 }
 
-/* 자동 = 값이 스스로 움직인다. */
-.segmentOnAuto {
+/* 24K 환산 = 24K 를 따라 움직인다. */
+.segmentOnDerived {
   color: #fff;
   background: var(--ok);
 }
 
-/* 수동 = 사람이 잡고 있다. 오류가 아니므로 붉은색을 쓰지 않는다. */
-.segmentOnManual {
+/* 직접 입력 = 사람이 정한다. 오류가 아니므로 붉은색을 쓰지 않는다. */
+.segmentOnDirect {
   color: #fff;
   background: var(--ink-600);
 }
@@ -1213,4 +1153,38 @@ a.hint {
 
 a.hint:hover {
   text-decoration: underline;
+}
+
+/* ---------- 시세 변동 ----------
+   금액 바로 옆에 작게 붙인다. 따로 칸을 두면 눈이 금액과 변동 사이를 오간다.
+   국내 시세표 관행대로 오르면 붉게, 내리면 푸르게. */
+.priceDelta {
+  margin-left: 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.deltaUp {
+  color: #c8372d;
+}
+
+.deltaDown {
+  color: #1f5fbf;
+}
+
+/* 확인 기준을 넘는 줄. 확인창에서 "어느 줄 때문에"를 찾게 하지 않는다. */
+.rowWarn td {
+  background: var(--warn-soft);
+}
+
+/* 오류 알림 안의 항목별 사유 — 어느 금속의 어느 쪽이 왜 막혔는지 */
+.errorList {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }

@@ -33,12 +33,6 @@ public record PriceQuoteResponse(
         @Schema(description = "적용된 최종 시세 (원/g)", example = "210000.00")
         BigDecimal appliedMarketPrice,
 
-        @Schema(description = "원본 시세 (원/g). 관리자 전용", example = "200000.00")
-        BigDecimal rawMarketPrice,
-
-        @Schema(description = "시세 보정액. 관리자 전용", example = "10000.00")
-        BigDecimal marketAdjustment,
-
         @Schema(description = "근거 market_prices_effective.id", example = "101")
         Long effectivePriceId,
 
@@ -83,8 +77,6 @@ public record PriceQuoteResponse(
                 quote.productId(),
                 quote.optionId(),
                 quote.appliedMarketPrice() == null ? null : quote.appliedMarketPrice().value(),
-                quote.rawMarketPrice() == null ? null : quote.rawMarketPrice().value(),
-                quote.marketAdjustment(),
                 quote.effectivePriceId(),
                 quote.priceQuotedAt(),
                 quote.components().stream().map(ComponentLineResponse::from).toList(),

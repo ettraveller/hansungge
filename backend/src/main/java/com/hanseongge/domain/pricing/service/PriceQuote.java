@@ -20,8 +20,6 @@ import java.util.List;
  * 피해야 할 표시다.
  *
  * @param appliedMarketPrice 적용된 최종 시세(원/g). 시세 미연동 상품이면 null
- * @param rawMarketPrice     원본 시세(원/g). 관리자 전용 정보다
- * @param marketAdjustment   보정액. 관리자 전용 정보다
  * @param effectivePriceId   근거가 된 {@code market_prices_effective.id}. 주문 Snapshot 이 보관한다
  * @param subtotal           구성요소 합계 (= 모든 {@link ComponentLine#amount} 의 합)
  * @param vat                부가세액. {@code NONE} 이면 0
@@ -33,8 +31,6 @@ public record PriceQuote(
         Long optionId,
 
         PricePerGram appliedMarketPrice,
-        PricePerGram rawMarketPrice,
-        BigDecimal marketAdjustment,
         Long effectivePriceId,
         OffsetDateTime priceQuotedAt,
 
@@ -53,7 +49,7 @@ public record PriceQuote(
     /** 가격을 산출할 수 없는 상태. 금액 자리는 전부 null 이다. */
     public static PriceQuote unavailable(PriceStatus status, Long productId, Long optionId, String reason) {
         return new PriceQuote(status, productId, optionId,
-                null, null, null, null, null,
+                null, null, null,
                 List.of(), null, null, false, null, null, false, null,
                 reason);
     }

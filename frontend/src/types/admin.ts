@@ -6,7 +6,13 @@
  * 비교는 {@code == null} (느슨한 비교)로 한다.
  */
 
-import type { MetalType, PriceSide, PricePolicyMode, ProductPriceType } from '@/types/price';
+import type {
+  MetalType,
+  PriceChange,
+  PriceSide,
+  PricePolicyMode,
+  ProductPriceType,
+} from '@/types/price';
 import type { ProductStatus } from '@/types/product';
 
 // =====================================================================
@@ -76,7 +82,8 @@ export interface AdminLoginResponse {
 // 시세
 // =====================================================================
 
-export type PriceAvailability = 'AVAILABLE' | 'NONE' | 'STALE';
+/** AVAILABLE = 고시되어 있다 · NONE = 한 번도 고시된 적 없다 */
+export type PriceAvailability = 'AVAILABLE' | 'NONE';
 
 export interface AdminCurrentPrice {
   metalType: MetalType;
@@ -84,50 +91,59 @@ export interface AdminCurrentPrice {
   priceSide: PriceSide;
   available: boolean;
   availability: PriceAvailability;
-  /** 원본 시세 — 관리자 전용 */
-  rawPricePerGram?: number | null;
-  /** 보정액 — 관리자 전용 */
-  adjustment?: number | null;
   pricePerGram?: number | null;
-  policyMode?: PricePolicyMode | null;
+  /** 직전 고시 대비. 처음 고시면 생략된다 */
+  change?: PriceChange | null;
+  /** 이 값이 나온 방식. 옛 행이면 V19 이전 값(FIXED_ADJ 등)일 수 있다 */
+  mode?: PricePolicyMode | null;
   effectiveFrom?: string | null;
   changeReason?: string | null;
   createdBy?: string | null;
 }
 
-export interface PricePolicy {
-  id: number;
+/** 18K·14K 한 금속의 고시 방식 */
+export interface PriceDerivation {
   metalType: MetalType;
-  priceSide: PriceSide;
+  metalName: string;
   mode: PricePolicyMode;
   modeName: string;
-  adjAmount: number;
-  adjPercent: number;
-  manualPrice?: number | null;
+  /** 환산 비율. 직접 입력이어도 직전 비율이 남아 있을 수 있다 */
+  ratio?: number | null;
   updatedBy?: string | null;
   updatedAt: string;
-  /** true 면 자동고시 — 수집값에 보정을 적용해 즉시 발행한다 */
-  autoQuote: boolean;
 }
 
-/** 살 때·팔 때를 함께 고시한 결과. applied 는 둘 다 발행됐을 때만 true 다. */
-export interface PriceApplyPairResult {
-  applied: boolean;
-  sell: PriceApplyResult;
-  buy: PriceApplyResult;
-}
-
-export interface PriceApplyResult {
-  /** false 면 오류가 아니라 <b>승인 대기로 등록됨</b>을 뜻한다 */
-  applied: boolean;
-  effectiveId?: number | null;
-  pendingId?: number | null;
-  rawPricePerGram: number;
-  adjustment: number;
-  pricePerGram: number;
+/** 고시로 바뀌는 한 줄. 미리보기와 발행 결과가 같은 모양이다 */
+export interface QuoteLine {
+  metalType: MetalType;
+  metalName: string;
+  priceSide: PriceSide;
+  mode: PricePolicyMode;
+  deriveRatio?: number | null;
+  basePricePerGram?: number | null;
+  /** 고시 전 값. 처음 고시면 생략된다 */
+  currentPricePerGram?: number | null;
+  newPricePerGram: number;
   changePercent?: number | null;
-  effectiveFrom?: string | null;
-  message: string;
+  exceedsLimit: boolean;
+}
+
+/** 고시 미리보기. needsConfirm 이면 확인을 받은 뒤 confirmLargeChange 로 다시 보낸다 */
+export interface QuotePlan {
+  needsConfirm: boolean;
+  limitPercent: number;
+  lines: QuoteLine[];
+}
+
+export interface QuotePublishResult {
+  effectiveFrom: string;
+  lines: QuoteLine[];
+}
+
+export interface DerivationUpdateResult {
+  derivation: PriceDerivation;
+  /** 곧바로 다시 고시된 결과. 24K 가 없거나 직접 입력으로 돌렸거나 값이 그대로면 생략된다 */
+  published?: QuotePublishResult | null;
 }
 
 export interface PriceHistory {
@@ -143,44 +159,6 @@ export interface PriceHistory {
   current: boolean;
   changeReason: string;
   createdBy: string;
-}
-
-export type PendingStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-export interface PricePending {
-  id: number;
-  rawId: number;
-  metalType: MetalType;
-  priceSide: PriceSide;
-  /** 승인 시 적용될 값 */
-  calcPrice: number;
-  /** 보류 시점의 현재 시세 — 지금도 이 값이 적용 중이다 */
-  prevPrice?: number | null;
-  changePercent?: number | null;
-  status: PendingStatus;
-  decidedBy?: string | null;
-  decidedAt?: string | null;
-  createdAt: string;
-}
-
-export type FetchResult =
-  | 'SUCCESS'
-  | 'SKIPPED_DUPLICATE'
-  | 'HTTP_ERROR'
-  | 'TIMEOUT'
-  | 'PARSE_ERROR'
-  | 'INVALID_VALUE'
-  | 'EXCEPTION';
-
-export interface CollectionStatus {
-  schedulerEnabled: boolean;
-  cron: string;
-  lastAttemptAt?: string | null;
-  lastAttemptResult?: FetchResult | null;
-  lastSuccessAt?: string | null;
-  failureCount: number;
-  neverSucceeded: boolean;
-  message: string;
 }
 
 // =====================================================================
@@ -221,15 +199,13 @@ export interface AdminProductOption {
   active: boolean;
 }
 
-/** 관리자 가격 미리보기 — 원본 시세·보정액·정책까지 전부 나온다. */
+/** 관리자 가격 미리보기 — 적용 시세·구성요소·세금·반올림까지 전부 나온다. */
 export interface AdminPriceQuote {
   status: 'AVAILABLE' | 'INQUIRY_ONLY' | 'SOLD_OUT' | 'NOT_FOR_SALE';
   orderable: boolean;
   productId: number;
   optionId?: number | null;
   appliedMarketPrice?: number | null;
-  rawMarketPrice?: number | null;
-  marketAdjustment?: number | null;
   effectivePriceId?: number | null;
   priceQuotedAt?: string | null;
   components: AdminPriceComponent[];

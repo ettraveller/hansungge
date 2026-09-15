@@ -17,7 +17,7 @@ import styles from '../admin.module.css';
  * 더하거나 곱하지 않는다 (설계서 원칙 P1). 구성요소의 합은 소계와 <b>정확히</b> 같고,
  * 반올림은 마지막에 한 번만 적용된다.
  *
- * <p>시세가 없거나 노후면 금액이 아니라 "시세문의"가 나간다. 그것이 오류가 아니라
+ * <p>시세가 고시된 적 없으면 금액이 아니라 "시세문의"가 나간다. 그것이 오류가 아니라
  * 안전장치라는 점을 화면에서 분명히 한다.
  */
 export function ProductPricePreview({ productId }: { productId: number }) {
@@ -66,13 +66,6 @@ function QuoteBlock({ quote }: { quote: AdminPriceQuote }) {
           </span>
           <p className={styles.hint}>
             기준 시세 {formatPricePerGram(quote.appliedMarketPrice)}
-            {quote.rawMarketPrice != null && (
-              <>
-                {' '}
-                (원본 {formatPricePerGram(quote.rawMarketPrice)} · 보정{' '}
-                {formatAdjustment(quote.marketAdjustment)})
-              </>
-            )}
             {quote.priceQuotedAt && ` · 산출 ${formatDateTime(quote.priceQuotedAt)}`}
           </p>
         </div>

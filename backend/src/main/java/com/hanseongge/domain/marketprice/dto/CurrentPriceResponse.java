@@ -5,19 +5,18 @@ import com.hanseongge.domain.marketprice.entity.MetalType;
 import com.hanseongge.domain.marketprice.entity.PolicyMode;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.CurrentPriceView;
-import com.hanseongge.domain.marketprice.service.PriceBreakdown;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
- * 관리자 "오늘의 시세" 한 줄 (설계서 §8 — 금속×매입/판매별: 원본·출처·수집시각·보정방식·최종가).
+ * 관리자 "현재 시세" 한 줄.
  *
- * <p><b>세 값이 모두 들어간다.</b> 최종가만 보여주면 관리자가 "지금 얼마를 보정하고 있는지"를
- * 알 수 없고, 그 상태에서 보정을 또 걸면 이중 보정이 된다.
+ * <p>변동폭을 함께 담는다. 고시한 사람이 "방금 얼마나 움직였나"를 표에서 바로 봐야
+ * 자릿수 실수를 늦지 않게 알아챈다.
  */
-@Schema(name = "CurrentPriceResponse", description = "현재 최종 시세 (관리자)")
+@Schema(name = "CurrentPriceResponse", description = "현재 시세 (관리자)")
 public record CurrentPriceResponse(
 
         @Schema(description = "금속", example = "GOLD_24K")
@@ -26,34 +25,31 @@ public record CurrentPriceResponse(
         @Schema(description = "금속 표시명", example = "순금 24K")
         String metalName,
 
-        @Schema(description = "매입/판매", example = "SELL")
+        @Schema(description = "살 때(SELL) / 팔 때(BUY)", example = "SELL")
         PriceSide priceSide,
 
-        @Schema(description = "판매 사용 가능 여부. false 면 '시세문의'", example = "true")
+        @Schema(description = "판매에 쓸 수 있는가. false 면 아직 고시되지 않아 '시세문의'", example = "true")
         boolean available,
 
-        @Schema(description = "사용 불가 사유 (AVAILABLE / NONE / STALE)", example = "AVAILABLE")
+        @Schema(description = "AVAILABLE / NONE", example = "AVAILABLE")
         CurrentPriceView.Availability availability,
 
-        @Schema(description = "원본 시세 (원/g). 원본을 되짚지 못하면 null", example = "200000.00")
-        BigDecimal rawPricePerGram,
-
-        @Schema(description = "보정액 (최종 - 원본)", example = "10000.00")
-        BigDecimal adjustment,
-
-        @Schema(description = "최종 적용가 (원/g)", example = "210000.00")
+        @Schema(description = "고시가 (원/g)", example = "220800.00")
         BigDecimal pricePerGram,
 
-        @Schema(description = "적용된 보정 방식", example = "FIXED_ADJ")
-        PolicyMode policyMode,
+        @Schema(description = "직전 고시 대비 변동폭. 처음 고시면 null")
+        PriceChange change,
 
-        @Schema(description = "적용 시각")
+        @Schema(description = "이 값이 나온 방식. 옛 행이면 V19 이전 값(FIXED_ADJ 등)일 수 있다", example = "DIRECT")
+        PolicyMode mode,
+
+        @Schema(description = "고시 시각")
         OffsetDateTime effectiveFrom,
 
-        @Schema(description = "변경 사유", example = "관리자 수동 고시")
+        @Schema(description = "고시 사유", example = "오전 고시")
         String changeReason,
 
-        @Schema(description = "적용자", example = "admin")
+        @Schema(description = "고시한 관리자", example = "admin")
         String createdBy
 ) {
 
@@ -61,23 +57,23 @@ public record CurrentPriceResponse(
     public static CurrentPriceResponse none(MetalType metalType, PriceSide priceSide) {
         return new CurrentPriceResponse(metalType, metalType.displayName(), priceSide,
                 false, CurrentPriceView.Availability.NONE,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 
-    public static CurrentPriceResponse of(CurrentPriceView view, PriceBreakdown breakdown) {
-        if (view.effective() == null) {
+    /** @param previous 같은 금속·쪽의 직전 행. 없으면 null */
+    public static CurrentPriceResponse of(CurrentPriceView view, MarketPriceEffective previous) {
+        MarketPriceEffective e = view.effective();
+        if (e == null) {
             return none(view.metalType(), view.priceSide());
         }
-        MarketPriceEffective e = view.effective();
         return new CurrentPriceResponse(
                 e.getMetalType(),
                 e.getMetalType().displayName(),
                 e.getPriceSide(),
                 view.isSellable(),
                 view.availability(),
-                breakdown.rawPricePerGram(),
-                breakdown.adjustment(),
                 e.getPricePerGram(),
+                PriceChange.of(e.getPricePerGram(), previous),
                 e.getPolicyMode(),
                 e.getEffectiveFrom(),
                 e.getChangeReason(),

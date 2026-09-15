@@ -26,10 +26,8 @@ import java.util.Map;
  *
  * <h2>이 컨트롤러가 절대 하지 않는 것</h2>
  * <ol>
- *   <li><b>0원을 내보내지 않는다.</b> 시세가 없거나 노후면 가격 자리가 {@code null} 이고
+ *   <li><b>0원을 내보내지 않는다.</b> 고시된 적 없는 시세는 가격 자리가 {@code null} 이고
  *       {@code displayText} 가 "시세문의"다</li>
- *   <li><b>노후된 값을 그대로 내보내지 않는다.</b> 관리자 화면과 달리 여기서는 걸러진다 —
- *       고객은 화면에 뜬 가격으로 주문하려 하기 때문이다</li>
  *   <li><b>회사 마진을 노출하지 않는다.</b> 원본가·보정액·적용자는 공개 응답에 없다</li>
  * </ol>
  * 유효 시세가 없을 때 <b>500 이나 404 가 아니라 200 + "시세문의"</b>인 것도 의도적이다
@@ -48,7 +46,7 @@ public class PublicMarketPriceController {
     private final MarketPriceService marketPriceService;
 
     @Operation(summary = "현재 시세표",
-            description = "전 금속 × 매입/판매. 유효 시세가 없거나 노후면 가격 대신 '시세문의'를 돌려준다. "
+            description = "전 금속 × 매입/판매. 고시된 적 없는 조합은 가격 대신 '시세문의'를 돌려준다. "
                     + "이 응답에 0원이 담기는 경로는 존재하지 않는다.")
     @GetMapping("/current")
     public ResponseEntity<List<PublicPriceResponse>> current() {
@@ -63,7 +61,9 @@ public class PublicMarketPriceController {
     }
 
     @Operation(summary = "시세 이력",
-            description = "지정 기간의 최종 시세 변경 이력을 오래된 순으로 돌려준다. 차트용이다.")
+            description = "지정 기간의 시세 이력을 오래된 순으로 돌려준다. 차트용이다. "
+                    + "기간이 시작할 때 적용 중이던 값을 맨 앞에 포함한다 — 그 행의 발행 시각은 기간보다 앞선다. "
+                    + "하루 한두 번 고시해도 짧은 기간의 그래프가 비지 않게 하기 위해서다.")
     @GetMapping("/history")
     public ResponseEntity<List<PriceHistoryResponse>> history(
             @RequestParam MetalType metal,

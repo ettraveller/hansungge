@@ -617,8 +617,10 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     private void declareMarketPrice(String pricePerGram) {
-        declarationService.declare(MetalType.GOLD_24K, PriceSide.SELL,
-                new BigDecimal(pricePerGram), "테스트 고시", "test_prodmgr");
+        declarationService.declareBoth(MetalType.GOLD_24K, new BigDecimal(pricePerGram),
+                new BigDecimal(pricePerGram).multiply(new BigDecimal("0.9"))
+                        .setScale(0, java.math.RoundingMode.DOWN),
+                "테스트 고시", "test_prodmgr", true);
         evictPriceCache();
     }
 

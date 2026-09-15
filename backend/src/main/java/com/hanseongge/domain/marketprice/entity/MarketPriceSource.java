@@ -25,9 +25,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MarketPriceSource {
 
-    /** V2 시드 코드. Provider 의 {@code sourceCode()} 와 대응한다. */
+    /** 관리자 입력 원천. 지금 원본을 만드는 유일한 원천이다 (V19 가 나머지를 비활성화했다). */
     public static final String CODE_MANUAL = "MANUAL";
-    public static final String CODE_KRX = "KRX";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -4,7 +4,6 @@ import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.CurrentPriceView;
 import com.hanseongge.domain.marketprice.service.MarketPriceService;
-import com.hanseongge.domain.marketprice.service.PriceBreakdown;
 import com.hanseongge.domain.product.entity.PriceType;
 import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductOption;
@@ -42,7 +41,7 @@ import java.util.Optional;
  * 1. 상품·옵션 로드 → 판매 가능 여부 확인
  * 2. 가격 모델 정규화 (SIMPLE → 구성요소)
  * 3. METAL_BASE: 최종 시세 조회
- *      없음 / 노후 → INQUIRY_ONLY 반환하고 종료   (예외 아님, 0원 아님)
+ *      고시된 적 없음 → INQUIRY_ONLY 반환하고 종료   (예외 아님, 0원 아님)
  * 4. sort 순으로 구성요소 누적 → 소계
  * 5. (할인·쿠폰 — STEP 11 장바구니/주문에서 추가)
  * 6. 부가세 정책 적용   [A-1 미확정 → 임시 NONE + WARN]
@@ -67,7 +66,6 @@ public class PriceCalculationService {
     private final ProductOptionRepository optionRepository;
     private final ProductComponentNormalizer normalizer;
     private final MarketPriceService marketPriceService;
-    private final com.hanseongge.domain.marketprice.service.AutoQuoteService autoQuoteService;
     private final PriceRoundingResolver roundingResolver;
     private final VatPolicyResolver vatPolicyResolver;
 
@@ -127,7 +125,7 @@ public class PriceCalculationService {
         }
 
         // 2~3. 시세 연동 상품이면 최종 시세를 먼저 확보한다.
-        //      없거나 노후면 여기서 끝난다 — 0원을 만들 기회 자체를 주지 않는다.
+        //      고시된 적 없으면 여기서 끝난다 — 0원을 만들 기회 자체를 주지 않는다.
         MarketContext market = resolveMarket(product);
         if (market.inquiryOnly()) {
             return PriceQuote.unavailable(PriceStatus.INQUIRY_ONLY, productId, optionId,
@@ -154,8 +152,7 @@ public class PriceCalculationService {
 
         return new PriceQuote(
                 status, productId, optionId,
-                market.price(), market.rawPrice(), market.adjustment(),
-                market.effectiveId(), market.quotedAt(),
+                market.price(), market.effectiveId(), market.quotedAt(),
                 components, subtotal,
                 vatMode, vatPolicyResolver.isUsingTemporaryDefault(), vat,
                 rounding, roundingResolver.isUsingTemporaryDefault(), finalUnitPrice,
@@ -194,36 +191,20 @@ public class PriceCalculationService {
                     "시세 연동 상품에 metal_type 이 없습니다: productId=" + product.getId());
         }
 
-        // 전역 차단기. 상품이 MARKET_* 로 설정돼 있어도, 운영이 허용한 금속이 아니면
-        // 시세를 따르지 않는다.
-        //
-        // 상품마다 price_type 이 있는데 왜 또 막는가 — 그것은 상품 한 건의 설정이고
-        // 이것은 범위 전체의 결정이다. "지금은 순금만 연동한다"를 상품 수백 건의
-        // price_type 을 일일이 되돌리지 않고 한 줄로 정할 수 있어야 하고, 되돌릴 때도
-        // 마찬가지여야 한다.
-        if (!autoQuoteService.linkedMetals().contains(product.getMetalType())) {
-            log.debug("[PRICING] 연동 대상 금속이 아님 — productId={} metal={}",
-                    product.getId(), product.getMetalType());
-            return MarketContext.inquiryOnly("시세문의 후 주문해 주세요.");
-        }
-
+        // 상품이 시세를 따르기로 했으면 그 금속의 고시가를 쓴다. 금속 단위로 막는 차단기는
+        // 두지 않는다 — 18K 상품을 '자동'으로 두었다면 18K 고시가로 계산되는 것이 맞다.
+        // 한 번 고시된 값은 새 고시가 나올 때까지 유효하므로, 여기서 빠지는 것은
+        // 한 번도 고시되지 않은 금속뿐이다.
         CurrentPriceView view = marketPriceService.describeCurrent(product.getMetalType(), SALE_SIDE);
         if (!view.isSellable()) {
-            log.debug("[PRICING] 시세문의 — productId={} metal={} 사유={}",
-                    product.getId(), product.getMetalType(), view.availability());
-            return MarketContext.inquiryOnly(switch (view.availability()) {
-                case NONE -> "현재 시세가 고시되지 않았습니다. 시세문의 후 주문해 주세요.";
-                case STALE -> "시세 정보가 오래되었습니다. 시세문의 후 주문해 주세요.";
-                case AVAILABLE -> "";
-            });
+            log.debug("[PRICING] 시세문의 — productId={} metal={} 고시된 적 없음",
+                    product.getId(), product.getMetalType());
+            return MarketContext.inquiryOnly("현재 시세가 고시되지 않았습니다. 시세문의 후 주문해 주세요.");
         }
 
         MarketPriceEffective effective = view.effective();
-        PriceBreakdown breakdown = marketPriceService.breakdown(effective);
         return new MarketContext(
                 effective.price(),
-                breakdown.rawPricePerGram() == null ? null : PricePerGram.of(breakdown.rawPricePerGram()),
-                breakdown.adjustment(),
                 effective.getId(),
                 effective.getEffectiveFrom(),
                 null);
@@ -280,19 +261,17 @@ public class PriceCalculationService {
     /** 시세 조회 결과를 한 덩어리로 나른다. */
     private record MarketContext(
             PricePerGram price,
-            PricePerGram rawPrice,
-            java.math.BigDecimal adjustment,
             Long effectiveId,
             java.time.OffsetDateTime quotedAt,
             String reason
     ) {
 
         static MarketContext notLinked() {
-            return new MarketContext(null, null, null, null, null, null);
+            return new MarketContext(null, null, null, null);
         }
 
         static MarketContext inquiryOnly(String reason) {
-            return new MarketContext(null, null, null, null, null, reason);
+            return new MarketContext(null, null, null, reason);
         }
 
         boolean inquiryOnly() {

@@ -28,13 +28,11 @@ public enum ErrorCode {
 
     // --- 시세 (STEP 7) ---
     PRICE_UNAVAILABLE(HttpStatus.CONFLICT, "현재 시세를 확인할 수 없습니다. 시세문의 후 주문해 주세요."),
-    PRICE_STALE(HttpStatus.CONFLICT, "시세 정보가 오래되었습니다. 잠시 후 다시 시도해 주세요."),
-    PRICE_CHANGE_EXCEEDS_LIMIT(HttpStatus.CONFLICT, "허용 변동폭을 초과했습니다. 관리자 승인이 필요합니다."),
+    PRICE_CHANGE_NEEDS_CONFIRM(HttpStatus.CONFLICT, "직전 고시보다 크게 바뀌는 값이 있습니다. 바뀌는 값을 확인한 뒤 다시 고시해 주세요."),
+    PRICE_SPREAD_INVERTED(HttpStatus.BAD_REQUEST, "살 때 시세가 팔 때 시세보다 커야 합니다. 두 값이 바뀌지 않았는지 확인해 주세요."),
+    PRICE_METAL_DERIVED(HttpStatus.CONFLICT, "24K 환산으로 설정된 금속은 직접 고시할 수 없습니다. 환산 설정에서 '직접 입력'으로 바꿔 주세요."),
     PRICE_APPLY_CONFLICT(HttpStatus.CONFLICT, "다른 작업이 시세를 변경 중입니다. 다시 시도해 주세요."),
-    PRICE_RAW_NOT_FOUND(HttpStatus.NOT_FOUND, "원본 시세를 찾을 수 없습니다."),
-    PRICE_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "보정 정책을 찾을 수 없습니다."),
-    PRICE_PENDING_NOT_FOUND(HttpStatus.NOT_FOUND, "승인 대기 건을 찾을 수 없습니다."),
-    PRICE_PENDING_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 처리된 승인 건입니다."),
+    PRICE_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "시세 설정을 찾을 수 없습니다."),
     /** 0 이하·범위 이탈·단위(돈↔g) 오입력 의심. 상세 사유는 로그와 수집 이력에만 남긴다. */
     PRICE_INVALID_VALUE(HttpStatus.BAD_REQUEST, "입력한 시세가 정상 범위를 벗어났습니다. 값과 단위를 확인해 주세요."),
 

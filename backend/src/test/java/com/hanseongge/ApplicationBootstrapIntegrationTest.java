@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * STEP 3 완료 검증 — 실제 PostgreSQL 위에서 전체 기동을 확인한다.
  *
- * <p>검증 범위: Flyway V1~V18 적용 → 스키마 정합성(ddl-auto=validate) → 설정 캐시 →
+ * <p>검증 범위: Flyway V1~V19 적용 → 스키마 정합성(ddl-auto=validate) → 설정 캐시 →
  * 최초 관리자 생성 → 헬스체크 응답.
  *
  * <p>관리자 인증·권한·감사로그는 {@link AdminAuthIntegrationTest} 가 맡는다.
@@ -51,7 +51,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("Flyway V1~V18 가 적용되고 43개 테이블이 생성된다")
+    @DisplayName("Flyway V1~V19 가 적용되고 43개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
@@ -69,15 +69,16 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V15(상품 시세문의)는 products 의 CHECK 제약 두 개만 다시 건다.
         // V16 은 설정 설명 문구만, V17 은 수집 원천 이름만 고친다.
         // V18 은 PRICE_STALE_MINUTES 를 0 으로 내린다 — 마지막 고시값을 계속 쓴다.
+        // V19 는 자동 수집을 걷어내며 승인 대기·수집 로그 2개를 지운다.
         assertThat(versions)
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19");
 
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables "
                         + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                         + "AND table_name <> 'flyway_schema_history'",
                 Integer.class);
-        assertThat(tableCount).isEqualTo(43);
+        assertThat(tableCount).isEqualTo(41);
     }
 
     @Test
@@ -100,9 +101,9 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     @DisplayName("system_settings 시드값을 읽는다")
     void readsSeededSettings() {
         assertThat(systemSettingService.getInt("MAX_PRICE_CHANGE_PERCENT", -1)).isEqualTo(5);
-        assertThat(systemSettingService.getInt("PRICE_STALE_MINUTES", -1))
-                .as("0 = 마지막 고시값을 계속 쓴다 (V18)")
-                .isEqualTo(0);
+        assertThat(systemSettingService.find("PRICE_STALE_MINUTES"))
+                .as("V19 가 지웠다 — 고시값은 시간이 지나도 내려가지 않는다")
+                .isEmpty();
     }
 
     @Test
@@ -166,7 +167,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
                 .andExpect(jsonPath("$.service").value("hanseongge-api"))
                 .andExpect(jsonPath("$.profile").value("test"))
                 .andExpect(jsonPath("$.database").value("UP"))
-                .andExpect(jsonPath("$.schemaVersion").value("18"))
+                .andExpect(jsonPath("$.schemaVersion").value("19"))
                 // A-2 확정값이 V11 로 반영되어 있으므로 임시 정책이 아니다.
                 .andExpect(jsonPath("$.roundingPolicy").value(RoundingPolicy.CEIL_100.name()))
                 .andExpect(jsonPath("$.roundingPolicyTemporary").value(false))

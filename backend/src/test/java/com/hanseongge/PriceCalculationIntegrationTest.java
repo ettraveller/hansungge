@@ -1,6 +1,7 @@
 package com.hanseongge;
 
 import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.marketprice.entity.PolicyMode;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.MarketPriceDeclarationService;
 import com.hanseongge.domain.marketprice.service.MarketPriceService;
@@ -45,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <ul>
  *   <li>요구사항 예시가 <b>DB·시세·정책을 통과해</b> 837,500 으로 나온다</li>
  *   <li><b>시세를 바꾸면 상품 가격이 자동으로 바뀐다</b> (배치 없이 — 시나리오 S2 의 후반부)</li>
- *   <li>시세 없음·노후 → "시세문의". <b>0원이 아니다</b> (S6)</li>
+ *   <li>시세가 고시된 적 없으면 "시세문의". <b>0원이 아니다</b> (S6)</li>
  *   <li>반올림은 <b>마지막에 한 번만</b> — 구성요소 합계가 소계와 정확히 일치한다</li>
  *   <li>부가세 미확정(A-1) 상태에서도 계산이 멈추지 않는다</li>
  * </ul>
@@ -59,6 +60,7 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired PriceCalculationService priceCalculationService;
     @Autowired MarketPriceDeclarationService declarationService;
     @Autowired MarketPriceService marketPriceService;
+    @Autowired com.hanseongge.domain.marketprice.service.MarketPricePolicyService policyService;
     @Autowired ProductRepository productRepository;
     @Autowired ProductOptionRepository optionRepository;
     @Autowired SystemSettingService systemSettingService;
@@ -70,20 +72,15 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
     @AfterEach
     void reset() {
         jdbcTemplate.execute("ALTER TABLE market_prices_effective DISABLE TRIGGER trg_mpe_guard");
-        jdbcTemplate.execute("ALTER TABLE market_price_fetch_logs DISABLE TRIGGER trg_mpfl_guard");
         try {
             jdbcTemplate.update("DELETE FROM product_options");
             jdbcTemplate.update("DELETE FROM products");
             jdbcTemplate.update("DELETE FROM market_prices_effective");
-            jdbcTemplate.update("DELETE FROM market_price_pending");
-            jdbcTemplate.update("DELETE FROM market_price_fetch_logs");
             jdbcTemplate.update("DELETE FROM market_price_raw");
-            jdbcTemplate.update(
-                    "UPDATE market_price_policies SET mode='MANUAL', adj_amount=0, adj_percent=0, "
-                            + "manual_price=NULL, updated_by=NULL");
+            jdbcTemplate.update("UPDATE market_price_policies "
+                    + "SET mode='DIRECT', derive_from=NULL, derive_ratio=NULL, updated_by=NULL");
         } finally {
             jdbcTemplate.execute("ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard");
-            jdbcTemplate.execute("ALTER TABLE market_price_fetch_logs ENABLE TRIGGER trg_mpfl_guard");
         }
         // 반올림 정책을 운영 확정값(V11)으로 못 박는다. 테스트끼리 DB 하나를 나눠 쓰므로,
         // 앞선 테스트가 이 값을 바꿔 놓으면 여기 적힌 금액이 통째로 어긋난다 —
@@ -104,9 +101,7 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("골드바 3.75g — 시세 210,000 × 3.75 + 공임 50,000 = 837,500")
         void goldBar() {
-            // 원본 200,000 + 정액 보정 10,000 → 최종 시세 210,000
-            setFixedAdjustment("10000");
-            declareMarketPrice("200000");
+            declareMarketPrice("210000");
 
             Product product = saveProduct(ProductTestFixtures.marketProduct(
                     CATEGORY_ID, "순금 골드바 3.75g", MetalType.GOLD_24K,
@@ -119,9 +114,7 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
             assertThat(quote.subtotal().value()).isEqualByComparingTo("837500.00");
             assertThat(quote.finalUnitPrice().value()).isEqualByComparingTo("837500.00");
 
-            // 관리자만 보는 근거 — 원본과 보정액이 함께 나온다
-            assertThat(quote.rawMarketPrice().value()).isEqualByComparingTo("200000.00");
-            assertThat(quote.marketAdjustment()).isEqualByComparingTo("10000.00");
+            // 어느 고시에서 나온 가격인지 남는다 — 주문 Snapshot 이 이 ID 를 보관한다
             assertThat(quote.effectivePriceId()).isNotNull();
 
             // 불변식: 구성요소 합계 = 소계
@@ -174,6 +167,43 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
 
             // 상품 행은 한 글자도 바뀌지 않았다 — 저장된 가격이 애초에 없기 때문이다
             assertThat(productRowSnapshot(product.getId())).isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("18K 상품은 18K 고시가로 계산된다 — 금속 단위로 막는 차단기가 없다")
+        void everyMetalFollowsItsOwnQuote() {
+            declarationService.declareBoth(MetalType.GOLD_18K,
+                    new BigDecimal("160000"), new BigDecimal("140000"), "18K 고시", ADMIN, true);
+            evictAllCaches();
+            Product product = saveProduct(ProductTestFixtures.marketProduct(
+                    CATEGORY_ID, "18K 반지", MetalType.GOLD_18K,
+                    PriceType.MARKET_LINKED, "3.75", "0", "1"));
+
+            PriceQuote quote = priceCalculationService.quote(product.getId(), null);
+
+            assertThat(quote.status()).isEqualTo(PriceStatus.AVAILABLE);
+            // 160,000 × 3.75 = 600,000
+            assertThat(quote.finalUnitPrice().value()).isEqualByComparingTo("600000.00");
+        }
+
+        @Test
+        @DisplayName("24K 를 고시하면 환산으로 설정된 18K 상품 가격도 함께 바뀐다")
+        void derivedMetalProductFollows24K() {
+            policyService.updateDerivation(MetalType.GOLD_18K, PolicyMode.DERIVED,
+                    new BigDecimal("0.75"), "환산 설정", ADMIN, true);
+            Product product = saveProduct(ProductTestFixtures.marketProduct(
+                    CATEGORY_ID, "18K 반지", MetalType.GOLD_18K,
+                    PriceType.MARKET_LINKED, "3.75", "0", "1"));
+
+            declareMarketPrice("200000");   // 18K 살 때 = 200,000 × 0.75 = 150,000
+            assertThat(priceCalculationService.quote(product.getId(), null).finalUnitPrice().value())
+                    .as("150,000 × 3.75 = 562,500")
+                    .isEqualByComparingTo("562500.00");
+
+            declareMarketPrice("204000");   // 18K 살 때 = 153,000
+            assertThat(priceCalculationService.quote(product.getId(), null).finalUnitPrice().value())
+                    .as("153,000 × 3.75 = 573,750 → 백원 올림 573,800")
+                    .isEqualByComparingTo("573800.00");
         }
 
         @Test
@@ -258,7 +288,7 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("기본값(0)에서는 오래된 시세라도 상품 가격이 계속 나온다")
+        @DisplayName("한 번 고시한 시세는 며칠이 지나도 상품 가격을 계속 만든다")
         void lastQuoteKeepsPricing() {
             declareMarketPrice("200000");
             Product product = saveProduct(ProductTestFixtures.marketProduct(
@@ -272,31 +302,6 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
                     .as("장이 닫혀 있던 시간까지 세어 상품을 못 팔게 하지 않는다")
                     .isEqualTo(PriceStatus.AVAILABLE);
             assertThat(quote.finalUnitPrice()).isNotNull();
-        }
-
-        @Test
-        @DisplayName("PRICE_STALE_MINUTES 에 양수를 넣으면 오래된 시세는 다시 INQUIRY_ONLY 다")
-        void staleMarketPriceWhenThresholdSet() {
-            declareMarketPrice("200000");
-            Product product = saveProduct(ProductTestFixtures.marketProduct(
-                    CATEGORY_ID, "골드바", MetalType.GOLD_24K,
-                    PriceType.MARKET_LINKED, "3.75", "0", "1"));
-
-            assertThat(priceCalculationService.quote(product.getId(), null).status())
-                    .isEqualTo(PriceStatus.AVAILABLE);
-
-            try {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "1", "test");
-                backdateCurrentPrice("1 hour");
-
-                PriceQuote quote = priceCalculationService.quote(product.getId(), null);
-                assertThat(quote.status()).isEqualTo(PriceStatus.INQUIRY_ONLY);
-                assertThat(quote.finalUnitPrice()).isNull();
-                assertThat(quote.unavailableReason()).contains("오래");
-            } finally {
-                systemSettingService.update(MarketPriceService.SETTING_STALE_MINUTES, "0", "test");
-                evictAllCaches();
-            }
         }
 
         /**
@@ -485,17 +490,13 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
         return productRepository.save(product);
     }
 
+    /** 24K 고시. 팔 때는 살 때의 90% 로 맞춘다 — 이 테스트가 보는 것은 살 때(판매가)다. */
     private void declareMarketPrice(String pricePerGram) {
-        declarationService.declare(MetalType.GOLD_24K, PriceSide.SELL,
-                new BigDecimal(pricePerGram), "테스트 고시", ADMIN);
+        declarationService.declareBoth(MetalType.GOLD_24K, new BigDecimal(pricePerGram),
+                new BigDecimal(pricePerGram).multiply(new BigDecimal("0.9"))
+                        .setScale(0, java.math.RoundingMode.DOWN),
+                "테스트 고시", ADMIN, true);
         evictAllCaches();
-    }
-
-    private void setFixedAdjustment(String adjAmount) {
-        jdbcTemplate.update(
-                "UPDATE market_price_policies SET mode='FIXED_ADJ', adj_amount=? "
-                        + "WHERE metal_type='GOLD_24K' AND price_side='SELL'",
-                new BigDecimal(adjAmount));
     }
 
     private BigDecimal sum(List<ComponentLine> components) {

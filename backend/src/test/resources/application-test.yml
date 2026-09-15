@@ -39,13 +39,6 @@ app:
   admin-init:
     id: ${ADMIN_INIT_ID:}
     password: ${ADMIN_INIT_PASSWORD:}
-  market-price:
-    scheduler:
-      # 테스트 중 백그라운드 수집 스레드가 DB 를 건드리면 재현되지 않는 실패가 생긴다.
-      # 수집 로직은 테스트가 직접 호출해서 검증한다.
-      enabled: false
-    krx:
-      enabled: false
 
 logging:
   level:

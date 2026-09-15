@@ -1,36 +1,44 @@
 package com.hanseongge.domain.marketprice.service;
 
+import com.hanseongge.domain.audit.dto.AuditRecord;
+import com.hanseongge.domain.audit.entity.ActorType;
+import com.hanseongge.domain.audit.service.AuditLogService;
+import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.MarketPricePolicy;
 import com.hanseongge.domain.marketprice.entity.MetalType;
 import com.hanseongge.domain.marketprice.entity.PolicyMode;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.repository.MarketPricePolicyRepository;
 import com.hanseongge.global.audit.AuditActions;
-import com.hanseongge.global.audit.AuditContext;
-import com.hanseongge.global.audit.AuditLog;
 import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * L2 — 보정 정책 조회·변경.
+ * 18K·14K 의 고시 방식 — 직접 입력할지, 24K 에서 환산할지.
  *
- * <p>정책 변경은 <b>이미 발행된 시세를 바꾸지 않는다.</b> 다음 적용부터 반영된다.
- * 과거 시세는 각자의 {@code policy_snapshot} 을 들고 있으므로, 정책을 바꿔도
- * "그때 그 시세가 어떤 정책으로 나왔는가"는 변하지 않는다.
+ * <h2>비율을 바꾸면 바로 다시 나간다</h2>
+ * 설정만 저장하고 다음 24K 고시를 기다리면, 비율을 고쳤는데 파는 값은 그대로인 상태가
+ * 며칠 갈 수 있다. "고쳐도 아무 일도 안 일어난다"로 보이는 것이 가장 나쁘다. 그래서 지금
+ * 24K 고시가에 새 비율을 곱해 곧바로 발행한다. 크게 바뀌면 고시와 똑같이 확인을 받는다.
  *
- * <p>V2 에는 {@code market_price_policy_history} 가 없다(결함 D-4). 그 전까지 변경 이력은
- * {@code audit_logs} 의 before/after 로 남는다 — {@link AuditLog} 어드바이스가
- * {@link AuditContext#before} 로 넘긴 스냅샷을 집어간다.
+ * <h2>살 때·팔 때 비율이 같다</h2>
+ * 업계 관행이 그렇다(예: 18K 0.735, 14K 0.57 을 매입·판매에 똑같이 적용). 한 금속에
+ * 비율 하나만 받으면 두 값을 따로 고치다 한쪽을 잊는 일이 없다.
+ *
+ * <h2>직접 입력으로 돌리면</h2>
+ * 마지막으로 나간 환산값이 그대로 남는다. 새로 고시할 때까지 그 값으로 판다 — 설정을
+ * 바꿨다고 시세문의로 빠지지 않는다.
  */
 @Slf4j
 @Service
@@ -38,231 +46,112 @@ import java.util.Map;
 public class MarketPricePolicyService {
 
     private final MarketPricePolicyRepository policyRepository;
-    private final com.hanseongge.domain.marketprice.repository.MarketPriceRawRepository rawRepository;
-    private final MarketPriceCalculator calculator;
+    private final MarketPriceService marketPriceService;
+    private final AuditLogService auditLogService;
 
+    /** 18K·14K 의 지금 설정. 살 때 행을 대표로 읽는다 — 두 행은 늘 함께 바뀐다. */
     @Transactional(readOnly = true)
-    public List<MarketPricePolicy> findAll() {
-        return policyRepository.findAllByOrderByMetalTypeAscPriceSideAsc();
+    public List<MarketPricePolicy> findDerivations() {
+        return MarketPriceService.DERIVABLE.stream()
+                .map(metal -> find(metal, PriceSide.SELL))
+                .toList();
     }
 
+    /** 이 비율로 바꾸면 18K·14K 가 얼마가 되는지. 아무것도 쓰지 않는다. */
     @Transactional(readOnly = true)
-    public MarketPricePolicy find(MetalType metalType, PriceSide priceSide) {
+    public QuotePlan previewDerivation(MetalType metalType, BigDecimal ratio) {
+        return marketPriceService.planDerivation(metalType, ratio);
+    }
+
+    /**
+     * 고시 방식 변경.
+     *
+     * @param ratio              {@code DERIVED} 일 때만 쓴다
+     * @param confirmLargeChange 바뀐 비율로 다시 나갈 값이 확인 기준을 넘는다는 것을 확인했는가
+     * @throws BusinessException 확인이 필요한데 받지 않았으면. 설정도 시세도 바뀌지 않는다
+     */
+    @Transactional
+    public DerivationUpdate updateDerivation(MetalType metalType, PolicyMode mode, BigDecimal ratio,
+                                             String changeReason, String adminLoginId,
+                                             boolean confirmLargeChange) {
+        if (changeReason == null || changeReason.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "변경 사유는 필수입니다.");
+        }
+        MarketPriceService.requireDerivable(metalType);
+        if (mode != PolicyMode.DIRECT && mode != PolicyMode.DERIVED) {
+            String message = "고시 방식은 직접 입력 또는 24K 환산만 고를 수 있습니다.";
+            throw new BusinessException(ErrorCode.INVALID_INPUT, message + " 요청=" + mode,
+                    Map.of("mode", message));
+        }
+
+        // 24K 도 잡는다. 비율을 곱하는 사이 24K 가 새로 고시되면, 옛 24K 로 환산한 값이
+        // 새 24K 옆에 나간다.
+        marketPriceService.lock(List.of(MarketPriceService.DERIVE_BASE, metalType));
+
+        MarketPricePolicy sell = find(metalType, PriceSide.SELL);
+        MarketPricePolicy buy = find(metalType, PriceSide.BUY);
+        Map<String, Object> before = snapshot(sell);
+
+        QuotePlan plan = null;
+        if (mode == PolicyMode.DERIVED) {
+            plan = marketPriceService.planDerivation(metalType, ratio);
+            marketPriceService.requireConfirmed(plan, confirmLargeChange);
+
+            BigDecimal normalized = MarketPriceService.normalizeRatio(ratio);
+            sell.useDerived(MarketPriceService.DERIVE_BASE, normalized, adminLoginId);
+            buy.useDerived(MarketPriceService.DERIVE_BASE, normalized, adminLoginId);
+        } else {
+            sell.useDirect(adminLoginId);
+            buy.useDirect(adminLoginId);
+        }
+
+        Map<String, Object> after = snapshot(sell);
+        after.put("reason", changeReason);
+        auditLogService.record(AuditRecord.builder(AuditActions.PRICE_DERIVATION_UPDATE)
+                .actor(ActorType.ADMIN, adminLoginId)
+                .target(AuditActions.TARGET_MARKET_PRICE, metalType.name())
+                .before(before)
+                .after(after)
+                .build());
+
+        QuotePublished published = null;
+        // 비율이 그대로라 값도 그대로면 다시 발행하지 않는다. 같은 값의 행이 이력에 쌓이면
+        // 실제로 값이 바뀐 시점을 찾기 어려워진다.
+        if (plan != null && !plan.isEmpty() && !plan.allUnchanged()) {
+            String ratioText = MarketPriceService.normalizeRatio(ratio).stripTrailingZeros().toPlainString();
+            published = marketPriceService.publish(plan, baseRawIds(),
+                    "24K 환산 비율 %s 적용 — %s".formatted(ratioText, changeReason),
+                    adminLoginId, OffsetDateTime.now());
+        }
+
+        log.info("[MARKET-PRICE] 고시 방식 변경 {} → {}{} 재발행={} by={} 사유={}",
+                metalType, mode, mode == PolicyMode.DERIVED ? " ×" + ratio : "",
+                published != null, adminLoginId, changeReason);
+        return new DerivationUpdate(sell, published);
+    }
+
+    private MarketPricePolicy find(MetalType metalType, PriceSide priceSide) {
         return policyRepository.findByMetalTypeAndPriceSide(metalType, priceSide)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_POLICY_NOT_FOUND,
                         "정책 없음: " + metalType + "/" + priceSide));
     }
 
-    /**
-     * 정책 변경.
-     *
-     * @param changeReason 필수. 보정값을 왜 바꿨는지가 없으면 나중에 되짚을 수 없다
-     */
-    @Transactional
-    @AuditLog(action = AuditActions.PRICE_POLICY_UPDATE,
-              targetType = AuditActions.TARGET_MARKET_PRICE,
-              targetId = "#metalType.name() + '/' + #priceSide.name()")
-    public MarketPricePolicy update(MetalType metalType, PriceSide priceSide, PolicyMode mode,
-                                    BigDecimal adjAmount, BigDecimal adjPercent, BigDecimal manualPrice,
-                                    String changeReason, String adminLoginId) {
-        if (changeReason == null || changeReason.isBlank()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "정책 변경 사유는 필수입니다.");
+    /** 환산 줄의 근거 원본 — 지금 24K 행이 가리키는 원본을 그대로 잇는다. */
+    private Map<PriceSide, Long> baseRawIds() {
+        Map<PriceSide, Long> ids = new EnumMap<>(PriceSide.class);
+        for (PriceSide side : PriceSide.values()) {
+            marketPriceService.findCurrent(MarketPriceService.DERIVE_BASE, side)
+                    .map(MarketPriceEffective::getBaseRawId)
+                    .ifPresent(id -> ids.put(side, id));
         }
-        validate(mode, adjAmount, adjPercent, manualPrice);
-        requireResultAbovezero(metalType, priceSide, mode, adjAmount, adjPercent);
-
-        MarketPricePolicy policy = find(metalType, priceSide);
-        AuditContext.before(snapshot(policy));
-
-        policy.change(mode, adjAmount, adjPercent, manualPrice, adminLoginId);
-        // 미설정 경고를 냈던 조합이 정상 설정으로 바뀌면, 다음 미설정 상황에서 다시 경고하게 한다.
-        calculator.resetWarning(policy);
-
-        log.info("[MARKET-PRICE] 정책 변경 {}/{} mode={} adjAmount={} adjPercent={} manualPrice={} by={} 사유={}",
-                metalType, priceSide, mode, adjAmount, adjPercent, manualPrice, adminLoginId, changeReason);
-        return policy;
+        return ids;
     }
 
-    /**
-     * 자동고시를 <b>값과 함께</b> 켠다.
-     *
-     * <h2>왜 한 번에 받는가</h2>
-     * 전에는 "자동으로 전환"과 "보정값 변경"이 따로였다. 그러면 값을 정하지 않은 채
-     * 자동이 켜지고, 보정 0 인 상태로 수집값이 그대로 판매가가 된다. 마진 없이 파는
-     * 상태이고, 그 사실은 판 뒤에야 드러난다.
-     *
-     * <p>자동으로 켜는 순간 반드시 답해야 하는 질문이 "얼마를 더할 것인가"다.
-     * 그 질문을 화면에서 건너뛸 수 없게 한 흐름으로 묶는다.
-     *
-     * <h2>한 트랜잭션</h2>
-     * 살 때·팔 때의 보정값과 두 쪽의 자동 전환이 함께 저장된다. 하나라도 실패하면
-     * 전부 되돌아간다 — 값만 바뀌고 자동은 안 켜지거나, 그 반대인 상태를 만들지 않는다.
-     *
-     * @param sellAdj 살 때 보정값. mode 에 따라 금액(원/1g) 또는 비율(%)이다
-     * @param buyAdj  팔 때 보정값
-     */
-    @Transactional
-    @AuditLog(action = AuditActions.PRICE_POLICY_UPDATE,
-              targetType = AuditActions.TARGET_MARKET_PRICE,
-              targetId = "#metalType.name()")
-    public java.util.List<MarketPricePolicy> startAutoQuote(MetalType metalType, PolicyMode mode,
-                                                            BigDecimal sellAdj, BigDecimal buyAdj,
-                                                            String changeReason, String adminLoginId) {
-        if (changeReason == null || changeReason.isBlank()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "자동고시 시작 사유는 필수입니다.");
-        }
-        if (mode != PolicyMode.AUTO && mode != PolicyMode.FIXED_ADJ && mode != PolicyMode.PERCENT_ADJ) {
-            // MANUAL(지정가)은 자동고시와 뜻이 부딪힌다 — 수집값을 받아 놓고 무시하는 셈이다.
-            throw new BusinessException(ErrorCode.INVALID_INPUT,
-                    "자동고시에는 '받아온 값 그대로' 또는 '금액/비율 더하기·빼기'만 쓸 수 있습니다.");
-        }
-
-        requireResultAbovezero(metalType, PriceSide.SELL, mode, sellAdj, sellAdj);
-        requireResultAbovezero(metalType, PriceSide.BUY, mode, buyAdj, buyAdj);
-
-        MarketPricePolicy sell = find(metalType, PriceSide.SELL);
-        MarketPricePolicy buy = find(metalType, PriceSide.BUY);
-
-        AuditContext.before(java.util.Map.of("sell", snapshot(sell), "buy", snapshot(buy)));
-
-        applyAdjustment(sell, mode, sellAdj, adminLoginId);
-        applyAdjustment(buy, mode, buyAdj, adminLoginId);
-
-        sell.switchQuoteMode(true, adminLoginId);
-        buy.switchQuoteMode(true, adminLoginId);
-
-        calculator.resetWarning(sell);
-        calculator.resetWarning(buy);
-
-        log.info("[MARKET-PRICE] 자동고시 시작 {} mode={} 살때={} 팔때={} by={} 사유={}",
-                metalType, mode, sellAdj, buyAdj, adminLoginId, changeReason);
-        return java.util.List.of(sell, buy);
-    }
-
-    /** 모드에 맞는 칸에만 값을 넣는다. 나머지는 0 으로 지운다 — 옛 값이 되살아나지 않게. */
-    private void applyAdjustment(MarketPricePolicy policy, PolicyMode mode,
-                                 BigDecimal adj, String adminLoginId) {
-        BigDecimal value = adj == null ? BigDecimal.ZERO : adj;
-        switch (mode) {
-            case FIXED_ADJ -> policy.change(mode, value, BigDecimal.ZERO, null, adminLoginId);
-            case PERCENT_ADJ -> policy.change(mode, BigDecimal.ZERO, value, null, adminLoginId);
-            default -> policy.change(PolicyMode.AUTO, BigDecimal.ZERO, BigDecimal.ZERO, null, adminLoginId);
-        }
-    }
-
-    /**
-     * 자동고시 / 수동고시 전환.
-     *
-     * <p>{@link #update} 와 분리한 이유 — 사고가 났을 때 관리자가 가장 먼저 하는 조작이
-     * "자동을 끈다"이고, 그 순간에 보정값·모드까지 함께 보내라고 요구하면 급한 손이
-     * 엉뚱한 값을 밀어 넣는다. 스위치만 내리는 길을 따로 둔다.
-     *
-     * <p>사유는 여기서도 필수다. 자동에서 수동으로 내린 기록이 남지 않으면, 나중에
-     * "왜 그날 시세가 멈춰 있었는가"를 아무도 설명하지 못한다.
-     */
-    @Transactional
-    @AuditLog(action = AuditActions.PRICE_POLICY_UPDATE,
-              targetType = AuditActions.TARGET_MARKET_PRICE,
-              targetId = "#metalType.name()")
-    public java.util.List<MarketPricePolicy> switchQuoteMode(MetalType metalType,
-                                                             boolean autoQuote,
-                                                             String changeReason,
-                                                             String adminLoginId) {
-        if (changeReason == null || changeReason.isBlank()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "고시 방식 변경 사유는 필수입니다.");
-        }
-
-        // 금속 단위로 바꾼다. 살 때만 자동이고 팔 때는 수동인 상태를 만들 수 없다 —
-        // 금값이 움직이면 두 값이 같이 움직여야 하고, 한쪽만 자동이면 그쪽만 움직인다.
-        MarketPricePolicy sell = find(metalType, PriceSide.SELL);
-        MarketPricePolicy buy = find(metalType, PriceSide.BUY);
-
-        AuditContext.before(java.util.Map.of(
-                "sell", snapshot(sell),
-                "buy", snapshot(buy)));
-
-        sell.switchQuoteMode(autoQuote, adminLoginId);
-        buy.switchQuoteMode(autoQuote, adminLoginId);
-
-        log.info("[MARKET-PRICE] 고시 방식 변경 {} (살때·팔때) → {} by={} 사유={}",
-                metalType, autoQuote ? "자동고시" : "수동고시", adminLoginId, changeReason);
-        return java.util.List.of(sell, buy);
-    }
-
-    /**
-     * 모드와 값의 정합성 검사.
-     *
-     * <p>모드에 맞지 않는 값이 들어오는 것을 막는다. 예컨대 {@code MANUAL} 인데 지정가가
-     * 없으면 "보정이 걸린 줄 알았는데 원본이 그대로 나가는" 상태가 되고, 그 사실은
-     * 시세가 이상하다는 신고가 들어와야 드러난다.
-     */
-    /**
-     * 저장하기 전에 <b>지금 원본으로 검산</b>한다.
-     *
-     * <p>정률 보정은 -100% 이하만 막으면 되지만, 정액 보정은 원본이 얼마냐에 따라
-     * 결과가 달라져 값만 보고는 판단할 수 없다. 그래서 그동안은 저장은 되고 <b>고시할
-     * 때</b> 터졌다 — 관리자는 값을 넣을 때 아무 문제가 없다가, 나중에 적용을 누르고서야
-     * "가격을 계산할 수 없습니다"를 만난다. 그 시점에는 무엇이 잘못됐는지 알기 어렵다.
-     *
-     * <p>가장 최근 원본이 있으면 그것으로 미리 재 본다. 원본이 없으면(아직 한 번도
-     * 고시하지 않은 금속) 비교할 대상이 없으므로 통과시킨다.
-     */
-    private void requireResultAbovezero(MetalType metalType, PriceSide priceSide, PolicyMode mode,
-                                        BigDecimal adjAmount, BigDecimal adjPercent) {
-        if (mode != PolicyMode.FIXED_ADJ) {
-            return;
-        }
-        rawRepository.findLatestForSide(metalType, priceSide, PageRequest.of(0, 1))
-                .stream().findFirst()
-                .ifPresent(raw -> {
-                    BigDecimal result = raw.getPricePerGram().add(adjAmount);
-                    if (result.compareTo(BigDecimal.ZERO) <= 0) {
-                        throw new BusinessException(ErrorCode.INVALID_INPUT,
-                                ("보정 결과가 0원 이하가 됩니다. "
-                                        + "최근 원본 %s원/g 에 %s원을 더하면 %s원입니다.")
-                                        .formatted(raw.getPricePerGram().toPlainString(),
-                                                adjAmount.toPlainString(),
-                                                result.toPlainString()));
-                    }
-                });
-    }
-
-    private void validate(PolicyMode mode, BigDecimal adjAmount, BigDecimal adjPercent, BigDecimal manualPrice) {
-        switch (mode) {
-            case MANUAL -> {
-                if (manualPrice == null || manualPrice.compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new BusinessException(ErrorCode.INVALID_INPUT,
-                            "MANUAL 정책에는 0보다 큰 manualPrice 가 필요합니다.");
-                }
-            }
-            case FIXED_ADJ -> {
-                if (adjAmount == null) {
-                    throw new BusinessException(ErrorCode.INVALID_INPUT,
-                            "FIXED_ADJ 정책에는 adjAmount 가 필요합니다.");
-                }
-            }
-            case PERCENT_ADJ -> {
-                if (adjPercent == null) {
-                    throw new BusinessException(ErrorCode.INVALID_INPUT,
-                            "PERCENT_ADJ 정책에는 adjPercent 가 필요합니다.");
-                }
-                // -100% 이하면 최종가가 0 이하가 된다. 발행 시점이 아니라 설정 시점에 막는다.
-                if (adjPercent.compareTo(BigDecimal.valueOf(-100)) <= 0) {
-                    throw new BusinessException(ErrorCode.INVALID_INPUT,
-                            "adjPercent 는 -100 보다 커야 합니다. 최종가가 0 이하가 됩니다.");
-                }
-            }
-            case AUTO -> { /* 추가 값이 필요 없다 */ }
-        }
-    }
-
-    /** 감사로그용 변경 전 스냅샷. */
-    private Map<String, Object> snapshot(MarketPricePolicy policy) {
+    private static Map<String, Object> snapshot(MarketPricePolicy policy) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("mode", policy.getMode().name());
-        values.put("adjAmount", policy.getAdjAmount());
-        values.put("adjPercent", policy.getAdjPercent());
-        values.put("manualPrice", policy.getManualPrice());
+        values.put("deriveFrom", policy.getDeriveFrom() == null ? null : policy.getDeriveFrom().name());
+        values.put("deriveRatio", policy.getDeriveRatio() == null ? null : policy.getDeriveRatio().toPlainString());
         return values;
     }
 }

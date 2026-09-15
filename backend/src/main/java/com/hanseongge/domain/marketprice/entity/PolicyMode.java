@@ -1,19 +1,23 @@
 package com.hanseongge.domain.marketprice.entity;
 
 /**
- * 관리자 보정 방식 (개발계획 §12.2 L2). V2 마이그레이션의 CHECK 제약과 값이 일치해야 한다.
+ * 고시 방식. V19 마이그레이션의 CHECK 제약과 앞의 두 값이 일치해야 한다.
  *
  * <pre>
- * AUTO         최종 = 원본
- * FIXED_ADJ    최종 = 원본 + adj_amount        (요구사항 예시: 200,000 + 10,000 = 210,000)
- * PERCENT_ADJ  최종 = 원본 × (1 + adj_percent/100)
- * MANUAL       최종 = manual_price (관리자 지정가 오버라이드)
+ * DIRECT   관리자가 입력한 값이 곧 고시가
+ * DERIVED  24K 고시가 × 환산 비율 (18K·14K 만)
  * </pre>
  *
- * <p>{@code DERIVED}(18K/14K 자동 환산)는 V2 CHECK 제약에 없어 아직 값으로 두지 않는다.
- * 파생 비율 자체도 확정 대기(TODO A-7)라 지금 넣으면 쓸 수 없는 값이 된다.
+ * <h2>나머지 네 값은 과거 기록용이다</h2>
+ * 외부 시세를 받아 보정하던 시절(V14~V18)의 방식이다. 새로 설정할 수 없지만
+ * {@code market_prices_effective.policy_mode} 에는 그대로 남아 있다 — 그때 그 방식으로
+ * 계산됐다는 사실이고, 과거 주문 금액의 근거라 지우거나 고치지 않는다. 이 값들을
+ * 없애면 이력 화면이 옛 행을 읽지 못한다.
  */
 public enum PolicyMode {
+
+    DIRECT("직접 입력"),
+    DERIVED("24K 환산"),
 
     AUTO("보정 없음"),
     FIXED_ADJ("정액 보정"),
@@ -28,5 +32,10 @@ public enum PolicyMode {
 
     public String displayName() {
         return displayName;
+    }
+
+    /** V19 이전 기록에만 있는 값인가. 이 값으로는 설정할 수 없다. */
+    public boolean isLegacy() {
+        return this != DIRECT && this != DERIVED;
     }
 }
