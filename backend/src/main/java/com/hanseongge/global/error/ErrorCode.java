@@ -122,6 +122,12 @@ public enum ErrorCode {
     /** 이메일은 같은데 본인확인 결과가 다르다 — 남의 이메일로 가입하려는 시도일 수 있다. */
     EMAIL_OWNED_BY_ANOTHER(HttpStatus.CONFLICT, "이 이메일은 다른 분이 사용 중입니다. 고객센터로 문의해 주세요."),
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
+    /**
+     * 이메일이 같은 회원이 이미 있는데, 본인확인이 없어 같은 사람인지 가릴 수 없다.
+     * 합치지도 새로 만들지도 않고 처음 가입한 방법으로 로그인하게 한다.
+     */
+    EMAIL_REGISTERED_WITH_OTHER_LOGIN(HttpStatus.CONFLICT,
+            "이 이메일로 이미 가입된 계정이 있습니다. 처음 가입하신 방법으로 로그인해 주세요."),
     /** 코드 불일치·만료. 어느 쪽인지 알려주지 않는다 — 알려주면 유효한 코드를 찾는 데 쓰인다. */
     EMAIL_VERIFICATION_INVALID(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않거나 만료되었습니다."),
     /** 시도 횟수 초과. 6자리 숫자는 막지 않으면 만료 전에 다 훑을 수 있다. */

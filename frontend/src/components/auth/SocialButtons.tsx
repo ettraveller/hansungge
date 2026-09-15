@@ -1,20 +1,36 @@
 'use client';
 
+import Image from 'next/image';
+
 import { PROVIDER_STYLE, type AuthProviderItem, type OAuthProviderType } from '@/types/user';
 import styles from './auth.module.css';
 
 /**
- * 버튼 앞 글자 마크.
+ * 버튼 앞 마크.
  *
- * <p>카카오만 이모지(💬)였는데 셋을 나란히 두면 하나만 그림이라 크기와 색이 따로 논다.
- * 세 개 다 글자로 맞춘다. 각 사의 공식 로고 이미지는 브랜드 가이드에 따라 앱 등록
- * (TODO A-4)이 끝난 뒤 받아서 교체한다 — 비슷하게 그린 로고를 쓰는 것이 더 문제다.
+ * <p><b>네이버는 공식 로고를 쓴다.</b> 네이버 로그인 버튼 가이드가 로고의 변형·조합을
+ * 금지하고, 검수에서 가장 많이 반려되는 지점이다. 그래서 글자로 흉내 내지 않고, 네이버가
+ * 배포한 완성형 버튼(NAVER_login_Light_KR_green_center_H48.png)에서 N 로고 영역만 잘라
+ * 흰색 투명 PNG 로 옮겼다 — 모양은 원본 픽셀 그대로다.
+ * 출처: https://developers.naver.com/docs/login/bi/bi.md
+ *
+ * <p>잘라낸 이미지는 로고(64px) 둘레에 2px 씩 여유가 있어 68px 이다. 17px 로 그리면 로고가
+ * 정확히 16px 이 된다 — 가이드의 완성형 최소 크기다. 로고와 문구 사이 8px 은
+ * {@code .socialBtn} 의 gap 이 맞춘다.
+ *
+ * <p>카카오·구글은 아직 글자 마크다. 앱 등록(TODO A-4)이 끝나면 같은 방식으로 교체한다 —
+ * 비슷하게 그린 로고를 쓰는 것이 글자보다 더 문제다.
  */
-const MARK: Record<OAuthProviderType, string> = {
-  KAKAO: 'K',
-  NAVER: 'N',
-  GOOGLE: 'G',
-};
+function Mark({ code }: { code: OAuthProviderType }) {
+  if (code === 'NAVER') {
+    return <Image src="/brand/naver/naver-n-white.png" alt="" width={17} height={17} />;
+  }
+  return (
+    <span className={styles.socialMark} aria-hidden="true">
+      {code === 'KAKAO' ? 'K' : 'G'}
+    </span>
+  );
+}
 
 /**
  * 소셜 로그인 버튼.
@@ -45,9 +61,7 @@ export function SocialButtons({
             disabled={pendingProvider != null}
             onClick={() => onSelect(provider.code)}
           >
-            <span className={styles.socialMark} aria-hidden="true">
-              {MARK[provider.code]}
-            </span>
+            <Mark code={provider.code} />
             {pending ? '이동 중…' : style.label}
           </button>
         );

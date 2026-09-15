@@ -156,8 +156,14 @@ public class UserAccountService {
             throw new BusinessException(ErrorCode.IDENTITY_ALREADY_REGISTERED);
         }
 
-        // 이 시점에 이메일이 겹친다면 DI 가 다른 사람이다 — 위에서 DI 중복을 이미 걸렀다.
         if (material.email() != null && userRepository.findByEmail(material.email()).isPresent()) {
+            // 본인확인을 거치지 않은 가입(계약 전 소셜)이면 같은 사람일 수도 있다.
+            // "다른 분이 사용 중"이라고 단정하지 않고, 처음 가입한 방법으로 안내한다.
+            if (verification == null) {
+                log.info("[AUTH] 이미 가입된 이메일로 소셜 가입 시도");
+                throw new BusinessException(ErrorCode.EMAIL_REGISTERED_WITH_OTHER_LOGIN);
+            }
+            // 본인확인을 거쳤다면 DI 가 다른 사람이다 — 위에서 DI 중복을 이미 걸렀다.
             log.warn("[AUTH] 다른 신원이 사용 중인 이메일로 가입 시도");
             throw new BusinessException(ErrorCode.EMAIL_OWNED_BY_ANOTHER);
         }

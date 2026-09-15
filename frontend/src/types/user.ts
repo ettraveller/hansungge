@@ -19,10 +19,17 @@ export const USER_STATUS_LABEL: Record<UserStatus, string> = {
   BLOCKED: '이용정지',
 };
 
-/** 제공자별 버튼 색. 각 사의 브랜드 가이드를 따른다. */
+/**
+ * 제공자별 버튼 색. 각 사의 브랜드 가이드를 따른다.
+ *
+ * <p>네이버 색은 네이버가 배포한 공식 버튼 이미지(NAVER_login_Light_KR_green_*)의 픽셀에서
+ * 뽑은 값이다. 흔히 알려진 브랜드 녹색 #03C75A 가 아니다 — 로그인 버튼 가이드는 "지정
+ * 컬러는 변경할 수 없다"고 하고, 지정 컬러가 곧 그 에셋의 색이다. 밝은 바탕용(Light)을
+ * 쓴다. 어두운 바탕용(Dark)은 #05AC4F 로 다르다.
+ */
 export const PROVIDER_STYLE: Record<OAuthProviderType, { bg: string; fg: string; label: string }> = {
   KAKAO: { bg: '#FEE500', fg: '#191600', label: '카카오로 시작하기' },
-  NAVER: { bg: '#03C75A', fg: '#ffffff', label: '네이버로 시작하기' },
+  NAVER: { bg: '#03A94D', fg: '#ffffff', label: '네이버 로그인' },
   GOOGLE: { bg: '#ffffff', fg: '#1f1f1f', label: 'Google로 시작하기' },
 };
 

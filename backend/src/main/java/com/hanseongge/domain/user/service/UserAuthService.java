@@ -127,6 +127,7 @@ public class UserAuthService {
         // 몇 주 미루는 대가가 훨씬 크다. 공급자를 켜는 순간 이 분기가 사라지고
         // 그때부터의 가입은 전부 본인확인을 거친다.
         if (!identityVerificationService.isAvailable()) {
+            rejectIfEmailTaken(info);
             log.info("[AUTH] 신규 소셜 신원 확인. provider={} 약관 대기 (본인확인 공급자 없음)",
                     info.provider());
             return SignInResponse.signUpRequired(token, agreementCatalog.all(),
@@ -136,6 +137,25 @@ public class UserAuthService {
         log.info("[AUTH] 신규 소셜 신원 확인. provider={} 본인확인 대기", info.provider());
         return SignInResponse.identityRequired(token, agreementCatalog.all(),
                 info.name(), info.email());
+    }
+
+    /**
+     * 같은 이메일로 이미 가입한 회원이 있으면 <b>약관 화면으로 보내기 전에</b> 멈춘다.
+     *
+     * <p>본인확인이 없는 동안에는 이메일이 같다는 것만으로 같은 사람인지 알 수 없다.
+     * 그렇다고 합치면 "남의 이메일을 연락처로 적어 둔 소셜 계정"으로 기존 계정을 가져가는
+     * 길이 된다. 새 계정도 만들 수 없다 — 이메일은 활성 회원 사이에서 유일하다
+     * ({@code ux_users_email_active}). 남는 선택은 처음 가입한 방법으로 로그인하게 하는 것이다.
+     *
+     * <p>여기서 막지 않으면 사용자는 약관에 전부 동의한 뒤에야 가입이 안 된다는 것을 안다.
+     * ({@link UserAccountService#createAccount} 에도 같은 검사가 있다 — 약관 화면에 머무는
+     * 사이 다른 탭에서 가입한 경우를 거기서 잡는다.)
+     */
+    private void rejectIfEmailTaken(OAuthUserInfo info) {
+        if (info.email() != null && userRepository.findByEmail(info.email()).isPresent()) {
+            log.info("[AUTH] 소셜 가입 중단 — 이미 가입된 이메일. provider={}", info.provider());
+            throw new BusinessException(ErrorCode.EMAIL_REGISTERED_WITH_OTHER_LOGIN);
+        }
     }
 
     /**

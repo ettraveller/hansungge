@@ -148,13 +148,20 @@ export function SignUpView() {
           </div>
         )}
 
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="signup-name">
-            이름
-          </label>
-          <input id="signup-name" className={styles.input} value={name} disabled readOnly />
-          <span className={styles.hint}>본인확인으로 확인된 이름입니다. 바꿀 수 없습니다.</span>
-        </div>
+        {/*
+          이름이 없을 수 있다 — 네이버·카카오는 이름을 선택 동의로 받아서, 사용자가 거부하면
+          비어서 온다. 정상인 경우다. 빈 칸을 그려 "확인된 이름입니다"라고 붙이면 거짓 안내가
+          되므로 칸을 아예 뺀다. 이름 없이도 가입은 된다 (users.name 은 NULL 허용).
+        */}
+        {name && (
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="signup-name">
+              이름
+            </label>
+            <input id="signup-name" className={styles.input} value={name} disabled readOnly />
+            <span className={styles.hint}>가입 정보로 저장됩니다.</span>
+          </div>
+        )}
 
         <h2 className={styles.sectionTitle}>약관 동의</h2>
         <p className={styles.sectionNote}>
