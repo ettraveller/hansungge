@@ -177,11 +177,26 @@ OAUTH_KAKAO_CLIENT_ID=
 OAUTH_KAKAO_CLIENT_SECRET=
 
 # --- 본인확인 (TODO E-4) ---
-#     계약 전에는 켜지 않는다. 켜면 회원가입이 전부 실패한다.
-APP_IDENTITY_INICIS_ENABLED=false
+#     비어 있으면 신규 가입이 닫히고 기존 회원 로그인만 된다. 계약 후 INICIS.
+#     MOCK 은 운영(prod) 프로파일에서 기동 자체가 실패한다 — 넣지 말 것.
+IDENTITY_PROVIDER=
+IDENTITY_CLIENT_ID=
+IDENTITY_CLIENT_SECRET=
+IDENTITY_DI_CODE=
+#     아래 두 주소는 기본값이 운영 주소다. 바꿀 때만 주석을 푼다 — 빈 값으로 두면 기본값을 덮어쓴다.
+# IDENTITY_CALLBACK_URL=https://api.hanseongge.com/api/v1/auth/identity/return
+# IDENTITY_RETURN_PAGE_URL=https://hanseongge.com/auth/identity
+
+# --- 문자 발송 (TODO E-7, NCP SENS) ---
+#     비어 있으면 「인증번호로 로그인」이 화면에서 숨는다. 발신번호는 사전 등록·승인이 필요하다.
+SENS_ACCESS_KEY=
+SENS_SECRET_KEY=
+SENS_SERVICE_ID=
+SENS_SENDER_PHONE=
 
 # --- 메일 (TODO E-5) ---
-#     NCP Cloud Outbound Mailer. 비어 있으면 인증 메일이 나가지 않아 가입이 막힌다.
+#     NCP Cloud Outbound Mailer. 비어 있으면 이메일 인증번호가 나가지 않는다
+#     (가입 시 이메일은 선택이라 가입 자체는 막히지 않는다).
 #     ⚠️ 보내는 도메인에 SPF/DKIM/DMARC 를 설정해야 한다. 없으면 대부분 스팸함으로 간다.
 APP_MAIL_ACCESS_KEY=
 APP_MAIL_SECRET_KEY=
