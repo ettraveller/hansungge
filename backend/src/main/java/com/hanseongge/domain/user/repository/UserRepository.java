@@ -45,6 +45,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
     }
 
     /**
+     * 휴대폰번호(로그인 ID)로 찾는다. {@code phone} 은 {@code PhoneNumber} 로 정규화된 값이어야
+     * 한다 — V21 인덱스와 저장 값이 숫자만이다.
+     *
+     * <p>탈퇴한 회원은 제외한다. 이메일·DI 와 같은 이유다.
+     */
+    @Query("SELECT u FROM User u WHERE u.phone = :phone AND u.status <> :excluded")
+    Optional<User> findActiveByPhone(@Param("phone") String phone,
+                                     @Param("excluded") UserStatus excluded);
+
+    default Optional<User> findByPhone(String phone) {
+        return findActiveByPhone(phone, UserStatus.WITHDRAWN);
+    }
+
+    /**
      * 관리자 회원 목록 — 검색어와 상태로 좁힌다.
      *
      * <p>탈퇴 회원도 <b>포함한다.</b> 관리자 화면의 목적은 "지금 쓸 수 있는 계정"이 아니라
@@ -85,11 +99,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
               AND (:pattern = ''
                    OR lower(u.email) LIKE lower(:pattern) ESCAPE '!'
                    OR lower(u.name) LIKE lower(:pattern) ESCAPE '!'
-                   OR u.phone LIKE :pattern ESCAPE '!')
+                   OR u.phone LIKE :phonePattern ESCAPE '!')
             ORDER BY u.id DESC
             """)
     Page<User> findAdminPage(
             @Param("pattern") String pattern,
+            @Param("phonePattern") String phonePattern,
             @Param("status") UserStatus status,
             Pageable pageable);
 

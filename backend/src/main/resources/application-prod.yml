@@ -45,19 +45,22 @@ app:
 
   # 본인확인 (TODO E-4).
   #
-  # 기본 비활성이다. 계약 전에 켜면 가입 요청이 전부 실패하는데, 그 실패가
-  # "설정 누락"이 아니라 "미구현"이라는 것이 로그에만 드러난다.
+  # 비어 있으면 가입이 닫히고 기존 회원 로그인만 된다. 계약이 끝나면 INICIS.
+  # ⚠️ MOCK 은 넣지 않는다 — 아무것도 확인하지 않는 목이라, 운영에서 MOCK 이면 기동이 실패한다.
   identity:
-    inicis:
-      enabled: ${APP_IDENTITY_INICIS_ENABLED:false}
+    provider: ${IDENTITY_PROVIDER:}
+    callback-url: ${IDENTITY_CALLBACK_URL:https://api.hanseongge.com/api/v1/auth/identity/return}
+    return-page-url: ${IDENTITY_RETURN_PAGE_URL:https://hanseongge.com/auth/identity}
 
-  # 가입 정책. 비밀값이 아니라 전부 정책값이라 기본값을 둔다 —
+  # 가입·로그인 정책. 비밀값이 아니라 전부 정책값이라 기본값을 둔다 —
   # 빠뜨렸다고 기동을 막을 이유가 없고, 막으면 배포만 어려워진다.
   sign-up:
-    email-code-ttl-minutes: ${SIGNUP_EMAIL_CODE_TTL_MINUTES:5}
-    email-code-max-attempts: ${SIGNUP_EMAIL_CODE_MAX_ATTEMPTS:5}
-    identity-ttl-minutes: ${SIGNUP_IDENTITY_TTL_MINUTES:30}
+    code-ttl-minutes: ${SIGNUP_CODE_TTL_MINUTES:5}
+    code-max-attempts: ${SIGNUP_CODE_MAX_ATTEMPTS:5}
+    sms-hourly-limit: ${SIGNUP_SMS_HOURLY_LIMIT:5}
+    identity-ttl-minutes: ${SIGNUP_IDENTITY_TTL_MINUTES:10}
     max-login-failures: ${SIGNUP_MAX_LOGIN_FAILURES:5}
+    auth-rate-per-minute: ${SIGNUP_AUTH_RATE_PER_MINUTE:10}
 
   # 메일 (TODO E-5).
   #

@@ -49,11 +49,14 @@ export const oauthState = {
   },
 };
 
-/** 약관 동의 화면으로 넘길 가입 진행 정보. 서버 토큰(15분)이 실제 유효기간을 정한다. */
+/**
+ * 소셜 콜백에서 약관 화면으로 넘길 가입 진행 정보. 서버 토큰(15분)이 실제 유효기간을 정한다.
+ *
+ * <p>이름은 담지 않는다 — 회원 이름은 소셜 닉네임이 아니라 본인확인 실명이다.
+ */
 export interface PendingSignUp {
   signUpToken: string;
   agreements: AgreementItem[];
-  suggestedName: string | null;
   suggestedEmail: string | null;
   /** 로그인 전에 있던 곳. 가입을 마치면 여기로 돌려보낸다. */
   next: string;
@@ -104,10 +107,39 @@ export const pendingSignUp = {
   },
 };
 
+/**
+ * 소셜 인가를 무엇 때문에 시작했나.
+ *
+ * <p>같은 콜백 주소({@code /auth/callback/{provider}})로 돌아오지만, 로그인하려던 것인지
+ * 마이페이지에서 <b>이미 로그인한 계정에 소셜을 연결</b>하려던 것인지에 따라 부를 API 가 다르다.
+ * 제공자 콘솔에 콜백 주소를 하나만 등록해 두기 위해 주소를 나누지 않는다.
+ */
+const OAUTH_MODE_KEY = 'hsg_oauth_mode';
+
+export const oauthMode = {
+  setLink() {
+    safeSession()?.setItem(OAUTH_MODE_KEY, 'link');
+  },
+  /** 읽고 지운다. 연결 모드가 남아 있으면 다음 로그인이 연결로 처리된다. */
+  takeIsLink(): boolean {
+    const store = safeSession();
+    const value = store?.getItem(OAUTH_MODE_KEY);
+    store?.removeItem(OAUTH_MODE_KEY);
+    return value === 'link';
+  },
+};
+
 /** 로그인 후 돌아갈 곳. 열린 리다이렉트가 되지 않게 내부 경로만 허용한다. */
 export function safeNext(raw: string | null | undefined): string {
   if (!raw) return '/';
   if (!raw.startsWith('/') || raw.startsWith('//')) return '/';
-  if (raw.startsWith('/login') || raw.startsWith('/signup') || raw.startsWith('/auth/')) return '/';
+  if (
+    raw.startsWith('/login') ||
+    raw.startsWith('/signup') ||
+    raw.startsWith('/password') ||
+    raw.startsWith('/auth/')
+  ) {
+    return '/';
+  }
   return raw;
 }

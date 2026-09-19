@@ -2,6 +2,7 @@ package com.hanseongge.domain.user.service;
 
 import com.hanseongge.domain.user.entity.IdentityPurpose;
 import com.hanseongge.domain.user.entity.IdentityVerification;
+import com.hanseongge.domain.user.identity.IdentityStartForm;
 import com.hanseongge.domain.user.identity.IdentityVerificationException;
 import com.hanseongge.domain.user.identity.IdentityVerificationProvider;
 import com.hanseongge.domain.user.identity.IdentityVerificationRegistry;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 /**
  * 휴대폰 본인확인 기록.
@@ -39,9 +41,14 @@ public class IdentityVerificationService {
     private final IdentityVerificationRecorder recorder;
     private final AppProperties appProperties;
 
-    /** 사용자를 보낼 인증창 주소. */
-    public String startUrl(String requestId, String returnUrl) {
-        return registry.require().startUrl(requestId, returnUrl);
+    /**
+     * 인증창을 여는 폼.
+     *
+     * <p>결과는 공급자가 우리 <b>백엔드 수신 주소</b>로 보낸다 ({@code app.identity.callback-url}).
+     * 화면(Next.js 페이지)은 폼 POST 를 받을 수 없어서다.
+     */
+    public IdentityStartForm start(String requestId) {
+        return registry.require().start(requestId, appProperties.identity().callbackUrl());
     }
 
     public boolean isAvailable() {
@@ -53,14 +60,21 @@ public class IdentityVerificationService {
      *
      * <p>브라우저가 들고 온 값을 그대로 믿지 않는다. 사용자가 고칠 수 있는 경로로 온
      * 데이터라, 공급자 서버에 다시 물어 확인한 값만 저장한다.
+     *
+     * @param requestId 서명된 진행 토큰에서 꺼낸 거래번호 — 결과가 이 요청의 것인지 대조한다
+     * @param returned  공급자가 수신 주소로 보낸 값
      */
-    public IdentityVerification verifyAndRecord(String requestId, String providerToken,
+    public IdentityVerification verifyAndRecord(String requestId, Map<String, String> returned,
                                                 IdentityPurpose purpose, RequestInfo requestInfo) {
+        if (requestId == null || requestId.isBlank()) {
+            // 본인확인 창을 이 흐름에서 연 적이 없다.
+            throw new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID, "거래번호 없음");
+        }
         IdentityVerificationProvider provider = registry.require();
 
         IdentityVerificationResult result;
         try {
-            result = provider.verify(requestId, providerToken);
+            result = provider.verify(requestId, returned);
         } catch (IdentityVerificationException e) {
             // 공급자 응답 원문을 사용자에게 내보내지 않는다 — 상점 아이디가 섞여 나온다.
             log.warn("[IDENTITY] {} 본인확인 검증 실패: {}", provider.code(), e.getMessage());

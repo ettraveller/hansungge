@@ -2,6 +2,7 @@ package com.hanseongge.domain.user.entity;
 
 import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
+import com.hanseongge.global.util.PhoneNumber;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,20 +22,22 @@ import java.time.OffsetDateTime;
 /**
  * 회원 ({@code users}).
  *
- * <h2>가입 경로는 둘, 인증은 같다</h2>
- * 자체(이메일+비밀번호)든 소셜이든 <b>이메일 인증과 휴대폰 본인확인을 모두 거친다.</b>
+ * <h2>가입 경로는 둘, 본인확인은 같다</h2>
+ * 자체(휴대폰+비밀번호)든 소셜이든 <b>휴대폰 본인확인을 거친다.</b> 예외는 없다 —
  * 한쪽만 면제하면 "본인확인을 안 한 회원"이라는 상태가 생기고, 그 예외가 주문·매입·
- * 이벤트 코드 전체로 번진다.
+ * 이벤트 코드 전체로 번진다. 본인확인 공급자가 없는 동안에는 가입 자체를 받지 않는다.
  *
- * <p>⚠️ <b>단 하나의 예외가 한시적으로 있다.</b> 본인확인 공급자 계약(TODO E-4)이
- * 끝나기 전까지는 소셜 가입이 {@link #signUpWithoutIdentity} 로 이루어진다. 계약을
- * 기다리느라 이미 되던 소셜 로그인까지 막을 수는 없기 때문이다. 그렇게 만들어진
- * 회원은 {@link #isIdentityVerified()} 가 false 다.
+ * <h2>로그인 ID 는 휴대폰번호, 같은 사람 판정은 DI</h2>
+ * 휴대폰번호는 사람이 아니라 회선에 붙는다 — 해지된 번호는 다른 사람에게 다시 나간다.
+ * 그래서 "이미 가입한 사람인가"는 {@link #di} 로 판정하고, 번호는 어느 계정으로
+ * 로그인하는지만 가리킨다. 둘이 어긋나면(다른 DI 가 이 번호로 본인확인) 번호가
+ * 재할당된 것이고, 이 계정의 번호를 비운다 ({@link #releasePhone}).
  *
  * <h2>신원 정보는 회원이 고칠 수 없다</h2>
  * {@link #name}·{@link #birthDate}·{@link #gender}·{@link #foreigner}·{@link #phone}·{@link #di}
  * 는 본인확인 응답으로만 채워진다. 고칠 수 있으면 "확인된 값"이 아니라 "한 번 확인했다가
- * 지금은 모르는 값"이 된다. 그래서 {@link #updateProfile} 은 이 값들을 건드리지 않는다.
+ * 지금은 모르는 값"이 된다. 바뀌었으면(개명·번호 변경) 본인확인을 다시 받아
+ * {@link #refreshIdentity} 로 맞춘다.
  *
  * <h2>비밀번호는 있을 수도 없을 수도 있다</h2>
  * 소셜로만 가입한 회원은 {@link #passwordHash} 가 null 이다. 나중에 같은 사람이 자체
@@ -62,11 +65,10 @@ public class User {
     private Long id;
 
     /**
-     * 로그인 아이디이자 연락처.
+     * 선택 항목 — 세금계산서·거래명세서를 받을 주소. 로그인 ID 가 아니다.
      *
-     * <p>탈퇴하지 않은 회원 사이에서 {@code lower(email)} 이 UNIQUE 다 (V13). 탈퇴한
-     * 행까지 묶지 않는 이유는, 그러면 탈퇴한 본인조차 같은 주소로 다시 가입할 수 없기
-     * 때문이다. 조회는 반드시 {@code lower()} 로 해야 그 인덱스를 탄다.
+     * <p>탈퇴하지 않은 회원 사이에서 {@code lower(email)} 이 UNIQUE 다 (V13). 조회는
+     * 반드시 {@code lower()} 로 해야 그 인덱스를 탄다.
      */
     @Column(name = "email", length = 255)
     private String email;
@@ -76,14 +78,20 @@ public class User {
     private String name;
 
     /**
-     * 본인확인기관이 준 휴대폰 번호. 회원이 고칠 수 없다.
+     * 로그인 ID. 본인확인기관이 준 휴대폰번호를 숫자만 남겨 둔다 ({@code 01012345678}).
      *
-     * <p>⚠️ 설계서 §15 는 앱 계층 AES-256 암호화를 요구하는데 아직 구현되지 않았다.
-     * 본인확인 도입으로 이 값이 "선택 입력값"에서 "검증된 필수 식별자"로 승격됐으므로
-     * 더 미룰 수 없다.
+     * <p>탈퇴하지 않은 회원 사이에서 UNIQUE 다 (V21). 번호가 다른 사람에게 재할당되면
+     * null 이 된다 — 그 회원은 소셜 로그인이나 본인확인으로 번호를 다시 받는다.
+     *
+     * <p>⚠️ 설계서 §15 는 앱 계층 AES-256 암호화를 요구하는데 아직 구현되지 않았다
+     * (TODO F-4). 이제 로그인 조회 키라서, 암호화하려면 결정적 해시 컬럼을 따로 둬야 한다.
      */
     @Column(name = "phone", length = 30)
     private String phone;
+
+    /** 본인확인 응답의 통신사. 마지막 본인확인 기준이다. */
+    @Column(name = "carrier", length = 20)
+    private String carrier;
 
     /** BCrypt cost 12. 소셜로만 가입한 회원은 null 이다. */
     @Column(name = "password_hash", length = 100)
@@ -138,74 +146,81 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    private User(String email, VerifiedIdentity identity, String passwordHash) {
+    private User(String email, boolean emailVerified, VerifiedIdentity identity, String carrier,
+                 String passwordHash) {
         this.email = email;
-        this.name = identity.name();
-        this.phone = identity.phone();
-        this.birthDate = identity.birthDate();
-        this.gender = identity.gender();
-        this.foreigner = identity.foreigner();
         this.di = identity.di();
         this.passwordHash = passwordHash;
 
         OffsetDateTime now = OffsetDateTime.now();
         this.status = UserStatus.ACTIVE;
-        this.emailVerifiedAt = now;
-        this.phoneVerifiedAt = now;
+        this.emailVerifiedAt = email != null && emailVerified ? now : null;
         this.passwordChangedAt = passwordHash == null ? null : now;
         this.createdAt = now;
-        this.updatedAt = now;
+        applyIdentity(identity, carrier, now);
     }
 
     /**
      * 신규 가입.
      *
-     * <p>이 생성자를 부르기 전에 <b>이메일 인증·휴대폰 본인확인·필수 약관 동의가 모두
-     * 끝나 있어야 한다.</b> 계정을 먼저 만들고 동의를 나중에 받으면 그 사이 개인정보를
-     * 동의 없이 보관한 상태가 된다. 순서를 강제하는 곳은 {@code UserAccountService} 다.
+     * <p>이 생성자를 부르기 전에 <b>휴대폰 본인확인과 필수 약관 동의가 끝나 있어야 한다.</b>
+     * 계정을 먼저 만들고 동의를 나중에 받으면 그 사이 개인정보를 동의 없이 보관한 상태가
+     * 된다. 순서를 강제하는 곳은 {@code UserAccountService} 다.
      *
-     * @param passwordHash 소셜 전용 가입이면 null
+     * @param email         선택. 없으면 null
+     * @param emailVerified 이메일 소유를 확인했는가 — 인증번호를 통과했거나 소셜 제공자가 준 값
+     * @param passwordHash  소셜 전용 가입이면 null
      */
-    public static User signUp(String email, VerifiedIdentity identity, String passwordHash) {
-        return new User(email, identity, passwordHash);
+    public static User signUp(String email, boolean emailVerified, VerifiedIdentity identity,
+                              String carrier, String passwordHash) {
+        return new User(email, emailVerified, identity, carrier, passwordHash);
     }
 
     /**
-     * 본인확인 없이 만드는 소셜 회원 — <b>한시적이다.</b>
+     * 본인확인을 마친 회원인가.
      *
-     * <p>휴대폰 본인확인 공급자 계약(TODO E-4)이 끝나기 전까지만 쓰인다. 그 전에도
-     * 소셜 로그인은 열어 두어야 하기 때문이다 — 계약을 기다리느라 <b>이미 되던
-     * 로그인까지 막는 것</b>은 더 나쁘다.
-     *
-     * <p>이렇게 만든 회원은 {@link #di} 와 {@link #phoneVerifiedAt} 이 null 이다.
-     * 공급자가 붙은 뒤에는 이 경로로 새 회원이 생기지 않고, 남아 있는 회원에게는
-     * 거래 시점에 본인확인을 요구해야 한다 (TODO A-11).
+     * <p>V21 부터 활성 회원은 전부 true 다 ({@code chk_users_identity_required}). 관리자
+     * 화면의 표시와 탈퇴 행 처리를 위해 남겨 둔다.
      */
-    public static User signUpWithoutIdentity(String email, String name) {
-        User user = new User();
-        user.email = email;
-        user.name = name;
-        user.status = UserStatus.ACTIVE;
-        OffsetDateTime now = OffsetDateTime.now();
-        user.emailVerifiedAt = now;
-        user.createdAt = now;
-        user.updatedAt = now;
-        return user;
-    }
-
-    /** 본인확인을 마친 회원인가. 계약 전에 가입한 회원은 false 다. */
     public boolean isIdentityVerified() {
         return di != null;
     }
 
     /**
-     * 회원이 직접 고칠 수 있는 값.
+     * 같은 사람이 다시 본인확인을 했을 때 최신 값으로 맞춘다.
      *
-     * <p>이름·휴대폰이 여기 없는 것은 누락이 아니다. 본인확인으로 확정된 값이라
-     * 고칠 수 있으면 안 된다.
+     * <p>이름(개명)·번호(번호 변경)·통신사는 바뀔 수 있다. 바뀐 값을 반영하지 않으면
+     * 로그인 ID 가 이미 해지된 번호로 남고, 매입 대금의 예금주 대조가 옛 이름으로 된다.
+     *
+     * <p>DI 가 다르면 같은 사람이 아니므로 거부한다 — 호출자의 실수가 곧 계정 탈취다.
      */
-    public void updateProfile(String name) {
-        this.name = name;
+    public void refreshIdentity(VerifiedIdentity identity, String carrier) {
+        if (!this.di.equals(identity.di())) {
+            throw new IllegalArgumentException("다른 사람의 본인확인 결과로 회원 정보를 바꿀 수 없습니다.");
+        }
+        applyIdentity(identity, carrier, OffsetDateTime.now());
+    }
+
+    private void applyIdentity(VerifiedIdentity identity, String carrier, OffsetDateTime now) {
+        this.name = identity.name();
+        this.phone = PhoneNumber.normalize(identity.phone());
+        this.birthDate = identity.birthDate();
+        this.gender = identity.gender();
+        this.foreigner = identity.foreigner();
+        this.carrier = carrier;
+        this.phoneVerifiedAt = now;
+        this.updatedAt = now;
+    }
+
+    /**
+     * 번호가 다른 사람에게 재할당됐다 — 이 계정의 로그인 ID 를 비운다.
+     *
+     * <p>다른 DI 가 이 번호로 본인확인을 통과했다는 것은 통신사가 번호를 다른 사람에게
+     * 넘겼다는 뜻이다. 번호를 그대로 두면 새 주인이 이 계정으로 SMS 로그인을 할 수 있다.
+     * 이 계정의 주인은 소셜 로그인이나 본인확인(비밀번호 찾기)으로 새 번호를 받는다.
+     */
+    public void releasePhone() {
+        this.phone = null;
         this.updatedAt = OffsetDateTime.now();
     }
 
@@ -268,10 +283,20 @@ public class User {
      * @return 이번 실패로 잠겼으면 true
      */
     public boolean recordLoginFailure(int maxFailures) {
+        OffsetDateTime now = OffsetDateTime.now();
+
+        // 잠금 기간이 지나 풀린 계정이면 지난 실패를 지우고 새로 센다. 안 지우면
+        // 카운터가 이미 임계치에 있어서, 풀린 뒤 한 번만 틀려도 곧바로 다시 30분 잠긴다
+        // — 스스로 풀린다는 약속이 사실상 "한 번의 기회"로 줄어든다.
+        if (this.lockedAt != null && !isLocked(now)) {
+            this.loginFailCount = 0;
+            this.lockedAt = null;
+        }
+
         this.loginFailCount += 1;
-        this.updatedAt = OffsetDateTime.now();
+        this.updatedAt = now;
         if (this.loginFailCount >= maxFailures) {
-            this.lockedAt = this.updatedAt;
+            this.lockedAt = now;
             return true;
         }
         return false;

@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useMemberDetail } from '@/hooks/admin/useMembers';
 import { ApiError } from '@/types/api';
 import { MEMBER_STATUS_LABEL, type AdminMemberDetail } from '@/types/member';
-import { formatDateTime } from '@/utils/format';
+import { formatDateTime, formatPhone } from '@/utils/format';
 import { MEMBER_STATUS_TONE } from '../AdminMembersView';
 import styles from '@/components/admin/admin.module.css';
 
@@ -81,7 +81,7 @@ function Body({ member }: { member: AdminMemberDetail }) {
         />
         <Row label="이름" value={member.name || '-'} />
         <Row label="이메일" value={member.email || '-'} />
-        <Row label="휴대폰" value={<span className="tabular">{member.phone || '-'}</span>} />
+        <Row label="휴대폰" value={<span className="tabular">{formatPhone(member.phone)}</span>} />
         <Row
           label="생년월일"
           value={<span className="tabular">{member.birthDate ?? '-'}</span>}

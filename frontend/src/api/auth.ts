@@ -4,8 +4,11 @@ import type {
   AgreementCode,
   AgreementStatus,
   AuthProviders,
+  IdentityResult,
+  IdentityStart,
   OAuthAuthorize,
   OAuthProviderType,
+  PasswordResetGrant,
   SignInResult,
   SocialAccount,
   User,
@@ -19,13 +22,40 @@ import type {
  * 등장하지 않는 이유다.
  */
 
+export type AgreementChoice = { type: AgreementCode; agreed: boolean };
+
 // =====================================================================
-// 인증 (토큰 불필요)
+// 로그인 (토큰 불필요)
 // =====================================================================
 
-/** 로그인 화면 구성. 쓸 수 있는 제공자만 온다 — 버튼을 하드코딩하지 않는다. */
+/** 로그인 화면 구성. 쓸 수 있는 제공자·가입 가능 여부·인증번호 로그인 가능 여부. */
 export function fetchAuthProviders() {
   return request<AuthProviders>('/api/v1/auth/providers');
+}
+
+/** 휴대폰번호 + 비밀번호. 하이픈이 있어도 서버가 정규화한다. */
+export function signInWithPassword(phone: string, password: string) {
+  return request<SignInResult>('/api/v1/auth/login', {
+    method: 'POST',
+    body: { phone, password },
+  });
+}
+
+/**
+ * 인증번호 문자 요청.
+ *
+ * <p>가입하지 않은 번호여도 성공으로 응답한다. 서버가 일부러 그렇게 한다 — 알려주면 회원
+ * 명단을 훑는 도구가 된다. 문자는 회원에게만 실제로 간다.
+ */
+export function sendLoginCode(phone: string) {
+  return request<void>('/api/v1/auth/sms/send', { method: 'POST', body: { phone } });
+}
+
+export function signInWithCode(phone: string, code: string) {
+  return request<SignInResult>('/api/v1/auth/sms/login', {
+    method: 'POST',
+    body: { phone, code },
+  });
 }
 
 export function startOAuth(provider: OAuthProviderType) {
@@ -39,79 +69,99 @@ export function completeOAuth(provider: OAuthProviderType, code: string, state: 
   });
 }
 
-export interface SignUpInput {
-  signUpToken: string;
-  agreements: { type: AgreementCode; agreed: boolean }[];
-  /**
-   * 자체 가입에만 보낸다.
-   *
-   * <p>본인확인 단계에서도 보내지만 그것은 <b>병합용</b>이다 — 이미 가입한 사람이면
-   * 그 자리에서 기존 계정에 붙인다. 신규 가입이면 서버가 그 값을 들고 있지 않으므로
-   * 여기서 다시 보낸다. 단계 사이에 비밀번호를 서버에 보관하지 않기 위해서다.
-   */
-  password?: string | null;
-}
-
-export interface IdentityStart {
-  startUrl: string;
-  signUpToken: string;
-}
-
-export function completeSignUp(input: SignUpInput) {
-  return request<SignInResult>('/api/v1/auth/signup', { method: 'POST', body: input });
-}
-
-/** 쿠키만으로 동작한다. 실패는 "로그인 상태가 아니다"라는 뜻일 뿐 오류가 아니다. */
-/* ------------------------------------------------------------------ */
-/* 자체 가입 — 이메일 인증 → 본인확인 → 약관                            */
-/* ------------------------------------------------------------------ */
+// =====================================================================
+// 가입 — 약관 → 본인확인 → (비밀번호·이메일)
+// =====================================================================
 
 /**
- * 인증번호를 보낸다.
+ * 약관 동의로 가입 시작.
  *
- * <p>이미 가입된 주소여도 성공으로 응답한다. 서버가 일부러 그렇게 한다 —
- * 알려주면 회원 명단을 훑는 도구가 된다. 중복은 가입을 마치는 시점에 걸린다.
+ * @param signUpToken 소셜 콜백에서 받은 토큰. 휴대폰으로 직접 가입하면 생략
  */
-export function sendEmailCode(email: string) {
-  return request<void>('/api/v1/auth/email/verification', { method: 'POST', body: { email } });
-}
-
-export function confirmEmailCode(email: string, code: string) {
-  return request<{ signUpToken: string }>('/api/v1/auth/email/verification/confirm', {
+export function startSignUp(agreements: AgreementChoice[], signUpToken?: string) {
+  return request<{ signUpToken: string }>('/api/v1/auth/signup/start', {
     method: 'POST',
-    body: { email, code },
+    body: { agreements, ...(signUpToken ? { signUpToken } : {}) },
   });
 }
 
-/** 본인확인 창 주소를 받는다. 자체 가입과 소셜 가입이 같은 경로를 쓴다. */
-export function startIdentity(signUpToken: string, returnUrl: string) {
+/** 본인확인 창을 여는 폼. 화면은 그 폼을 그대로 전송한다({@code submitIdentityForm}). */
+export function startIdentity(signUpToken: string) {
   return request<IdentityStart>('/api/v1/auth/identity/start', {
     method: 'POST',
-    body: { signUpToken, returnUrl },
+    body: { signUpToken },
   });
 }
 
 /**
- * 본인확인 결과를 제출한다.
+ * 본인확인 결과 제출 (가입).
  *
- * <p>이미 가입한 신원이면 <b>여기서 바로 로그인된다</b> — 응답에 accessToken 이 온다.
- * 처음 보는 신원이면 약관 화면으로 갈 signUpToken 이 온다.
+ * @param token         본인확인 시작 때 받은 진행 토큰
+ * @param providerToken 복귀 화면 주소의 providerToken
  */
-export function completeIdentity(signUpToken: string, providerToken: string, password?: string) {
-  return request<SignInResult>('/api/v1/auth/identity/complete', {
+export function completeIdentity(token: string, providerToken: string) {
+  return request<IdentityResult>('/api/v1/auth/identity/complete', {
     method: 'POST',
-    body: { signUpToken, providerToken, ...(password ? { password } : {}) },
+    body: { token, providerToken },
   });
 }
 
-/** 이메일 + 비밀번호 로그인. */
-export function signInWithPassword(email: string, password: string) {
-  return request<SignInResult>('/api/v1/auth/login', {
+/** 이미 가입한 사람이 소셜로 왔을 때 — [연결하기]. */
+export function linkSocialAfterIdentity(signUpToken: string) {
+  return request<SignInResult>('/api/v1/auth/signup/link', {
     method: 'POST',
-    body: { email, password },
+    body: { signUpToken },
   });
 }
 
+/** 가입 중 선택 이메일로 인증번호 보내기. */
+export function sendSignUpEmailCode(signUpToken: string, email: string) {
+  return request<void>('/api/v1/auth/email/verification', {
+    method: 'POST',
+    body: { signUpToken, email },
+  });
+}
+
+export interface CompleteSignUpInput {
+  signUpToken: string;
+  password: string;
+  email?: string;
+  emailCode?: string;
+}
+
+/** 자체 가입 완료. 이름·생년월일·휴대폰은 보내지 않는다 — 본인확인 값을 서버가 쓴다. */
+export function completeSignUp(input: CompleteSignUpInput) {
+  return request<SignInResult>('/api/v1/auth/signup/complete', { method: 'POST', body: input });
+}
+
+// =====================================================================
+// 비밀번호 찾기 — 본인확인 → 새 비밀번호
+// =====================================================================
+
+export function startPasswordReset() {
+  return request<IdentityStart>('/api/v1/auth/password/reset/identity/start', { method: 'POST' });
+}
+
+export function completePasswordResetIdentity(token: string, providerToken: string) {
+  return request<PasswordResetGrant>('/api/v1/auth/password/reset/identity/complete', {
+    method: 'POST',
+    body: { token, providerToken },
+  });
+}
+
+/** 새 비밀번호. 성공하면 다른 기기의 세션이 전부 끊기고 잠금도 풀린다. */
+export function resetPassword(resetToken: string, newPassword: string) {
+  return request<void>('/api/v1/auth/password/reset', {
+    method: 'POST',
+    body: { resetToken, newPassword },
+  });
+}
+
+// =====================================================================
+// 세션
+// =====================================================================
+
+/** 쿠키만으로 동작한다. 실패는 "로그인 상태가 아니다"라는 뜻일 뿐 오류가 아니다. */
 export function refreshSession() {
   return request<SignInResult>('/api/v1/auth/refresh', { method: 'POST' });
 }
@@ -121,15 +171,23 @@ export function signOut() {
 }
 
 // =====================================================================
-// 인증 필요 (Bearer) — 401 재발급·재시도는 authedClient 가 맡는다
+// 마이페이지 (Bearer) — 401 재발급·재시도는 authedClient 가 맡는다
 // =====================================================================
 
 export function fetchMe() {
   return authed<User>('/api/v1/me');
 }
 
-export function updateProfile(input: { name: string }) {
-  return authed<User>('/api/v1/me', { method: 'PATCH', body: input });
+/**
+ * 비밀번호 설정·변경.
+ *
+ * <p>비밀번호가 없는 회원(소셜 가입)은 {@code currentPassword} 없이 새로 정한다.
+ */
+export function changePassword(newPassword: string, currentPassword?: string) {
+  return authed<void>('/api/v1/me/password', {
+    method: 'POST',
+    body: { newPassword, ...(currentPassword ? { currentPassword } : {}) },
+  });
 }
 
 export function fetchAgreements() {
@@ -148,7 +206,7 @@ export function fetchSocialAccounts() {
   return authed<SocialAccount[]>('/api/v1/me/social-accounts');
 }
 
-/** 마지막 하나는 해제할 수 없다 — 로그인 수단이 사라진다. */
+/** 비밀번호가 없는 회원의 마지막 하나는 해제할 수 없다 — 로그인 수단이 사라진다. */
 export function disconnectSocial(provider: OAuthProviderType) {
   return authed<SocialAccount[]>(`/api/v1/me/social-accounts/${provider}`, { method: 'DELETE' });
 }

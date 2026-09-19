@@ -117,29 +117,39 @@ public enum ErrorCode {
      * 그 절차를 만들지 않았으므로 가입 자체를 막는다. 절차 없이 받아 두면 그 시점부터 위법이다.
      */
     UNDER_MINIMUM_AGE(HttpStatus.FORBIDDEN, "만 14세 미만은 회원가입을 할 수 없습니다."),
-    /** 같은 DI 로 이미 가입한 계정이 있다. 병합할 수 없는 경우에만 쓴다. */
+    /** 같은 DI 로 이미 가입한 계정이 있다. 약관 화면에 머무는 사이 다른 탭에서 가입한 경우다. */
     IDENTITY_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 가입된 회원입니다. 로그인해 주세요."),
-    /** 이메일은 같은데 본인확인 결과가 다르다 — 남의 이메일로 가입하려는 시도일 수 있다. */
-    EMAIL_OWNED_BY_ANOTHER(HttpStatus.CONFLICT, "이 이메일은 다른 분이 사용 중입니다. 고객센터로 문의해 주세요."),
-    EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
     /**
-     * 이메일이 같은 회원이 이미 있는데, 본인확인이 없어 같은 사람인지 가릴 수 없다.
-     * 합치지도 새로 만들지도 않고 처음 가입한 방법으로 로그인하게 한다.
+     * 본인확인 공급자가 없어 새 가입을 받지 않는다.
+     *
+     * <p>모든 가입은 본인확인을 거친다. 공급자 계약(TODO E-4) 전에는 기존 회원의 로그인만
+     * 되고 가입은 닫힌다 — 확인하지 않은 신원으로 계정을 만들면 그 예외가 코드 전체로 번진다.
      */
-    EMAIL_REGISTERED_WITH_OTHER_LOGIN(HttpStatus.CONFLICT,
-            "이 이메일로 이미 가입된 계정이 있습니다. 처음 가입하신 방법으로 로그인해 주세요."),
+    SIGNUP_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+            "지금은 새로 가입할 수 없습니다. 이미 가입하신 분은 기존 방법으로 로그인해 주세요."),
+    /** 본인확인은 통과했는데 그 신원으로 가입한 계정이 없다 (비밀번호 찾기). */
+    IDENTITY_NOT_REGISTERED(HttpStatus.NOT_FOUND, "본인확인한 정보로 가입된 계정이 없습니다. 회원가입을 진행해 주세요."),
+    /** 이메일은 같은데 본인확인 결과가 다르다 — 남의 이메일로 가입하려는 시도일 수 있다. */
+    EMAIL_OWNED_BY_ANOTHER(HttpStatus.CONFLICT,
+            "이 이메일은 다른 계정에서 사용 중입니다. 다른 주소를 입력하거나 건너뛰어 주세요."),
     /** 코드 불일치·만료. 어느 쪽인지 알려주지 않는다 — 알려주면 유효한 코드를 찾는 데 쓰인다. */
-    EMAIL_VERIFICATION_INVALID(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않거나 만료되었습니다."),
+    VERIFICATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않거나 만료되었습니다."),
     /** 시도 횟수 초과. 6자리 숫자는 막지 않으면 만료 전에 다 훑을 수 있다. */
-    EMAIL_VERIFICATION_ATTEMPTS_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "인증 시도 횟수를 초과했습니다. 인증번호를 다시 받아 주세요."),
+    VERIFICATION_ATTEMPTS_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "인증 시도 횟수를 초과했습니다. 인증번호를 다시 받아 주세요."),
     /** 메일 발송 실패. 설정 누락이거나 공급자 장애다. */
     MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "인증 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    /** 문자 발송 설정(SENS)이 없어 인증번호 로그인을 쓸 수 없다. */
+    SMS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 인증번호 로그인을 사용할 수 없습니다. 비밀번호나 소셜 계정으로 로그인해 주세요."),
+    /** 문자 발송 실패. 공급자 장애이거나 발신번호 미등록이다. */
+    SMS_SEND_FAILED(HttpStatus.BAD_GATEWAY, "인증번호 문자를 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
     /** 소셜로만 가입한 계정에 비밀번호 로그인을 시도했다. */
-    PASSWORD_NOT_SET(HttpStatus.CONFLICT, "비밀번호가 설정되지 않은 계정입니다. 소셜 로그인으로 들어와 주세요."),
+    PASSWORD_NOT_SET(HttpStatus.CONFLICT, "비밀번호가 설정되지 않은 계정입니다. 소셜 로그인이나 인증번호로 들어와 주세요."),
+    /** 마이페이지 비밀번호 변경 — 현재 비밀번호가 틀렸다. */
+    CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다."),
     /** 연속 실패로 잠긴 계정. 관리자와 달리 시간이 지나면 스스로 풀린다. */
-    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "로그인 시도가 많아 계정이 잠겼습니다. 30분 후 다시 시도해 주세요."),
-    /** 비밀번호 재설정 링크가 만료됐거나 이미 사용됐다. */
-    PASSWORD_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "비밀번호 재설정 링크가 만료되었습니다. 다시 요청해 주세요."),
+    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "로그인 시도가 많아 계정이 잠겼습니다. 30분 후 다시 시도하거나 비밀번호 찾기를 이용해 주세요."),
+    /** 비밀번호 재설정 표가 만료됐거나 이미 사용됐다. */
+    PASSWORD_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "비밀번호 재설정 시간이 지났습니다. 본인확인부터 다시 진행해 주세요."),
 
     // --- 게시판 (STEP 15~16) ---
     /** 내린 공지도 이 코드로 응답한다 — 존재 자체를 알리지 않는다. */

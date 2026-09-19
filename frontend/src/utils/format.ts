@@ -108,5 +108,18 @@ export function formatBoardDate(iso: string | null | undefined): string {
   }).format(d);
 }
 
+/**
+ * 휴대폰번호 표시: "010-1234-5678"
+ *
+ * <p>서버는 숫자만 저장·전송한다(로그인 ID 라 한 가지 모양이어야 한다). 사람이 읽을 때만
+ * 하이픈을 넣는다. 이미 가린 값({@code 010-****-5678})이나 모르는 모양은 그대로 둔다.
+ */
+export function formatPhone(phone: string | null | undefined): string {
+  if (!phone) return '-';
+  if (/^\d{11}$/.test(phone)) return `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7)}`;
+  if (/^\d{10}$/.test(phone)) return `${phone.slice(0, 3)}-${phone.slice(3, 6)}-${phone.slice(6)}`;
+  return phone;
+}
+
 /** 시세를 표시할 수 없을 때의 문구 (설계서 §12.4) */
 export const PRICE_INQUIRY_LABEL = '시세문의';

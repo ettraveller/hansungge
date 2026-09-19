@@ -53,13 +53,15 @@ export interface AuthProviders {
   providers: AuthProviderItem[];
   agreements: AgreementItem[];
   /**
-   * 이메일+비밀번호 가입을 지금 쓸 수 있는가.
+   * 새 가입을 지금 받는가 (자체·소셜 모두).
    *
-   * <p>자체 가입은 휴대폰 본인확인이 있어야 성립한다 — 이름도 생년월일도 그것으로만
-   * 온다. 공급자 계약 전에는 false 이고, 그때 버튼을 그리면 <b>눌러야만 실패를 아는</b>
-   * 화면이 된다. 제공자 목록을 서버가 알려주는 것과 같은 이유다.
+   * <p>모든 가입은 휴대폰 본인확인을 거친다. 본인확인(이니시스) 계약 전에는 false 이고,
+   * 기존 회원의 로그인만 된다. false 일 때 가입 버튼을 그리면 <b>눌러야만 실패를 아는</b>
+   * 화면이 된다.
    */
-  emailSignUpAvailable: boolean;
+  signUpAvailable: boolean;
+  /** 인증번호(문자) 로그인을 지금 쓸 수 있는가. 문자 발송 설정이 없으면 false. */
+  smsLoginAvailable: boolean;
 }
 
 export interface OAuthAuthorize {
@@ -73,20 +75,23 @@ export interface User {
   email?: string | null;
   /** 본인확인 실명. 회원이 고칠 수 없다 */
   name?: string | null;
-  /** 본인확인으로 확정된 번호. 회원이 고칠 수 없다 */
+  /** 로그인 ID. 본인확인으로 확정된 번호, 숫자만(01012345678). 표시는 formatPhone */
   phone?: string | null;
   status: UserStatus;
   createdAt: string;
+  /** 비밀번호가 있는가. 소셜로만 가입했으면 false */
+  hasPassword: boolean;
 }
 
 /**
  * 로그인 결과.
  *
  * <b>결말이 두 가지다.</b>
- *  - 기존 회원: `signUpRequired=false`, `accessToken` 발급됨
- *  - 신규:      `signUpRequired=true`, 토큰 대신 `signUpToken` + 약관 목록
+ *  - 로그인 완료: `signUpRequired=false`, `accessToken` 발급됨
+ *  - 처음 오는 소셜: `signUpRequired=true`, 토큰 대신 `signUpToken` + 약관 목록.
+ *    다음은 약관 동의 → 본인확인이다
  *
- * 신규일 때 계정은 <b>아직 만들어지지 않았다.</b> 약관 동의를 마쳐야 생성된다.
+ * 신규일 때 계정은 <b>아직 만들어지지 않았다.</b>
  *
  * Refresh 토큰은 이 본문에 없다 — HttpOnly 쿠키로만 오간다.
  */
@@ -96,17 +101,59 @@ export interface SignInResult {
   expiresIn?: number | null;
   user?: User | null;
   signUpToken?: string | null;
-  /**
-   * 휴대폰 본인확인이 아직 남았는가.
-   *
-   * <b>signUpRequired 와 다르다.</b> 화면이 갈 곳이 다르기 때문이다 —
-   * 하나는 약관 화면, 하나는 본인확인 창이다. 한 값으로 뭉치면 프론트가 순서를
-   * 스스로 추측해야 하고, 그 추측은 서버 정책이 바뀌면 조용히 어긋난다.
-   */
-  identityRequired?: boolean | null;
   agreements?: AgreementItem[] | null;
-  suggestedName?: string | null;
   suggestedEmail?: string | null;
+}
+
+/**
+ * 본인확인 창을 여는 폼.
+ *
+ * <p>화면은 이 값을 해석하지 않는다 — hidden 필드로 옮겨 담아 그대로 전송한다. KG이니시스는
+ * 인증창을 폼 POST 로 연다.
+ */
+export interface IdentityStartForm {
+  action: string;
+  method: 'POST' | 'GET';
+  fields: Record<string, string>;
+}
+
+/** 본인확인 시작 응답. {@code token} 은 결과 제출 때 그대로 보낸다. */
+export interface IdentityStart {
+  form: IdentityStartForm;
+  token: string;
+}
+
+/**
+ * 가입 중 본인확인을 마친 뒤 — 다음에 무엇을 할지. 서버가 정한다.
+ *
+ *  - SET_PASSWORD      새 회원(자체 가입) — 비밀번호와 선택 이메일
+ *  - EXISTING_ACCOUNT  이미 가입한 사람 — 로그인하거나 바로 비밀번호 재설정
+ *  - CONFIRM_LINK      이미 가입한 사람(소셜로 옴) — 이 소셜 계정을 연결할지 묻는다
+ *  - SIGNED_IN         새 회원(소셜 가입) — 가입 완료, 로그인됨
+ */
+export type IdentityStep = 'SET_PASSWORD' | 'EXISTING_ACCOUNT' | 'CONFIRM_LINK' | 'SIGNED_IN';
+
+export interface IdentityResult {
+  step: IdentityStep;
+  session?: SignInResult | null;
+  signUpToken?: string | null;
+  resetToken?: string | null;
+  /** 이미 있는 계정의 이메일(가림) */
+  accountEmail?: string | null;
+  /** 이미 있는 계정의 휴대폰(가림) */
+  accountPhone?: string | null;
+  accountHasPassword?: boolean | null;
+  /** SET_PASSWORD — 본인확인 이름 (본인 것) */
+  name?: string | null;
+  /** SET_PASSWORD — 본인확인 휴대폰 (본인 것, 숫자만) */
+  phone?: string | null;
+}
+
+/** 비밀번호 찾기 — 본인확인 통과. 5분 안에 새 비밀번호를 정한다. */
+export interface PasswordResetGrant {
+  resetToken: string;
+  accountEmail?: string | null;
+  accountPhone?: string | null;
 }
 
 export interface AgreementStatus {

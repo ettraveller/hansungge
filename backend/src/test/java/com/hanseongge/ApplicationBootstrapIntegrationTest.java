@@ -71,8 +71,11 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V18 은 PRICE_STALE_MINUTES 를 0 으로 내린다 — 마지막 고시값을 계속 쓴다.
         // V19 는 자동 수집을 걷어내며 승인 대기·수집 로그 2개를 지운다.
         // V20(관리자 OTP)은 admin_users 에 컬럼을 더하고 복구 코드 1개를 새로 만든다 → 41 + 1.
+        // V21(휴대폰 로그인)은 users 에 컬럼·제약·인덱스만 더한다.
+        // V22 는 email_verifications 를 verification_codes 로 이름만 바꾼다 — 둘 다 테이블 수는 그대로.
         assertThat(versions)
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
+                        "16", "17", "18", "19", "20", "21", "22");
 
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables "

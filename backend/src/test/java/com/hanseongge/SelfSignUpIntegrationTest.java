@@ -2,7 +2,6 @@ package com.hanseongge;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hanseongge.domain.user.entity.Gender;
 import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import com.hanseongge.support.SignUpFlow;
@@ -37,11 +36,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 자체 회원가입과 휴대폰 본인확인.
+ * 자체(휴대폰) 가입과 휴대폰번호 로그인.
  *
- * <p>실제 공급자 대신 스텁을 끼운다. 검증하려는 것은 KG이니시스의 응답 형식이 아니라
- * <b>우리 쪽 흐름</b>이다 — 단계를 건너뛸 수 있는가, 같은 사람이 두 계정을 만들 수 있는가,
- * 토큰에 개인정보가 새어 나가는가.
+ * <p>검증하려는 것은 KG이니시스의 응답 형식이 아니라 <b>우리 쪽 흐름</b>이다 — 단계를 건너뛸
+ * 수 있는가, 같은 사람이 두 계정을 만들 수 있는가, 번호가 재할당되면 어떻게 되는가,
+ * 토큰에 개인정보가 새어 나가는가, 잠금이 스스로 풀리는가.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,12 +49,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.main.allow-bean-definition-overriding=true",
         "app.oauth.redirect-base-url=http://localhost:3000/auth/callback",
         // 재발송 쿨다운을 끈다 — 한 테스트에서 인증번호를 두 번 받는 경우가 있다.
-        "app.sign-up.email-code-resend-cooldown-seconds=0"
+        "app.sign-up.code-resend-cooldown-seconds=0"
 })
 class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
 
-    private static final String PASSWORD = "Hanseong!2026";
-    private static final String RETURN_URL = SignUpFlow.RETURN_URL;
+    private static final String PASSWORD = SignUpFlow.PASSWORD;
 
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
@@ -87,66 +85,35 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
-    /** 이메일 인증까지 마치고 가입 토큰을 돌려준다. */
-    private String verifyEmail(String email) throws Exception {
-        mockMvc.perform(post("/api/v1/auth/email/verification")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("email", email))))
-                .andExpect(status().isNoContent());
-
-        MvcResult confirmed = mockMvc.perform(post("/api/v1/auth/email/verification/confirm")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("email", email, "code", mailSender.lastCode()))))
-                .andExpect(status().isOk())
-                .andReturn();
-        return read(confirmed).get("signUpToken").asText();
+    /** 약관 → 본인확인까지. 신규면 SET_PASSWORD 와 진행 토큰이 온다. */
+    private JsonNode agreeAndVerify(VerifiedIdentity identity) throws Exception {
+        String agreed = flow.agree(null);
+        identityProvider.willReturn(identity);
+        return flow.verifyIdentity(agreed);
     }
 
-    private MvcResult completeIdentity(String signUpToken, String password) throws Exception {
+    private MvcResult complete(String signUpToken, String password, String email, String emailCode)
+            throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("signUpToken", signUpToken);
-        body.put("providerToken", "stub-token");
-        if (password != null) {
-            body.put("password", password);
+        body.put("password", password);
+        if (email != null) {
+            body.put("email", email);
         }
-        return mockMvc.perform(post("/api/v1/auth/identity/complete")
+        if (emailCode != null) {
+            body.put("emailCode", emailCode);
+        }
+        return mockMvc.perform(post("/api/v1/auth/signup/complete")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(body)))
                 .andReturn();
     }
 
-    private MvcResult signUp(String signUpToken) throws Exception {
-        return signUp(signUpToken, null);
-    }
-
-    /**
-     * 비밀번호를 여기서 다시 보낸다.
-     *
-     * <p>본인확인 단계에서도 보내지만 그것은 <b>병합용</b>이다 — 이미 가입한 사람이면
-     * 그 자리에서 기존 계정에 붙여야 한다. 신규 가입이면 그 값을 서버가 들고 있지 않는다.
-     * 단계 사이에 비밀번호를 서버에 보관하지 않기 위해서다.
-     */
-    private MvcResult signUp(String signUpToken, String password) throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("signUpToken", signUpToken);
-        body.put("agreements", SignUpFlow.allRequiredAgreed());
-        if (password != null) {
-            body.put("password", password);
-        }
-        return mockMvc.perform(post("/api/v1/auth/signup")
+    private MvcResult login(String phone, String password) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(body)))
+                        .content(json(Map.of("phone", phone, "password", password))))
                 .andReturn();
-    }
-
-    /** 자체 가입을 끝까지 태운다. */
-    private String signUpWithEmail(String email) throws Exception {
-        String afterEmail = verifyEmail(email);
-        MvcResult identity = completeIdentity(afterEmail, PASSWORD);
-        assertThat(identity.getResponse().getStatus()).isEqualTo(200);
-        MvcResult signedUp = signUp(read(identity).get("signUpToken").asText(), PASSWORD);
-        assertThat(signedUp.getResponse().getStatus()).isEqualTo(200);
-        return read(signedUp).get("accessToken").asText();
     }
 
     private int count(String table) {
@@ -158,322 +125,250 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
     // =================================================================
 
     @Nested
-    @DisplayName("자체 가입 — 이메일 인증 → 본인확인 → 약관")
-    class EmailSignUp {
+    @DisplayName("자체 가입 — 약관 → 본인확인 → 비밀번호 → 이메일(선택)")
+    class SignUp {
 
         @Test
-        @DisplayName("네 단계를 마치면 회원이 생기고 세션이 발급된다")
-        void completesInFourSteps() throws Exception {
-            String token = signUpWithEmail("buyer@test.local");
+        @DisplayName("본인확인 값으로 가입된다 — 이름·생년월일·휴대폰을 입력받지 않는다")
+        void signUpUsesIdentityValues() throws Exception {
+            JsonNode verified = agreeAndVerify(
+                    UserTestFixtures.identityWith("DI-1", "홍길동", "010-1234-5678"));
 
-            assertThat(token).isNotBlank();
-            assertThat(count("users")).isEqualTo(1);
-            assertThat(jdbc.queryForObject(
-                    "SELECT password_hash FROM users LIMIT 1", String.class)).isNotBlank();
-            assertThat(jdbc.queryForObject(
-                    "SELECT di FROM users LIMIT 1", String.class)).isNotBlank();
-            // 약관은 선택까지 포함해 전부 기록한다 — "묻지 않은 것"과 "거절한 것"은 다르다.
-            assertThat(count("user_agreements")).isEqualTo(5);
+            assertThat(verified.get("step").asText()).isEqualTo("SET_PASSWORD");
+            // 비밀번호 화면에 읽기 전용으로 보여줄 본인 값
+            assertThat(verified.get("name").asText()).isEqualTo("홍길동");
+            assertThat(verified.get("phone").asText()).isEqualTo("01012345678");
+            // 아직 계정은 없다
+            assertThat(count("users")).isZero();
+
+            MvcResult done = complete(verified.get("signUpToken").asText(), PASSWORD, null, null);
+            assertThat(done.getResponse().getStatus()).isEqualTo(200);
+            assertThat(read(done).get("accessToken").asText()).isNotBlank();
+
+            Map<String, Object> user = jdbc.queryForMap(
+                    "SELECT name, phone, di, email, password_hash FROM users");
+            assertThat(user.get("name")).isEqualTo("홍길동");
+            assertThat(user.get("phone")).isEqualTo("01012345678");
+            assertThat(user.get("di")).isEqualTo("DI-1");
+            assertThat(user.get("email")).isNull();
+            assertThat((String) user.get("password_hash")).startsWith("$2");
         }
 
         @Test
-        @DisplayName("인증번호가 틀리면 다음 단계로 갈 수 없다")
-        void wrongCodeIsRejected() throws Exception {
+        @DisplayName("가입한 번호와 비밀번호로 로그인된다 — 하이픈이 있어도 같은 번호다")
+        void signedUpMemberLogsInByPhone() throws Exception {
+            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
+
+            MvcResult result = login("010-1234-5678", PASSWORD);
+            assertThat(result.getResponse().getStatus()).isEqualTo(200);
+            assertThat(read(result).get("user").get("phone").asText()).isEqualTo("01012345678");
+        }
+
+        @Test
+        @DisplayName("이메일을 넣으면 인증번호를 확인해야 가입된다")
+        void emailNeedsCode() throws Exception {
+            String token = agreeAndVerify(UserTestFixtures.identity("홍길동")).get("signUpToken").asText();
+
             mockMvc.perform(post("/api/v1/auth/email/verification")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local"))))
+                            .content(json(Map.of("signUpToken", token, "email", "Buyer@Test.local"))))
                     .andExpect(status().isNoContent());
 
-            mockMvc.perform(post("/api/v1/auth/email/verification/confirm")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local", "code", "000000"))))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("EMAIL_VERIFICATION_INVALID"));
+            // 번호 없이는 안 된다
+            assertThat(complete(token, PASSWORD, "buyer@test.local", null).getResponse().getStatus())
+                    .isEqualTo(400);
+            // 틀린 번호도 안 된다
+            assertThat(complete(token, PASSWORD, "buyer@test.local", "000000").getResponse().getStatus())
+                    .isEqualTo(400);
+
+            MvcResult ok = complete(token, PASSWORD, "buyer@test.local", mailSender.lastCode());
+            assertThat(ok.getResponse().getStatus()).isEqualTo(200);
+            assertThat(jdbc.queryForObject("SELECT email FROM users", String.class))
+                    .isEqualTo("buyer@test.local");
+            assertThat(jdbc.queryForObject(
+                    "SELECT email_verified_at IS NOT NULL FROM users", Boolean.class)).isTrue();
         }
 
         @Test
-        @DisplayName("시도 횟수를 넘기면 막힌다 — 6자리는 막지 않으면 만료 전에 다 훑을 수 있다")
-        void tooManyAttemptsAreBlocked() throws Exception {
-            mockMvc.perform(post("/api/v1/auth/email/verification")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local"))))
-                    .andExpect(status().isNoContent());
-
-            for (int i = 0; i < 5; i++) {
-                mockMvc.perform(post("/api/v1/auth/email/verification/confirm")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(json(Map.of("email", "buyer@test.local", "code", "000000"))))
-                        .andExpect(status().isBadRequest());
-            }
-
-            mockMvc.perform(post("/api/v1/auth/email/verification/confirm")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local", "code", "000000"))))
-                    .andExpect(status().isTooManyRequests())
-                    .andExpect(jsonPath("$.code").value("EMAIL_VERIFICATION_ATTEMPTS_EXCEEDED"));
-        }
-
-        @Test
-        @DisplayName("본인확인을 건너뛰고 가입할 수 없다")
+        @DisplayName("본인확인을 건너뛰고 가입을 마칠 수 없다")
         void identityCannotBeSkipped() throws Exception {
-            String afterEmail = verifyEmail("buyer@test.local");
+            String agreedOnly = flow.agree(null);
 
-            MvcResult result = signUp(afterEmail);
-
+            MvcResult result = complete(agreedOnly, PASSWORD, null, null);
             assertThat(result.getResponse().getStatus()).isEqualTo(400);
-            assertThat(read(result).get("code").asText()).isEqualTo("IDENTITY_VERIFICATION_INVALID");
+            assertThat(read(result).get("code").asText()).isEqualTo("SIGNUP_TOKEN_INVALID");
             assertThat(count("users")).isZero();
         }
 
         @Test
-        @DisplayName("만 14세 미만은 가입할 수 없다 — 체크박스가 아니라 생년월일로 판정한다")
-        void minorCannotSignUp() throws Exception {
-            String afterEmail = verifyEmail("kid@test.local");
+        @DisplayName("만 14세 미만은 본인확인 단계에서 막힌다 — 신원을 저장하지도 않는다")
+        void underFourteenIsBlocked() throws Exception {
+            String agreed = flow.agree(null);
             identityProvider.willReturn(UserTestFixtures.minorIdentity(LocalDate.now()));
 
-            MvcResult result = completeIdentity(afterEmail, PASSWORD);
-
+            MvcResult result = flow.verifyIdentityRaw(agreed);
             assertThat(result.getResponse().getStatus()).isEqualTo(403);
             assertThat(read(result).get("code").asText()).isEqualTo("UNDER_MINIMUM_AGE");
-            assertThat(count("users")).isZero();
-            // 가입시킬 수 없는 사람의 신원을 남기지 않는다.
             assertThat(count("identity_verifications")).isZero();
         }
-    }
-
-    // =================================================================
-    // 중복가입과 계정 병합
-    // =================================================================
-
-    @Nested
-    @DisplayName("DI 가 계정의 진짜 열쇠다")
-    class IdentityIsTheKey {
-
-        private VerifiedIdentity sameHuman() {
-            return new VerifiedIdentity("DI-SAME-PERSON", "김철수",
-                    LocalDate.of(1990, 5, 5), Gender.MALE, false, "010-1111-2222");
-        }
 
         @Test
-        @DisplayName("같은 DI 로 두 번째 계정을 만들 수 없다 — 이메일이 달라도 막힌다")
-        void sameDiCannotCreateSecondAccount() throws Exception {
-            identityProvider.willReturn(sameHuman());
-            signUpWithEmail("first@test.local");
-            assertThat(count("users")).isEqualTo(1);
-
-            // 다른 이메일로 다시 가입을 시도한다.
-            identityProvider.willReturn(sameHuman());
-            String afterEmail = verifyEmail("second@test.local");
-            MvcResult result = completeIdentity(afterEmail, PASSWORD);
-
-            // 새 계정이 생기지 않는다. 이미 비밀번호가 있으므로 안내로 막힌다.
-            assertThat(count("users")).isEqualTo(1);
-            assertThat(result.getResponse().getStatus()).isEqualTo(409);
-        }
-
-        @Test
-        @DisplayName("소셜로 가입한 사람이 같은 신원으로 자체 가입하면 기존 계정에 비밀번호가 붙는다")
-        void socialUserGainsPassword() throws Exception {
-            identityProvider.willReturn(sameHuman());
-            flow.social("google-1", "buyer@test.local", "김철수", sameHuman());
-            assertThat(count("users")).isEqualTo(1);
-            assertThat(jdbc.queryForObject("SELECT password_hash FROM users LIMIT 1", String.class))
-                    .isNull();
-
-            identityProvider.willReturn(sameHuman());
-            String afterEmail = verifyEmail("buyer@test.local");
-            MvcResult result = completeIdentity(afterEmail, PASSWORD);
-
-            // 계정이 갈라지지 않고 하나로 남는다.
-            assertThat(result.getResponse().getStatus()).isEqualTo(200);
-            assertThat(read(result).hasNonNull("accessToken")).isTrue();
-            assertThat(count("users")).isEqualTo(1);
-            assertThat(jdbc.queryForObject("SELECT password_hash FROM users LIMIT 1", String.class))
-                    .isNotBlank();
-        }
-
-        @Test
-        @DisplayName("한 번 쓴 본인확인은 다시 쓸 수 없다")
-        void consumedIdentityCannotBeReused() throws Exception {
-            String afterEmail = verifyEmail("buyer@test.local");
-            MvcResult identity = completeIdentity(afterEmail, PASSWORD);
-            String tokenWithIdentity = read(identity).get("signUpToken").asText();
-
-            assertThat(signUp(tokenWithIdentity, PASSWORD).getResponse().getStatus()).isEqualTo(200);
-
-            // 같은 토큰으로 한 번 더 — 소진된 인증이라 거절된다.
-            MvcResult second = signUp(tokenWithIdentity, PASSWORD);
-            assertThat(second.getResponse().getStatus()).isEqualTo(400);
-            assertThat(count("users")).isEqualTo(1);
+        @DisplayName("비밀번호 정책에 맞지 않으면 400")
+        void weakPasswordIsRejected() throws Exception {
+            String token = agreeAndVerify(UserTestFixtures.identity("홍길동")).get("signUpToken").asText();
+            assertThat(complete(token, "short", null, null).getResponse().getStatus()).isEqualTo(400);
         }
     }
 
     // =================================================================
-    // 이메일 로그인
+    // 이미 가입한 사람
     // =================================================================
 
     @Nested
-    @DisplayName("이메일 로그인")
-    class PasswordSignIn {
+    @DisplayName("같은 사람(같은 DI)은 두 계정을 만들 수 없다")
+    class Duplicate {
 
-        private MvcResult login(String email, String password) throws Exception {
-            return mockMvc.perform(post("/api/v1/auth/login")
+        @Test
+        @DisplayName("다시 가입하면 EXISTING_ACCOUNT — 가린 정보와 재설정 토큰을 주고, 계정은 늘지 않는다")
+        void secondSignUpIsTurnedIntoExistingAccount() throws Exception {
+            VerifiedIdentity person = UserTestFixtures.identityWith("DI-SAME", "홍길동", "01012345678");
+            flow.phone(person, PASSWORD);
+
+            JsonNode again = agreeAndVerify(person);
+
+            assertThat(again.get("step").asText()).isEqualTo("EXISTING_ACCOUNT");
+            assertThat(again.get("accountPhone").asText()).isEqualTo("010-****-5678");
+            assertThat(again.get("accountHasPassword").asBoolean()).isTrue();
+            assertThat(again.get("resetToken").asText()).isNotBlank();
+            assertThat(count("users")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("그 자리에서 바로 비밀번호를 다시 정할 수 있다 — 본인확인을 이미 통과했다")
+        void existingAccountCanResetRightAway() throws Exception {
+            VerifiedIdentity person = UserTestFixtures.identityWith("DI-SAME", "홍길동", "01012345678");
+            flow.phone(person, PASSWORD);
+            String resetToken = agreeAndVerify(person).get("resetToken").asText();
+
+            mockMvc.perform(post("/api/v1/auth/password/reset")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", email, "password", password))))
-                    .andReturn();
+                            .content(json(Map.of("resetToken", resetToken, "newPassword", "Changed-pass-99!"))))
+                    .andExpect(status().isNoContent());
+
+            assertThat(login("01012345678", "Changed-pass-99!").getResponse().getStatus()).isEqualTo(200);
         }
 
         @Test
-        @DisplayName("가입한 비밀번호로 로그인된다")
-        void signsIn() throws Exception {
-            signUpWithEmail("buyer@test.local");
+        @DisplayName("번호를 바꾼 사람이 다시 본인확인하면 로그인 번호가 새 번호로 맞춰진다")
+        void changedNumberIsRefreshed() throws Exception {
+            flow.phone(UserTestFixtures.identityWith("DI-SAME", "홍길동", "01011111111"), PASSWORD);
 
-            MvcResult result = login("buyer@test.local", PASSWORD);
+            agreeAndVerify(UserTestFixtures.identityWith("DI-SAME", "홍길동", "01022222222"));
 
-            assertThat(result.getResponse().getStatus()).isEqualTo(200);
-            assertThat(read(result).hasNonNull("accessToken")).isTrue();
-            assertThat(result.getResponse().getCookie("hsg_rt")).isNotNull();
+            assertThat(jdbc.queryForObject("SELECT phone FROM users", String.class)).isEqualTo("01022222222");
+            assertThat(login("01022222222", PASSWORD).getResponse().getStatus()).isEqualTo(200);
         }
+    }
+
+    // =================================================================
+    // 번호 재할당
+    // =================================================================
+
+    @Nested
+    @DisplayName("번호가 다른 사람에게 재할당되면")
+    class Reassigned {
 
         @Test
-        @DisplayName("없는 계정과 틀린 비밀번호가 같은 응답이다 — 구분되면 가입 여부를 훑을 수 있다")
+        @DisplayName("새 주인은 가입되고, 옛 계정은 로그인 번호를 잃는다 — 계정이 합쳐지지 않는다")
+        void newOwnerSignsUpAndOldAccountLosesNumber() throws Exception {
+            flow.phone(UserTestFixtures.identityWith("DI-OLD", "김옛주인", "01012345678"), PASSWORD);
+
+            flow.phone(UserTestFixtures.identityWith("DI-NEW", "박새주인", "01012345678"), "New-owner-pass-1!");
+
+            assertThat(count("users")).isEqualTo(2);
+            assertThat(jdbc.queryForObject("SELECT phone FROM users WHERE di = 'DI-OLD'", String.class)).isNull();
+            assertThat(jdbc.queryForObject("SELECT phone FROM users WHERE di = 'DI-NEW'", String.class))
+                    .isEqualTo("01012345678");
+
+            // 그 번호로 로그인하면 새 주인이다
+            MvcResult result = login("01012345678", "New-owner-pass-1!");
+            assertThat(read(result).get("user").get("name").asText()).isEqualTo("박새주인");
+            // 옛 비밀번호로는 들어갈 수 없다
+            assertThat(login("01012345678", PASSWORD).getResponse().getStatus()).isEqualTo(401);
+        }
+    }
+
+    // =================================================================
+    // 휴대폰 로그인
+    // =================================================================
+
+    @Nested
+    @DisplayName("휴대폰번호 로그인")
+    class PasswordLogin {
+
+        @Test
+        @DisplayName("없는 번호와 틀린 비밀번호는 같은 응답이다 — 가입 여부를 흘리지 않는다")
         void unknownAndWrongLookTheSame() throws Exception {
-            signUpWithEmail("buyer@test.local");
+            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
 
-            MvcResult wrong = login("buyer@test.local", "Wrong!Password9");
-            MvcResult unknown = login("nobody@test.local", "Wrong!Password9");
+            MvcResult unknown = login("01099999999", PASSWORD);
+            MvcResult wrong = login("01012345678", "Wrong-pass-1234!");
+            MvcResult malformed = login("02-123-4567", PASSWORD);
 
-            assertThat(wrong.getResponse().getStatus()).isEqualTo(401);
             assertThat(unknown.getResponse().getStatus()).isEqualTo(401);
-            assertThat(read(wrong).get("code").asText())
-                    .isEqualTo(read(unknown).get("code").asText());
+            assertThat(wrong.getResponse().getStatus()).isEqualTo(401);
+            assertThat(malformed.getResponse().getStatus()).isEqualTo(401);
+            assertThat(read(unknown).get("code").asText()).isEqualTo("LOGIN_FAILED");
+            assertThat(read(wrong).get("code").asText()).isEqualTo("LOGIN_FAILED");
+            assertThat(read(malformed).get("code").asText()).isEqualTo("LOGIN_FAILED");
         }
 
         @Test
-        @DisplayName("소셜 전용 계정은 비밀번호가 없다고 알려준다 — 맞는 비밀번호를 계속 넣게 두지 않는다")
-        void socialOnlyAccountIsToldSo() throws Exception {
-            flow.social("google-1", "social@test.local", "김철수");
+        @DisplayName("소셜로만 가입해 비밀번호가 없으면 그 사실을 알려준다 — 다음에 할 일이 다르다")
+        void socialOnlyMemberIsTold() throws Exception {
+            flow.social("google-1", "buyer@test.local", "홍길동",
+                    UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"));
 
-            MvcResult result = login("social@test.local", PASSWORD);
-
+            MvcResult result = login("01012345678", PASSWORD);
             assertThat(result.getResponse().getStatus()).isEqualTo(409);
             assertThat(read(result).get("code").asText()).isEqualTo("PASSWORD_NOT_SET");
         }
 
         @Test
-        @DisplayName("연속 실패하면 잠기고, 실패 횟수가 롤백되지 않는다")
-        void locksAfterRepeatedFailures() throws Exception {
-            signUpWithEmail("buyer@test.local");
+        @DisplayName("5번 틀리면 잠기고, 맞는 비밀번호도 통하지 않는다")
+        void locksAfterFiveFailures() throws Exception {
+            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
 
-            for (int i = 0; i < 4; i++) {
-                assertThat(login("buyer@test.local", "Wrong!Password9").getResponse().getStatus())
-                        .isEqualTo(401);
+            for (int i = 0; i < 5; i++) {
+                login("01012345678", "Wrong-pass-1234!");
             }
-            // 5회째에 잠긴다. 실패 카운터가 예외와 함께 롤백됐다면 여기서 401 이 나온다.
-            assertThat(login("buyer@test.local", "Wrong!Password9").getResponse().getStatus())
-                    .isEqualTo(403);
+            MvcResult locked = login("01012345678", PASSWORD);
+            assertThat(locked.getResponse().getStatus()).isEqualTo(403);
+            assertThat(read(locked).get("code").asText()).isEqualTo("USER_ACCOUNT_LOCKED");
+        }
 
-            // 잠긴 뒤에는 맞는 비밀번호도 통하지 않는다.
-            MvcResult afterLock = login("buyer@test.local", PASSWORD);
-            assertThat(afterLock.getResponse().getStatus()).isEqualTo(403);
-            assertThat(read(afterLock).get("code").asText()).isEqualTo("USER_ACCOUNT_LOCKED");
+        @Test
+        @DisplayName("30분이 지나 풀린 뒤 한 번 틀려도 곧바로 다시 잠기지 않는다 — 실패 횟수를 새로 센다")
+        void expiredLockStartsCountingAgain() throws Exception {
+            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
+            for (int i = 0; i < 5; i++) {
+                login("01012345678", "Wrong-pass-1234!");
+            }
+            // 잠긴 지 31분이 지났다
+            jdbc.update("UPDATE users SET locked_at = now() - interval '31 minutes'");
+
+            MvcResult oneMoreWrong = login("01012345678", "Wrong-pass-1234!");
+            assertThat(read(oneMoreWrong).get("code").asText())
+                    .as("풀린 뒤 첫 실패는 그냥 실패여야 한다")
+                    .isEqualTo("LOGIN_FAILED");
+            assertThat(jdbc.queryForObject("SELECT login_fail_count FROM users", Integer.class)).isEqualTo(1);
+
+            assertThat(login("01012345678", PASSWORD).getResponse().getStatus()).isEqualTo(200);
         }
     }
 
     // =================================================================
-    // 비밀번호 재설정
-    // =================================================================
-
-    @Nested
-    @DisplayName("비밀번호 재설정")
-    class PasswordReset {
-
-        private MvcResult requestReset(String email) throws Exception {
-            return mockMvc.perform(post("/api/v1/auth/password/reset")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", email))))
-                    .andReturn();
-        }
-
-        private MvcResult confirmReset(String email, String code, String newPassword) throws Exception {
-            return mockMvc.perform(post("/api/v1/auth/password/reset/confirm")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of(
-                                    "email", email, "code", code, "newPassword", newPassword))))
-                    .andReturn();
-        }
-
-        @Test
-        @DisplayName("새 비밀번호로 바꾸고 그것으로 로그인된다")
-        void resetsAndSignsIn() throws Exception {
-            signUpWithEmail("buyer@test.local");
-            String newPassword = "Changed!2026a";
-
-            assertThat(requestReset("buyer@test.local").getResponse().getStatus()).isEqualTo(204);
-            MvcResult done = confirmReset("buyer@test.local", mailSender.lastCode(), newPassword);
-            assertThat(done.getResponse().getStatus()).isEqualTo(204);
-
-            assertThat(mockMvc.perform(post("/api/v1/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local", "password", newPassword))))
-                    .andReturn().getResponse().getStatus()).isEqualTo(200);
-
-            // 옛 비밀번호는 더 이상 통하지 않는다.
-            assertThat(mockMvc.perform(post("/api/v1/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local", "password", PASSWORD))))
-                    .andReturn().getResponse().getStatus()).isEqualTo(401);
-        }
-
-        @Test
-        @DisplayName("재설정하면 다른 기기의 세션이 끊긴다 — 빼앗긴 계정을 되찾는 것이 목적이다")
-        void revokesOtherSessions() throws Exception {
-            signUpWithEmail("buyer@test.local");
-            // 가입으로 받은 쿠키가 다른 기기의 세션이라고 본다.
-            MvcResult login = mockMvc.perform(post("/api/v1/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local", "password", PASSWORD))))
-                    .andReturn();
-            var cookie = login.getResponse().getCookie("hsg_rt");
-            assertThat(cookie).isNotNull();
-
-            requestReset("buyer@test.local");
-            confirmReset("buyer@test.local", mailSender.lastCode(), "Changed!2026a");
-
-            assertThat(mockMvc.perform(post("/api/v1/auth/refresh").cookie(cookie))
-                    .andReturn().getResponse().getStatus()).isGreaterThanOrEqualTo(400);
-        }
-
-        @Test
-        @DisplayName("가입하지 않은 주소도 같은 응답이다 — 회원 명단을 훑을 수 없다")
-        void unknownEmailLooksTheSame() throws Exception {
-            signUpWithEmail("buyer@test.local");
-
-            assertThat(requestReset("buyer@test.local").getResponse().getStatus()).isEqualTo(204);
-            assertThat(requestReset("nobody@test.local").getResponse().getStatus()).isEqualTo(204);
-
-            // 회원이 아닌 주소에는 메일이 나가지 않는다.
-            assertThat(mailSender.sent.stream().map(StubMailSender.Sent::to))
-                    .doesNotContain("nobody@test.local");
-        }
-
-        @Test
-        @DisplayName("가입 인증번호로 비밀번호를 바꿀 수 없다 — 목적이 다르면 다른 인증이다")
-        void signUpCodeCannotResetPassword() throws Exception {
-            signUpWithEmail("buyer@test.local");
-            // 가입 목적으로 새 번호를 받는다.
-            mockMvc.perform(post("/api/v1/auth/email/verification")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("email", "buyer@test.local"))))
-                    .andExpect(status().isNoContent());
-
-            MvcResult result = confirmReset("buyer@test.local", mailSender.lastCode(), "Changed!2026a");
-            assertThat(result.getResponse().getStatus()).isEqualTo(400);
-        }
-    }
-
-    // =================================================================
-    // 개인정보가 새어 나가지 않는다
+    // 개인정보
     // =================================================================
 
     @Nested
@@ -481,19 +376,18 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
     class PrivacyGuards {
 
         @Test
-        @DisplayName("가입 토큰을 디코딩해도 이름·생년월일·DI 가 없다 — JWT 는 암호화가 아니다")
+        @DisplayName("진행 토큰을 디코딩해도 이름·생년월일·휴대폰·DI 가 없다 — JWT 는 암호화가 아니다")
         void signUpTokenCarriesNoPersonalData() throws Exception {
-            String afterEmail = verifyEmail("buyer@test.local");
-            identityProvider.willReturn("DI-SECRET-VALUE", "김철수", "010-1111-2222");
-            MvcResult identity = completeIdentity(afterEmail, PASSWORD);
+            JsonNode verified = agreeAndVerify(
+                    UserTestFixtures.identityWith("DI-SECRET-VALUE", "김철수", "01011112222"));
 
-            String token = read(identity).get("signUpToken").asText();
+            String token = verified.get("signUpToken").asText();
             String payload = new String(java.util.Base64.getUrlDecoder()
                     .decode(token.split("\\.")[1]), java.nio.charset.StandardCharsets.UTF_8);
 
             assertThat(payload).doesNotContain("DI-SECRET-VALUE");
             assertThat(payload).doesNotContain("김철수");
-            assertThat(payload).doesNotContain("010-1111-2222");
+            assertThat(payload).doesNotContain("01011112222");
             assertThat(payload).doesNotContain("1990");
         }
 
@@ -510,14 +404,25 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("본인확인 신원은 고칠 수도 지울 수도 없다")
         void identityRowIsAppendOnly() throws Exception {
-            signUpWithEmail("buyer@test.local");
-            Long id = jdbc.queryForObject(
-                    "SELECT id FROM identity_verifications LIMIT 1", Long.class);
+            flow.phone(UserTestFixtures.identity("홍길동"), PASSWORD);
+            Long id = jdbc.queryForObject("SELECT id FROM identity_verifications LIMIT 1", Long.class);
 
             assertThatThrownBySql(() -> jdbc.update(
                     "UPDATE identity_verifications SET name = '남의이름' WHERE id = ?", id));
             assertThatThrownBySql(() -> jdbc.update(
                     "DELETE FROM identity_verifications WHERE id = ?", id));
+        }
+
+        @Test
+        @DisplayName("한 번 쓴 본인확인은 다시 쓸 수 없다 — 가입에 쓴 인증으로 계정을 또 만들지 못한다")
+        void consumedIdentityCannotBeReused() throws Exception {
+            JsonNode verified = agreeAndVerify(UserTestFixtures.identity("홍길동"));
+            String token = verified.get("signUpToken").asText();
+            assertThat(complete(token, PASSWORD, null, null).getResponse().getStatus()).isEqualTo(200);
+
+            MvcResult again = complete(token, PASSWORD, null, null);
+            assertThat(again.getResponse().getStatus()).isGreaterThanOrEqualTo(400);
+            assertThat(count("users")).isEqualTo(1);
         }
 
         private void assertThatThrownBySql(Runnable action) {

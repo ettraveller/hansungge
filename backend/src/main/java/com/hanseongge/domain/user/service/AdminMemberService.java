@@ -67,7 +67,22 @@ public class AdminMemberService {
      */
     @Transactional(readOnly = true)
     public Page<User> findPage(String keyword, UserStatus status, Pageable pageable) {
-        return userRepository.findAdminPage(likePattern(keyword), status, pageable);
+        return userRepository.findAdminPage(likePattern(keyword), phonePattern(keyword), status, pageable);
+    }
+
+    /**
+     * 휴대폰 검색용 패턴 — 숫자만 남긴다.
+     *
+     * <p>휴대폰은 숫자만 저장한다(V21). 고객센터에서 "010-1234-5678" 을 그대로 넣으면 하이픈
+     * 때문에 아무것도 안 걸린다. 숫자가 없는 검색어(이름·이메일)는 이메일·이름 패턴을 그대로
+     * 쓴다 — 어차피 숫자뿐인 번호에는 걸리지 않는다. 숫자만 남기므로 와일드카드가 끼어들 수 없다.
+     */
+    private static String phonePattern(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "";
+        }
+        String digits = keyword.replaceAll("[^0-9]", "");
+        return digits.isEmpty() ? likePattern(keyword) : "%" + digits + "%";
     }
 
     /**

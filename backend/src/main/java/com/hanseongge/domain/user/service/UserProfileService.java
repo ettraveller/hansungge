@@ -1,7 +1,6 @@
 package com.hanseongge.domain.user.service;
 
 import com.hanseongge.domain.user.dto.AgreementStatusResponse;
-import com.hanseongge.domain.user.dto.ProfileUpdateRequest;
 import com.hanseongge.domain.user.dto.SocialAccountResponse;
 import com.hanseongge.domain.user.dto.UserResponse;
 import com.hanseongge.domain.user.entity.AgreementType;
@@ -17,6 +16,7 @@ import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +37,7 @@ public class UserProfileService {
     private final UserAgreementRepository agreementRepository;
     private final AgreementCatalog agreementCatalog;
     private final UserRefreshTokenService refreshTokenService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public UserResponse me(Long userId) {
@@ -44,17 +45,29 @@ public class UserProfileService {
     }
 
     /**
-     * 회원이 직접 고칠 수 있는 값.
+     * 비밀번호 설정·변경.
      *
-     * <p><b>휴대폰 번호가 여기 없다.</b> 본인확인으로 확정된 값이라 고칠 수 있으면 안 된다 —
-     * 고칠 수 있으면 "확인된 번호"가 아니라 "한 번 확인했다가 지금은 모르는 번호"가 되고,
-     * 주문 안내와 매입 연락이 그 값 위에 선다. 바꾸려면 본인확인을 다시 받아야 한다.
+     * <p>소셜로만 가입해 비밀번호가 없으면 새로 정한다. 있으면 <b>현재 비밀번호를 확인</b>한다 —
+     * 열어 둔 기기에서 남이 바꿔 버리는 것을 막는다. 현재 비밀번호를 잊었으면 비밀번호 찾기
+     * (본인확인)로 간다.
+     *
+     * <p>이름·휴대폰은 여기서 고칠 수 없다. 본인확인으로 확정된 값이라, 바꾸려면 본인확인을
+     * 다시 받아야 한다 (비밀번호 찾기에서 본인확인하면 새 번호로 맞춰진다).
      */
     @Transactional
-    public UserResponse updateProfile(Long userId, ProfileUpdateRequest request) {
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = find(userId);
-        user.updateProfile(request.name().trim());
-        return UserResponse.from(user);
+        boolean hadPassword = user.hasPassword();
+        if (hadPassword) {
+            if (currentPassword == null
+                    || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+                throw new BusinessException(ErrorCode.CURRENT_PASSWORD_MISMATCH);
+            }
+            user.changePassword(passwordEncoder.encode(newPassword));
+        } else {
+            user.attachPassword(passwordEncoder.encode(newPassword));
+        }
+        log.info("[AUTH] 마이페이지 비밀번호 {}. userId={}", hadPassword ? "변경" : "설정", userId);
     }
 
     // =================================================================
@@ -126,13 +139,14 @@ public class UserProfileService {
     /**
      * 연동 해제.
      *
-     * <p>마지막 하나는 끊을 수 없다. 자체 아이디/비밀번호가 없는 구조라 소셜이 유일한
-     * 로그인 수단이고, 다 끊으면 <b>본인도 다시 들어올 수 없는 계정</b>이 된다.
+     * <p>비밀번호가 없는 회원의 마지막 소셜은 끊을 수 없다 — 다 끊으면 <b>본인도 다시 들어올 수
+     * 없는 계정</b>이 된다. 인증번호 로그인은 세지 않는다. 문자 설정(SENS)이 없으면 그 문이
+     * 닫혀 있다.
      */
     @Transactional
     public List<SocialAccountResponse> disconnect(Long userId, OAuthProviderType provider) {
-        find(userId);
-        if (socialAccountRepository.countByUserId(userId) <= 1) {
+        User user = find(userId);
+        if (!user.hasPassword() && socialAccountRepository.countByUserId(userId) <= 1) {
             throw new BusinessException(ErrorCode.SOCIAL_LAST_CONNECTION);
         }
         List<SocialAccount> targets = socialAccountRepository

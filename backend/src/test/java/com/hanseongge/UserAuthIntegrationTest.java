@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanseongge.domain.user.entity.AgreementType;
 import com.hanseongge.domain.user.entity.RefreshToken;
+import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import com.hanseongge.support.SignUpFlow;
 import com.hanseongge.support.StubIdentityConfig;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,11 +39,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 회원 소셜 로그인·가입 (STEP 9, 개발계획 §7).
+ * 소셜 로그인·가입, 세션, 마이페이지 (개발계획 §7).
  *
- * <p>실제 제공자 서버 대신 {@link StubOAuthProvider} 를 끼운다. 검증하려는 것은 구글의
- * 응답 형식이 아니라 <b>우리 쪽 흐름</b>이다 — 약관 동의 전에 계정을 만들지 않는가,
- * 토큰이 회전하는가, 관리자 토큰과 섞이지 않는가.
+ * <p>실제 제공자 대신 스텁을 끼운다. 검증하려는 것은 구글·이니시스의 응답 형식이 아니라
+ * <b>우리 쪽 흐름</b>이다 — 약관·본인확인 전에 계정을 만들지 않는가, 기존 회원에게 묻지 않고
+ * 소셜을 붙이지 않는가, 토큰이 회전하는가, 관리자 토큰과 섞이지 않는가.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -59,7 +61,6 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired StubOAuthProvider google;
     @Autowired StubIdentityVerificationProvider identityProvider;
 
-    /** 가입 4단계를 한 줄로 태운다. 단계별 검증이 목적인 테스트는 쓰지 않는다. */
     private SignUpFlow flow;
 
     @BeforeEach
@@ -67,16 +68,6 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         google.reset();
         identityProvider.reset();
         flow = new SignUpFlow(mockMvc, objectMapper, google, identityProvider);
-        cleanUp();
-    }
-
-    /**
-     * 회원 관련 데이터를 걷어낸다.
-     *
-     * <p>{@code user_agreements} 는 append-only 트리거가 DELETE 를 막으므로 잠시 내린다.
-     * 테스트에서만 하는 일이고, 애플리케이션에는 이 테이블을 지우는 경로가 없다.
-     */
-    private void cleanUp() {
         UserTestFixtures.deleteAll(jdbc);
     }
 
@@ -92,12 +83,9 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
-    /** 인가 요청 → 유효한 state 확보. */
     private String authorizeState() throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/auth/oauth/GOOGLE/authorize"))
-                .andExpect(status().isOk())
-                .andReturn();
-        return read(result).get("state").asText();
+        return read(mockMvc.perform(post("/api/v1/auth/oauth/GOOGLE/authorize"))
+                .andExpect(status().isOk()).andReturn()).get("state").asText();
     }
 
     private MvcResult callback(String code, String state) throws Exception {
@@ -107,50 +95,32 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
                 .andReturn();
     }
 
-    /** 필수 약관 전부 동의 + 마케팅 거부. */
-    private List<Map<String, Object>> allRequiredAgreed() {
-        return List.of(
-                Map.of("type", "TERMS", "agreed", true),
-                Map.of("type", "PRIVACY", "agreed", true),
-                Map.of("type", "AGE_14", "agreed", true),
-                Map.of("type", "MARKETING", "agreed", false));
-    }
-
-    /** 가입까지 끝내고 {accessToken, refreshCookie} 를 돌려준다. */
+    /** 소셜 가입을 끝까지 — 콜백 → 약관 → 본인확인 → 가입 완료(SIGNED_IN). */
     private Session signUpNewUser() throws Exception {
-        MvcResult cb = callback("code-1", authorizeState());
-        assertThat(cb.getResponse().getStatus()).isEqualTo(200);
-
-        // 소셜도 본인확인을 거친다. 한쪽만 면제하면 미인증 회원이 생긴다.
-        String signUpToken = completeIdentity(read(cb).get("signUpToken").asText());
-
-        MvcResult signedUp = mockMvc.perform(post("/api/v1/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "signUpToken", signUpToken,
-                                "agreements", allRequiredAgreed()))))
-                .andExpect(status().isOk())
-                .andReturn();
-        return new Session(read(signedUp).get("accessToken").asText(),
-                signedUp.getResponse().getCookie("hsg_rt"));
+        return signUpNewUser(UserTestFixtures.identity("김철수"));
     }
 
-    /** 본인확인을 통과시키고 약관 단계로 갈 토큰을 돌려준다. */
-    private String completeIdentity(String signUpToken) throws Exception {
-        MvcResult done = mockMvc.perform(post("/api/v1/auth/identity/complete")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "signUpToken", signUpToken,
-                                "providerToken", "stub-token"))))
-                .andExpect(status().isOk())
-                .andReturn();
-        return read(done).get("signUpToken").asText();
+    private Session signUpNewUser(VerifiedIdentity identity) throws Exception {
+        String callbackToken = read(callback("code-1", authorizeState())).get("signUpToken").asText();
+        String agreed = flow.agree(callbackToken);
+        identityProvider.willReturn(identity);
+        MvcResult done = flow.verifyIdentityRaw(agreed);
+        assertThat(done.getResponse().getStatus()).isEqualTo(200);
+        JsonNode body = read(done);
+        assertThat(body.get("step").asText()).isEqualTo("SIGNED_IN");
+        return new Session(body.get("session").get("accessToken").asText(),
+                done.getResponse().getCookie("hsg_rt"));
     }
 
     private record Session(String accessToken, Cookie refreshCookie) {}
 
+    private int count(String table) {
+        Integer value = jdbc.queryForObject("SELECT count(*) FROM " + table, Integer.class);
+        return value == null ? 0 : value;
+    }
+
     // =================================================================
-    // 제공자 노출
+    // 로그인 화면
     // =================================================================
 
     @Nested
@@ -162,10 +132,12 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         void onlyConfiguredProvidersAreListed() throws Exception {
             mockMvc.perform(get("/api/v1/auth/providers"))
                     .andExpect(status().isOk())
-                    // 네이버·카카오는 클라이언트 설정이 없어 목록에서 빠진다
                     .andExpect(jsonPath("$.providers.length()").value(1))
                     .andExpect(jsonPath("$.providers[0].code").value("GOOGLE"))
-                    .andExpect(jsonPath("$.agreements.length()").value(5));
+                    .andExpect(jsonPath("$.agreements.length()").value(5))
+                    .andExpect(jsonPath("$.signUpAvailable").value(true))
+                    // 문자 대역을 넣지 않았다 — 운영 발송기는 설정이 비어 인증번호 로그인이 꺼진다
+                    .andExpect(jsonPath("$.smsLoginAvailable").value(false));
         }
 
         @Test
@@ -173,7 +145,6 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         void agreementsCarryRequiredFlagAndVersion() throws Exception {
             mockMvc.perform(get("/api/v1/auth/providers"))
                     .andExpect(status().isOk())
-                    // 필수가 앞에 온다
                     .andExpect(jsonPath("$.agreements[0].required").value(true))
                     .andExpect(jsonPath("$.agreements[0].version").value("1.0"));
         }
@@ -199,15 +170,15 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
-    // 가입
+    // 소셜 가입
     // =================================================================
 
     @Nested
-    @DisplayName("가입 — 약관 동의 전에는 계정을 만들지 않는다")
-    class SignUp {
+    @DisplayName("소셜 가입 — 약관 → 본인확인 → 가입. 그 전에는 아무것도 만들지 않는다")
+    class SocialSignUp {
 
         @Test
-        @DisplayName("처음 오는 소셜 계정이면 가입 대기 상태로 돌려주고, 회원 행은 아직 없다")
+        @DisplayName("처음 오는 소셜 계정이면 약관 목록과 진행 토큰만 주고, 회원 행은 아직 없다")
         void firstTimeReturnsSignUpTokenWithoutCreatingAccount() throws Exception {
             MvcResult result = callback("code-1", authorizeState());
 
@@ -215,29 +186,25 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
             JsonNode body = read(result);
             assertThat(body.get("signUpRequired").asBoolean()).isTrue();
             assertThat(body.get("signUpToken").asText()).isNotBlank();
+            assertThat(body.get("agreements").size()).isEqualTo(5);
             assertThat(body.has("accessToken")).isFalse();
             assertThat(body.get("suggestedEmail").asText()).isEqualTo("buyer@test.local");
 
-            // 핵심: 동의 전에는 어떤 개인정보도 저장되지 않는다
             assertThat(count("users")).isZero();
             assertThat(count("social_accounts")).isZero();
             assertThat(count("user_agreements")).isZero();
-            // Refresh 쿠키도 나가지 않는다
             assertThat(result.getResponse().getCookie("hsg_rt")).isNull();
         }
 
         @Test
         @DisplayName("필수 약관이 빠지면 400 이고, 어떤 약관이 빠졌는지 알려준다")
         void missingMandatoryAgreementIsRejected() throws Exception {
-            // 본인확인까지 통과시킨 뒤라야 약관 검사에 도달한다 — 그 전이면 본인확인
-            // 미완료로 먼저 걸려서, 이 테스트가 무엇을 보는지 알 수 없게 된다.
-            String signUpToken = completeIdentity(
-                    read(callback("code-1", authorizeState())).get("signUpToken").asText());
+            String callbackToken = read(callback("code-1", authorizeState())).get("signUpToken").asText();
 
-            mockMvc.perform(post("/api/v1/auth/signup")
+            mockMvc.perform(post("/api/v1/auth/signup/start")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of(
-                                    "signUpToken", signUpToken,
+                                    "signUpToken", callbackToken,
                                     "agreements", List.of(
                                             Map.of("type", "TERMS", "agreed", true),
                                             Map.of("type", "PRIVACY", "agreed", true),
@@ -245,14 +212,24 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("AGREEMENT_REQUIRED"))
                     .andExpect(jsonPath("$.errors.AGE_14").exists());
-
-            assertThat(count("users")).isZero();
         }
 
         @Test
-        @DisplayName("가입하면 회원·소셜연동·동의이력이 함께 생기고 세션이 발급된다")
+        @DisplayName("약관 동의 전에는 본인확인을 시작할 수 없다 — 개인정보 수집 전에 동의가 먼저다")
+        void identityBeforeAgreementIsRejected() throws Exception {
+            String callbackToken = read(callback("code-1", authorizeState())).get("signUpToken").asText();
+
+            mockMvc.perform(post("/api/v1/auth/identity/start")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("signUpToken", callbackToken))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("AGREEMENT_REQUIRED"));
+        }
+
+        @Test
+        @DisplayName("본인확인을 마치면 회원·소셜연동·동의이력이 함께 생기고 세션이 발급된다")
         void signUpCreatesEverythingInOneGo() throws Exception {
-            Session session = signUpNewUser();
+            Session session = signUpNewUser(UserTestFixtures.identityWith("DI-A", "김철수", "010-1234-5678"));
 
             assertThat(session.accessToken()).isNotBlank();
             assertThat(session.refreshCookie()).isNotNull();
@@ -263,13 +240,18 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
 
             assertThat(count("users")).isEqualTo(1);
             assertThat(count("social_accounts")).isEqualTo(1);
-            // 선택 약관까지 전부 기록한다 — "묻지 않은 것"과 "거절한 것"은 다르다
             assertThat(count("user_agreements")).isEqualTo(AgreementType.values().length);
+            assertThat(jdbc.queryForObject(
+                    "SELECT agreed FROM user_agreements WHERE agreement_type = 'MARKETING'", Boolean.class))
+                    .isFalse();
 
-            Boolean marketing = jdbc.queryForObject(
-                    "SELECT agreed FROM user_agreements WHERE agreement_type = 'MARKETING'",
-                    Boolean.class);
-            assertThat(marketing).isFalse();
+            // 이름·휴대폰은 본인확인 값이다. 로그인 ID 는 숫자만.
+            Map<String, Object> user = jdbc.queryForMap("SELECT name, phone, di, email FROM users");
+            assertThat(user.get("name")).isEqualTo("김철수");
+            assertThat(user.get("phone")).isEqualTo("01012345678");
+            assertThat(user.get("di")).isEqualTo("DI-A");
+            // 이메일은 소셜 제공자가 준 값
+            assertThat(user.get("email")).isEqualTo("buyer@test.local");
         }
 
         @Test
@@ -285,24 +267,155 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("만료·위조된 가입 토큰은 거부된다")
+        @DisplayName("위조된 진행 토큰은 거부된다")
         void tamperedSignUpTokenIsRejected() throws Exception {
-            mockMvc.perform(post("/api/v1/auth/signup")
+            mockMvc.perform(post("/api/v1/auth/signup/start")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of(
                                     "signUpToken", "eyJhbGciOiJIUzI1NiJ9.fake.signature",
-                                    "agreements", allRequiredAgreed()))))
+                                    "agreements", SignUpFlow.allRequiredAgreed()))))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("SIGNUP_TOKEN_INVALID"));
+        }
+
+        @Test
+        @DisplayName("소셜 제공자가 준 이메일을 다른 사람이 쓰고 있으면 이메일 없이 가입된다 — 이메일은 선택이다")
+        void takenProviderEmailIsDropped() throws Exception {
+            jdbc.update("INSERT INTO users (email, name, phone, birth_date, di, phone_verified_at, status) "
+                    + "VALUES ('buyer@test.local', '다른사람', '01099998888', '1980-01-01', 'DI-OTHER', now(), 'ACTIVE')");
+
+            signUpNewUser();
+
+            assertThat(jdbc.queryForObject("SELECT email FROM users WHERE di <> 'DI-OTHER'", String.class))
+                    .isNull();
         }
     }
 
     // =================================================================
-    // 로그인
+    // 본인확인 결과 검증
     // =================================================================
 
     @Nested
-    @DisplayName("로그인")
+    @DisplayName("본인확인 결과는 서버가 공급자에 되물어 확인한다")
+    class IdentityResult {
+
+        @Test
+        @DisplayName("결과의 거래번호가 우리가 연 인증창과 다르면 거부된다 — 남의 결과를 내 가입에 붙이는 경로")
+        void mismatchedRequestIdIsRejected() throws Exception {
+            String agreed = flow.agree(read(callback("code-1", authorizeState())).get("signUpToken").asText());
+            JsonNode started = read(mockMvc.perform(post("/api/v1/auth/identity/start")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("signUpToken", agreed))))
+                    .andExpect(status().isOk()).andReturn());
+
+            // 공급자가 보낸 값 중 거래번호를 다른 요청의 것으로 바꿔치기한다
+            String forged = mockMvc.perform(post("/api/v1/auth/identity/return")
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                            .param("resultCode", "0000")
+                            .param("txId", "stub-forged")
+                            .param("mTxId", "SomeoneElsesRequest0"))
+                    .andExpect(status().isSeeOther())
+                    .andReturn().getResponse().getHeader("Location");
+            String providerToken = forged.substring(forged.indexOf("providerToken=") + "providerToken=".length());
+
+            mockMvc.perform(post("/api/v1/auth/identity/complete")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "token", started.get("token").asText(),
+                                    "providerToken", java.net.URLDecoder.decode(providerToken,
+                                            java.nio.charset.StandardCharsets.UTF_8)))))
+                    .andExpect(status().isBadGateway())
+                    .andExpect(jsonPath("$.code").value("IDENTITY_VERIFICATION_FAILED"));
+
+            assertThat(count("users")).isZero();
+        }
+
+        @Test
+        @DisplayName("수신 주소는 화면으로 303 을 보낸다 — 공급자의 폼 POST 를 화면이 받을 수 없어서다")
+        void returnEndpointRedirectsToScreen() throws Exception {
+            String location = mockMvc.perform(post("/api/v1/auth/identity/return")
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                            .param("resultCode", "0000")
+                            .param("txId", "stub-1"))
+                    .andExpect(status().isSeeOther())
+                    .andReturn().getResponse().getHeader("Location");
+
+            assertThat(location).startsWith("http://localhost:3000/auth/identity?providerToken=");
+        }
+    }
+
+    // =================================================================
+    // 기존 회원에 소셜 연결
+    // =================================================================
+
+    @Nested
+    @DisplayName("이미 가입한 사람이 소셜로 오면 — 묻고 나서 연결한다")
+    class LinkToExisting {
+
+        private VerifiedIdentity existing;
+
+        @BeforeEach
+        void existingPhoneMember() throws Exception {
+            existing = UserTestFixtures.identityWith("DI-SAME", "김철수", "01011112222");
+            flow.phone(existing, SignUpFlow.PASSWORD);
+            assertThat(count("users")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("같은 DI 로 본인확인하면 CONFIRM_LINK — 기존 계정을 가려서 보여주고, 아직 아무것도 붙이지 않는다")
+        void confirmLinkIsAskedFirst() throws Exception {
+            String agreed = flow.agree(read(callback("code-1", authorizeState())).get("signUpToken").asText());
+            identityProvider.willReturn(existing);
+            JsonNode result = flow.verifyIdentity(agreed);
+
+            assertThat(result.get("step").asText()).isEqualTo("CONFIRM_LINK");
+            assertThat(result.get("accountPhone").asText()).isEqualTo("010-****-2222");
+            assertThat(count("users")).isEqualTo(1);
+            assertThat(count("social_accounts")).isZero();
+        }
+
+        @Test
+        @DisplayName("[연결하기] 를 누르면 기존 계정에 소셜이 붙고 그 계정으로 로그인된다")
+        void linkAttachesToExistingAccount() throws Exception {
+            String agreed = flow.agree(read(callback("code-1", authorizeState())).get("signUpToken").asText());
+            identityProvider.willReturn(existing);
+            JsonNode result = flow.verifyIdentity(agreed);
+
+            mockMvc.perform(post("/api/v1/auth/signup/link")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("signUpToken", result.get("signUpToken").asText()))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accessToken").isNotEmpty());
+
+            assertThat(count("users")).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM social_accounts s JOIN users u ON u.id = s.user_id WHERE u.di = 'DI-SAME'",
+                    Integer.class)).isEqualTo(1);
+
+            // 다음부터는 구글로 바로 들어온다
+            JsonNode again = read(callback("code-2", authorizeState()));
+            assertThat(again.get("signUpRequired").asBoolean()).isFalse();
+        }
+
+        @Test
+        @DisplayName("[취소] 하면 아무것도 만들지 않는다 — 새 계정을 만들면 중복가입 차단이 무너진다")
+        void cancelCreatesNothing() throws Exception {
+            String agreed = flow.agree(read(callback("code-1", authorizeState())).get("signUpToken").asText());
+            identityProvider.willReturn(existing);
+            flow.verifyIdentity(agreed);
+            // 사용자가 연결 화면에서 취소 — 아무 요청도 보내지 않는다
+
+            assertThat(count("users")).isEqualTo(1);
+            assertThat(count("social_accounts")).isZero();
+        }
+    }
+
+    // =================================================================
+    // 소셜 로그인
+    // =================================================================
+
+    @Nested
+    @DisplayName("소셜 로그인")
     class SignIn {
 
         @Test
@@ -310,22 +423,18 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         void existingSocialSignsInDirectly() throws Exception {
             signUpNewUser();
 
-            MvcResult again = callback("code-2", authorizeState());
-            JsonNode body = read(again);
+            JsonNode body = read(callback("code-2", authorizeState()));
 
             assertThat(body.get("signUpRequired").asBoolean()).isFalse();
             assertThat(body.get("accessToken").asText()).isNotBlank();
-            assertThat(body.get("user").get("email").asText()).isEqualTo("buyer@test.local");
-            // 계정이 새로 생기지 않는다
             assertThat(count("users")).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("같은 이메일이라도 제공자 식별자가 다르면 별도 계정이다 (§7.2)")
-        void sameEmailDifferentProviderUserIsSeparateAccount() throws Exception {
+        @DisplayName("같은 이메일이라도 제공자 식별자가 다르면 이메일로 합치지 않는다 (§7.2)")
+        void sameEmailDifferentProviderUserIsNotMerged() throws Exception {
             signUpNewUser();
 
-            // 이메일은 같고 제공자 식별자만 다른 사람
             google.willReturn("stub-user-2", "buyer@test.local", "다른 사람");
             JsonNode body = read(callback("code-3", authorizeState()));
 
@@ -378,7 +487,6 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
             assertThat(rotated).isNotNull();
             assertThat(rotated.getValue()).isNotEqualTo(session.refreshCookie().getValue());
 
-            // 새 토큰은 동작하고
             mockMvc.perform(post("/api/v1/auth/refresh").cookie(rotated))
                     .andExpect(status().isOk());
         }
@@ -387,17 +495,12 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         @DisplayName("폐기된 Refresh 토큰이 다시 오면 그 회원의 세션을 전부 끊는다 — 탈취 신호로 본다")
         void reusedRefreshTokenRevokesAllSessions() throws Exception {
             Session session = signUpNewUser();
-            MvcResult refreshed = mockMvc.perform(post("/api/v1/auth/refresh")
-                            .cookie(session.refreshCookie()))
+            Cookie rotated = mockMvc.perform(post("/api/v1/auth/refresh").cookie(session.refreshCookie()))
                     .andExpect(status().isOk())
-                    .andReturn();
-            Cookie rotated = refreshed.getResponse().getCookie("hsg_rt");
+                    .andReturn().getResponse().getCookie("hsg_rt");
 
-            // 이미 회전으로 폐기된 옛 토큰을 다시 쓴다
             mockMvc.perform(post("/api/v1/auth/refresh").cookie(session.refreshCookie()))
                     .andExpect(status().isUnauthorized());
-
-            // 정상 발급됐던 새 토큰까지 함께 끊긴다
             mockMvc.perform(post("/api/v1/auth/refresh").cookie(rotated))
                     .andExpect(status().isUnauthorized());
         }
@@ -407,12 +510,9 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         void logoutClearsCookieAndRevokes() throws Exception {
             Session session = signUpNewUser();
 
-            MvcResult result = mockMvc.perform(post("/api/v1/auth/logout")
-                            .cookie(session.refreshCookie()))
+            Cookie cleared = mockMvc.perform(post("/api/v1/auth/logout").cookie(session.refreshCookie()))
                     .andExpect(status().isNoContent())
-                    .andReturn();
-
-            Cookie cleared = result.getResponse().getCookie("hsg_rt");
+                    .andReturn().getResponse().getCookie("hsg_rt");
             assertThat(cleared).isNotNull();
             assertThat(cleared.getMaxAge()).isZero();
 
@@ -479,17 +579,13 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         void withdrawingConsentAppendsRow() throws Exception {
             Session session = signUpNewUser();
 
-            mockMvc.perform(patch("/api/v1/me/agreements")
-                            .header("Authorization", "Bearer " + session.accessToken())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("type", "MARKETING", "agreed", true))))
-                    .andExpect(status().isOk());
-
-            mockMvc.perform(patch("/api/v1/me/agreements")
-                            .header("Authorization", "Bearer " + session.accessToken())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("type", "MARKETING", "agreed", false))))
-                    .andExpect(status().isOk());
+            for (boolean agreed : new boolean[]{true, false}) {
+                mockMvc.perform(patch("/api/v1/me/agreements")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json(Map.of("type", "MARKETING", "agreed", agreed))))
+                        .andExpect(status().isOk());
+            }
 
             List<Boolean> history = jdbc.queryForList(
                     "SELECT agreed FROM user_agreements WHERE agreement_type = 'MARKETING' ORDER BY id",
@@ -510,15 +606,68 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("마지막 소셜 연동은 해제할 수 없다 — 로그인 수단이 사라진다")
+        @DisplayName("비밀번호가 없으면 마지막 소셜 연동은 해제할 수 없다 — 로그인 수단이 사라진다")
         void lastSocialConnectionCannotBeRemoved() throws Exception {
             Session session = signUpNewUser();
 
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                            .delete("/api/v1/me/social-accounts/GOOGLE")
+            mockMvc.perform(delete("/api/v1/me/social-accounts/GOOGLE")
                             .header("Authorization", "Bearer " + session.accessToken()))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("SOCIAL_LAST_CONNECTION"));
+        }
+
+        @Test
+        @DisplayName("소셜 가입자가 비밀번호를 정하면 휴대폰으로도 로그인되고, 소셜을 끊을 수 있다")
+        void socialMemberSetsPassword() throws Exception {
+            Session session = signUpNewUser(UserTestFixtures.identityWith("DI-P", "김철수", "01055556666"));
+
+            mockMvc.perform(post("/api/v1/me/password")
+                            .header("Authorization", "Bearer " + session.accessToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("newPassword", SignUpFlow.PASSWORD))))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("phone", "010-5555-6666", "password", SignUpFlow.PASSWORD))))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(delete("/api/v1/me/social-accounts/GOOGLE")
+                            .header("Authorization", "Bearer " + session.accessToken()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("비밀번호가 있으면 바꿀 때 현재 비밀번호를 확인한다")
+        void changingPasswordRequiresCurrent() throws Exception {
+            Session session = signUpNewUser();
+            mockMvc.perform(post("/api/v1/me/password")
+                            .header("Authorization", "Bearer " + session.accessToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("newPassword", SignUpFlow.PASSWORD))))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(post("/api/v1/me/password")
+                            .header("Authorization", "Bearer " + session.accessToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("currentPassword", "Wrong-pass-1234!",
+                                    "newPassword", "Another-pass-5678!"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("CURRENT_PASSWORD_MISMATCH"));
+        }
+
+        @Test
+        @DisplayName("이름은 고칠 수 없다 — 본인확인으로 확정된 값이고, 수정 API 자체가 없다")
+        void nameCannotBeChanged() throws Exception {
+            Session session = signUpNewUser();
+
+            MvcResult result = mockMvc.perform(patch("/api/v1/me")
+                            .header("Authorization", "Bearer " + session.accessToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("name", "김구매"))))
+                    .andReturn();
+            assertThat(result.getResponse().getStatus()).isGreaterThanOrEqualTo(400);
+            assertThat(jdbc.queryForObject("SELECT name FROM users", String.class)).isEqualTo("김철수");
         }
 
         @Test
@@ -530,7 +679,6 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
                             .header("Authorization", "Bearer " + session.accessToken()))
                     .andExpect(status().isNoContent());
 
-            // 주문·결제가 회원을 참조하므로 행을 지우지 않는다
             assertThat(count("users")).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT status FROM users", String.class))
                     .isEqualTo("WITHDRAWN");
@@ -540,53 +688,5 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("USER_WITHDRAWN"));
         }
-
-        @Test
-        @DisplayName("이름은 고칠 수 있다")
-        void updateProfile() throws Exception {
-            Session session = signUpNewUser();
-
-            mockMvc.perform(patch("/api/v1/me")
-                            .header("Authorization", "Bearer " + session.accessToken())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("name", "김구매"))))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value("김구매"));
-        }
-
-        @Test
-        @DisplayName("휴대폰 번호는 고칠 수 없다 — 본인확인으로 확정된 값이다")
-        void phoneCannotBeChanged() throws Exception {
-            Session session = signUpNewUser();
-            String before = jdbc.queryForObject("SELECT phone FROM users LIMIT 1", String.class);
-
-            // 보내더라도 무시되는 것이 아니라, 애초에 그 필드가 없다.
-            mockMvc.perform(patch("/api/v1/me")
-                            .header("Authorization", "Bearer " + session.accessToken())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("name", "김구매", "phone", "010-9999-9999"))))
-                    .andExpect(status().isOk());
-
-            assertThat(jdbc.queryForObject("SELECT phone FROM users LIMIT 1", String.class))
-                    .isEqualTo(before);
-        }
-
-        @Test
-        @DisplayName("이름이 비면 400")
-        void blankNameIsRejected() throws Exception {
-            Session session = signUpNewUser();
-
-            mockMvc.perform(patch("/api/v1/me")
-                            .header("Authorization", "Bearer " + session.accessToken())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("name", " "))))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors.name").exists());
-        }
-    }
-
-    private int count(String table) {
-        Integer value = jdbc.queryForObject("SELECT count(*) FROM " + table, Integer.class);
-        return value == null ? 0 : value;
     }
 }

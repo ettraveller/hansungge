@@ -50,6 +50,12 @@ dependencies {
     // --- Rate Limit (로그인 엔드포인트, 설계서 §10 보안 체크리스트) ---
     implementation("com.bucket4j:bucket4j_jdk17-core:$bucket4jVersion")
 
+    // --- SEED 암호 (KG이니시스 통합인증 결과 복호화) ---
+    // SEED 는 JDK 에 없는 국산 블록 암호다. 이니시스 샘플은 KISA 소스를 통째로 복사해
+    // 쓰지만, 수백 줄짜리 암호 코드를 저장소에 들고 있는 것보다 관리되는 구현을 쓴다.
+    // 호환성은 KISA 공식 코드로 만든 암호문으로 고정한다 (InicisSeedCipherTest).
+    implementation("org.bouncycastle:bcprov-jdk18on:1.86")
+
     // --- Persistence ---
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.flywaydb:flyway-core")

@@ -3,7 +3,7 @@ package com.hanseongge.domain.user.controller;
 import com.hanseongge.domain.user.dto.AgreementStatusResponse;
 import com.hanseongge.domain.user.dto.AgreementUpdateRequest;
 import com.hanseongge.domain.user.dto.OAuthCallbackRequest;
-import com.hanseongge.domain.user.dto.ProfileUpdateRequest;
+import com.hanseongge.domain.user.dto.PasswordChangeRequest;
 import com.hanseongge.domain.user.dto.SocialAccountResponse;
 import com.hanseongge.domain.user.dto.UserResponse;
 import com.hanseongge.domain.user.entity.OAuthProviderType;
@@ -51,11 +51,14 @@ public class UserProfileController {
         return ResponseEntity.ok(profileService.me(principal.id()));
     }
 
-    @Operation(summary = "내 정보 수정")
-    @PatchMapping
-    public ResponseEntity<UserResponse> updateProfile(@AuthenticationPrincipal UserPrincipal principal,
-                                                      @Valid @RequestBody ProfileUpdateRequest request) {
-        return ResponseEntity.ok(profileService.updateProfile(principal.id(), request));
+    @Operation(summary = "비밀번호 설정·변경",
+            description = "비밀번호가 없는 회원(소셜 가입)은 새로 정하고, 있으면 현재 비밀번호를 확인한다. "
+                    + "이름·휴대폰은 본인확인 값이라 여기서 고칠 수 없다.")
+    @PostMapping("/password")
+    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal UserPrincipal principal,
+                                               @Valid @RequestBody PasswordChangeRequest request) {
+        profileService.changePassword(principal.id(), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "약관 동의 현황",

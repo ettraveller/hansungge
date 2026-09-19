@@ -19,15 +19,14 @@ import type { OAuthProviderType } from '@/types/user';
 import styles from '@/components/auth/auth.module.css';
 
 /**
- * 로그인.
+ * 로그인 — 휴대폰번호 + 비밀번호, 인증번호, 소셜.
  *
- * <p>이메일 로그인과 소셜 로그인을 함께 둔다. 소셜 계정이 없거나 쓰기 싫은 고객이
- * 있고, 귀금속 매입 고객층은 특히 그렇다.
+ * <p>로그인 ID 는 휴대폰번호다. 가입 때 본인확인으로 명의가 확인된 번호라, 비밀번호를
+ * 잊었어도 문자 인증번호로 들어올 수 있다. 어느 문으로 들어와도 같은 계정이다.
  *
- * <p>실패 사유를 세분해 보여주지 않는다 — "없는 계정"과 "틀린 비밀번호"를 구분해
- * 주면 가입 여부를 확인하는 도구가 된다. 다만 <b>비밀번호가 없는 계정</b>과
- * <b>잠긴 계정</b>은 알려준다. 그 둘은 사용자가 다음에 할 일이 다르고, 알려주지
- * 않으면 맞는 비밀번호를 계속 넣어보게 된다.
+ * <p>실패 사유를 세분해 보여주지 않는다 — "없는 번호"와 "틀린 비밀번호"를 구분해 주면
+ * 가입 여부를 확인하는 도구가 된다. 다만 <b>비밀번호가 없는 계정</b>과 <b>잠긴 계정</b>은
+ * 알려준다. 그 둘은 사용자가 다음에 할 일이 다르다.
  */
 export function LoginView() {
   const router = useRouter();
@@ -40,7 +39,7 @@ export function LoginView() {
   const startOAuth = useStartOAuth();
   const [pendingProvider, setPendingProvider] = useState<OAuthProviderType | null>(null);
 
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const signInWithPassword = useSignInWithPassword();
 
@@ -66,16 +65,13 @@ export function LoginView() {
 
   const providers = data?.providers ?? [];
   const startError = startOAuth.error;
+  const nextQuery = next === '/' ? '' : `?next=${encodeURIComponent(next)}`;
 
   return (
     <div className={styles.page}>
       <header className={styles.head}>
-        <h1 className={styles.title}>로그인 · 회원가입</h1>
-        <p className={styles.lead}>
-          이메일 또는 소셜 계정으로 로그인합니다.
-          <br />
-          회원가입에는 휴대폰 본인확인이 필요하며, 매입 신청에 그대로 쓰입니다.
-        </p>
+        <h1 className={styles.title}>로그인</h1>
+        <p className={styles.lead}>휴대폰번호 또는 소셜 계정으로 로그인합니다.</p>
       </header>
 
       <div className={styles.card}>
@@ -84,13 +80,18 @@ export function LoginView() {
             <Notice tone="warn">로그인이 필요한 화면입니다.</Notice>
           </div>
         )}
+        {reason === 'reset' && (
+          <div style={{ marginBottom: 16 }}>
+            <Notice tone="info" title="비밀번호를 바꿨습니다">
+              새 비밀번호로 로그인해 주세요. 다른 기기에서는 모두 로그아웃됐습니다.
+            </Notice>
+          </div>
+        )}
 
         {startError && (
           <div style={{ marginBottom: 16 }}>
             <Notice tone="error" title="로그인을 시작하지 못했습니다">
-              {startError instanceof ApiError
-                ? startError.message
-                : '잠시 후 다시 시도해 주세요.'}
+              {startError instanceof ApiError ? startError.message : '잠시 후 다시 시도해 주세요.'}
             </Notice>
           </div>
         )}
@@ -109,22 +110,24 @@ export function LoginView() {
           onSubmit={(e) => {
             e.preventDefault();
             signInWithPassword.mutate(
-              { email: email.trim(), password },
+              { phone: phone.trim(), password },
               { onSuccess: () => router.replace(next) },
             );
           }}
         >
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="login-email">
-              이메일
+            <label className={styles.label} htmlFor="login-phone">
+              휴대폰번호
             </label>
             <input
-              id="login-email"
-              type="email"
+              id="login-phone"
+              type="tel"
+              inputMode="numeric"
               className={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="010-1234-5678"
+              autoComplete="tel"
               required
             />
           </div>
@@ -142,37 +145,24 @@ export function LoginView() {
             />
           </div>
           <div className={styles.actions}>
-            <button
-              type="submit"
-              className={styles.primary}
-              disabled={signInWithPassword.isPending}
-            >
+            <button type="submit" className={styles.primary} disabled={signInWithPassword.isPending}>
               {signInWithPassword.isPending ? '로그인 중…' : '로그인'}
             </button>
           </div>
         </form>
 
-        {/*
-          로그인 폼은 늘 두고 가입 링크만 감춘다.
+        <p className={styles.subLinks}>
+          {data?.smsLoginAvailable && (
+            <Link href={`/login/sms${nextQuery}`}>인증번호로 로그인 ›</Link>
+          )}
+          <Link href="/password/reset">비밀번호 찾기</Link>
+          {/*
+            가입 링크는 본인확인이 준비됐을 때만 그린다. 로그인 폼은 늘 둔다 — 공급자
+            설정이 잘못돼도 이미 가입한 사람은 들어올 수 있어야 한다.
+          */}
+          {data?.signUpAvailable && <Link href={`/signup${nextQuery}`}>회원가입</Link>}
+        </p>
 
-          이미 비밀번호가 있는 회원은 <b>본인확인 공급자 상태와 무관하게</b> 들어올 수
-          있어야 한다. 공급자 설정이 잘못되거나 계약이 끊긴 순간 그 사람들이 통째로
-          로그인하지 못하면, 그건 가입이 막히는 것보다 훨씬 나쁘다.
-
-          반대로 가입은 본인확인 없이 성립하지 않으므로, 쓸 수 없을 때는 링크를 아예
-          그리지 않는다 — 눌러야만 실패를 아는 화면을 만들지 않는다.
-        */}
-        {data?.emailSignUpAvailable && (
-          <p className={styles.foot}>
-            계정이 없으신가요? <Link href="/signup/email">이메일로 회원가입</Link>
-          </p>
-        )}
-
-        {/*
-          제목 대신 「또는」 구분선이다. 전에는 제목이었는데 위쪽 여백을 바로 위 가입 링크에
-          기대고 있었다 — 본인확인 공급자가 없어 그 링크가 숨으면 제목이 로그인 버튼에 붙었다.
-          구분선은 여백을 스스로 가져서 링크가 있든 없든 간격이 같다.
-        */}
         <p className={styles.divider}>또는</p>
 
         {isLoading ? (
@@ -182,24 +172,23 @@ export function LoginView() {
             잠시 후 다시 시도해 주세요.
           </Notice>
         ) : providers.length === 0 ? (
-          <Notice tone="warn" title="현재 이용할 수 있는 로그인 수단이 없습니다">
-            소셜 로그인 연동을 준비 중입니다. 주문·문의는 고객센터로 도와드리겠습니다.
-            <br />
-            <Link href="/support">고객센터 바로가기</Link>
+          <Notice tone="warn" title="현재 이용할 수 있는 소셜 로그인이 없습니다">
+            휴대폰번호로 로그인해 주세요. 도움이 필요하면 <Link href="/support">고객센터</Link>로
+            문의해 주세요.
           </Notice>
         ) : (
-          <SocialButtons
-            providers={providers}
-            pendingProvider={pendingProvider}
-            onSelect={select}
-          />
+          <SocialButtons providers={providers} pendingProvider={pendingProvider} onSelect={select} />
         )}
 
         <p className={styles.foot}>
           로그인하면 <Link href="/terms">이용약관</Link> 및{' '}
           <Link href="/privacy">개인정보 처리방침</Link>에 동의하는 것으로 봅니다.
-          <br />
-          처음 오셨다면 휴대폰 본인확인과 약관 동의를 거쳐 가입이 완료됩니다.
+          {data && !data.signUpAvailable && (
+            <>
+              <br />
+              지금은 새 회원가입을 받지 않습니다. 이미 가입하신 분은 로그인할 수 있습니다.
+            </>
+          )}
         </p>
       </div>
     </div>
@@ -211,7 +200,7 @@ function loginErrorTitle(error: unknown): string {
   if (!(error instanceof ApiError)) return '로그인하지 못했습니다';
   switch (error.code) {
     case 'PASSWORD_NOT_SET':
-      return '소셜 계정으로 가입하신 회원입니다';
+      return '비밀번호를 정하지 않은 계정입니다';
     case 'USER_ACCOUNT_LOCKED':
       return '계정이 잠겼습니다';
     default:

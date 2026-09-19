@@ -1,11 +1,11 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import * as authApi from '@/api/auth';
 import { useUserAuthStore } from '@/stores/useUserAuthStore';
-import type { AgreementCode, OAuthProviderType } from '@/types/user';
+import type { AgreementCode, OAuthProviderType, SignInResult } from '@/types/user';
 
 export const userKeys = {
   all: ['user'] as const,
@@ -26,6 +26,26 @@ export function useUserSession() {
     restored,
     isAuthenticated: restored && accessToken != null && user != null,
   };
+}
+
+/**
+ * 로그인 결과를 세션에 넣는다.
+ *
+ * <p>로그인이 끝나는 길이 여러 개다 — 비밀번호, 인증번호, 소셜, 가입 완료, 소셜 연결.
+ * 각자 스토어에 넣으면 한 곳만 캐시를 비우지 않는 식으로 어긋난다. 그래서 여기 한 곳에 둔다.
+ */
+export function useApplySignIn() {
+  const signIn = useUserAuthStore((s) => s.signIn);
+  const queryClient = useQueryClient();
+  return useCallback(
+    (result: SignInResult | null | undefined) => {
+      if (result?.accessToken && result.user) {
+        signIn({ accessToken: result.accessToken, user: result.user });
+        void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      }
+    },
+    [signIn, queryClient],
+  );
 }
 
 /**
@@ -74,103 +94,94 @@ export function useAuthProviders() {
   });
 }
 
+// =====================================================================
+// 로그인
+// =====================================================================
+
+export function useSignInWithPassword() {
+  const apply = useApplySignIn();
+  return useMutation({
+    mutationFn: ({ phone, password }: { phone: string; password: string }) =>
+      authApi.signInWithPassword(phone, password),
+    onSuccess: apply,
+  });
+}
+
+export function useSendLoginCode() {
+  return useMutation({ mutationFn: (phone: string) => authApi.sendLoginCode(phone) });
+}
+
+export function useSignInWithCode() {
+  const apply = useApplySignIn();
+  return useMutation({
+    mutationFn: ({ phone, code }: { phone: string; code: string }) =>
+      authApi.signInWithCode(phone, code),
+    onSuccess: apply,
+  });
+}
+
 export function useStartOAuth() {
   return useMutation({ mutationFn: (provider: OAuthProviderType) => authApi.startOAuth(provider) });
 }
 
-export function useCompleteOAuth() {
+// =====================================================================
+// 가입
+// =====================================================================
+
+export function useStartSignUp() {
   return useMutation({
     mutationFn: ({
-      provider,
-      code,
-      state,
+      agreements,
+      signUpToken,
     }: {
-      provider: OAuthProviderType;
-      code: string;
-      state: string;
-    }) => authApi.completeOAuth(provider, code, state),
-  });
-}
-
-export function useCompleteSignUp() {
-  const signIn = useUserAuthStore((s) => s.signIn);
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: authApi.completeSignUp,
-    onSuccess: (res) => {
-      if (res.accessToken && res.user) {
-        signIn({ accessToken: res.accessToken, user: res.user });
-      }
-      void queryClient.invalidateQueries({ queryKey: userKeys.all });
-    },
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* 자체 가입 — 이메일 인증 → 본인확인 → 약관                            */
-/* ------------------------------------------------------------------ */
-
-export function useSendEmailCode() {
-  return useMutation({ mutationFn: (email: string) => authApi.sendEmailCode(email) });
-}
-
-export function useConfirmEmailCode() {
-  return useMutation({
-    mutationFn: ({ email, code }: { email: string; code: string }) =>
-      authApi.confirmEmailCode(email, code),
+      agreements: authApi.AgreementChoice[];
+      signUpToken?: string;
+    }) => authApi.startSignUp(agreements, signUpToken),
   });
 }
 
 export function useStartIdentity() {
+  return useMutation({ mutationFn: (signUpToken: string) => authApi.startIdentity(signUpToken) });
+}
+
+export function useSendSignUpEmailCode() {
   return useMutation({
-    mutationFn: ({ signUpToken, returnUrl }: { signUpToken: string; returnUrl: string }) =>
-      authApi.startIdentity(signUpToken, returnUrl),
+    mutationFn: ({ signUpToken, email }: { signUpToken: string; email: string }) =>
+      authApi.sendSignUpEmailCode(signUpToken, email),
   });
 }
 
-/**
- * 본인확인 결과 제출.
- *
- * <p>이미 가입한 신원이면 여기서 <b>로그인이 끝난다</b>. 그래서 성공 응답에 토큰이
- * 있으면 세션에 넣는다 — 화면이 그것을 잊으면 로그인은 됐는데 로그인 안 된 것처럼
- * 보인다.
- */
-export function useCompleteIdentity() {
-  const signIn = useUserAuthStore((s) => s.signIn);
-  const queryClient = useQueryClient();
+export function useCompleteSignUp() {
+  const apply = useApplySignIn();
+  return useMutation({ mutationFn: authApi.completeSignUp, onSuccess: apply });
+}
+
+export function useLinkSocialAfterIdentity() {
+  const apply = useApplySignIn();
   return useMutation({
-    mutationFn: ({
-      signUpToken,
-      providerToken,
-      password,
-    }: {
-      signUpToken: string;
-      providerToken: string;
-      password?: string;
-    }) => authApi.completeIdentity(signUpToken, providerToken, password),
-    onSuccess: (result) => {
-      if (result.accessToken && result.user) {
-        signIn({ accessToken: result.accessToken, user: result.user });
-        void queryClient.invalidateQueries({ queryKey: userKeys.all });
-      }
-    },
+    mutationFn: (signUpToken: string) => authApi.linkSocialAfterIdentity(signUpToken),
+    onSuccess: apply,
   });
 }
 
-export function useSignInWithPassword() {
-  const signIn = useUserAuthStore((s) => s.signIn);
-  const queryClient = useQueryClient();
+// =====================================================================
+// 비밀번호 찾기
+// =====================================================================
+
+export function useStartPasswordReset() {
+  return useMutation({ mutationFn: () => authApi.startPasswordReset() });
+}
+
+export function useResetPassword() {
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      authApi.signInWithPassword(email, password),
-    onSuccess: (result) => {
-      if (result.accessToken && result.user) {
-        signIn({ accessToken: result.accessToken, user: result.user });
-        void queryClient.invalidateQueries({ queryKey: userKeys.all });
-      }
-    },
+    mutationFn: ({ resetToken, newPassword }: { resetToken: string; newPassword: string }) =>
+      authApi.resetPassword(resetToken, newPassword),
   });
 }
+
+// =====================================================================
+// 세션 종료
+// =====================================================================
 
 export function useSignOut() {
   const signOut = useUserAuthStore((s) => s.signOut);
@@ -200,16 +211,10 @@ export function useMe(enabled: boolean) {
   return useQuery({ queryKey: userKeys.me(), queryFn: authApi.fetchMe, enabled });
 }
 
-export function useUpdateProfile() {
-  const setUser = useUserAuthStore((s) => s.setUser);
-  const queryClient = useQueryClient();
+export function useChangePassword() {
   return useMutation({
-    mutationFn: authApi.updateProfile,
-    onSuccess: (user) => {
-      // 헤더에 이름이 걸려 있어 스토어도 함께 갱신한다.
-      setUser(user);
-      queryClient.setQueryData(userKeys.me(), user);
-    },
+    mutationFn: ({ newPassword, currentPassword }: { newPassword: string; currentPassword?: string }) =>
+      authApi.changePassword(newPassword, currentPassword),
   });
 }
 

@@ -5,8 +5,17 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * 가입 중 선택 이메일로 인증번호 보내기.
+ *
+ * <p>본인확인을 마친 진행 토큰이 있어야 한다 — 아무나 우리 도메인으로 메일을 보내게 하지 않는다.
+ */
 @Schema(name = "EmailVerificationRequest", description = "이메일 인증번호 발송 요청")
 public record EmailVerificationRequest(
+        @Schema(description = "본인확인을 마친 가입 진행 토큰", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotBlank(message = "가입 진행 토큰이 없습니다.")
+        String signUpToken,
+
         @Schema(description = "인증번호를 받을 주소", example = "buyer@example.com",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "이메일을 입력해 주세요.")

@@ -2,13 +2,15 @@ package com.hanseongge.domain.user.identity;
 
 import com.hanseongge.domain.user.entity.Gender;
 import com.hanseongge.domain.user.entity.VerifiedIdentity;
-import jakarta.annotation.PostConstruct;
+import com.hanseongge.global.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -18,31 +20,39 @@ import java.util.UUID;
  * 본인확인은 계약이 끝나야 붙는데(TODO E-4), 가입 흐름 전체는 그 전에 만들고 검증해야
  * 한다. 이것이 없으면 로컬에서 회원가입을 <b>한 번도 끝까지 해볼 수 없다.</b>
  *
- * <h2>운영에 뜰 수 없다</h2>
- * {@code @Profile({"local","dev"})} 라 {@code prod} 에서는 빈이 아예 만들어지지 않는다.
- * 설정 실수로 목이 운영에 뜨는 경로가 존재하지 않는다 — 그런 사고는 "가입은 되는데
- * 아무도 본인확인을 하지 않은 회원"을 만들고, 그 사실을 한참 뒤에 알게 된다.
+ * <h2>운영에서는 기동이 멈춘다</h2>
+ * {@code IDENTITY_PROVIDER=MOCK} 일 때만 빈이 되고, 그 상태로 {@code prod} 프로파일이
+ * 켜져 있으면 <b>생성자에서 예외를 던져 애플리케이션이 뜨지 않는다.</b> 설정 실수로 목이
+ * 운영에 뜨면 "아무 이름으로나 가입되는" 사이트가 되고, 그 사실을 한참 뒤에 알게 된다.
+ * 조용히 도는 것보다 배포가 실패하는 편이 낫다.
  *
- * <h2>DI 를 요청마다 새로 만든다</h2>
- * 고정값을 쓰면 두 번째 가입이 중복가입으로 막혀 개발 중에 계정을 하나밖에 못 만든다.
- * 대신 <b>중복가입 방지를 로컬에서 확인할 수 없다</b> — 그건 통합테스트의 몫이고,
- * 테스트는 DI 를 직접 정할 수 있는 별도 스텁을 쓴다.
+ * <h2>같은 사람을 돌려준다</h2>
+ * {@code app.identity.mock-persona}(기본 1) 가 같으면 <b>같은 DI·같은 휴대폰</b>이다.
+ * 그래야 "이미 가입한 사람이 다시 가입하면 기존 계정으로 안내" "소셜 계정 연결 확인"을
+ * 로컬에서 재현할 수 있다. 다른 사람으로 가입해 보려면 값을 바꿔 재기동한다
+ * ({@code IDENTITY_MOCK_PERSONA=2}).
  */
 @Slf4j
 @Component
-@Profile({"local", "dev"})
+@ConditionalOnProperty(name = "app.identity.provider", havingValue = MockIdentityVerificationProvider.CODE)
 public class MockIdentityVerificationProvider implements IdentityVerificationProvider {
 
     public static final String CODE = "MOCK";
 
-    /** 실존하지 않는 번호 대역(010-0000-xxxx)을 쓴다. 실수로 문자를 보내도 아무에게도 안 간다. */
-    private static final String PHONE_PREFIX = "010-0000-";
+    private final int persona;
 
-    @PostConstruct
-    void warnMockInUse() {
+    public MockIdentityVerificationProvider(AppProperties appProperties, Environment environment) {
+        if (environment.acceptsProfiles(Profiles.of("prod"))) {
+            throw new IllegalStateException("""
+                    운영(prod)에서 개발용 목 본인확인(IDENTITY_PROVIDER=MOCK)을 켤 수 없습니다.
+                    목은 아무것도 확인하지 않아 누구나 아무 이름으로 가입할 수 있게 됩니다.
+                    계약 전이면 IDENTITY_PROVIDER 를 비워 두세요 — 가입만 닫히고 로그인은 됩니다.""");
+        }
+        this.persona = appProperties.identity().mockPersona();
         log.warn("""
                 [IDENTITY] 개발용 목 본인확인이 켜져 있습니다. 실제로 아무것도 확인하지 않습니다.
-                인증창을 띄우는 대신 returnUrl 로 즉시 돌아옵니다.""");
+                인증창을 띄우는 대신 returnUrl 로 즉시 돌아옵니다. 돌려주는 사람: persona={} phone={}""",
+                persona, phone());
     }
 
     @Override
@@ -56,36 +66,48 @@ public class MockIdentityVerificationProvider implements IdentityVerificationPro
     }
 
     /**
-     * 인증창 대신 <b>곧바로 돌아오는 주소</b>를 준다.
+     * 인증창 대신 <b>백엔드 수신 주소로 곧바로 보내는 폼</b>을 준다.
      *
-     * <p>프론트엔드는 실물과 똑같이 이 주소로 이동하면 되고, 흐름을 분기할 필요가 없다.
-     * 화면 코드에 "개발일 때는 이렇게" 같은 분기를 넣으면 그 분기 자체가 검증되지 않는다.
+     * <p>이니시스가 인증을 마치고 보내는 것과 같은 모양(결과코드·거래ID)이라, 수신 주소 →
+     * 화면 → 결과 제출까지 실물과 <b>같은 경로</b>를 탄다. 화면 코드에 "개발일 때는 이렇게"
+     * 같은 분기를 넣으면 그 분기 자체가 검증되지 않는다.
      */
     @Override
-    public String startUrl(String requestId, String returnUrl) {
-        return UriComponentsBuilder.fromUriString(returnUrl)
-                .queryParam("requestId", requestId)
-                .queryParam("providerToken", "mock-" + UUID.randomUUID())
-                .build(true)
-                .toUriString();
+    public IdentityStartForm start(String requestId, String callbackUrl) {
+        return new IdentityStartForm(callbackUrl, "POST", Map.of(
+                "resultCode", "0000",
+                "txId", "mock-" + UUID.randomUUID(),
+                "mTxId", requestId));
     }
 
     @Override
-    public IdentityVerificationResult verify(String requestId, String providerToken) {
-        if (providerToken == null || !providerToken.startsWith("mock-")) {
-            throw new IdentityVerificationException("목 본인확인 토큰이 아닙니다: " + providerToken);
+    public IdentityVerificationResult verify(String requestId, Map<String, String> returned) {
+        String txId = returned.get("txId");
+        if (!"0000".equals(returned.get("resultCode")) || txId == null || !txId.startsWith("mock-")) {
+            throw new IdentityVerificationException("목 본인확인 결과가 아닙니다");
+        }
+        // 실물의 "되물은 결과의 거래번호가 우리 요청과 같은가" 대조를 흉내 낸다.
+        if (!requestId.equals(returned.get("mTxId"))) {
+            throw new IdentityVerificationException("목 본인확인 거래번호 불일치");
         }
 
-        String suffix = String.format("%04d", Math.abs(providerToken.hashCode()) % 10_000);
         VerifiedIdentity identity = new VerifiedIdentity(
-                "MOCK-DI-" + UUID.randomUUID(),
-                "테스트 회원",
+                "MOCK-DI-PERSONA-" + persona,
+                "테스트회원" + persona,
                 LocalDate.of(1990, 1, 1),
                 Gender.MALE,
                 false,
-                PHONE_PREFIX + suffix);
+                phone());
 
-        log.info("[IDENTITY] 목 본인확인 통과. requestId={} phone={}", requestId, identity.phone());
+        log.info("[IDENTITY] 목 본인확인 통과. persona={} phone={}", persona, identity.phone());
+        // 거래번호는 매번 새로 만든다 — 같은 거래번호 재사용은 ux_iv_tx 가 막는다.
         return new IdentityVerificationResult("mock-tx-" + UUID.randomUUID(), identity, "MOCK");
+    }
+
+    /**
+     * 실존하지 않는 대역(010-0000-xxxx). 실수로 문자를 보내도 아무에게도 가지 않는다.
+     */
+    private String phone() {
+        return "0100000" + String.format("%04d", persona % 10_000);
     }
 }

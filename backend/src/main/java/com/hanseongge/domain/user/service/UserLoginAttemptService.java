@@ -34,7 +34,7 @@ public class UserLoginAttemptService {
     /** 로그인 시도 결과. 호출자가 응답/예외로 번역한다. */
     public enum Result {
         SUCCESS,
-        /** 이메일이 없거나 비밀번호가 틀림 — 응답에서는 구분하지 않는다. */
+        /** 번호가 없거나 비밀번호가 틀림 — 응답에서는 구분하지 않는다. */
         BAD_CREDENTIALS,
         /** 연속 실패로 잠긴 계정 */
         LOCKED,
@@ -64,9 +64,12 @@ public class UserLoginAttemptService {
     private final PasswordEncoder passwordEncoder;
     private final AppProperties appProperties;
 
+    /**
+     * @param phone 정규화된 휴대폰번호. 형식이 틀려 정규화에 실패했으면 null — 없는 계정과 같이 다룬다
+     */
     @Transactional
-    public Outcome attempt(String email, String rawPassword) {
-        Optional<User> found = userRepository.findByEmail(email);
+    public Outcome attempt(String phone, String rawPassword) {
+        Optional<User> found = phone == null ? Optional.empty() : userRepository.findByPhone(phone);
 
         if (found.isEmpty()) {
             passwordEncoder.matches(rawPassword, DUMMY_HASH);

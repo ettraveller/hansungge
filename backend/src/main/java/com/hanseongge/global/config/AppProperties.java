@@ -19,36 +19,114 @@ public record AppProperties(
         @DefaultValue AdminSecurity adminSecurity,
         @DefaultValue OAuth oauth,
         @DefaultValue SignUp signUp,
-        @DefaultValue Mail mail
+        @DefaultValue Mail mail,
+        @DefaultValue Identity identity,
+        @DefaultValue Sms sms
 ) {
 
     /**
-     * 자체 가입·본인확인 설정.
+     * 가입·로그인 정책.
      *
      * <p>비밀값이 없다. 여기 있는 것은 전부 정책값이라 기본값을 두는 것이 안전하다 —
      * 빠뜨렸다고 기동을 막을 이유가 없고, 막으면 오히려 배포가 어려워진다.
      */
     public record SignUp(
-            /** 이메일 인증번호 유효 시간. 짧으면 메일이 늦게 올 때 못 쓰고, 길면 훑을 시간을 준다. */
-            @DefaultValue("5") int emailCodeTtlMinutes,
+            /** 인증번호(메일·문자) 유효 시간. 짧으면 늦게 도착할 때 못 쓰고, 길면 훑을 시간을 준다. */
+            @DefaultValue("5") int codeTtlMinutes,
             /** 인증번호 시도 허용 횟수. 6자리 숫자는 막지 않으면 만료 전에 다 훑을 수 있다. */
-            @DefaultValue("5") int emailCodeMaxAttempts,
-            /** 같은 주소로 인증번호를 다시 받기까지 기다릴 시간(초). 메일 폭탄을 막는다. */
-            @DefaultValue("60") int emailCodeResendCooldownSeconds,
-            /** 본인확인 결과를 가입에 쓸 수 있는 시간. 창을 열어둔 채 방치한 건은 버린다. */
-            @DefaultValue("30") int identityTtlMinutes,
-            /** 비밀번호 재설정 링크 유효 시간. */
-            @DefaultValue("30") int passwordResetTtlMinutes,
+            @DefaultValue("5") int codeMaxAttempts,
+            /** 같은 곳으로 인증번호를 다시 받기까지 기다릴 시간(초). 메일·문자 폭탄을 막는다. */
+            @DefaultValue("60") int codeResendCooldownSeconds,
+            /**
+             * 한 번호로 한 시간에 보낼 수 있는 문자 수.
+             *
+             * <p>분당 1회 쿨다운만으로는 한 시간에 60통이 나간다. 번호만 알면 누구나 요청할 수
+             * 있으므로, 이것이 없으면 우리 발신번호가 남의 휴대폰을 괴롭히는 도구가 된다.
+             */
+            @DefaultValue("5") int smsHourlyLimit,
+            /** 본인확인 결과를 가입·재설정에 쓸 수 있는 시간. 창을 열어둔 채 방치한 건은 버린다. */
+            @DefaultValue("10") int identityTtlMinutes,
+            /** 본인확인 뒤 새 비밀번호를 정하기까지 허용하는 시간. */
+            @DefaultValue("5") int passwordResetTtlMinutes,
             /** 회원 로그인 연속 실패 임계치. 도달하면 30분 잠긴다. */
-            @DefaultValue("5") int maxLoginFailures
+            @DefaultValue("5") int maxLoginFailures,
+            /**
+             * 회원 인증 엔드포인트(로그인·문자 발송·본인확인 시작 등)의 IP당 분당 허용 횟수.
+             *
+             * <p>계정 잠금은 <b>한 계정</b>을, 이것은 <b>한 IP</b> 가 여러 번호를 훑는 시도를 막는다.
+             */
+            @DefaultValue("10") int authRatePerMinute
     ) {}
+
+    /**
+     * 휴대폰 본인확인 — KG이니시스 통합인증 (TODO E-4).
+     *
+     * <p>{@code provider} 는 {@code MOCK | INICIS} 중 하나이거나 비어 있다. 비어 있으면
+     * 본인확인을 쓸 수 없고 <b>가입이 닫힌다</b> — 기존 회원의 로그인은 그대로 된다.
+     *
+     * <p>{@code MOCK} 은 아무것도 확인하지 않는다. 운영 프로필에서 MOCK 이면 기동이 실패한다
+     * ({@code MockIdentityVerificationProvider}).
+     *
+     * <p>이니시스 계약 전에는 공식 샘플의 <b>테스트 상점아이디</b>({@code INIiasTest})로 실제
+     * 인증창까지 붙여 볼 수 있다. 테스트 값은 코드에 두지 않고 환경변수로만 넣는다 —
+     * 운영에 테스트 MID 가 박힌 채 나가면 아무도 눈치채지 못한다.
+     */
+    public record Identity(
+            @DefaultValue("") String provider,
+            /** 이니시스 상점아이디(MID) */
+            @DefaultValue("") String clientId,
+            /** 이니시스 apiKey. authHash 계산에 쓰는 비밀값 */
+            @DefaultValue("") String clientSecret,
+            /** 이니시스 웹사이트 코드. DI 생성에 쓰인다. 계약 시 안내받은 값, 없으면 비운다 */
+            @DefaultValue("") String diCode,
+            /**
+             * 공급자가 결과를 돌려보낼 <b>백엔드</b> 주소.
+             *
+             * <p>이니시스는 결과를 브라우저 폼 POST 로 보낸다. 화면(Next.js 페이지)은 POST 를
+             * 받을 수 없어서, 백엔드가 받아 화면 주소({@link #returnPageUrl})로 넘긴다.
+             */
+            @DefaultValue("http://localhost:8080/api/v1/auth/identity/return") String callbackUrl,
+            /** 본인확인을 마친 사용자가 도착할 화면. */
+            @DefaultValue("http://localhost:3000/auth/identity") String returnPageUrl,
+            /**
+             * 개발용 목이 돌려줄 사람 번호. 같은 값이면 같은 사람(같은 DI·같은 휴대폰)이다.
+             *
+             * <p>고정값이어야 "이미 가입한 사람이 다시 가입" "소셜 계정 연결"을 로컬에서
+             * 재현할 수 있다. 다른 사람으로 가입해 보려면 이 값을 바꿔 재기동한다.
+             */
+            @DefaultValue("1") int mockPersona
+    ) {
+        public boolean is(String code) {
+            return provider != null && provider.equalsIgnoreCase(code);
+        }
+    }
+
+    /**
+     * NCP SENS 문자 발송.
+     *
+     * <p>비어 있으면 인증번호 로그인만 꺼진다. 발신번호는 NCP 에 <b>사전 등록</b>해야 하고,
+     * 등록되지 않은 번호로 보내면 공급자가 거부한다.
+     */
+    public record Sms(
+            @DefaultValue("") String accessKey,
+            @DefaultValue("") String secretKey,
+            @DefaultValue("") String serviceId,
+            @DefaultValue("") String senderPhone,
+            @DefaultValue("5") int connectTimeoutSeconds,
+            @DefaultValue("10") int readTimeoutSeconds
+    ) {
+        public boolean isConfigured() {
+            return !accessKey.isBlank() && !secretKey.isBlank()
+                    && !serviceId.isBlank() && !senderPhone.isBlank();
+        }
+    }
 
     /**
      * 메일 발송 설정.
      *
-     * <p>{@code accessKey}·{@code secretKey} 는 비밀값이라 기본값을 두지 않는다. 대신
-     * 비어 있으면 {@code NcpOutboundMailSender} 가 빈으로 등록되지 않아, 운영에서
-     * 메일 기능만 조용히 죽는 대신 기동 로그에 경고가 남는다.
+     * <p>{@code accessKey}·{@code secretKey} 는 비밀값이라 기본값을 두지 않는다. 비어 있어도
+     * {@code NcpOutboundMailSender} 는 빈으로 등록되고, 기동 로그에 경고를 남긴 뒤
+     * <b>발송 시점에</b> 실패한다 — 메일이 없다고 서비스 전체가 못 뜨면 안 되기 때문이다.
      */
     public record Mail(
             @DefaultValue("") String accessKey,

@@ -130,8 +130,43 @@ app:
     max-otp-failures: ${ADMIN_MAX_OTP_FAILURES:5}
     # 비우면 JWT 서명키에서 파생한다 (AdminOtpCipher).
     otp-encryption-key: ${ADMIN_OTP_ENCRYPTION_KEY:}
+  # 휴대폰 본인확인 — KG이니시스 통합인증 (TODO E-4). MOCK | INICIS, 비우면 가입이 닫힌다.
+  # local·dev 는 아래 프로파일 블록에서 MOCK 이 기본이다. 운영에서 MOCK 이면 기동이 실패한다.
+  # 계약 전 로컬 연동 테스트: IDENTITY_PROVIDER=INICIS, IDENTITY_CLIENT_ID=INIiasTest,
+  # IDENTITY_CLIENT_SECRET=<이니시스 샘플의 테스트 apiKey>
+  identity:
+    provider: ${IDENTITY_PROVIDER:}
+    client-id: ${IDENTITY_CLIENT_ID:}
+    client-secret: ${IDENTITY_CLIENT_SECRET:}
+    di-code: ${IDENTITY_DI_CODE:}
+    callback-url: ${IDENTITY_CALLBACK_URL:http://localhost:8080/api/v1/auth/identity/return}
+    return-page-url: ${IDENTITY_RETURN_PAGE_URL:http://localhost:3000/auth/identity}
+    mock-persona: ${IDENTITY_MOCK_PERSONA:1}
+  # 문자 발송 (NCP SENS). 비우면 인증번호 로그인만 꺼진다.
+  sms:
+    access-key: ${SENS_ACCESS_KEY:}
+    secret-key: ${SENS_SECRET_KEY:}
+    service-id: ${SENS_SERVICE_ID:}
+    sender-phone: ${SENS_SENDER_PHONE:}
 
 logging:
   level:
     root: INFO
     com.hanseongge: DEBUG
+
+---
+# =====================================================================
+# 개발 PC · 개발 서버 전용 — 본인확인을 목으로.
+#
+# application-local.yml 은 개발자마다 달라 git 에 올리지 않는다. 그래서 목 기본값을
+# 거기가 아니라 여기에 둔다 — 새로 받은 PC 에서도 바로 회원가입을 끝까지 해볼 수 있어야 한다.
+# 운영(prod) 에는 이 블록이 적용되지 않는다.
+# =====================================================================
+spring:
+  config:
+    activate:
+      on-profile: local | dev
+
+app:
+  identity:
+    provider: ${IDENTITY_PROVIDER:MOCK}

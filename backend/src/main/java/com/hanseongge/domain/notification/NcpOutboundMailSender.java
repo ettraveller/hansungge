@@ -10,11 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -97,22 +93,8 @@ public class NcpOutboundMailSender implements MailSender {
         }
     }
 
-    /**
-     * NCP API Gateway 서명 v2.
-     *
-     * <p>{@code HMAC-SHA256(secretKey, "METHOD url\ntimestamp\naccessKey")} 를 Base64 로 인코딩한다.
-     * 공백은 한 칸이고 줄바꿈은 {@code \n} 이다 — 한 글자만 달라도 401 이 돌아오는데,
-     * 응답 본문이 원인을 알려주지 않아 찾는 데 오래 걸린다.
-     */
     private String sign(String method, String url, String timestamp) {
-        String message = method + " " + url + "\n" + timestamp + "\n" + config.accessKey();
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(config.secretKey().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            return Base64.getEncoder().encodeToString(mac.doFinal(message.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new MailSendException("서명 생성 실패", e);
-        }
+        return NcpApiSigner.sign(method, url, timestamp, config.accessKey(), config.secretKey());
     }
 
     /** 로그에 주소 전체를 남기지 않는다. */

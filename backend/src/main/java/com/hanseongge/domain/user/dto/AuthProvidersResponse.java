@@ -22,17 +22,18 @@ public record AuthProvidersResponse(
         List<AgreementItem> agreements,
 
         /**
-         * 이메일+비밀번호 가입을 지금 쓸 수 있는가.
+         * 새 가입을 지금 받는가 (자체·소셜 모두).
          *
-         * <p>자체 가입은 휴대폰 본인확인이 있어야 성립한다 — 그것 없이는 이름도
-         * 생년월일도 중복가입 방지도 없다. 본인확인 공급자 계약(TODO E-4)이 끝나기
-         * 전까지는 false 이고, 화면은 소셜 버튼만 그린다.
-         *
-         * <p>프론트엔드가 이 값을 보지 않고 버튼을 그리면 <b>눌러야만 실패를 아는</b>
-         * 화면이 된다. 소셜 제공자 목록을 서버가 알려주는 것과 같은 이유다.
+         * <p>모든 가입은 휴대폰 본인확인을 거친다. 본인확인 공급자 계약(TODO E-4) 전에는 false
+         * 이고, 기존 회원의 로그인만 된다. 화면은 가입 링크를 그리지 않는다 — 눌러야만 실패를
+         * 아는 화면을 만들지 않는다.
          */
-        @Schema(description = "이메일+비밀번호 가입 가능 여부", example = "false")
-        boolean emailSignUpAvailable
+        @Schema(description = "회원가입 가능 여부", example = "false")
+        boolean signUpAvailable,
+
+        /** 인증번호(문자) 로그인을 지금 쓸 수 있는가. 문자 발송 설정(SENS)이 없으면 false. */
+        @Schema(description = "인증번호 로그인 가능 여부", example = "true")
+        boolean smsLoginAvailable
 ) {
 
     @Schema(name = "AuthProviderItem")

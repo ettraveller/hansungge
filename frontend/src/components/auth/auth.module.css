@@ -413,3 +413,44 @@
   color: var(--gray);
   font-size: 13px;
 }
+
+/* ---------- 로그인 아래 작은 링크 (인증번호 로그인 · 비밀번호 찾기 · 회원가입) ----------
+   버튼이 아니라 링크다. 주 동작은 위의 로그인 버튼 하나라, 곁가지를 같은 무게로 그리면
+   어디를 눌러야 할지 흐려진다. */
+.subLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin-top: 14px;
+  font-size: 12.5px;
+}
+
+.subLinks a {
+  color: var(--gray);
+}
+
+.subLinks a:hover {
+  color: var(--dark);
+  text-decoration: underline;
+}
+
+/* ---------- 본인확인으로 확정된 값 (읽기 전용) ---------- */
+.verified {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--light-gray);
+  font-size: 13px;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.verified strong {
+  color: var(--dark);
+}
+
+/* 인증번호 입력 — 여섯 자리를 한눈에 확인할 수 있게 넓은 자간 */
+.codeInput {
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}

@@ -19,37 +19,45 @@ import java.time.OffsetDateTime;
 import java.util.HexFormat;
 
 /**
- * 이메일 인증번호 ({@code email_verifications}).
+ * 인증번호 — 메일·문자 공용 ({@code verification_codes}).
  *
  * <h2>원문을 저장하지 않는다</h2>
  * {@code RefreshToken} 과 같은 방식(SHA-256)이고 같은 이유다 — DB 를 읽을 수 있는 사람이
- * 남의 가입을 가로챌 수 있으면 안 된다.
+ * 남의 로그인을 가로챌 수 있으면 안 된다.
  *
  * <p>BCrypt 를 쓰지 않는 것도 같은 이유다. 조회 키여야 하고, 만료 5분짜리 6자리 숫자에
  * 매번 BCrypt 비용을 치를 이유가 없다.
  *
  * <h2>시도 횟수를 센다</h2>
  * 6자리 숫자는 100만 분의 1이지만, 시도를 막지 않으면 만료 전에 다 훑을 수 있다.
+ *
+ * <h2>대상은 정규화해서 받는다</h2>
+ * 이메일은 소문자, 휴대폰은 숫자만. 모양이 다른 같은 대상으로 쿨다운·시간당 한도를
+ * 우회할 수 없게 하기 위해서다. 정규화는 서비스가 하고 여기서는 그대로 저장한다.
  */
 @Entity
 @Getter
-@Table(name = "email_verifications")
+@Table(name = "verification_codes")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class EmailVerification {
+public class VerificationCode {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "email", length = 255, nullable = false)
-    private String email;
+    @Column(name = "target", length = 255, nullable = false)
+    private String target;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel", length = 10, nullable = false)
+    private VerificationChannel channel;
 
     @Column(name = "code_hash", length = 128, nullable = false)
     private String codeHash;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "purpose", length = 20, nullable = false)
-    private EmailVerificationPurpose purpose;
+    private VerificationPurpose purpose;
 
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
@@ -69,10 +77,10 @@ public class EmailVerification {
     @Column(name = "ip", length = 45)
     private String ip;
 
-    private EmailVerification(String email, String rawCode, EmailVerificationPurpose purpose,
-                              OffsetDateTime expiresAt, String ip) {
-        // 소문자로 저장한다. 조회도 소문자로 해야 대소문자만 다른 주소로 우회할 수 없다.
-        this.email = email.toLowerCase();
+    private VerificationCode(VerificationChannel channel, String target, String rawCode,
+                             VerificationPurpose purpose, OffsetDateTime expiresAt, String ip) {
+        this.channel = channel;
+        this.target = target;
         this.codeHash = hash(rawCode);
         this.purpose = purpose;
         this.expiresAt = expiresAt;
@@ -80,10 +88,11 @@ public class EmailVerification {
         this.ip = ip;
     }
 
-    public static EmailVerification issue(String email, String rawCode,
-                                          EmailVerificationPurpose purpose,
-                                          OffsetDateTime expiresAt, String ip) {
-        return new EmailVerification(email, rawCode, purpose, expiresAt, ip);
+    /** @param target 정규화된 대상 — 이메일은 소문자, 휴대폰은 숫자만 */
+    public static VerificationCode issue(VerificationChannel channel, String target, String rawCode,
+                                         VerificationPurpose purpose, OffsetDateTime expiresAt,
+                                         String ip) {
+        return new VerificationCode(channel, target, rawCode, purpose, expiresAt, ip);
     }
 
     public static String hash(String rawCode) {
@@ -123,11 +132,12 @@ public class EmailVerification {
         return attemptCount < max;
     }
 
-    /** 인증을 마쳤고 아직 가입에 쓰지 않은 상태인가. */
+    /** 인증을 마쳤고 아직 쓰지 않은 상태인가. */
     public boolean isVerifiedAndUnused(OffsetDateTime now) {
         return verifiedAt != null && consumedAt == null && expiresAt.isAfter(now);
     }
 
+    /** 성공 즉시 소진 — 한 번 통과한 번호가 다시 통하면 가로챈 사람도 쓸 수 있다. */
     public void consume() {
         this.consumedAt = OffsetDateTime.now();
     }

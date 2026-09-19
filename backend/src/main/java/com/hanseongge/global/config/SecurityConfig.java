@@ -104,6 +104,8 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(h -> h.frameOptions(f -> f.deny()))
+                // 로그인·문자 발송 IP 제한. 인증보다 앞에 둔다 — 관리자 체인과 같은 이유다.
+                .addFilterBefore(memberRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 // 회원 토큰(aud=user) 인증. 토큰이 없으면 아무 일도 하지 않으므로
                 // 상품·시세 같은 공개 조회에는 영향이 없다.
                 .addFilterBefore(userJwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
@@ -155,13 +157,16 @@ public class SecurityConfig {
     }
 
     private LoginRateLimitFilter loginRateLimitFilter() {
-        return new LoginRateLimitFilter(appProperties.adminSecurity().loginRatePerMinute());
+        return new LoginRateLimitFilter(LoginRateLimitFilter.ADMIN_PATHS,
+                appProperties.adminSecurity().loginRatePerMinute());
     }
 
-    /**
-     * BCrypt cost 12 (설계서 §15). 관리자 비밀번호 전용 —
-     * 일반 사용자는 OAuth2 만 쓰므로 비밀번호를 보관하지 않는다.
-     */
+    private LoginRateLimitFilter memberRateLimitFilter() {
+        return new LoginRateLimitFilter(LoginRateLimitFilter.MEMBER_PATHS,
+                appProperties.signUp().authRatePerMinute());
+    }
+
+    /** BCrypt cost 12 (설계서 §15). 관리자와 회원 비밀번호가 같은 인코더를 쓴다. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);

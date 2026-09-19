@@ -1,97 +1,115 @@
 package com.hanseongge.domain.user.service;
 
+import com.hanseongge.domain.user.dto.AgreementChoice;
 import com.hanseongge.domain.user.dto.AuthProvidersResponse;
-import com.hanseongge.domain.user.dto.OAuthAuthorizeResponse;
-import com.hanseongge.domain.user.dto.SignInResponse;
-import com.hanseongge.domain.user.dto.SignUpRequest;
-import com.hanseongge.domain.user.entity.AgreementType;
+import com.hanseongge.domain.user.dto.IdentityResultResponse;
 import com.hanseongge.domain.user.dto.IdentityStartResponse;
-import com.hanseongge.domain.user.entity.EmailVerificationPurpose;
+import com.hanseongge.domain.user.dto.OAuthAuthorizeResponse;
+import com.hanseongge.domain.user.dto.PasswordResetGrantResponse;
+import com.hanseongge.domain.user.dto.SignInResponse;
+import com.hanseongge.domain.user.dto.SignUpCompleteRequest;
+import com.hanseongge.domain.user.entity.AgreementType;
 import com.hanseongge.domain.user.entity.IdentityPurpose;
-import com.hanseongge.domain.user.entity.User;
+import com.hanseongge.domain.user.entity.IdentityVerification;
 import com.hanseongge.domain.user.entity.OAuthProviderType;
 import com.hanseongge.domain.user.entity.SocialAccount;
+import com.hanseongge.domain.user.entity.VerificationChannel;
+import com.hanseongge.domain.user.entity.VerificationPurpose;
+import com.hanseongge.domain.user.identity.IdentityStartForm;
 import com.hanseongge.domain.user.oauth.OAuthException;
 import com.hanseongge.domain.user.oauth.OAuthProvider;
 import com.hanseongge.domain.user.oauth.OAuthProviderRegistry;
 import com.hanseongge.domain.user.oauth.OAuthUserInfo;
 import com.hanseongge.domain.user.repository.SocialAccountRepository;
+import com.hanseongge.domain.user.repository.UserRepository;
 import com.hanseongge.global.auth.RequestInfo;
-import com.hanseongge.global.config.AppProperties;
 import com.hanseongge.global.auth.UserJwtProvider;
+import com.hanseongge.global.config.AppProperties;
 import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
+import com.hanseongge.global.util.PhoneNumber;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * 회원 소셜 로그인·가입 흐름 (개발계획 §7).
+ * 회원 로그인·가입 흐름 (개발계획 §7).
  *
- * <h2>흐름</h2>
+ * <h2>로그인 — 어느 문으로 들어와도 같은 계정</h2>
+ * <ul>
+ *   <li>휴대폰번호 + 비밀번호
+ *   <li>휴대폰번호 + 문자 인증번호 — 가입 때 본인확인으로 명의가 확인된 번호라, 로그인에서는
+ *       번호를 가지고 있는지만 확인하면 된다
+ *   <li>소셜(구글·네이버) — {@code (provider, provider_user_id)} 로만 찾는다
+ * </ul>
+ *
+ * <h2>가입 — 약관 → 본인확인 → (자체: 비밀번호·이메일) → 계정</h2>
  * <pre>
- * 1. authorize()  → 제공자 로그인 URL + state 발급
- * 2. (브라우저가 제공자에 다녀와 code 를 들고 돌아온다)
- * 3. callback()   → state 검증 → 인가코드 교환 → 소셜 신원 확보
- *                   ├ 기존 회원  → 토큰 발급, 끝
- *                   └ 신규      → signUpToken + 약관 목록 반환 (계정은 아직 없다)
- * 4. signUp()     → 필수 약관 확인 → users + social_accounts + user_agreements 한 트랜잭션
+ * 자체   startSignUp(약관) → 본인확인 → SET_PASSWORD → completeSignUp → 로그인
+ *                                    └ EXISTING_ACCOUNT → 로그인 / 바로 비밀번호 재설정
+ * 소셜   callback → startSignUp(약관) → 본인확인 → SIGNED_IN(가입 완료)
+ *                                             └ CONFIRM_LINK → linkSocial / 취소(아무것도 안 만든다)
  * </pre>
  *
- * <h2>왜 3단계에서 바로 가입시키지 않는가</h2>
- * 계정을 먼저 만들고 약관을 나중에 받으면, 그 사이 <b>동의 없이 개인정보를 보관한 상태</b>가
- * 된다. 사용자가 약관 화면에서 이탈하면 그 계정은 동의 없는 유령 계정으로 남는다.
- * 그래서 인증 결과를 DB 가 아니라 서명 토큰에 담아 두고, 동의가 끝나는 순간에 만든다.
- *
  * <h2>이메일로 계정을 찾지 않는다</h2>
- * 조회 키는 {@code (provider, provider_user_id)} 뿐이다 (§7.2). 이메일로 자동 병합하면
- * "피해자 이메일로 다른 소셜 계정을 만들어 기존 계정을 흡수"하는 경로가 열린다.
- * 계정 통합은 로그인한 상태에서 본인이 마이페이지에서 한다.
+ * 같은 사람 판정은 본인확인기관이 발급한 DI 로만 한다. 이메일이 같다는 이유로 합치면
+ * "남의 이메일을 적어 둔 소셜 계정"으로 기존 계정을 가져가는 길이 된다.
  *
  * <h2>이 클래스에는 트랜잭션이 없다</h2>
- * 안에 외부 HTTP 호출이 있어서다. 상태 변경은 전부 {@link UserAccountService} 가 맡는다.
+ * 안에 외부 HTTP 호출(소셜·본인확인·문자)이 있어서다. 상태 변경은 {@link UserAccountService} 가 맡는다.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserAuthService {
 
+    /** 본인확인 공급자가 수신 주소로 보내는 값 중 화면까지 나를 것. 나머지는 버린다. */
+    private static final Set<String> IDENTITY_RETURN_KEYS =
+            Set.of("resultCode", "resultMsg", "txId", "authRequestUrl", "token", "mTxId");
+
     private final OAuthProviderRegistry registry;
     private final OAuthTokenFactory tokenFactory;
     private final AgreementCatalog agreementCatalog;
     private final SocialAccountRepository socialAccountRepository;
+    private final UserRepository userRepository;
     private final UserAccountService accountService;
     private final UserRefreshTokenService refreshTokenService;
     private final UserJwtProvider jwtProvider;
     private final IdentityVerificationService identityVerificationService;
-    private final EmailVerificationService emailVerificationService;
+    private final VerificationCodeService codeService;
     private final UserLoginAttemptService loginAttemptService;
     private final AppProperties appProperties;
-    private final com.hanseongge.domain.user.repository.UserRepository userRepository;
 
     // =================================================================
     // 로그인 화면 구성
     // =================================================================
 
+    /**
+     * 화면이 그릴 것 — 쓸 수 있는 소셜, 약관, 가입 가능 여부, 인증번호 로그인 가능 여부.
+     *
+     * <p>눌러야만 실패를 아는 버튼을 만들지 않으려고 서버가 알려준다.
+     */
     public AuthProvidersResponse describeProviders() {
         List<AuthProvidersResponse.ProviderItem> providers = registry.available().stream()
                 .map(type -> new AuthProvidersResponse.ProviderItem(type, type.displayName()))
                 .toList();
-        // 자체 가입은 본인확인이 있어야 성립한다. 공급자가 없으면 화면이 그 버튼을
-        // 아예 그리지 않게 한다 — 눌러야만 실패를 아는 화면을 만들지 않는다.
         return new AuthProvidersResponse(providers, agreementCatalog.all(),
-                identityVerificationService.isAvailable());
+                identityVerificationService.isAvailable(), codeService.isSmsAvailable());
     }
 
     // =================================================================
-    // 1. 인가 요청
+    // 소셜 로그인
     // =================================================================
 
     public OAuthAuthorizeResponse authorize(OAuthProviderType type) {
@@ -101,10 +119,12 @@ public class UserAuthService {
                 provider.authorizeUrl(state, registry.redirectUri(type)), state);
     }
 
-    // =================================================================
-    // 2. 콜백
-    // =================================================================
-
+    /**
+     * 소셜 콜백.
+     *
+     * <p>이미 연결된 소셜 계정이면 로그인. 처음 보는 소셜 계정이면 <b>계정을 만들지 않고</b>
+     * 약관 화면으로 보낼 토큰을 준다 — 약관 동의 → 본인확인을 거친 뒤에 만들거나 기존 계정에 연결한다.
+     */
     public SignInResponse callback(OAuthProviderType type, String code, String state,
                                    HttpServletResponse response) {
         tokenFactory.verifyState(state, type);
@@ -112,50 +132,18 @@ public class UserAuthService {
 
         Optional<SocialAccount> linked = socialAccountRepository
                 .findByProviderAndProviderUserId(info.provider(), info.providerUserId());
-
         if (linked.isPresent()) {
             return accountService.signIn(linked.get().getId(), info, response);
         }
 
-        // 계정을 아직 만들지 않는다. 약관 동의(그리고 가능하면 본인확인)가 남았다.
-        PendingSignUp pending = new PendingSignUp(info, info.email(), null, null);
-        String token = tokenFactory.issuePendingToken(pending);
-
-        // 본인확인 공급자가 없으면 그 단계를 건너뛴다 (TODO E-4 계약 전).
-        //
-        // 계약을 기다리느라 <b>이미 되던 소셜 로그인까지 막을 수는 없다.</b> 배포를
-        // 몇 주 미루는 대가가 훨씬 크다. 공급자를 켜는 순간 이 분기가 사라지고
-        // 그때부터의 가입은 전부 본인확인을 거친다.
-        if (!identityVerificationService.isAvailable()) {
-            rejectIfEmailTaken(info);
-            log.info("[AUTH] 신규 소셜 신원 확인. provider={} 약관 대기 (본인확인 공급자 없음)",
-                    info.provider());
-            return SignInResponse.signUpRequired(token, agreementCatalog.all(),
-                    info.name(), info.email());
-        }
-
-        log.info("[AUTH] 신규 소셜 신원 확인. provider={} 본인확인 대기", info.provider());
-        return SignInResponse.identityRequired(token, agreementCatalog.all(),
-                info.name(), info.email());
-    }
-
-    /**
-     * 같은 이메일로 이미 가입한 회원이 있으면 <b>약관 화면으로 보내기 전에</b> 멈춘다.
-     *
-     * <p>본인확인이 없는 동안에는 이메일이 같다는 것만으로 같은 사람인지 알 수 없다.
-     * 그렇다고 합치면 "남의 이메일을 연락처로 적어 둔 소셜 계정"으로 기존 계정을 가져가는
-     * 길이 된다. 새 계정도 만들 수 없다 — 이메일은 활성 회원 사이에서 유일하다
-     * ({@code ux_users_email_active}). 남는 선택은 처음 가입한 방법으로 로그인하게 하는 것이다.
-     *
-     * <p>여기서 막지 않으면 사용자는 약관에 전부 동의한 뒤에야 가입이 안 된다는 것을 안다.
-     * ({@link UserAccountService#createAccount} 에도 같은 검사가 있다 — 약관 화면에 머무는
-     * 사이 다른 탭에서 가입한 경우를 거기서 잡는다.)
-     */
-    private void rejectIfEmailTaken(OAuthUserInfo info) {
-        if (info.email() != null && userRepository.findByEmail(info.email()).isPresent()) {
-            log.info("[AUTH] 소셜 가입 중단 — 이미 가입된 이메일. provider={}", info.provider());
-            throw new BusinessException(ErrorCode.EMAIL_REGISTERED_WITH_OTHER_LOGIN);
-        }
+        // 본인확인 없이는 가입을 받지 않는다. 기존 회원이 이 소셜로 들어오려면 로그인한 뒤
+        // 마이페이지에서 연결하면 된다 — 그 경로는 본인확인 공급자와 무관하게 열려 있다.
+        requireSignUpAvailable();
+        log.info("[AUTH] 처음 보는 소셜 계정. provider={} 약관 대기", info.provider());
+        return SignInResponse.signUpRequired(
+                tokenFactory.issuePendingToken(PendingSignUp.social(info)),
+                agreementCatalog.all(),
+                info.email());
     }
 
     /**
@@ -175,43 +163,317 @@ public class UserAuthService {
     }
 
     // =================================================================
-    // 3. 가입 완료
+    // 가입 1 — 약관
     // =================================================================
 
-    public SignInResponse signUp(SignUpRequest request, RequestInfo requestInfo,
-                                 HttpServletResponse response) {
-        PendingSignUp pending = tokenFactory.readPendingToken(request.signUpToken());
-
-        // 본인확인을 거치지 않은 토큰으로는 가입할 수 없다. 소셜도 예외가 아니다 —
-        // 한쪽만 면제하면 "본인확인을 안 한 회원"이 생기고, 그 예외가 코드 전체로 번진다.
-        //
-        // 예외는 하나뿐이다: 본인확인 공급자 자체가 없는 기간(TODO E-4 계약 전).
-        // 그때는 소셜 가입만 허용된다 — 자체 가입은 이름·생년월일이 본인확인에서만
-        // 오므로 애초에 시작할 수 없다.
+    /**
+     * 약관 동의로 가입을 시작한다.
+     *
+     * <p>본인확인은 이름·생년월일·휴대폰을 받는 개인정보 수집이라 <b>동의가 먼저</b>다.
+     *
+     * @param signUpToken 소셜 콜백에서 받은 토큰. 자체 가입이면 null
+     */
+    public String startSignUp(String signUpToken, List<AgreementChoice> choices) {
+        requireSignUpAvailable();
+        PendingSignUp pending = signUpToken == null || signUpToken.isBlank()
+                ? PendingSignUp.self()
+                : tokenFactory.readPendingToken(signUpToken);
         if (pending.isIdentityVerified()) {
-            identityVerificationService.requireUsable(
-                    pending.identityVerificationId(), IdentityPurpose.SIGNUP);
-        } else if (identityVerificationService.isAvailable() || !pending.isSocial()) {
-            throw new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID,
-                    "본인확인을 먼저 마쳐야 합니다.");
+            // 본인확인까지 끝난 토큰으로 약관을 다시 받으면 흐름이 꼬인다. 처음부터.
+            throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "이미 본인확인을 마친 토큰");
         }
-        if (pending.emailVerificationId() != null) {
-            emailVerificationService.requireVerified(pending.emailVerificationId());
+        Map<AgreementType, Boolean> agreements = normalizeChoices(choices);
+        requireAllMandatoryAgreed(agreements);
+        return tokenFactory.issuePendingToken(pending.withAgreements(agreements));
+    }
+
+    // =================================================================
+    // 가입 2 — 본인확인
+    // =================================================================
+
+    /**
+     * 본인확인 창을 여는 폼.
+     *
+     * <p>창을 열 때마다 새 거래번호를 만들어 진행 토큰에 넣는다. 돌아온 결과를 공급자에게
+     * 되물었을 때 그 거래번호가 나와야 이 요청의 결과다.
+     */
+    public IdentityStartResponse startIdentityVerification(String signUpToken) {
+        PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
+        if (!pending.hasAgreements()) {
+            throw new BusinessException(ErrorCode.AGREEMENT_REQUIRED, "약관 동의 전 본인확인 시도");
+        }
+        if (pending.isIdentityVerified()) {
+            throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "이미 본인확인을 마친 토큰");
+        }
+        String requestId = tokenFactory.newIdentityRequestId();
+        IdentityStartForm form = identityVerificationService.start(requestId);
+        return new IdentityStartResponse(IdentityStartResponse.Form.from(form),
+                tokenFactory.issuePendingToken(pending.withIdentityRequest(requestId)));
+    }
+
+    /**
+     * 본인확인 공급자가 결과를 보낸 뒤 사용자를 보낼 화면 주소.
+     *
+     * <p>공급자는 결과를 브라우저 폼 POST 로 백엔드에 보낸다. 받은 값을 짧게 만료되는 토큰으로
+     * 묶어 화면 주소에 붙인다 — 화면은 그 토큰을 진행 토큰과 함께 {@code /identity/complete} 에 낸다.
+     * 여기서 신원을 조회하지 않는 이유는, 이 시점에는 <b>어느 흐름(가입·비밀번호 찾기)의 결과인지
+     * 모르기</b> 때문이다. 그것은 화면이 들고 있는 진행 토큰이 안다.
+     */
+    public String identityReturnRedirect(Map<String, String> returned) {
+        String token = tokenFactory.issueIdentityReturnToken(returned, IDENTITY_RETURN_KEYS);
+        String page = appProperties.identity().returnPageUrl();
+        return page + (page.contains("?") ? "&" : "?")
+                + "providerToken=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 본인확인 결과를 받아 다음 갈 곳을 정한다.
+     *
+     * <p>여기가 <b>기존 회원 판정 지점</b>이다. 비밀번호·이메일까지 다 받은 뒤에 "이미 회원이시네요"는
+     * 나쁜 흐름이라, DI 를 손에 넣는 순간 판정한다.
+     */
+    public IdentityResultResponse completeIdentityVerification(String signUpToken, String providerToken,
+                                                               RequestInfo requestInfo,
+                                                               HttpServletResponse response) {
+        PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
+        if (!pending.hasAgreements()) {
+            throw new BusinessException(ErrorCode.AGREEMENT_REQUIRED, "약관 동의 전 본인확인 결과 제출");
         }
 
-        Map<AgreementType, Boolean> choices = normalizeChoices(request.agreements());
-        requireAllMandatoryAgreed(choices);
-        return accountService.createAccount(
-                pending.toMaterial(request.password()), choices, requestInfo, response);
+        // 외부 호출이 먼저다. 트랜잭션 안에서 부르면 공급자가 느릴 때 커넥션을 붙잡는다.
+        IdentityVerification verification = identityVerificationService.verifyAndRecord(
+                pending.identityRequestId(),
+                tokenFactory.readIdentityReturnToken(providerToken),
+                IdentityPurpose.SIGNUP,
+                requestInfo);
+
+        Optional<UserAccountService.ExistingAccount> existing =
+                accountService.findExistingAndRefresh(verification.getId());
+
+        if (existing.isPresent()) {
+            UserAccountService.ExistingAccount account = existing.get();
+            if (pending.isSocial()) {
+                // 이 소셜 계정을 기존 계정에 연결할지 묻는다. 묻지 않고 붙이지 않는다.
+                return IdentityResultResponse.confirmLink(
+                        tokenFactory.issuePendingToken(pending.withIdentity(verification.getId())),
+                        account.maskedEmail(), account.maskedPhone());
+            }
+            // 이미 본인확인을 통과했으므로 비밀번호 찾기를 따로 거치지 않고 바로 다시 정할 수 있다.
+            log.info("[AUTH] 자체 가입 시도 — 이미 가입된 신원. userId={}", account.userId());
+            return IdentityResultResponse.existing(
+                    tokenFactory.issueResetToken(account.userId(), verification.getId()),
+                    account.maskedEmail(), account.maskedPhone(), account.hasPassword());
+        }
+
+        if (pending.isSocial()) {
+            // 소셜 가입은 여기서 끝난다. 이메일은 제공자가 준 값을 쓴다.
+            SignUpMaterial material = new SignUpMaterial(
+                    verification.getId(), pending.social(), null, pending.social().email(), null);
+            return IdentityResultResponse.signedIn(
+                    accountService.createAccount(material, pending.agreements(), requestInfo, response));
+        }
+
+        return IdentityResultResponse.setPassword(
+                tokenFactory.issuePendingToken(pending.withIdentity(verification.getId())),
+                verification.getName(),
+                PhoneNumber.normalizeOrNull(verification.getPhone()));
+    }
+
+    /** 소셜 가입 중 기존 계정이 있을 때 — 사용자가 [연결하기]를 눌렀다. */
+    public SignInResponse linkSocial(String signUpToken, HttpServletResponse response) {
+        PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
+        if (!pending.isSocial() || !pending.isIdentityVerified()) {
+            throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "연결할 소셜·본인확인 없음");
+        }
+        return accountService.linkSocial(pending.identityVerificationId(), pending.social(), response);
+    }
+
+    // =================================================================
+    // 가입 3 — 비밀번호 · 이메일 (자체 가입)
+    // =================================================================
+
+    /**
+     * 가입 중 선택 이메일로 인증번호를 보낸다.
+     *
+     * <p>본인확인을 마친 진행 토큰이 있어야 한다 — 아무나 우리 도메인으로 메일을 보내게 하지 않는다.
+     * 이미 쓰이는 주소인지는 여기서 알려주지 않고, 가입을 마칠 때 판정한다.
+     */
+    public void sendSignUpEmailCode(String signUpToken, String email, RequestInfo requestInfo) {
+        PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
+        if (pending.isSocial() || !pending.isIdentityVerified()) {
+            throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "이메일 인증 단계가 아님");
+        }
+        codeService.issue(VerificationChannel.EMAIL, normalizeEmail(email),
+                VerificationPurpose.EMAIL_VERIFY, requestInfo, true);
+    }
+
+    /**
+     * 자체 가입 완료.
+     *
+     * <p>인증번호 대조({@code confirm})는 자기 트랜잭션에서 시도 횟수를 커밋한다. 그 뒤 가입
+     * 트랜잭션에서 그 번호를 소진한다.
+     */
+    public SignInResponse completeSignUp(SignUpCompleteRequest request, RequestInfo requestInfo,
+                                         HttpServletResponse response) {
+        PendingSignUp pending = tokenFactory.readPendingToken(request.signUpToken());
+        if (pending.isSocial() || !pending.isIdentityVerified() || !pending.hasAgreements()) {
+            throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "가입 완료 단계가 아님");
+        }
+
+        String email = request.email() == null || request.email().isBlank()
+                ? null : normalizeEmail(request.email());
+        Long emailCodeId = null;
+        if (email != null) {
+            String code = request.emailCode();
+            if (code == null || code.isBlank()) {
+                throw new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID, "이메일 인증번호 없음");
+            }
+            emailCodeId = codeService.confirm(VerificationChannel.EMAIL, email, code,
+                            VerificationPurpose.EMAIL_VERIFY)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
+        }
+
+        SignUpMaterial material = new SignUpMaterial(
+                pending.identityVerificationId(), null, request.password(), email, emailCodeId);
+        return accountService.createAccount(material, pending.agreements(), requestInfo, response);
+    }
+
+    // =================================================================
+    // 휴대폰 로그인
+    // =================================================================
+
+    /**
+     * 휴대폰번호 + 비밀번호.
+     *
+     * <p>실패 사유를 세분해 알려주지 않는다 — "번호가 없다"와 "비밀번호가 틀렸다"를 구분해 주면
+     * 가입 여부를 확인하는 데 쓰인다. 형식이 틀린 번호도 "없는 번호"와 같은 응답이다. 다만
+     * <b>비밀번호가 없는 계정</b>과 <b>잠긴 계정</b>은 알려준다 — 다음에 할 일이 다르다.
+     */
+    public SignInResponse signInWithPassword(String rawPhone, String rawPassword,
+                                             HttpServletResponse response) {
+        UserLoginAttemptService.Outcome outcome =
+                loginAttemptService.attempt(PhoneNumber.normalizeOrNull(rawPhone), rawPassword);
+
+        switch (outcome.result()) {
+            case SUCCESS -> { }
+            case NO_PASSWORD -> throw new BusinessException(ErrorCode.PASSWORD_NOT_SET);
+            case LOCKED -> throw new BusinessException(ErrorCode.USER_ACCOUNT_LOCKED);
+            case NOT_ALLOWED -> outcome.user().requireSignInAllowed();
+            case BAD_CREDENTIALS -> throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
+        return accountService.completeSignIn(outcome.user().getId(), response);
+    }
+
+    /**
+     * 인증번호 로그인 — 문자 보내기.
+     *
+     * <p><b>가입 여부를 알려주지 않는다.</b> 회원이든 아니든 같은 응답이다. 회원이 아니면 문자는
+     * 보내지 않되 행은 남긴다 — 행을 남기지 않으면 쿨다운이 달라져 두 번째 요청에서 응답이 갈린다.
+     */
+    public void sendLoginCode(String rawPhone, RequestInfo requestInfo) {
+        if (!codeService.isSmsAvailable()) {
+            throw new BusinessException(ErrorCode.SMS_UNAVAILABLE);
+        }
+        String phone = PhoneNumber.normalize(rawPhone);
+        boolean member = userRepository.findByPhone(phone)
+                .filter(user -> user.getStatus().canSignIn())
+                .isPresent();
+        codeService.issue(VerificationChannel.SMS, phone, VerificationPurpose.LOGIN, requestInfo, member);
+    }
+
+    /** 인증번호 로그인 — 번호 확인. 성공 즉시 그 번호를 소진한다. */
+    public SignInResponse signInWithCode(String rawPhone, String code, HttpServletResponse response) {
+        String phone = PhoneNumber.normalizeOrNull(rawPhone);
+        if (phone == null) {
+            throw new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID);
+        }
+        Long codeId = codeService.confirm(VerificationChannel.SMS, phone, code, VerificationPurpose.LOGIN)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
+        Long userId = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID))
+                .getId();
+        codeService.consume(codeId);
+        return accountService.completeSignIn(userId, response);
+    }
+
+    // =================================================================
+    // 비밀번호 찾기 — 본인확인 → 새 비밀번호
+    // =================================================================
+
+    /**
+     * 비밀번호 찾기 본인확인 창을 여는 폼.
+     *
+     * <p>이메일 인증번호로 하지 않는다 — 이메일은 선택 항목이라 없는 회원이 있다. 본인확인은
+     * 모든 회원이 가입 때 거쳤으므로 누구나 할 수 있다.
+     */
+    public IdentityStartResponse startPasswordReset() {
+        String requestId = tokenFactory.newIdentityRequestId();
+        IdentityStartForm form = identityVerificationService.start(requestId);
+        return new IdentityStartResponse(IdentityStartResponse.Form.from(form),
+                tokenFactory.issueResetFlowToken(requestId));
+    }
+
+    /**
+     * 본인확인 결과로 계정을 찾아 재설정 권한(5분)을 준다.
+     *
+     * <p>계정 선택 화면이 없다 — 같은 DI 로 활성 계정은 하나뿐이다({@code ux_users_di_active}).
+     * 번호를 바꾼 회원이면 여기서 로그인 번호도 새 번호로 맞춰진다.
+     */
+    public PasswordResetGrantResponse completePasswordResetIdentity(String flowToken, String providerToken,
+                                                                    RequestInfo requestInfo) {
+        String requestId = tokenFactory.readResetFlowToken(flowToken);
+        IdentityVerification verification = identityVerificationService.verifyAndRecord(
+                requestId,
+                tokenFactory.readIdentityReturnToken(providerToken),
+                IdentityPurpose.PASSWORD_RESET,
+                requestInfo);
+
+        UserAccountService.ExistingAccount account = accountService
+                .findExistingAndRefresh(verification.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.IDENTITY_NOT_REGISTERED));
+
+        return new PasswordResetGrantResponse(
+                tokenFactory.issueResetToken(account.userId(), verification.getId()),
+                account.maskedEmail(), account.maskedPhone());
+    }
+
+    public void resetPassword(String resetToken, String newPassword) {
+        OAuthTokenFactory.ResetGrant grant = tokenFactory.readResetToken(resetToken);
+        accountService.resetPassword(grant.userId(), grant.identityVerificationId(), newPassword);
+    }
+
+    // =================================================================
+    // 세션 유지
+    // =================================================================
+
+    /** 쿠키의 Refresh 토큰으로 Access 토큰을 다시 발급한다. Refresh 도 함께 회전한다. */
+    public SignInResponse refresh(String refreshToken, HttpServletResponse response) {
+        Long userId = refreshTokenService.rotate(refreshToken, response);
+        return accountService.describeSession(userId, jwtProvider.issueAccessToken(userId));
+    }
+
+    public void logout(String refreshToken, HttpServletResponse response) {
+        refreshTokenService.revoke(refreshToken, response);
+    }
+
+    // =================================================================
+    // 내부
+    // =================================================================
+
+    /** 본인확인 없이는 가입이 성립하지 않는다. 공급자가 없으면 가입이 닫힌다. */
+    private void requireSignUpAvailable() {
+        if (!identityVerificationService.isAvailable()) {
+            throw new BusinessException(ErrorCode.SIGNUP_UNAVAILABLE);
+        }
     }
 
     /**
      * 중복 선택을 정리한다. 같은 약관이 두 번 오면 <b>거부가 이긴다</b> —
      * 실수로 두 번 담겼을 때 동의로 처리하는 쪽이 훨씬 위험하다.
      */
-    private Map<AgreementType, Boolean> normalizeChoices(List<SignUpRequest.AgreementChoice> choices) {
+    private Map<AgreementType, Boolean> normalizeChoices(List<AgreementChoice> choices) {
         Map<AgreementType, Boolean> map = new EnumMap<>(AgreementType.class);
-        for (SignUpRequest.AgreementChoice choice : choices) {
+        for (AgreementChoice choice : choices) {
             map.merge(choice.type(), choice.agreed(), (a, b) -> a && b);
         }
         return map;
@@ -231,201 +493,8 @@ public class UserAuthService {
         throw new BusinessException(ErrorCode.AGREEMENT_REQUIRED, "필수 약관 미동의: " + missing, errors);
     }
 
-    // =================================================================
-    // 자체 가입 — 이메일 인증 → 본인확인 → 약관
-    // =================================================================
-
-    /**
-     * 이메일로 인증번호를 보낸다.
-     *
-     * <p>이미 가입된 주소인지 여기서 알려주지 않는다. 알려주면 <b>회원 명단을 훑는 도구</b>가
-     * 된다 — 아무 주소나 넣어 응답이 다른지 보면 된다. 중복 판정은 가입을 마치는 시점에 한다.
-     */
-    public void sendEmailCode(String email, RequestInfo requestInfo) {
-        requireEmailSignUpAvailable();
-        emailVerificationService.issue(email, EmailVerificationPurpose.SIGNUP, requestInfo);
-    }
-
-    /**
-     * 자체 가입은 본인확인 없이 성립하지 않는다.
-     *
-     * <p>이름·생년월일·휴대폰이 전부 본인확인에서만 온다. 그것 없이 계정을 만들면
-     * <b>아무것도 확인되지 않은 이메일 계정</b>이 생기고, 그건 소셜 계정보다도 약하다.
-     * 공급자 계약(TODO E-4) 전까지는 소셜 가입만 연다.
-     */
-    private void requireEmailSignUpAvailable() {
-        if (!identityVerificationService.isAvailable()) {
-            throw new BusinessException(ErrorCode.IDENTITY_PROVIDER_UNAVAILABLE,
-                    "이메일 회원가입은 준비 중입니다. 소셜 계정으로 가입해 주세요.");
-        }
-    }
-
-    /**
-     * 인증번호를 확인하고 다음 단계로 넘어갈 토큰을 준다.
-     *
-     * <p>{@code confirm} 이 예외 대신 boolean 을 돌려주는 이유는 시도 횟수 때문이다 —
-     * 트랜잭션 안에서 예외를 던지면 증가한 횟수가 롤백되어 제한이 걸리지 않는다.
-     */
-    public String confirmEmailCode(String email, String code) {
-        if (!emailVerificationService.confirm(email, code, EmailVerificationPurpose.SIGNUP)) {
-            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID);
-        }
-        var verification = emailVerificationService
-                .findLatestVerified(email, EmailVerificationPurpose.SIGNUP)
-                .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID));
-
-        PendingSignUp pending = new PendingSignUp(null, email, verification.getId(), null);
-        return tokenFactory.issuePendingToken(pending);
-    }
-
-    // =================================================================
-    // 본인확인 (자체·소셜 공통)
-    // =================================================================
-
-    /**
-     * 본인확인 창 주소.
-     *
-     * <p>{@code requestId} 로 가입 토큰을 그대로 쓴다. 별도 식별자를 만들어 서버에 보관하면
-     * 그 보관소를 또 관리해야 하는데, 토큰 자체가 이미 서명되어 있고 만료도 있다.
-     */
-    public IdentityStartResponse startIdentityVerification(String signUpToken, String returnUrl) {
-        // 토큰이 유효한지 먼저 본다. 아니면 인증창까지 갔다가 돌아와서야 실패한다.
-        tokenFactory.readPendingToken(signUpToken);
-        requireAllowedReturnUrl(returnUrl);
-        return new IdentityStartResponse(
-                identityVerificationService.startUrl(signUpToken, returnUrl), signUpToken);
-    }
-
-    /**
-     * 복귀 주소를 우리 사이트로 제한한다.
-     *
-     * <p>거르지 않으면 <b>공개 리다이렉트</b>가 된다 — 공격자가 우리 도메인의 링크를
-     * 보내 놓고 본인확인 뒤에 자기 사이트로 보낼 수 있고, 그 주소에는 가입 토큰이
-     * 쿼리로 붙어 있다. 우리 도메인에서 출발했으니 사용자는 의심하지 않는다.
-     *
-     * <p>허용 목록은 CORS 와 같은 값을 쓴다. 브라우저가 우리 API 를 부를 수 있는 출처와
-     * 사용자를 돌려보낼 수 있는 출처가 다를 이유가 없고, 목록을 둘로 두면 한쪽만
-     * 고치는 사고가 난다.
-     */
-    private void requireAllowedReturnUrl(String returnUrl) {
-        boolean allowed = appProperties.cors().allowedOrigins().stream()
-                .anyMatch(origin -> returnUrl.equals(origin) || returnUrl.startsWith(origin + "/"));
-        if (!allowed) {
-            log.warn("[AUTH] 허용되지 않은 복귀 주소: {}", returnUrl);
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "허용되지 않은 복귀 주소입니다.");
-        }
-    }
-
-    /**
-     * 본인확인 결과를 받아 다음 갈 곳을 정한다.
-     *
-     * <p>여기가 <b>계정 병합이 일어나는 지점</b>이다. 약관까지 다 받은 뒤에 "이미 회원이시네요"라고
-     * 하는 것은 나쁜 흐름이라, DI 를 손에 넣는 순간 판정한다.
-     *
-     * <ul>
-     *   <li>같은 DI 로 이미 가입 → 로그인 수단만 붙이고 그 계정으로 들여보낸다
-     *   <li>처음 보는 DI → 약관 화면으로 보낼 토큰을 준다
-     * </ul>
-     */
-    public SignInResponse completeIdentityVerification(String signUpToken, String providerToken,
-                                                       String rawPassword, RequestInfo requestInfo,
-                                                       HttpServletResponse response) {
-        PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
-
-        // 외부 호출이 먼저다. 트랜잭션 안에서 부르면 공급자가 느릴 때 커넥션을 붙잡는다.
-        var verification = identityVerificationService.verifyAndRecord(
-                signUpToken, providerToken, IdentityPurpose.SIGNUP, requestInfo);
-
-        Optional<SignInResponse> merged = accountService.mergeIfExisting(
-                verification.getId(), pending.social(), rawPassword, response);
-        if (merged.isPresent()) {
-            return merged.get();
-        }
-
-        PendingSignUp next = pending.withIdentity(verification.getId());
-        return SignInResponse.signUpRequired(
-                tokenFactory.issuePendingToken(next),
-                agreementCatalog.all(),
-                verification.getName(),
-                next.email());
-    }
-
-    // =================================================================
-    // 이메일 로그인
-    // =================================================================
-
-    /**
-     * 비밀번호 로그인.
-     *
-     * <p>실패 사유를 사용자에게 세분해 알려주지 않는다 — "이메일이 없다"와 "비밀번호가
-     * 틀렸다"를 구분해 주면 가입 여부를 확인하는 데 쓰인다. 다만 <b>비밀번호가 없는
-     * 계정</b>과 <b>잠긴 계정</b>은 알려준다. 그 둘은 사용자가 다음에 할 일이 다르고,
-     * 알려주지 않으면 맞는 비밀번호를 계속 넣어보게 된다.
-     */
-    public SignInResponse signInWithPassword(String email, String rawPassword,
-                                             HttpServletResponse response) {
-        UserLoginAttemptService.Outcome outcome = loginAttemptService.attempt(email, rawPassword);
-
-        switch (outcome.result()) {
-            case SUCCESS -> { }
-            case NO_PASSWORD -> throw new BusinessException(ErrorCode.PASSWORD_NOT_SET);
-            case LOCKED -> throw new BusinessException(ErrorCode.USER_ACCOUNT_LOCKED);
-            case NOT_ALLOWED -> outcome.user().requireSignInAllowed();
-            case BAD_CREDENTIALS -> throw new BusinessException(ErrorCode.LOGIN_FAILED);
-        }
-        return accountService.signInWithPassword(outcome.user().getId(), response);
-    }
-
-    // =================================================================
-    // 비밀번호 재설정
-    // =================================================================
-
-    /**
-     * 재설정 인증번호를 보낸다.
-     *
-     * <p><b>가입 여부를 알려주지 않는다.</b> 회원이든 아니든 같은 응답을 준다 —
-     * 알려주면 아무 주소나 넣어 회원 명단을 훑을 수 있다.
-     *
-     * <p>회원이 아니어도 인증 행을 남기는 이유는 <b>재발송 쿨다운을 같게 만들기</b>
-     * 위해서다. 행을 남기지 않으면 두 번 연속 요청했을 때 회원이면 429, 아니면 204 가
-     * 되어 응답으로 구분된다. 메일만 보내지 않는다.
-     */
-    public void requestPasswordReset(String email, RequestInfo requestInfo) {
-        boolean isMember = userRepository.findByEmail(email).isPresent();
-        emailVerificationService.issue(
-                email, EmailVerificationPurpose.PASSWORD_RESET, requestInfo, isMember);
-    }
-
-    /**
-     * 인증번호를 확인하고 비밀번호를 바꾼다.
-     *
-     * <p>여기서도 회원이 아닌 경우와 번호가 틀린 경우를 같은 오류로 돌려준다.
-     */
-    public void confirmPasswordReset(String email, String code, String newPassword) {
-        if (!emailVerificationService.confirm(email, code, EmailVerificationPurpose.PASSWORD_RESET)) {
-            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID);
-        }
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_VERIFICATION_INVALID));
-        user.requireSignInAllowed();
-
-        accountService.resetPassword(user.getId(), newPassword);
-        emailVerificationService.findLatestVerified(email, EmailVerificationPurpose.PASSWORD_RESET)
-                .ifPresent(v -> emailVerificationService.consume(v.getId()));
-    }
-
-    // =================================================================
-    // 세션 유지
-    // =================================================================
-
-    /** 쿠키의 Refresh 토큰으로 Access 토큰을 다시 발급한다. Refresh 도 함께 회전한다. */
-    public SignInResponse refresh(String refreshToken, HttpServletResponse response) {
-        Long userId = refreshTokenService.rotate(refreshToken, response);
-        return accountService.describeSession(userId, jwtProvider.issueAccessToken(userId));
-    }
-
-    public void logout(String refreshToken, HttpServletResponse response) {
-        refreshTokenService.revoke(refreshToken, response);
+    /** 소문자로 — 대소문자만 다른 주소로 쿨다운을 우회하거나 두 계정을 만들 수 없게 한다. */
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }
