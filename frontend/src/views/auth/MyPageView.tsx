@@ -372,7 +372,9 @@ function SocialPanel() {
           <p className={styles.loading}>불러오는 중…</p>
         ) : (
           <>
-            {accounts.length === 0 && <p className={styles.loading}>연결된 계정이 없습니다.</p>}
+            {accounts.length === 0 && linkable.length === 0 && (
+              <p className={styles.loading}>연결된 계정이 없습니다.</p>
+            )}
             {accounts.map((account) => (
               <div key={account.provider} className={styles.socialRow}>
                 <div>
