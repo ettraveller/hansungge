@@ -184,6 +184,21 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
-        return source;
+        return request -> IDENTITY_RETURN_PATH.equals(request.getRequestURI())
+                ? null
+                : source.getCorsConfiguration(request);
     }
+
+    /**
+     * 본인확인 결과 수신 주소 — CORS 검사에서 뺀다.
+     *
+     * <p>본인확인기관(KG이니시스) 화면이 이 주소로 <b>페이지째 폼 POST</b> 한다. 브라우저가
+     * {@code Origin: https://kssa.inicis.com} 을 붙이는데, 우리 허용 목록에 없으니 CORS 필터가
+     * "Invalid CORS request" 로 막아 인증을 마쳐도 가입이 안 된다. 목(MOCK)은 우리 화면이 스스로
+     * POST 해서 이 문제가 드러나지 않았다 (2026-09-21 테스트 MID 로 발견).
+     *
+     * <p>검사를 빼도 안전하다. 이 주소는 받은 값을 짧게 서명해 화면으로 넘길 뿐이고, 그 값은 믿지 않는다 —
+     * 결과는 서버가 본인확인기관에 직접 조회하고 우리가 발급한 거래번호와 대조한다.
+     */
+    private static final String IDENTITY_RETURN_PATH = "/api/v1/auth/identity/return";
 }

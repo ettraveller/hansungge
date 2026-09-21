@@ -600,8 +600,15 @@ IDENTITY_DI_CODE=                 # 이니시스가 DI 사이트코드를 안내
 응답의 SEED-CBC 복호화는 `InicisSeedCipher`(BouncyCastle) — KISA 공식 코드로 만든 암호문으로 호환성 테스트가 있다.
 
 - [ ] **계약 시 DI 제공 여부 확인 필수.** 같은 사람 판정이 DI 에 걸려 있다 (DI 는 서비스 03 에서만 온다)
-- [ ] 계약 전 연동 확인 — 공식 샘플의 테스트 MID `INIiasTest` + 샘플의 테스트 apiKey 를 **로컬 `backend/.env` 에만** 넣고
-      `IDENTITY_PROVIDER=INICIS` 로 기동해 테스트 인증창 → 가입까지 한 바퀴. 테스트 MID 가 03 을 지원하는지도 여기서 확인된다
+- [x] 계약 전 연동 확인 (2026-09-21) — 공식 샘플의 테스트 MID `INIiasTest` + 샘플의 테스트 apiKey 를 **로컬 `backend/.env` 에만** 넣고
+      `IDENTITY_PROVIDER=INICIS` 로 기동:
+  - ✅ 우리 요청(authHash·서비스 코드 03)을 이니시스가 받아 본인확인 창이 열린다. 테스트 MID 에 뜨는 인증 수단:
+    금융인증서·신한·카카오뱅크·우리WON·KB국민·토스 (**통신사 PASS 는 없다** — 계약 때 PASS 포함 여부 확인)
+  - ✅ 창에서 「취소」 → 우리 결과 수신 주소 → 가입 화면 「본인확인을 마치지 못했습니다」
+  - 🐞 **발견·수정: 결과 수신 주소가 CORS 에 막혔다.** 이니시스 화면이 `Origin: https://kssa.inicis.com` 으로 폼 POST 하는데
+    허용 목록에 없어 "Invalid CORS request". 목은 우리 화면이 POST 해서 드러나지 않았다 → 그 주소만 CORS 검사에서 뺐다(`SecurityConfig`)
+- [ ] **실제 인증 완료 한 바퀴** — 본인 명의 인증서(토스·카카오뱅크 등)로 끝까지 해서 DI 가 오는지, 결과조회·SEED 복호화가
+      실제 응답에서 맞는지. 사람이 휴대폰으로 해야 한다
 - [ ] 계약 후 운영 `/etc/hanseongge/api.env` 에 위 값 입력 → 재기동 → 운영 가입 열림
 
 ⚠️ 지키고 있는 것 (바꿀 때 유지)
