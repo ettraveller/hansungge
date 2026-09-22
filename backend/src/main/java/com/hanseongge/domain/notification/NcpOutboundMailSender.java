@@ -80,7 +80,7 @@ public class NcpOutboundMailSender implements MailSender {
                             "senderAddress", config.fromAddress(),
                             "senderName", config.fromName(),
                             "title", subject,
-                            "body", body,
+                            "body", toHtml(body),
                             // 받는 사람마다 따로 보낸다. false 면 수신자 목록이 서로에게 보인다.
                             "individual", true,
                             "recipients", List.of(Map.of("address", to, "type", "R"))))
@@ -91,6 +91,23 @@ public class NcpOutboundMailSender implements MailSender {
             log.warn("[MAIL] 발송 실패. to={}", mask(to), e);
             throw new MailSendException("메일 발송 실패", e);
         }
+    }
+
+    /**
+     * 일반 텍스트 본문을 HTML 로 옮긴다.
+     *
+     * <p>NCP 메일은 본문을 HTML 로 보여 준다. 줄바꿈만 있는 텍스트를 그대로 보내면 메일함에서 모든 줄이
+     * 한 줄로 붙는다. 꺾쇠·앰퍼샌드는 이스케이프한다 — 본문에 사용자 입력이 섞여도 태그가 되지 않게.
+     */
+    static String toHtml(String text) {
+        String escaped = text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+        return "<div style=\"font-family:sans-serif;font-size:14px;line-height:1.7;color:#222\">"
+                + escaped.strip().replace("\r\n", "\n").replace("\n", "<br>\n")
+                + "</div>";
     }
 
     private String sign(String method, String url, String timestamp) {

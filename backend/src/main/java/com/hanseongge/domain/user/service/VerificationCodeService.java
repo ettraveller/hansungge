@@ -155,7 +155,8 @@ public class VerificationCodeService {
 
     private void sendMail(String email, VerificationPurpose purpose, String code) {
         try {
-            mailSender.send(email, "[한성금거래소] 이메일 인증번호", """
+            // 제목에 "[한성금거래소]" 를 넣지 않는다 — 발신자명이 이미 "한성금거래소" 라 메일함에 두 번 보인다.
+            mailSender.send(email, "이메일 인증번호 안내", """
                     아래 인증번호를 입력해 주세요.
 
                         %s
