@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { IdentityCallbackView } from '@/views/auth/IdentityCallbackView';
 
 export const metadata: Metadata = {
-  title: '본인확인',
+  title: '본인인증',
   robots: { index: false, follow: false },
 };
 

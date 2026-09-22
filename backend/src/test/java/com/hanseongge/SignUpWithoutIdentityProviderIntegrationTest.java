@@ -30,15 +30,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 본인확인 공급자가 <b>없는</b> 기간 — 이니시스 계약 전 운영 서버의 모습이다.
+ * 본인인증 공급자가 <b>없는</b> 기간 — 이니시스 계약 전 운영 서버의 모습이다.
  *
  * <p>{@code StubIdentityConfig} 를 <b>일부러 넣지 않는다.</b> {@code IDENTITY_PROVIDER} 가 비어
  * 있으면 어떤 공급자도 빈이 되지 않는다.
  *
  * <h2>무엇이 닫히고 무엇이 열려 있어야 하나</h2>
- * 모든 가입은 본인확인을 거친다. 공급자가 없으면 <b>가입이 닫힌다</b> — 자체·소셜 모두.
- * 대신 <b>기존 회원의 로그인은 그대로</b> 돼야 한다. 공급자 설정 실수 하나로 이미 가입한
- * 사람들이 통째로 못 들어오면, 가입이 막히는 것보다 훨씬 나쁘다.
+ * 자체(휴대폰) 가입과 비밀번호 찾기는 간편인증을 거친다 — 공급자가 없으면 <b>그 둘만 닫힌다.</b>
+ * 소셜 가입은 본인인증이 없으므로(2026-09-21) 그대로 열려 있다. <b>기존 회원의 로그인도 그대로</b>
+ * 돼야 한다. 공급자 설정 실수 하나로 이미 가입한 사람들이 통째로 못 들어오면, 가입이 막히는 것보다
+ * 훨씬 나쁘다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -75,7 +76,7 @@ class SignUpWithoutIdentityProviderIntegrationTest extends EmbeddedPostgresSuppo
     }
 
     @Test
-    @DisplayName("화면이 가입 링크를 그리지 않도록 서버가 알려준다")
+    @DisplayName("화면이 휴대폰 가입 링크를 그리지 않도록 서버가 알려준다")
     void screenIsToldSignUpIsClosed() throws Exception {
         mockMvc.perform(get("/api/v1/auth/providers"))
                 .andExpect(status().isOk())
@@ -95,26 +96,35 @@ class SignUpWithoutIdentityProviderIntegrationTest extends EmbeddedPostgresSuppo
     }
 
     @Test
-    @DisplayName("처음 보는 소셜 계정은 가입으로 넘어가지 않는다 — 본인확인 없이 회원을 만들지 않는다")
-    void newSocialAccountIsNotSignedUp() throws Exception {
+    @DisplayName("소셜 가입은 본인인증 없이 된다 — 공급자가 없어도 약관 동의로 끝난다")
+    void socialSignUpStillWorks() throws Exception {
         google.willReturn("google-1", "buyer@test.local", "김철수");
 
-        mockMvc.perform(post("/api/v1/auth/oauth/GOOGLE/callback")
+        JsonNode callback = read(mockMvc.perform(post("/api/v1/auth/oauth/GOOGLE/callback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("code", "code-1", "state", authorizeState()))))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("SIGNUP_UNAVAILABLE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signUpRequired").value(true))
+                .andReturn());
 
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Integer.class)).isZero();
+        mockMvc.perform(post("/api/v1/auth/signup/social")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "signUpToken", callback.get("signUpToken").asText(),
+                                "agreements", SignUpFlow.allRequiredAgreed()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.identityVerified").value(false));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Integer.class)).isEqualTo(1);
     }
 
     @Test
     @DisplayName("이미 가입한 회원은 소셜로도, 휴대폰으로도 그대로 로그인된다")
     void existingMembersStillSignIn() throws Exception {
         var member = jdbc.queryForObject("""
-                INSERT INTO users (name, phone, birth_date, di, phone_verified_at, password_hash, status)
-                VALUES ('홍길동', '01012345678', '1990-01-01', 'DI-1', now(), ?, 'ACTIVE') RETURNING id
-                """, Long.class, passwordEncoder.encode(SignUpFlow.PASSWORD));
+                INSERT INTO users (name, phone, birth_date, identity_key, identity_verified_at, password_hash, status)
+                VALUES ('홍길동', '01012345678', '1990-01-01', ?, now(), ?, 'ACTIVE') RETURNING id
+                """, Long.class, UserTestFixtures.keyOf("CI-1"), passwordEncoder.encode(SignUpFlow.PASSWORD));
         jdbc.update("INSERT INTO social_accounts (user_id, provider, provider_user_id) VALUES (?, 'GOOGLE', 'google-1')",
                 member);
 
@@ -133,7 +143,7 @@ class SignUpWithoutIdentityProviderIntegrationTest extends EmbeddedPostgresSuppo
     }
 
     @Test
-    @DisplayName("비밀번호 찾기도 본인확인이 필요해 503 — 준비되지 않은 것이지 없는 것이 아니다")
+    @DisplayName("비밀번호 찾기도 간편인증이 필요해 503 — 준비되지 않은 것이지 없는 것이 아니다")
     void passwordResetNeedsProvider() throws Exception {
         mockMvc.perform(post("/api/v1/auth/password/reset/identity/start"))
                 .andExpect(status().isServiceUnavailable())

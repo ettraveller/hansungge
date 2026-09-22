@@ -51,21 +51,15 @@ public class IdentityVerification {
     @Column(name = "purpose", length = 20, nullable = false)
     private IdentityPurpose purpose;
 
-    @Column(name = "di", length = 88, nullable = false)
-    private String di;
+    /** 같은 사람 판정 키 = HMAC-SHA256(pepper, CI). CI 원본은 없다. */
+    @Column(name = "identity_key", length = 64, nullable = false)
+    private String identityKey;
 
     @Column(name = "name", length = 100, nullable = false)
     private String name;
 
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "gender", length = 10, nullable = false)
-    private Gender gender;
-
-    @Column(name = "foreigner", nullable = false)
-    private boolean foreigner;
 
     @Column(name = "phone", length = 30, nullable = false)
     private String phone;
@@ -94,11 +88,9 @@ public class IdentityVerification {
         this.provider = provider;
         this.providerTxId = providerTxId;
         this.purpose = purpose;
-        this.di = identity.di();
+        this.identityKey = identity.identityKey();
         this.name = identity.name();
         this.birthDate = identity.birthDate();
-        this.gender = identity.gender();
-        this.foreigner = identity.foreigner();
         this.phone = identity.phone();
         this.carrier = carrier;
         this.expiresAt = expiresAt;
@@ -114,7 +106,7 @@ public class IdentityVerification {
 
     /** 저장된 값으로 신원을 되돌린다. 가입 시점에 회원 정보를 채우는 데 쓴다. */
     public VerifiedIdentity toIdentity() {
-        return new VerifiedIdentity(di, name, birthDate, gender, foreigner, phone);
+        return new VerifiedIdentity(identityKey, name, birthDate, phone);
     }
 
     /**

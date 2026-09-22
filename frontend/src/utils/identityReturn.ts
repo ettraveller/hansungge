@@ -1,7 +1,7 @@
-import type { IdentityResult, IdentityStartForm, PasswordResetGrant } from '@/types/user';
+import type { IdentityResult, IdentityStartForm, PasswordResetGrant, User } from '@/types/user';
 
 /**
- * 본인확인 왕복.
+ * 본인인증(간편인증) 왕복.
  *
  * <p>본인확인은 <b>우리 화면을 떠났다가 돌아오는</b> 흐름이다. 이니시스 창 → 이니시스가
  * 결과를 백엔드 수신 주소로 POST → 백엔드가 {@code /auth/identity?providerToken=…} 로 보낸다.
@@ -20,16 +20,20 @@ const OUTCOME_KEY = 'hsg_identity_outcome';
 export interface PendingIdentity {
   /** 본인확인 시작 때 받은 진행 토큰. 결과 제출 때 그대로 보낸다 */
   token: string;
-  /** 'signup' = 가입(자체·소셜), 'reset' = 비밀번호 찾기 */
-  flow: 'signup' | 'reset';
+  /**
+   * 'signup' = 자체 가입, 'reset' = 비밀번호 찾기,
+   * 'verify' = 로그인한 회원의 본인인증(마이페이지 — 매입·정산계좌 앞, 소셜 회원의 번호 등록)
+   */
+  flow: 'signup' | 'reset' | 'verify';
   /** 끝난 뒤 보낼 곳 */
   next: string;
 }
 
-/** 결과를 받은 뒤 — 새로고침해도 같은 본인확인을 다시 제출하지 않도록 남겨 둔다. */
+/** 결과를 받은 뒤 — 새로고침해도 같은 본인인증을 다시 제출하지 않도록 남겨 둔다. */
 export type IdentityOutcome =
   | { flow: 'signup'; providerToken: string; next: string; result: IdentityResult }
-  | { flow: 'reset'; providerToken: string; next: string; grant: PasswordResetGrant };
+  | { flow: 'reset'; providerToken: string; next: string; grant: PasswordResetGrant }
+  | { flow: 'verify'; providerToken: string; next: string; user: User };
 
 function storage(): Storage | null {
   try {

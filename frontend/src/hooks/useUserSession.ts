@@ -128,15 +128,25 @@ export function useStartOAuth() {
 // 가입
 // =====================================================================
 
+/** 자체(휴대폰) 가입 시작 — 약관 동의. 다음은 간편인증이다. */
 export function useStartSignUp() {
   return useMutation({
+    mutationFn: (agreements: authApi.AgreementChoice[]) => authApi.startSignUp(agreements),
+  });
+}
+
+/** 소셜 가입 — 약관 동의로 끝나고 로그인된다. */
+export function useSignUpSocial() {
+  const apply = useApplySignIn();
+  return useMutation({
     mutationFn: ({
-      agreements,
       signUpToken,
+      agreements,
     }: {
+      signUpToken: string;
       agreements: authApi.AgreementChoice[];
-      signUpToken?: string;
-    }) => authApi.startSignUp(agreements, signUpToken),
+    }) => authApi.signUpSocial(signUpToken, agreements),
+    onSuccess: apply,
   });
 }
 
@@ -156,12 +166,12 @@ export function useCompleteSignUp() {
   return useMutation({ mutationFn: authApi.completeSignUp, onSuccess: apply });
 }
 
-export function useLinkSocialAfterIdentity() {
-  const apply = useApplySignIn();
-  return useMutation({
-    mutationFn: (signUpToken: string) => authApi.linkSocialAfterIdentity(signUpToken),
-    onSuccess: apply,
-  });
+// =====================================================================
+// 로그인한 회원의 본인인증
+// =====================================================================
+
+export function useStartMemberIdentity() {
+  return useMutation({ mutationFn: () => authApi.startMemberIdentity() });
 }
 
 // =====================================================================

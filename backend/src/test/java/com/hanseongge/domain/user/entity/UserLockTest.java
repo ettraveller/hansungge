@@ -15,7 +15,7 @@ class UserLockTest {
     private static final int MAX = 5;
 
     private User lockedUser() {
-        User user = UserTestFixtures.passwordUser(UserTestFixtures.identity("홍길동"), "$2a$12$hash");
+        User user = UserTestFixtures.passwordUser(UserTestFixtures.person("홍길동"), "$2a$12$hash");
         for (int i = 0; i < MAX; i++) {
             user.recordLoginFailure(MAX);
         }

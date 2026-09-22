@@ -1,7 +1,5 @@
 package com.hanseongge.domain.user.identity;
 
-import com.hanseongge.domain.user.entity.Gender;
-import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.global.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 개발용 본인확인 — 실제로 아무것도 확인하지 않는다.
+ * 개발용 본인인증 — 실제로 아무것도 확인하지 않는다.
  *
  * <h2>왜 필요한가</h2>
  * 본인확인은 계약이 끝나야 붙는데(TODO E-4), 가입 흐름 전체는 그 전에 만들고 검증해야
@@ -27,8 +25,8 @@ import java.util.UUID;
  * 조용히 도는 것보다 배포가 실패하는 편이 낫다.
  *
  * <h2>같은 사람을 돌려준다</h2>
- * {@code app.identity.mock-persona}(기본 1) 가 같으면 <b>같은 DI·같은 휴대폰</b>이다.
- * 그래야 "이미 가입한 사람이 다시 가입하면 기존 계정으로 안내" "소셜 계정 연결 확인"을
+ * {@code app.identity.mock-persona}(기본 1) 가 같으면 <b>같은 CI·같은 휴대폰</b>이다.
+ * 그래야 "이미 가입한 사람이 다시 가입하면 기존 계정으로 안내" "소셜 회원의 본인인증"을
  * 로컬에서 재현할 수 있다. 다른 사람으로 가입해 보려면 값을 바꿔 재기동한다
  * ({@code IDENTITY_MOCK_PERSONA=2}).
  */
@@ -46,7 +44,7 @@ public class MockIdentityVerificationProvider implements IdentityVerificationPro
             throw new IllegalStateException("""
                     운영(prod)에서 개발용 목 본인확인(IDENTITY_PROVIDER=MOCK)을 켤 수 없습니다.
                     목은 아무것도 확인하지 않아 누구나 아무 이름으로 가입할 수 있게 됩니다.
-                    계약 전이면 IDENTITY_PROVIDER 를 비워 두세요 — 가입만 닫히고 로그인은 됩니다.""");
+                    계약 전이면 IDENTITY_PROVIDER 를 비워 두세요 — 자체 가입만 닫히고 소셜 가입·로그인은 됩니다.""");
         }
         this.persona = appProperties.identity().mockPersona();
         log.warn("""
@@ -91,17 +89,16 @@ public class MockIdentityVerificationProvider implements IdentityVerificationPro
             throw new IdentityVerificationException("목 본인확인 거래번호 불일치");
         }
 
-        VerifiedIdentity identity = new VerifiedIdentity(
-                "MOCK-DI-PERSONA-" + persona,
+        log.info("[IDENTITY] 목 본인인증 통과. persona={} phone={}", persona, phone());
+        // 거래번호는 매번 새로 만든다 — 같은 거래번호 재사용은 ux_iv_tx 가 막는다.
+        // CI 는 persona 마다 고정 — 같은 persona 는 같은 사람이다. 실제 CI 모양(88자 Base64)은 흉내 내지 않는다.
+        return new IdentityVerificationResult(
+                "mock-tx-" + UUID.randomUUID(),
+                "MOCK-CI-PERSONA-" + persona,
                 "테스트회원" + persona,
                 LocalDate.of(1990, 1, 1),
-                Gender.MALE,
-                false,
-                phone());
-
-        log.info("[IDENTITY] 목 본인확인 통과. persona={} phone={}", persona, identity.phone());
-        // 거래번호는 매번 새로 만든다 — 같은 거래번호 재사용은 ux_iv_tx 가 막는다.
-        return new IdentityVerificationResult("mock-tx-" + UUID.randomUUID(), identity, "MOCK");
+                phone(),
+                "MOCK");
     }
 
     /**

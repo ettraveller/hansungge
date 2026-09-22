@@ -1,6 +1,5 @@
 package com.hanseongge.domain.user.dto;
 
-import com.hanseongge.domain.user.entity.Gender;
 import com.hanseongge.domain.user.entity.OAuthProviderType;
 import com.hanseongge.domain.user.entity.User;
 import com.hanseongge.domain.user.entity.UserStatus;
@@ -20,9 +19,9 @@ import java.util.List;
  * <p>대신 이 응답을 만드는 조회는 <b>감사로그에 남는다.</b> 개인정보를 열람할 수 있게
  * 하는 것과 아무도 모르게 열람하도록 두는 것은 다른 문제다.
  *
- * <h2>{@code di} 는 담지 않는다</h2>
- * 본인확인기관이 발급한 중복가입확인정보다. 관리자가 그 값을 보고 할 수 있는 일이 없고,
- * 새어 나가면 되돌릴 방법도 없다. "본인확인을 마쳤는가"만 있으면 충분하다.
+ * <h2>판정 키({@code identityKey})는 담지 않는다</h2>
+ * CI 를 해시한 같은 사람 판정 값이다. 관리자가 그 값을 보고 할 수 있는 일이 없고,
+ * 새어 나가면 되돌릴 방법도 없다. "본인인증을 마쳤는가"만 있으면 충분하다.
  *
  * <p>{@code passwordHash} 도 마찬가지다 — BCrypt 해시라 되돌릴 수는 없지만, 굳이
  * 내보낼 이유가 없는 값은 내보내지 않는다.
@@ -48,26 +47,20 @@ public record AdminMemberDetailResponse(
         @Schema(description = "상태 한글 표기", example = "정상")
         String statusLabel,
 
-        @Schema(description = "생년월일. 본인확인 응답으로만 채워진다")
+        @Schema(description = "생년월일. 본인인증 응답으로만 채워진다. 본인인증 전 소셜 회원은 null")
         LocalDate birthDate,
-
-        @Schema(description = "성별. 본인확인 응답으로만 채워진다", example = "MALE")
-        Gender gender,
-
-        @Schema(description = "외국인 여부", example = "false")
-        Boolean foreigner,
 
         @Schema(description = "비밀번호 로그인 가능 여부", example = "true")
         boolean hasPassword,
 
-        @Schema(description = "휴대폰 본인확인 완료 여부", example = "true")
+        @Schema(description = "본인인증(간편인증) 완료 여부. 소셜 가입자는 본인인증 전까지 false", example = "true")
         boolean identityVerified,
 
         @Schema(description = "이메일 인증 시각")
         OffsetDateTime emailVerifiedAt,
 
-        @Schema(description = "본인확인 시각")
-        OffsetDateTime phoneVerifiedAt,
+        @Schema(description = "마지막 본인인증 시각")
+        OffsetDateTime identityVerifiedAt,
 
         @Schema(description = "비밀번호 마지막 변경 시각")
         OffsetDateTime passwordChangedAt,
@@ -101,12 +94,10 @@ public record AdminMemberDetailResponse(
                 user.getStatus(),
                 user.getStatus().displayName(),
                 user.getBirthDate(),
-                user.getGender(),
-                user.getForeigner(),
                 user.hasPassword(),
                 user.isIdentityVerified(),
                 user.getEmailVerifiedAt(),
-                user.getPhoneVerifiedAt(),
+                user.getIdentityVerifiedAt(),
                 user.getPasswordChangedAt(),
                 user.getLoginFailCount(),
                 user.getLockedAt(),

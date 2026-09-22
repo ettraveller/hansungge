@@ -60,4 +60,11 @@ class InicisRequestGuardTest {
                 .hasSize(64)
                 .matches("^[0-9a-f]{64}$");
     }
+
+    @Test
+    @DisplayName("요청 주소는 서비스마다 다르다 — 간편인증 /auth, 본인확인 /id/auth (규격 \"통합인증 요청URL\")")
+    void 서비스별_요청주소() {
+        assertThat(InicisIdentityVerificationProvider.authUrl("01")).isEqualTo("https://sa.inicis.com/auth");
+        assertThat(InicisIdentityVerificationProvider.authUrl("03")).isEqualTo("https://sa.inicis.com/id/auth");
+    }
 }

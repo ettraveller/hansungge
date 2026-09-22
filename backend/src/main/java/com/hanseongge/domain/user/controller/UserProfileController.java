@@ -2,6 +2,8 @@ package com.hanseongge.domain.user.controller;
 
 import com.hanseongge.domain.user.dto.AgreementStatusResponse;
 import com.hanseongge.domain.user.dto.AgreementUpdateRequest;
+import com.hanseongge.domain.user.dto.IdentityCompleteRequest;
+import com.hanseongge.domain.user.dto.IdentityStartResponse;
 import com.hanseongge.domain.user.dto.OAuthCallbackRequest;
 import com.hanseongge.domain.user.dto.PasswordChangeRequest;
 import com.hanseongge.domain.user.dto.SocialAccountResponse;
@@ -51,9 +53,28 @@ public class UserProfileController {
         return ResponseEntity.ok(profileService.me(principal.id()));
     }
 
+    @Operation(summary = "본인인증 시작",
+            description = "로그인한 회원의 간편인증 — 매입 신청·정산계좌 등록 앞에서, 또는 소셜 회원이 휴대폰 "
+                    + "로그인을 쓰려고 번호를 등록할 때. 인증창을 여는 폼과 진행 토큰을 준다.")
+    @PostMapping("/identity/start")
+    public ResponseEntity<IdentityStartResponse> startIdentity(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(authService.startStepUp(principal.id()));
+    }
+
+    @Operation(summary = "본인인증 결과 제출",
+            description = "실명·생년월일·휴대폰·판정 키가 이 계정에 채워진다. 이미 본인인증한 회원이 다른 사람 "
+                    + "명의로 인증하면 409 IDENTITY_MISMATCH.")
+    @PostMapping("/identity/complete")
+    public ResponseEntity<UserResponse> completeIdentity(@AuthenticationPrincipal UserPrincipal principal,
+                                                         @Valid @RequestBody IdentityCompleteRequest request,
+                                                         HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(authService.completeStepUp(
+                principal.id(), request.token(), request.providerToken(), RequestInfo.from(httpRequest)));
+    }
+
     @Operation(summary = "비밀번호 설정·변경",
             description = "비밀번호가 없는 회원(소셜 가입)은 새로 정하고, 있으면 현재 비밀번호를 확인한다. "
-                    + "이름·휴대폰은 본인확인 값이라 여기서 고칠 수 없다.")
+                    + "이름·휴대폰은 본인인증 값이라 여기서 고칠 수 없다.")
     @PostMapping("/password")
     public ResponseEntity<Void> changePassword(@AuthenticationPrincipal UserPrincipal principal,
                                                @Valid @RequestBody PasswordChangeRequest request) {

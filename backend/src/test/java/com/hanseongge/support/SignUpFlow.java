@@ -2,7 +2,6 @@ package com.hanseongge.support;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -19,7 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 가입 흐름을 끝까지 태우는 도우미.
  *
- * <p>가입은 <b>약관 → 본인확인(인증창 → 수신 주소 → 결과 제출) → 비밀번호</b>로 여러 단계다.
+ * <p>자체 가입은 <b>약관 → 간편인증(인증창 → 수신 주소 → 결과 제출) → 비밀번호</b>로 여러 단계다.
+ * 소셜 가입은 <b>콜백 → 약관</b>으로 끝난다(본인인증 없음).
  * 그 단계를 테스트마다 손으로 이어 붙이면 흐름이 바뀔 때마다 여러 파일을 같이 고쳐야 한다.
  *
  * <p>회원이 필요할 뿐인 테스트(게시판·이벤트)는 {@link #social} 한 줄만 부르면 된다.
@@ -44,38 +44,19 @@ public final class SignUpFlow {
 
     // ---------- 한 줄짜리 ----------
 
-    /** 소셜 가입을 끝내고 Access 토큰을 돌려준다. 신원은 매번 새 DI·새 번호다. */
+    /** 소셜 가입을 끝내고 Access 토큰을 돌려준다 — 콜백 → 약관. 본인인증 없음. */
     public String social(String providerUserId, String email, String name) throws Exception {
-        return social(providerUserId, email, name, UserTestFixtures.identity(name));
-    }
-
-    /**
-     * 신원을 지정한다. 같은 DI 가 이미 있으면 연결 확인 화면에서 [연결하기]를 누른 것과 같다.
-     *
-     * <p>회원 이름은 <b>본인확인 실명</b>이다 — 소셜 닉네임이 아니다. 마스킹 검증이 스텁 기본
-     * 이름을 보지 않도록 신원 이름을 맞춰 준다.
-     */
-    public String social(String providerUserId, String email, String name,
-                         VerifiedIdentity verifiedIdentity) throws Exception {
         String signUpToken = socialCallback(providerUserId, email, name).get("signUpToken").asText();
-        String agreed = agree(signUpToken);
-        identity.willReturn(verifiedIdentity);
-        JsonNode result = verifyIdentity(agreed);
-
-        return switch (result.get("step").asText()) {
-            case "SIGNED_IN" -> result.get("session").get("accessToken").asText();
-            case "CONFIRM_LINK" -> read(post("/api/v1/auth/signup/link")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(json(Map.of("signUpToken", result.get("signUpToken").asText()))))
-                    .get("accessToken").asText();
-            default -> throw new IllegalStateException("예상하지 못한 단계: " + result);
-        };
+        return read(post("/api/v1/auth/signup/social")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("signUpToken", signUpToken, "agreements", allRequiredAgreed()))))
+                .get("accessToken").asText();
     }
 
     /** 휴대폰(자체) 가입을 끝내고 Access 토큰을 돌려준다. */
-    public String phone(VerifiedIdentity verifiedIdentity, String password) throws Exception {
-        String agreed = agree(null);
-        identity.willReturn(verifiedIdentity);
+    public String phone(UserTestFixtures.Person person, String password) throws Exception {
+        String agreed = agree();
+        identity.willReturn(person);
         JsonNode result = verifyIdentity(agreed);
         if (!"SET_PASSWORD".equals(result.get("step").asText())) {
             throw new IllegalStateException("예상하지 못한 단계: " + result);
@@ -99,21 +80,16 @@ public final class SignUpFlow {
                 .content(json(Map.of("code", "code-" + providerUserId, "state", state))));
     }
 
-    /** 약관 동의(필수만). 소셜이면 콜백 토큰을, 자체 가입이면 null 을 넘긴다. */
-    public String agree(String signUpToken) throws Exception {
-        Map<String, Object> body = new LinkedHashMap<>();
-        if (signUpToken != null) {
-            body.put("signUpToken", signUpToken);
-        }
-        body.put("agreements", allRequiredAgreed());
+    /** 자체 가입 약관 동의(필수만). */
+    public String agree() throws Exception {
         return read(post("/api/v1/auth/signup/start")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(body)))
+                .content(json(Map.of("agreements", allRequiredAgreed()))))
                 .get("signUpToken").asText();
     }
 
     /**
-     * 본인확인 한 바퀴 — 인증창 폼을 받아, 공급자가 하듯 수신 주소로 보내고, 돌아온 화면 주소의
+     * 간편인증 한 바퀴 — 인증창 폼을 받아, 공급자가 하듯 수신 주소로 보내고, 돌아온 화면 주소의
      * providerToken 으로 결과를 제출한다.
      *
      * @return {@code /identity/complete} 응답 (step·signUpToken·resetToken…)
@@ -128,8 +104,7 @@ public final class SignUpFlow {
     }
 
     /**
-     * {@link #verifyIdentity} 와 같지만 응답을 그대로 준다 — 상태코드나 로그인 쿠키
-     * (소셜 가입이 여기서 끝날 때)를 보려는 테스트가 쓴다.
+     * {@link #verifyIdentity} 와 같지만 응답을 그대로 준다 — 상태코드를 보려는 테스트가 쓴다.
      */
     public MvcResult verifyIdentityRaw(String agreedSignUpToken) throws Exception {
         JsonNode started = read(post("/api/v1/auth/identity/start")
@@ -144,12 +119,29 @@ public final class SignUpFlow {
                 .andReturn();
     }
 
-    /** 비밀번호 찾기 본인확인 한 바퀴. {@code /password/reset/identity/complete} 응답을 돌려준다. */
-    public MvcResult verifyIdentityForReset(VerifiedIdentity verifiedIdentity) throws Exception {
-        identity.willReturn(verifiedIdentity);
+    /** 비밀번호 찾기 간편인증 한 바퀴. {@code /password/reset/identity/complete} 응답을 돌려준다. */
+    public MvcResult verifyIdentityForReset(UserTestFixtures.Person person) throws Exception {
+        identity.willReturn(person);
         JsonNode started = read(post("/api/v1/auth/password/reset/identity/start"));
         String providerToken = returnFromProvider(started.get("form"));
         return mockMvc.perform(post("/api/v1/auth/password/reset/identity/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "token", started.get("token").asText(),
+                                "providerToken", providerToken))))
+                .andReturn();
+    }
+
+    /**
+     * 로그인한 회원의 본인인증 한 바퀴 — {@code /me/identity/complete} 응답을 그대로 준다.
+     */
+    public MvcResult verifyIdentityAsMember(String accessToken, UserTestFixtures.Person person) throws Exception {
+        identity.willReturn(person);
+        JsonNode started = read(post("/api/v1/me/identity/start")
+                .header("Authorization", "Bearer " + accessToken));
+        String providerToken = returnFromProvider(started.get("form"));
+        return mockMvc.perform(post("/api/v1/me/identity/complete")
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "token", started.get("token").asText(),

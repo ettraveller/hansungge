@@ -7,27 +7,23 @@ import java.time.LocalDate;
 import java.time.Period;
 
 /**
- * 본인확인으로 확정된 신원.
+ * 본인인증(간편인증)으로 확정된 신원.
  *
- * <p>본인확인기관이 돌려준 값 중 <b>회원에 남기는 것만</b> 모았다. 공급자 거래번호나
- * 통신사처럼 이력에만 필요한 값은 여기 없다.
+ * <p>본인인증 응답 중 <b>회원에 남기는 것만</b> 모았다. 공급자 거래번호나 통신사처럼
+ * 이력에만 필요한 값은 여기 없다.
  *
- * <p><b>CI 는 없다.</b> 필드가 있으면 언젠가 채워진다 — 2024-08-14 시행 정보통신망법
- * §23조의5·6 으로 CI 이용기관에 직접 의무와 형벌이 생겼다.
+ * <p><b>CI 원본이 없다.</b> 같은 사람 판정에는 {@link #identityKey} — CI 를 서버 비밀값으로
+ * 해시한 값 — 만 쓴다. CI 는 응답을 읽은 직후 해시되고 버려진다 ({@code IdentityKeyHasher}).
  *
- * @param di        중복가입확인정보. 사이트별 고유값
- * @param name      실명
- * @param birthDate 생년월일. 만 14세 판정의 근거
- * @param gender    성별
- * @param foreigner 외국인 여부
- * @param phone     휴대폰 번호
+ * @param identityKey 같은 사람 판정 키 = HMAC-SHA256(pepper, CI)
+ * @param name        실명
+ * @param birthDate   생년월일. 만 14세 판정의 근거
+ * @param phone       휴대폰 번호
  */
 public record VerifiedIdentity(
-        String di,
+        String identityKey,
         String name,
         LocalDate birthDate,
-        Gender gender,
-        boolean foreigner,
         String phone) {
 
     /**
@@ -40,20 +36,20 @@ public record VerifiedIdentity(
     public static final int MINIMUM_AGE = 14;
 
     public VerifiedIdentity {
-        if (di == null || di.isBlank()) {
-            throw new IllegalArgumentException("본인확인 응답에 DI 가 없습니다.");
+        if (identityKey == null || identityKey.isBlank()) {
+            throw new IllegalArgumentException("본인인증 결과에 판정 키가 없습니다.");
         }
         if (birthDate == null) {
-            throw new IllegalArgumentException("본인확인 응답에 생년월일이 없습니다.");
+            throw new IllegalArgumentException("본인인증 응답에 생년월일이 없습니다.");
         }
     }
 
     /**
      * 만 나이가 하한을 넘는지 확인하고, 아니면 예외를 던진다.
      *
-     * <p>이 판정을 화면의 체크박스("만 14세 이상입니다")에 맡기지 않는다. 스스로 신고하는
-     * 값은 검증이 아니다 — 본인확인이 생년월일을 주는데 그것을 두고 자기신고를 믿을 이유가
-     * 없다. {@code AGREEMENT_AGE_14} 동의는 그대로 받되, 실제 판정은 여기서 한다.
+     * <p>본인인증이 생년월일을 주는데 화면의 체크박스("만 14세 이상입니다")만 믿을 이유가 없다.
+     * {@code AGE_14} 동의는 그대로 받되, 본인인증을 거치는 경로에서는 실제 판정을 여기서 한다.
+     * (소셜 가입은 본인인증이 없어 동의로 갈음한다.)
      *
      * <p>기준 시각을 인자로 받는 이유는 테스트 때문이다. {@code LocalDate.now()} 를 안에서
      * 부르면 "오늘 만 14세가 되는 사람"을 검증할 수 없다.
@@ -63,5 +59,11 @@ public record VerifiedIdentity(
         if (age < MINIMUM_AGE) {
             throw new BusinessException(ErrorCode.UNDER_MINIMUM_AGE);
         }
+    }
+
+    /** 로그에 실명·번호·키가 찍히지 않게 한다. record 기본 toString 은 전부 찍는다. */
+    @Override
+    public String toString() {
+        return "VerifiedIdentity[masked]";
     }
 }

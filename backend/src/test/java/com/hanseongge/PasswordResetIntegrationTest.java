@@ -2,7 +2,6 @@ package com.hanseongge;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import com.hanseongge.support.SignUpFlow;
 import com.hanseongge.support.StubIdentityConfig;
@@ -30,10 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
- * 비밀번호 찾기 — 본인확인 → 그 자리에서 새 비밀번호.
+ * 비밀번호 찾기 — 간편인증 → 그 자리에서 새 비밀번호.
  *
- * <p>임시 비밀번호를 문자로 보내지 않는다. 계정 선택 화면도 없다 — 같은 DI 로 활성 계정은
- * 하나뿐이다.
+ * <p>임시 비밀번호를 문자로 보내지 않는다. 계정 선택 화면도 없다 — 같은 사람의 계정이 여럿이어도
+ * 휴대폰 로그인이 되는 쪽 하나를 고른다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -44,8 +43,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 })
 class PasswordResetIntegrationTest extends EmbeddedPostgresSupport {
 
-    private static final VerifiedIdentity PERSON =
-            UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678");
+    private static final UserTestFixtures.Person PERSON =
+            UserTestFixtures.personWith("CI-1", "홍길동", "01012345678");
 
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
@@ -143,13 +142,24 @@ class PasswordResetIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
-    @DisplayName("소셜로만 가입한 회원도 여기서 비밀번호를 처음 정할 수 있다")
+    @DisplayName("본인인증을 받아 둔 소셜 회원은 여기서 비밀번호를 처음 정할 수 있다")
     void socialOnlyMemberSetsPassword() throws Exception {
-        flow.social("google-1", "buyer@test.local", "홍길동", PERSON);
+        String token = flow.social("google-1", "buyer@test.local", "홍길동");
+        flow.verifyIdentityAsMember(token, PERSON);
 
         String resetToken = read(flow.verifyIdentityForReset(PERSON)).get("resetToken").asText();
         reset(resetToken, "First-pass-11!");
 
         assertThat(login("01012345678", "First-pass-11!").getResponse().getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("본인인증을 한 번도 받지 않은 소셜 회원은 찾을 수 없다 — 같은 사람인지 알 근거가 없다")
+    void unverifiedSocialMemberIsNotFound() throws Exception {
+        flow.social("google-1", "buyer@test.local", "홍길동");
+
+        MvcResult result = flow.verifyIdentityForReset(PERSON);
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertThat(read(result).get("code").asText()).isEqualTo("IDENTITY_NOT_REGISTERED");
     }
 }

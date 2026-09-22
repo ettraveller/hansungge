@@ -20,7 +20,7 @@ import styles from '@/components/admin/admin.module.css';
  * 창을 열 때만 부른다. 열어보지도 않은 회원의 열람 기록이 쌓이면 그 기록이 쓸모없어진다.
  *
  * <h2>고칠 수 있는 것이 없다</h2>
- * 이름·생년월일·휴대폰은 본인확인 응답으로만 채워지는 값이라, 관리자가 손대는 순간
+ * 이름·생년월일·휴대폰은 본인인증 응답으로만 채워지는 값이라, 관리자가 손대는 순간
  * "확인된 값"이 아니라 "누군가 적어 넣은 값"이 된다. 잘못됐으면 본인확인을 다시 받는다.
  */
 export function MemberDetailDialog({ id, onClose }: { id: number; onClose: () => void }) {
@@ -86,7 +86,6 @@ function Body({ member }: { member: AdminMemberDetail }) {
           label="생년월일"
           value={<span className="tabular">{member.birthDate ?? '-'}</span>}
         />
-        <Row label="성별" value={genderLabel(member.gender)} />
         <Row
           label="로그인 수단"
           value={
@@ -101,11 +100,11 @@ function Body({ member }: { member: AdminMemberDetail }) {
           }
         />
         <Row
-          label="본인확인"
+          label="본인인증"
           value={
             member.identityVerified
-              ? `완료 · ${formatDateTime(member.phoneVerifiedAt)}`
-              : '미완료'
+              ? `완료 · ${formatDateTime(member.identityVerifiedAt)}`
+              : '받지 않음 (소셜 가입 — 이름은 제공자가 준 값)'
           }
         />
         <Row
@@ -132,12 +131,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <dd className={styles.rowValue}>{value}</dd>
     </div>
   );
-}
-
-function genderLabel(gender: AdminMemberDetail['gender']): string {
-  if (gender === 'MALE') return '남성';
-  if (gender === 'FEMALE') return '여성';
-  return '-';
 }
 
 function loginMethods(member: AdminMemberDetail): string {

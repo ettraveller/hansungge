@@ -88,17 +88,16 @@ class SchemaGuardIntegrationTest extends EmbeddedPostgresSupport {
     /**
      * 각 테스트가 자기 데이터를 직접 만든다. 순서 의존을 만들지 않기 위해서다.
      *
-     * <p>DI·휴대폰을 매번 다르게 만든다 — 둘 다 활성 회원 사이에서 유일하다(V13·V21).
-     * 본인확인 값(이름·생년월일·DI·확인 시각)은 V21 부터 필수다. 한 테스트가 회원을 둘
-     * 만드는 경우가 실제로 있다.
+     * <p>휴대폰을 매번 다르게 만든다 — 활성 회원 사이에서 유일하다(V21). 한 테스트가 회원을 둘
+     * 만드는 경우가 실제로 있다. 본인인증 값은 V23 부터 필수가 아니지만, 자체 회원 모양으로 둔다.
      */
     private long insertUser() {
         return jdbc.queryForObject("""
-                INSERT INTO users (name, phone, birth_date, di, phone_verified_at)
+                INSERT INTO users (name, phone, birth_date, identity_key, identity_verified_at)
                 VALUES ('테스트', ?, '1990-01-01', ?, now()) RETURNING id
                 """, Long.class,
                 com.hanseongge.support.UserTestFixtures.randomPhone(),
-                "DI-guard-" + java.util.UUID.randomUUID());
+                com.hanseongge.support.UserTestFixtures.keyOf("CI-guard-" + java.util.UUID.randomUUID()));
     }
 
     private long insertCategory() {

@@ -44,10 +44,14 @@ import java.util.Optional;
  * 같은 클래스 안에서 {@code @Transactional} 메서드를 호출하면 프록시를 거치지 않아
  * 트랜잭션이 조용히 무시되므로 빈 자체를 분리한다.
  *
- * <h2>DI 가 사람, 휴대폰은 로그인 ID</h2>
- * "이미 가입한 사람인가"는 언제나 DI 로 판단한다. 휴대폰번호는 회선에 붙어 재할당되므로
- * 로그인 ID 로만 쓰고, 다른 DI 가 같은 번호로 본인확인을 통과하면 옛 계정의 번호를 비운다
+ * <h2>판정 키가 사람, 휴대폰은 로그인 ID</h2>
+ * "이미 가입한 사람인가"는 판정 키(CI 해시)로 판단한다. 휴대폰번호는 회선에 붙어 재할당되므로
+ * 로그인 ID 로만 쓰고, 다른 사람이 같은 번호로 본인인증을 통과하면 옛 계정의 번호를 비운다
  * ({@link #releasePhoneFromOthers}).
+ *
+ * <h2>소셜 가입은 본인인증이 없다</h2>
+ * 소셜 가입자는 약관 동의만으로 계정이 생긴다({@link #createSocialAccount}). 신원은 나중에
+ * 로그인한 채 본인인증({@link #applyStepUpIdentity})을 받을 때 채워진다.
  */
 @Slf4j
 @Service
@@ -108,19 +112,19 @@ public class UserAccountService {
     // =================================================================
 
     /**
-     * 본인확인한 사람이 이미 회원인가.
+     * 본인인증한 사람이 이미 회원인가 (자체 가입 시도·비밀번호 찾기).
      *
-     * <p>회원이면 그 회원의 신원을 이번 본인확인 값으로 맞춘다 — 번호를 바꿨거나 개명했을 수
-     * 있다. 같은 DI 이므로 같은 사람이고, 확인 절차를 막 통과했다. 그 번호를 다른 계정이 쥐고
+     * <p>회원이면 그 회원의 신원을 이번 본인인증 값으로 맞춘다 — 번호를 바꿨거나 개명했을 수
+     * 있다. 같은 판정 키이므로 같은 사람이고, 확인 절차를 막 통과했다. 그 번호를 다른 계정이 쥐고
      * 있으면(재할당) 그쪽을 비운다.
      *
-     * <p><b>로그인 수단을 붙이지는 않는다.</b> 소셜 계정을 연결할지는 사용자가 화면에서 확인한 뒤
-     * {@link #linkSocial} 로 정한다 — 묻지 않고 붙이면 사용자가 모르는 사이 로그인 수단이 늘어난다.
+     * <p>같은 사람의 계정이 여럿이면(자체 + 본인인증한 소셜) 휴대폰 로그인이 되는 쪽을 고른다
+     * ({@code UserRepository.findActiveByIdentityKey} 의 정렬).
      */
     @Transactional
     public Optional<ExistingAccount> findExistingAndRefresh(Long identityVerificationId) {
         IdentityVerification verification = findVerification(identityVerificationId);
-        Optional<User> found = userRepository.findByDi(verification.getDi());
+        Optional<User> found = userRepository.findByIdentityKey(verification.getIdentityKey());
         if (found.isEmpty()) {
             return Optional.empty();
         }
@@ -128,7 +132,7 @@ public class UserAccountService {
         User user = found.get();
         user.requireSignInAllowed();
         releasePhoneFromOthers(PhoneNumber.normalize(verification.getPhone()), user.getId());
-        user.refreshIdentity(verification.toIdentity(), verification.getCarrier());
+        user.applyVerifiedIdentity(verification.toIdentity(), verification.getCarrier());
 
         return Optional.of(new ExistingAccount(
                 user.getId(),
@@ -137,85 +141,126 @@ public class UserAccountService {
                 user.hasPassword()));
     }
 
-    /**
-     * 기존 계정에 소셜 로그인을 연결하고 로그인시킨다 — 사용자가 연결 화면에서 [연결하기]를 눌렀다.
-     *
-     * <p>계정 병합이 아니다. 새 계정은 아직 없으므로 합칠 데이터가 없고, 소셜 연결 행 하나를
-     * 추가할 뿐이다. 근거는 본인확인기관이 발급한 DI 다 — 이메일이 같다는 이유로 붙이지 않는다.
-     */
-    @Transactional
-    public SignInResponse linkSocial(Long identityVerificationId, OAuthUserInfo social,
-                                     HttpServletResponse response) {
-        IdentityVerification verification = requireUsable(identityVerificationId, IdentityPurpose.SIGNUP);
-        User user = userRepository.findByDi(verification.getDi())
-                .orElseThrow(() -> new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID,
-                        "연결할 기존 회원이 없음"));
-        user.requireSignInAllowed();
-        attachSocial(user, social);
-        verification.consume(user.getId());
-        log.info("[AUTH] 기존 회원에 소셜 연결. userId={} provider={}", user.getId(), social.provider());
-        return issueSession(user, response);
-    }
-
     // =================================================================
     // 가입
     // =================================================================
 
     /**
-     * 가입 — 회원·본인확인 연결·소셜연동·동의이력을 <b>한 트랜잭션</b>에 만든다.
+     * 자체 가입 — 회원·본인인증 연결·동의이력을 <b>한 트랜잭션</b>에 만든다.
      *
      * <p>중간에 실패하면 아무것도 남지 않아야 한다: 동의 없는 계정도, 계정 없는 동의도
      * 만들지 않는다.
+     *
+     * @param email       선택. 인증번호를 통과한 주소
+     * @param emailCodeId 이메일을 넣었을 때 통과한 인증번호 행. 소진 표시용
      */
     @Transactional
-    public SignInResponse createAccount(SignUpMaterial material,
-                                        Map<AgreementType, Boolean> choices,
-                                        RequestInfo requestInfo,
-                                        HttpServletResponse response) {
-        IdentityVerification verification =
-                requireUsable(material.identityVerificationId(), IdentityPurpose.SIGNUP);
+    public SignInResponse createVerifiedAccount(Long identityVerificationId, String rawPassword,
+                                                String email, Long emailCodeId,
+                                                Map<AgreementType, Boolean> choices,
+                                                RequestInfo requestInfo,
+                                                HttpServletResponse response) {
+        IdentityVerification verification = requireUsable(identityVerificationId, IdentityPurpose.SIGNUP);
 
-        // 약관·비밀번호 화면에 머무는 사이 다른 탭에서 이미 가입했을 수 있다.
-        if (userRepository.findByDi(verification.getDi()).isPresent()) {
+        // 약관·비밀번호 화면에 머무는 사이 다른 탭에서 이미 가입했을 수 있다. 판정 키에 UNIQUE 가
+        // 없으므로(V23) 막는 곳은 여기뿐이다. 소셜 계정만 있는 사람은 막지 않는다(중복가입 허용) —
+        // 휴대폰으로 로그인되는 계정이 이미 있을 때만 막는다.
+        boolean hasPhoneAccount = userRepository.findByIdentityKey(verification.getIdentityKey())
+                .filter(User::canPasswordLogin)
+                .isPresent();
+        if (hasPhoneAccount) {
             throw new BusinessException(ErrorCode.IDENTITY_ALREADY_REGISTERED);
         }
-
-        String email = material.email();
-        boolean emailVerified = material.isEmailVerified();
         if (email != null && userRepository.findByEmail(email).isPresent()) {
-            if (material.isSocial() && material.emailCodeId() == null) {
-                // 소셜 제공자가 준 주소를 다른 계정이 쓰고 있다. 이메일은 선택 항목이라
-                // 가입을 막지 않고 비워 둔다 — 나중에 마이페이지에서 넣으면 된다.
-                log.info("[AUTH] 소셜 이메일이 다른 계정에서 사용 중 — 이메일 없이 가입. provider={}",
-                        material.social().provider());
-                email = null;
-                emailVerified = false;
-            } else {
-                // 직접 입력한 주소. 같은 DI 는 위에서 걸렀으니 다른 사람이다.
-                throw new BusinessException(ErrorCode.EMAIL_OWNED_BY_ANOTHER);
-            }
+            throw new BusinessException(ErrorCode.EMAIL_OWNED_BY_ANOTHER);
         }
 
         releasePhoneFromOthers(PhoneNumber.normalize(verification.getPhone()), null);
 
-        String passwordHash = material.rawPassword() == null
-                ? null
-                : passwordEncoder.encode(material.rawPassword());
-        User user = userRepository.save(User.signUp(
-                email, emailVerified, verification.toIdentity(), verification.getCarrier(), passwordHash));
+        User user = userRepository.save(User.signUpVerified(
+                email, emailCodeId != null, verification.toIdentity(), verification.getCarrier(),
+                passwordEncoder.encode(rawPassword)));
 
-        if (material.isSocial()) {
-            attachSocial(user, material.social());
-        }
         verification.consume(user.getId());
-        if (material.emailCodeId() != null) {
-            codeRepository.findById(material.emailCodeId()).ifPresent(VerificationCode::consume);
+        if (emailCodeId != null) {
+            codeRepository.findById(emailCodeId).ifPresent(VerificationCode::consume);
         }
         recordAgreements(user.getId(), choices, requestInfo);
 
-        log.info("[AUTH] 신규 가입 완료. userId={} 경로={}",
-                user.getId(), material.isSocial() ? material.social().provider() : "PHONE");
+        log.info("[AUTH] 신규 가입 완료. userId={} 경로=PHONE", user.getId());
         return issueSession(user, response);
+    }
+
+    /**
+     * 소셜 가입 — 본인인증 없이 약관 동의만으로.
+     *
+     * <p>판정 키·휴대폰·비밀번호가 없는 계정이 생긴다. 만 14세 확인은 {@code AGE_14} 동의로 갈음한다
+     * (필수 약관이라 여기 오기 전에 확인됐다).
+     */
+    @Transactional
+    public SignInResponse createSocialAccount(OAuthUserInfo social,
+                                              Map<AgreementType, Boolean> choices,
+                                              RequestInfo requestInfo,
+                                              HttpServletResponse response) {
+        String email = social.email();
+        if (email != null && userRepository.findByEmail(email).isPresent()) {
+            // 제공자가 준 주소를 다른 계정이 쓰고 있다. 이메일은 선택 항목이라 가입을 막지 않고
+            // 비워 둔다 — 나중에 마이페이지에서 넣으면 된다. 이메일로 계정을 합치지 않는다.
+            log.info("[AUTH] 소셜 이메일이 다른 계정에서 사용 중 — 이메일 없이 가입. provider={}", social.provider());
+            email = null;
+        }
+
+        User user = userRepository.save(User.signUpSocial(email, blankToNull(social.name())));
+        attachSocial(user, social);
+        recordAgreements(user.getId(), choices, requestInfo);
+
+        log.info("[AUTH] 신규 가입 완료. userId={} 경로={}", user.getId(), social.provider());
+        return issueSession(user, response);
+    }
+
+    // =================================================================
+    // 로그인한 회원의 본인인증 (매입·정산계좌 전)
+    // =================================================================
+
+    /**
+     * 로그인한 회원에게 본인인증 결과를 반영한다.
+     *
+     * <p>소셜 가입자는 여기서 처음으로 판정 키·실명·생년월일·휴대폰이 채워지고, 휴대폰 로그인
+     * ID 도 생긴다. 이미 신원이 있는 회원이 <b>다른 사람 명의</b>로 인증하면 거부한다
+     * ({@code IDENTITY_MISMATCH}) — 예금주 대조의 근거가 바뀌면 안 된다.
+     *
+     * <p>같은 사람의 다른 계정이 있어도 합치지 않는다 (중복가입 허용). 그 계정이 이미 이 번호로
+     * 로그인하고 있으면 번호는 그쪽에 둔다 — 옮기면 그 사람의 휴대폰 로그인이 끊긴다. 번호를 쥔
+     * 계정이 <b>다른 사람</b>의 것이면 재할당이므로 비우고 이 계정으로 가져온다.
+     */
+    @Transactional
+    public UserResponse applyStepUpIdentity(Long userId, Long identityVerificationId) {
+        IdentityVerification verification = requireUsable(identityVerificationId, IdentityPurpose.STEP_UP);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.requireSignInAllowed();
+
+        // 명의 대조를 먼저 — 다른 사람이면 남의 계정 번호를 비우기 전에 멈춰야 한다.
+        if (user.getIdentityKey() != null && !user.getIdentityKey().equals(verification.getIdentityKey())) {
+            log.warn("[AUTH] 로그인한 회원과 다른 명의의 본인인증. userId={}", userId);
+            throw new BusinessException(ErrorCode.IDENTITY_MISMATCH);
+        }
+
+        String phone = PhoneNumber.normalize(verification.getPhone());
+        boolean heldBySamePersonElsewhere = userRepository.findByPhone(phone)
+                .filter(holder -> !holder.getId().equals(userId))
+                .filter(holder -> verification.getIdentityKey().equals(holder.getIdentityKey()))
+                .isPresent();
+        if (heldBySamePersonElsewhere) {
+            user.applyVerifiedIdentityKeepingPhone(verification.toIdentity(), verification.getCarrier());
+        } else {
+            releasePhoneFromOthers(phone, userId);
+            user.applyVerifiedIdentity(verification.toIdentity(), verification.getCarrier());
+        }
+        verification.consume(userId);
+
+        log.info("[AUTH] 회원 본인인증 완료. userId={}", userId);
+        return UserResponse.from(user);
     }
 
     // =================================================================
@@ -223,10 +268,10 @@ public class UserAccountService {
     // =================================================================
 
     /**
-     * 본인확인을 거친 비밀번호 재설정.
+     * 본인인증을 거친 비밀번호 재설정.
      *
-     * <p>그 본인확인이 <b>이 회원의 DI</b> 인지 다시 확인한다 — 토큰에 담긴 두 id 가 서로 다른
-     * 사람의 것이면 남의 비밀번호를 바꾸는 길이 된다. 본인확인은 여기서 소진되어 한 번만 쓰인다.
+     * <p>그 본인인증이 <b>이 회원의 판정 키</b> 인지 다시 확인한다 — 토큰에 담긴 두 id 가 서로 다른
+     * 사람의 것이면 남의 비밀번호를 바꾸는 길이 된다. 본인인증은 여기서 소진되어 한 번만 쓰인다.
      *
      * <p><b>그 회원의 다른 세션을 전부 끊는다.</b> 비밀번호를 잊은 상황은 계정을 빼앗긴 상황과
      * 구분되지 않는다. 남의 기기에 열려 있던 세션이 재설정 뒤에도 살아 있으면 소용이 없다.
@@ -239,7 +284,7 @@ public class UserAccountService {
         }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID));
-        if (!verification.getDi().equals(user.getDi())) {
+        if (!verification.getIdentityKey().equals(user.getIdentityKey())) {
             log.warn("[AUTH] 재설정 토큰의 본인확인과 회원이 다름. userId={}", userId);
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "본인확인·회원 불일치");
         }
@@ -279,16 +324,17 @@ public class UserAccountService {
     }
 
     /**
-     * 이 번호를 쥔 다른 계정이 있으면 번호를 비운다 — 번호가 재할당됐다.
+     * 이 번호를 쥔 다른 계정이 있으면 번호를 비운다.
      *
-     * <p>다른 DI 가 이 번호로 본인확인을 통과했다는 것은 통신사가 번호를 다른 사람에게 넘겼다는
-     * 뜻이다. 비우지 않으면 {@code ux_users_phone_active} 에 막혀 새 주인이 가입하지 못하고,
-     * 옛 계정에는 남의 번호로 인증번호 로그인이 걸린다.
+     * <p>대개 번호가 재할당된 경우다 — 다른 사람이 이 번호로 본인인증을 통과했다는 것은 통신사가
+     * 번호를 넘겼다는 뜻이다. 같은 사람의 다른 계정(자체 + 소셜)일 때도 로그인 ID 는 하나에만 있어야
+     * 해서 옮긴다. 비우지 않으면 {@code ux_users_phone_active} 에 막히고, 옛 계정에는 남의 번호로
+     * 인증번호 로그인이 걸린다.
      *
      * <p>비운 뒤 곧바로 flush 한다 — 같은 트랜잭션에서 그 번호를 새 계정에 넣을 때, 쓰기 순서가
      * 뒤집히면 유일 인덱스에 걸린다.
      *
-     * @param keepUserId 이 번호의 정당한 주인(같은 DI). 새 가입이면 null
+     * @param keepUserId 이 번호를 가질 계정. 새 가입이면 null
      */
     private void releasePhoneFromOthers(String phone, Long keepUserId) {
         userRepository.findByPhone(phone)
@@ -328,6 +374,10 @@ public class UserAccountService {
                     agreed, requestInfo == null ? null : requestInfo.ip()));
         }
         agreementRepository.saveAll(rows);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /** Access 토큰은 본문으로, Refresh 토큰은 HttpOnly 쿠키로 나간다. */

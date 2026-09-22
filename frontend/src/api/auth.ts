@@ -70,18 +70,26 @@ export function completeOAuth(provider: OAuthProviderType, code: string, state: 
 }
 
 // =====================================================================
-// 가입 — 약관 → 본인확인 → (비밀번호·이메일)
+// 가입 — 자체: 약관 → 간편인증 → (비밀번호·이메일) / 소셜: 약관
 // =====================================================================
 
-/**
- * 약관 동의로 가입 시작.
- *
- * @param signUpToken 소셜 콜백에서 받은 토큰. 휴대폰으로 직접 가입하면 생략
- */
-export function startSignUp(agreements: AgreementChoice[], signUpToken?: string) {
+/** 자체(휴대폰) 가입 시작 — 약관 동의. */
+export function startSignUp(agreements: AgreementChoice[]) {
   return request<{ signUpToken: string }>('/api/v1/auth/signup/start', {
     method: 'POST',
-    body: { agreements, ...(signUpToken ? { signUpToken } : {}) },
+    body: { agreements },
+  });
+}
+
+/**
+ * 소셜 가입 — 약관 동의로 끝난다. 본인인증을 받지 않는다.
+ *
+ * @param signUpToken 소셜 콜백에서 받은 토큰
+ */
+export function signUpSocial(signUpToken: string, agreements: AgreementChoice[]) {
+  return request<SignInResult>('/api/v1/auth/signup/social', {
+    method: 'POST',
+    body: { signUpToken, agreements },
   });
 }
 
@@ -103,14 +111,6 @@ export function completeIdentity(token: string, providerToken: string) {
   return request<IdentityResult>('/api/v1/auth/identity/complete', {
     method: 'POST',
     body: { token, providerToken },
-  });
-}
-
-/** 이미 가입한 사람이 소셜로 왔을 때 — [연결하기]. */
-export function linkSocialAfterIdentity(signUpToken: string) {
-  return request<SignInResult>('/api/v1/auth/signup/link', {
-    method: 'POST',
-    body: { signUpToken },
   });
 }
 
@@ -176,6 +176,22 @@ export function signOut() {
 
 export function fetchMe() {
   return authed<User>('/api/v1/me');
+}
+
+/**
+ * 로그인한 회원의 본인인증 — 매입 신청·정산계좌 앞, 또는 소셜 회원이 휴대폰 로그인을 쓰려고
+ * 번호를 등록할 때.
+ */
+export function startMemberIdentity() {
+  return authed<IdentityStart>('/api/v1/me/identity/start', { method: 'POST' });
+}
+
+/** 본인인증 결과 제출. 다른 사람 명의면 409 IDENTITY_MISMATCH. */
+export function completeMemberIdentity(token: string, providerToken: string) {
+  return authed<User>('/api/v1/me/identity/complete', {
+    method: 'POST',
+    body: { token, providerToken },
+  });
 }
 
 /**

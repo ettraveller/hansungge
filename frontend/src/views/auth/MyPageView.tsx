@@ -14,12 +14,14 @@ import {
   useDisconnectSocial,
   useSignOut,
   useSocialAccounts,
+  useStartMemberIdentity,
   useStartOAuth,
   useUserSession,
   useWithdraw,
 } from '@/hooks/useUserSession';
 import { useUserAuthStore } from '@/stores/useUserAuthStore';
 import { oauthMode, oauthState } from '@/utils/authStorage';
+import { pendingIdentity, submitIdentityForm } from '@/utils/identityReturn';
 import { formatDateTime, formatPhone } from '@/utils/format';
 import { ApiError } from '@/types/api';
 import { USER_STATUS_LABEL, type OAuthProviderType } from '@/types/user';
@@ -57,6 +59,11 @@ export function MyPageView() {
           <Notice tone="info">소셜 계정을 연결했습니다. 다음부터 그 계정으로도 로그인됩니다.</Notice>
         </div>
       )}
+      {searchParams.get('verified') === '1' && (
+        <div style={{ marginBottom: 16 }}>
+          <Notice tone="info">본인인증을 마쳤습니다. 이름·휴대폰번호가 인증된 값으로 바뀌었습니다.</Notice>
+        </div>
+      )}
 
       <ProfilePanel />
       <PasswordPanel />
@@ -71,26 +78,46 @@ export function MyPageView() {
 }
 
 /**
- * 내 정보 — 읽기 전용.
+ * 내 정보 — 읽기 전용, 그리고 본인인증.
  *
- * <p>이름·휴대폰은 본인확인으로 확정된 값이라 여기서 고칠 수 없다. 고칠 수 있으면 "확인된 값"이
+ * <p>이름·휴대폰은 본인인증으로 확정된 값이라 여기서 고칠 수 없다. 고칠 수 있으면 "확인된 값"이
  * 아니라 "한 번 확인했다가 지금은 모르는 값"이 되고, 매입 대금의 예금주 대조가 그 위에 선다.
- * 번호를 바꿨으면 비밀번호 찾기에서 본인확인을 다시 받으면 새 번호로 맞춰진다.
+ *
+ * <p>소셜 가입자는 본인인증을 받지 않았다(2026-09-21 개편). 여기서 받으면 실명·휴대폰이 채워지고
+ * 휴대폰 로그인도 쓸 수 있다. 매입 신청·정산계좌 등록 전에도 이 본인인증을 요구한다.
  */
 function ProfilePanel() {
   const { user } = useUserSession();
+  const { data: config } = useAuthProviders();
+  const start = useStartMemberIdentity();
+  const verified = Boolean(user?.identityVerified);
+  // 본인인증 공급자가 준비됐을 때만 버튼을 그린다 — 눌러야만 실패를 아는 버튼을 만들지 않는다.
+  const canVerify = Boolean(config?.signUpAvailable);
+
+  const verify = () =>
+    start.mutate(undefined, {
+      onSuccess: (res) => {
+        pendingIdentity.save({ token: res.token, flow: 'verify', next: '/mypage?verified=1' });
+        submitIdentityForm(res.form);
+      },
+    });
 
   return (
     <section className={styles.panel}>
       <header className={styles.panelHead}>
         <h2 className={styles.sectionTitle}>내 정보</h2>
         <p className={styles.sectionNote}>
-          이름·휴대폰은 본인확인으로 확정된 값입니다. 휴대폰을 바꾸셨다면{' '}
-          <Link href="/password/reset">본인확인</Link>을 다시 받아 주세요.
+          {verified
+            ? '이름·휴대폰은 본인인증으로 확정된 값입니다. 휴대폰이나 이름이 바뀌었다면 본인인증을 다시 받아 주세요.'
+            : '아직 본인인증을 받지 않았습니다. 본인인증을 하면 이름·휴대폰번호가 등록되고 휴대폰번호로도 로그인할 수 있습니다. 매입 신청 전에는 꼭 필요합니다.'}
         </p>
       </header>
       <div className={styles.panelBody}>
         <div className={styles.rows}>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>본인인증</span>
+            <span className={styles.rowValue}>{verified ? '완료' : '받지 않음'}</span>
+          </div>
           <div className={styles.row}>
             <span className={styles.rowLabel}>이름</span>
             <span className={styles.rowValue}>{user?.name ?? '-'}</span>
@@ -112,6 +139,21 @@ function ProfilePanel() {
             <span className={styles.rowValue}>{formatDateTime(user?.createdAt)}</span>
           </div>
         </div>
+
+        {start.error && (
+          <div style={{ marginTop: 14 }}>
+            <Notice tone="error">
+              {start.error instanceof ApiError ? start.error.message : '본인인증을 시작하지 못했습니다.'}
+            </Notice>
+          </div>
+        )}
+        {canVerify && (
+          <div className={styles.actions} style={{ marginTop: 14 }}>
+            <button type="button" className={styles.ghost} disabled={start.isPending} onClick={verify}>
+              {start.isPending ? '본인인증으로 이동 중…' : verified ? '본인인증 다시 받기' : '본인인증하기'}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -120,7 +162,7 @@ function ProfilePanel() {
 /**
  * 비밀번호 — 소셜로만 가입한 회원은 새로 정하고, 있으면 현재 비밀번호를 확인한 뒤 바꾼다.
  *
- * <p>정해 두면 휴대폰번호로도 로그인된다.
+ * <p>휴대폰 로그인에는 비밀번호와 <b>본인인증으로 등록된 휴대폰번호</b>가 함께 있어야 한다.
  */
 function PasswordPanel() {
   const { user } = useUserSession();
@@ -151,9 +193,11 @@ function PasswordPanel() {
       <header className={styles.panelHead}>
         <h2 className={styles.sectionTitle}>비밀번호</h2>
         <p className={styles.sectionNote}>
-          {hasPassword
+          {user?.canPasswordLogin
             ? '휴대폰번호와 비밀번호로 로그인할 수 있습니다.'
-            : '소셜 계정으로 가입하셔서 비밀번호가 없습니다. 정해 두면 휴대폰번호로도 로그인됩니다.'}
+            : hasPassword
+              ? '비밀번호는 정해 두었지만 휴대폰번호가 없어 아직 휴대폰으로 로그인할 수 없습니다. 위에서 본인인증을 하면 번호가 등록됩니다.'
+              : '소셜 계정으로 가입하셔서 비밀번호가 없습니다. 본인인증으로 휴대폰번호를 등록하고 비밀번호를 정하면 휴대폰번호로도 로그인됩니다.'}
         </p>
       </header>
       <div className={styles.panelBody}>
@@ -172,7 +216,7 @@ function PasswordPanel() {
                 { newPassword: password, currentPassword: hasPassword ? current : undefined },
                 {
                   onSuccess: () => {
-                    if (user) setUser({ ...user, hasPassword: true });
+                    if (user) setUser({ ...user, hasPassword: true, canPasswordLogin: Boolean(user.phone) });
                     setDone(true);
                     reset();
                   },
@@ -338,7 +382,7 @@ function SocialPanel() {
   const linked = new Set(accounts.map((a) => a.provider));
   const linkable = (config?.providers ?? []).filter((p) => !linked.has(p.code));
   // 비밀번호가 없으면 마지막 소셜이 유일한 로그인 수단이다.
-  const lastOne = accounts.length <= 1 && !user?.hasPassword;
+  const lastOne = accounts.length <= 1 && !user?.canPasswordLogin;
 
   const connect = (provider: OAuthProviderType) =>
     startOAuth.mutate(provider, {
@@ -356,7 +400,7 @@ function SocialPanel() {
       <header className={styles.panelHead}>
         <h2 className={styles.sectionTitle}>연결된 소셜 계정</h2>
         <p className={styles.sectionNote}>
-          비밀번호가 없으면 마지막 하나는 해제할 수 없습니다 — 로그인할 방법이 사라집니다.
+          휴대폰번호·비밀번호로 로그인할 수 없으면 마지막 하나는 해제할 수 없습니다 — 로그인할 방법이 사라집니다.
         </p>
       </header>
       <div className={styles.panelBody}>
@@ -387,7 +431,7 @@ function SocialPanel() {
                   type="button"
                   className={`${styles.ghost} ${styles.danger}`}
                   disabled={disconnect.isPending || lastOne}
-                  title={lastOne ? '비밀번호가 없어 마지막 연동은 해제할 수 없습니다.' : undefined}
+                  title={lastOne ? '휴대폰번호·비밀번호 로그인이 없어 마지막 연동은 해제할 수 없습니다.' : undefined}
                   onClick={() => disconnect.mutate(account.provider as OAuthProviderType)}
                 >
                   해제

@@ -16,7 +16,7 @@ import java.util.Base64;
  * KG이니시스 통합인증 결과 복호화 — SEED-CBC.
  *
  * <p>인증 요청에 {@code reservedMsg=isUseToken=Y} 를 넣으면, 결과조회 응답의 개인정보
- * (이름·전화·생년월일·DI 등)가 SEED 로 암호화돼 온다. 규칙은 이니시스 공식 샘플
+ * (이름·전화·생년월일·CI 등)가 SEED 로 암호화돼 온다. 규칙은 이니시스 공식 샘플
  * ({@code SaSample/JSP/src/sa/SEED_ENC.java})과 같다.
  *
  * <ul>
@@ -30,20 +30,30 @@ import java.util.Base64;
  */
 final class InicisSeedCipher {
 
-    private static final byte[] IV = "SASKGINICIS00000".getBytes(StandardCharsets.US_ASCII);
+    /** 규격 고정값. 설정({@code IDENTITY_SEED_IV})으로 바꿀 수 있게 열어 두었을 뿐이다. */
+    static final String DEFAULT_IV = "SASKGINICIS00000";
 
     private InicisSeedCipher() {
+    }
+
+    static String decrypt(String base64CipherText, String token) {
+        return decrypt(base64CipherText, token, DEFAULT_IV);
     }
 
     /**
      * @param base64CipherText 결과조회 응답의 암호화된 값
      * @param token            인증 응답(STEP2)의 {@code token}
+     * @param iv               16바이트 ASCII
      * @return 평문. 값이 비어 있으면 null
      * @throws IdentityVerificationException 키·암호문이 올바르지 않으면
      */
-    static String decrypt(String base64CipherText, String token) {
+    static String decrypt(String base64CipherText, String token, String iv) {
         if (base64CipherText == null || base64CipherText.isBlank()) {
             return null;
+        }
+        byte[] ivBytes = iv.getBytes(StandardCharsets.US_ASCII);
+        if (ivBytes.length != 16) {
+            throw new IdentityVerificationException("SEED IV 는 16바이트여야 합니다 (IDENTITY_SEED_IV 확인)");
         }
         try {
             byte[] key = Base64.getDecoder().decode(token);
@@ -51,7 +61,7 @@ final class InicisSeedCipher {
 
             PaddedBufferedBlockCipher cipher = new PaddedBufferedBlockCipher(
                     CBCBlockCipher.newInstance(new SEEDEngine()), new PKCS7Padding());
-            cipher.init(false, new ParametersWithIV(new KeyParameter(key), IV));
+            cipher.init(false, new ParametersWithIV(new KeyParameter(key), ivBytes));
 
             byte[] out = new byte[cipher.getOutputSize(cipherText.length)];
             int length = cipher.processBytes(cipherText, 0, cipherText.length, out, 0);

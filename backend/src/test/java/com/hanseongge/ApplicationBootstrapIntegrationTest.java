@@ -73,9 +73,10 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V20(관리자 OTP)은 admin_users 에 컬럼을 더하고 복구 코드 1개를 새로 만든다 → 41 + 1.
         // V21(휴대폰 로그인)은 users 에 컬럼·제약·인덱스만 더한다.
         // V22 는 email_verifications 를 verification_codes 로 이름만 바꾼다 — 둘 다 테이블 수는 그대로.
+        // V23(간편인증·CI 해시)은 컬럼만 바꾼다 — 테이블 수는 그대로.
         assertThat(versions)
                 .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
-                        "16", "17", "18", "19", "20", "21", "22");
+                        "16", "17", "18", "19", "20", "21", "22", "23");
 
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables "

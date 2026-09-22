@@ -1,8 +1,6 @@
 package com.hanseongge.domain.user.identity;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.hanseongge.domain.user.entity.Gender;
-import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.global.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -28,18 +26,23 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * KG이니시스 통합인증 — 본인확인({@code reqSvcCd=03}).
+ * KG이니시스 통합인증 — 간편인증({@code reqSvcCd=01}, 기본값).
  *
  * <p>규격: https://manual.inicis.com/sa/auth.html, 샘플: {@code SaSample.zip} (JSP).
  *
+ * <h2>왜 간편인증인가 (2026-09-21)</h2>
+ * PASS 로 가입시키려면 간편인증이어야 한다. 이니시스 회신: "네이버, 카카오, PASS, 삼성패스는 본인확인
+ * 인증서에 포함되지 않습니다." 간편인증은 DI 대신 CI 를 주고, 우리는 CI 를 해시해 같은 사람을 판정한다.
+ * 설정({@code IDENTITY_REQ_SVC_CD=03})으로 본인확인으로 돌릴 수도 있다 — 둘 다 CI 를 준다.
+ *
  * <h2>흐름</h2>
  * <ol>
- *   <li><b>인증요청</b> — 브라우저가 {@code https://sa.inicis.com/id/auth} 로 폼 POST.
+ *   <li><b>인증요청</b> — 브라우저가 {@code https://sa.inicis.com/auth}(03 이면 {@code /id/auth})로 폼 POST.
  *       상점아이디·거래번호({@code mTxId})·{@code authHash = SHA256(mid + mTxId + apiKey)}
  *   <li><b>인증응답</b> — 이니시스가 {@code successUrl}(우리 백엔드)로 {@code resultCode}·{@code txId}·
  *       {@code authRequestUrl}·{@code token} 을 보낸다
  *   <li><b>결과조회</b> — 우리 서버가 {@code authRequestUrl} 로 {@code {mid, txId}} 를 POST (서버 간 HTTPS)
- *   <li><b>결과조회응답</b> — 이름·전화·생년월일·성별·내외국인·DI 가 SEED 로 암호화돼 온다.
+ *   <li><b>결과조회응답</b> — 이름·전화·생년월일·CI 가 SEED 로 암호화돼 온다.
  *       키는 2단계의 {@code token} ({@link InicisSeedCipher})
  * </ol>
  *
@@ -50,14 +53,17 @@ import java.util.Set;
  *       호출</b>하게 된다(SSRF)
  *   <li>결과조회 응답의 {@code mTxId} 가 우리가 발급한 거래번호와 같은지 확인한다 —
  *       다른 사람의 인증 결과를 내 가입에 붙이는 경로를 막는다
- *   <li>CI 는 받지 않는다. 응답에 있어도 읽지 않는다 ({@link IdentityVerificationResult} 에 자리가 없다)
+ *   <li>CI 원본은 결과 객체에 담아 넘길 뿐 로그에 남기지 않는다. 판정 키로 바꾸는 곳은 서비스 계층이다
+ *   <li>DI·성별·내외국인은 읽지 않는다 — 간편인증은 주지 않고, 우리도 쓰지 않는다
  * </ul>
+ *
+ * <h2>CI 가 안 올 수 있다</h2>
+ * 규격 STEP4 {@code userCi}: "카카오 : 제한적 제공". 비어 있으면 그대로 넘기고, 서비스 계층이
+ * "다른 인증 수단을 선택해 주세요"로 막는다.
  *
  * <h2>계약 전 테스트</h2>
  * 공식 샘플의 테스트 상점아이디({@code INIiasTest})와 그 apiKey 를 환경변수로 넣으면 실제 이니시스
- * 인증창까지 붙는다. ⚠️ 샘플은 간편인증({@code 01})으로 되어 있고, <b>DI 는 본인확인({@code 03})
- * 에서만 온다</b>(규격 STEP4). 테스트 MID 가 03 을 허용하지 않으면 DI 가 없어 여기서 실패한다 —
- * 그때는 로그에 사유가 남는다.
+ * 인증창까지 붙는다.
  */
 @Slf4j
 @Component
@@ -66,16 +72,26 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
 
     public static final String CODE = "INICIS";
 
-    private static final String AUTH_URL = "https://sa.inicis.com/id/auth";
-    private static final String SERVICE_IDENTITY = "03";
+    /** 간편인증·전자서명 */
+    private static final String SIMPLE_AUTH_URL = "https://sa.inicis.com/auth";
+    /** 본인확인 */
+    private static final String IDENTITY_AUTH_URL = "https://sa.inicis.com/id/auth";
+    private static final Set<String> SERVICE_CODES = Set.of("01", "03");
     private static final Set<String> LOOKUP_HOSTS = Set.of("kssa.inicis.com", "fcsa.inicis.com");
     private static final DateTimeFormatter BIRTH = DateTimeFormatter.BASIC_ISO_DATE;
 
     private final AppProperties.Identity config;
+    private final String serviceCode;
     private final RestClient restClient;
 
     public InicisIdentityVerificationProvider(AppProperties appProperties, RestClient.Builder builder) {
         this.config = appProperties.identity();
+        this.serviceCode = config.reqSvcCd().trim();
+        if (!SERVICE_CODES.contains(serviceCode)) {
+            // 02(전자서명)는 신원 확인이 아니다. 잘못 넣으면 조용히 이상한 결과가 나오기보다 뜨지 않는 편이 낫다.
+            throw new IllegalStateException("IDENTITY_REQ_SVC_CD 는 01(간편인증) 또는 03(본인확인)이어야 합니다: "
+                    + serviceCode);
+        }
 
         // 규격 권고 타임아웃 5초. 없으면 이니시스가 늦을 때 가입 요청 스레드가 묶인다.
         ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.defaults()
@@ -87,8 +103,8 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
 
         if (!isConfigured()) {
             log.warn("""
-                    [IDENTITY] IDENTITY_PROVIDER=INICIS 인데 상점아이디/apiKey 가 비어 있습니다. 가입이 닫힙니다.
-                    IDENTITY_CLIENT_ID(MID) / IDENTITY_CLIENT_SECRET(apiKey) 를 주입하세요.""");
+                    [IDENTITY] IDENTITY_PROVIDER=INICIS 인데 상점아이디/apiKey 가 비어 있습니다. 자체 가입이 닫힙니다.
+                    IDENTITY_MID / IDENTITY_API_KEY 를 주입하세요.""");
         }
     }
 
@@ -99,27 +115,29 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
 
     @Override
     public boolean isConfigured() {
-        return !config.clientId().isBlank() && !config.clientSecret().isBlank();
+        return !config.mid().isBlank() && !config.apiKey().isBlank();
     }
 
     @Override
     public IdentityStartForm start(String requestId, String callbackUrl) {
-        String mid = config.clientId();
+        String mid = config.mid();
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("mid", mid);
-        fields.put("reqSvcCd", SERVICE_IDENTITY);
+        fields.put("reqSvcCd", serviceCode);
         fields.put("mTxId", requestId);
         fields.put("successUrl", callbackUrl);
         fields.put("failUrl", callbackUrl);
-        fields.put("authHash", sha256Hex(mid + requestId + config.clientSecret()));
+        fields.put("authHash", sha256Hex(mid + requestId + config.apiKey()));
         // 특정 사용자 고정을 쓰지 않는다 — 가입 전이라 우리가 아는 신원이 없다.
         fields.put("flgFixedUser", "N");
         // 결과조회 응답의 개인정보를 SEED 로 암호화해 받는다. 규격상 필수 고정값.
         fields.put("reservedMsg", "isUseToken=Y");
-        if (!config.diCode().isBlank()) {
-            fields.put("DI_CODE", config.diCode());
-        }
-        return new IdentityStartForm(AUTH_URL, "POST", fields);
+        return new IdentityStartForm(authUrl(serviceCode), "POST", fields);
+    }
+
+    /** 요청 주소는 서비스마다 다르다 (규격 "통합인증 요청URL"). */
+    static String authUrl(String serviceCode) {
+        return "03".equals(serviceCode) ? IDENTITY_AUTH_URL : SIMPLE_AUTH_URL;
     }
 
     @Override
@@ -147,27 +165,22 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
             throw new IdentityVerificationException("이니시스 거래번호 불일치 — 다른 요청의 인증 결과");
         }
         String svcCd = text(body, "svcCd");
-        if (svcCd != null && !SERVICE_IDENTITY.equals(svcCd)) {
-            throw new IdentityVerificationException("본인확인(03)이 아닌 인증 결과 svcCd=" + svcCd);
+        if (svcCd != null && !serviceCode.equals(svcCd)) {
+            throw new IdentityVerificationException("요청한 서비스(" + serviceCode + ")가 아닌 인증 결과 svcCd=" + svcCd);
         }
 
-        String di = InicisSeedCipher.decrypt(text(body, "userDi"), token);
-        if (di == null || di.isBlank()) {
-            // 간편인증으로 처리됐거나 DI 가 계약에 포함되지 않았다. 같은 사람 판정의 근거가 없다.
-            throw new IdentityVerificationException("이니시스 응답에 DI 가 없습니다 (본인확인 계약·DI_CODE 확인)");
-        }
+        String iv = config.seedIv();
+        String name = requireValue(InicisSeedCipher.decrypt(text(body, "userName"), token, iv), "userName");
+        LocalDate birth = parseBirth(InicisSeedCipher.decrypt(text(body, "userBirthday"), token, iv));
+        String phone = requireValue(InicisSeedCipher.decrypt(text(body, "userPhone"), token, iv), "userPhone");
+        // 없을 수 있다(카카오 "제한적 제공"). 여기서 막지 않고 넘긴다 — 판정은 서비스 계층이 한다.
+        String ci = InicisSeedCipher.decrypt(text(body, "userCi"), token, iv);
 
-        VerifiedIdentity identity = new VerifiedIdentity(
-                di,
-                requireValue(InicisSeedCipher.decrypt(text(body, "userName"), token), "userName"),
-                parseBirth(InicisSeedCipher.decrypt(text(body, "userBirthday"), token)),
-                parseGender(InicisSeedCipher.decrypt(text(body, "userGender"), token)),
-                "1".equals(InicisSeedCipher.decrypt(text(body, "isForeign"), token)),
-                requireValue(InicisSeedCipher.decrypt(text(body, "userPhone"), token), "userPhone"));
-
-        log.info("[IDENTITY] 이니시스 본인확인 통과. txId={} provider={}", txId, text(body, "providerDevCd"));
-        // 통신사는 주지 않는다. providerDevCd 는 인증 수단(PASS·토스 등)이지 통신사가 아니라 넣지 않는다.
-        return new IdentityVerificationResult(txId, identity, null);
+        // providerDevCd 는 인증 수단(PASS·토스 등)이다. 로그로 남겨 두면 "CI 가 안 온 수단"을 가려낼 수 있다.
+        log.info("[IDENTITY] 이니시스 인증 통과. svcCd={} txId={} provider={} ci={}",
+                serviceCode, txId, text(body, "providerDevCd"), ci == null || ci.isBlank() ? "없음" : "있음");
+        // 통신사는 주지 않는다. providerDevCd 는 인증 수단이지 통신사가 아니라 넣지 않는다.
+        return new IdentityVerificationResult(txId, ci, name, birth, phone, null);
     }
 
     private JsonNode lookup(URI lookupUrl, String txId) {
@@ -176,7 +189,7 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
                     .uri(lookupUrl)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
-                    .body(Map.of("mid", config.clientId(), "txId", txId))
+                    .body(Map.of("mid", config.mid(), "txId", txId))
                     .retrieve()
                     .body(JsonNode.class);
             if (body == null) {
@@ -217,14 +230,6 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
         } catch (DateTimeParseException e) {
             throw new IdentityVerificationException("생년월일 형식 오류", e);
         }
-    }
-
-    private static Gender parseGender(String value) {
-        return switch (requireValue(value, "userGender")) {
-            case "M" -> Gender.MALE;
-            case "F" -> Gender.FEMALE;
-            default -> throw new IdentityVerificationException("알 수 없는 성별 값");
-        };
     }
 
     private static String require(Map<String, String> map, String key) {

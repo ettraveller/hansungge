@@ -176,13 +176,17 @@ OAUTH_NAVER_CLIENT_SECRET=
 OAUTH_KAKAO_CLIENT_ID=
 OAUTH_KAKAO_CLIENT_SECRET=
 
-# --- 본인확인 (TODO E-4) ---
-#     비어 있으면 신규 가입이 닫히고 기존 회원 로그인만 된다. 계약 후 INICIS.
+# --- 본인인증 — KG이니시스 간편인증 (TODO E-4) ---
+#     비어 있으면 휴대폰(자체) 가입·비밀번호 찾기가 닫힌다. 소셜 가입·로그인은 된다. 계약 후 INICIS.
 #     MOCK 은 운영(prod) 프로파일에서 기동 자체가 실패한다 — 넣지 말 것.
 IDENTITY_PROVIDER=
-IDENTITY_CLIENT_ID=
-IDENTITY_CLIENT_SECRET=
-IDENTITY_DI_CODE=
+IDENTITY_MID=
+IDENTITY_API_KEY=
+#     01 간편인증(PASS·카카오·네이버·토스·은행, CI 제공) — 기본값. 03 본인확인(은행·토스만)
+IDENTITY_REQ_SVC_CD=01
+#     CI 해시용 비밀값. 비우면 본인인증이 꺼진다. ⚠️ 한 번 정하면 바꾸지 않는다 — 바꾸면 기존 회원과
+#     같은 사람 판정이 전부 끊긴다. 생성: openssl rand -base64 48
+IDENTITY_HASH_PEPPER=
 #     아래 두 주소는 기본값이 운영 주소다. 바꿀 때만 주석을 푼다 — 빈 값으로 두면 기본값을 덮어쓴다.
 # IDENTITY_CALLBACK_URL=https://api.hanseongge.com/api/v1/auth/identity/return
 # IDENTITY_RETURN_PAGE_URL=https://hanseongge.com/auth/identity

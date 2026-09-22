@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -31,24 +32,31 @@ public interface UserRepository extends JpaRepository<User, Long> {
     }
 
     /**
-     * DI 로 찾는다 — 중복가입 방지와 계정 병합의 근거다.
+     * 판정 키(CI 해시)로 찾는다 — "이미 가입한 사람인가"의 근거다.
      *
-     * <p>이메일은 바꿀 수 있지만 DI 는 사람에 붙는다. 그래서 "이미 가입한 사람인가"의
-     * 최종 판단은 이쪽이다.
+     * <p>키가 UNIQUE 가 아니라서(V23) 여럿일 수 있다 — 자체 계정과, 나중에 본인인증한 소셜 계정.
+     * <b>휴대폰 로그인이 되는 계정(자체)을 앞에</b> 둔다. 자체 가입의 중복 안내와 비밀번호 찾기는
+     * 그 계정을 가리켜야 한다. 그다음은 먼저 만든 순서.
      */
-    @Query("SELECT u FROM User u WHERE u.di = :di AND u.status <> :excluded")
-    Optional<User> findActiveByDi(@Param("di") String di,
-                                  @Param("excluded") UserStatus excluded);
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.identityKey = :key AND u.status <> :excluded
+            ORDER BY CASE WHEN u.phone IS NOT NULL AND u.passwordHash IS NOT NULL THEN 0 ELSE 1 END,
+                     u.createdAt
+            """)
+    List<User> findActiveByIdentityKey(@Param("key") String identityKey,
+                                       @Param("excluded") UserStatus excluded);
 
-    default Optional<User> findByDi(String di) {
-        return findActiveByDi(di, UserStatus.WITHDRAWN);
+    /** 같은 사람의 대표 계정 — {@link #findActiveByIdentityKey} 의 첫 번째. */
+    default Optional<User> findByIdentityKey(String identityKey) {
+        return findActiveByIdentityKey(identityKey, UserStatus.WITHDRAWN).stream().findFirst();
     }
 
     /**
      * 휴대폰번호(로그인 ID)로 찾는다. {@code phone} 은 {@code PhoneNumber} 로 정규화된 값이어야
      * 한다 — V21 인덱스와 저장 값이 숫자만이다.
      *
-     * <p>탈퇴한 회원은 제외한다. 이메일·DI 와 같은 이유다.
+     * <p>탈퇴한 회원은 제외한다. 이메일·판정 키와 같은 이유다.
      */
     @Query("SELECT u FROM User u WHERE u.phone = :phone AND u.status <> :excluded")
     Optional<User> findActiveByPhone(@Param("phone") String phone,

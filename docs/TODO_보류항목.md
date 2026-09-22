@@ -576,47 +576,48 @@ Actions 탭 > **배포** > Run workflow > `all`/`api`/`web` 선택.
 두 스크립트가 하는 일은 같고 거리가 다르다 — `deploy-local.sh` 는 서버 위에서
 자기 자신에게 설치한다.
 
-### E-4. 휴대폰 본인확인 (KG이니시스 통합인증)
+### E-4. 본인인증 — KG이니시스 통합인증 「간편인증」
 
-**가입이 이것 없이는 완결되지 않는다.** 모든 가입(자체·소셜)이 본인확인을 거친다.
-`IDENTITY_PROVIDER` 가 비어 있으면 운영은 신규 가입을 닫고(화면에 "가입 준비 중") 기존 회원 로그인만 받는다.
-`MOCK` 은 로컬·개발 전용이고 `prod` 프로파일에서는 **기동이 실패한다.**
+**2026-09-21 결정으로 「본인확인(03)」→「간편인증(01)」로 바꿨다.** 이니시스 회신: "네이버, 카카오, PASS, 삼성패스는
+본인확인 인증서에 포함되지 않습니다." PASS 로 가입시키려면 간편인증이어야 한다. 간편인증은 **DI 를 주지 않고 CI 를 준다** →
+같은 사람 판정은 CI 해시(`identity_key`)로 한다 (V23). 상세 검토는 `docs/본인확인_업체선택_정리.md`.
 
-- 단가: 본인확인 35원/성공건 (PASS·토스 등 13종을 한 연동으로 커버)
-- 필요 서류: 사업자등록증, 통신판매업 신고증, 개인정보처리방침 URL
-- 심사 기간: 확인 필요
+- 본인인증을 쓰는 곳: **휴대폰(자체) 가입 · 비밀번호 찾기 · 마이페이지 본인인증**(매입 신청·정산계좌 앞, 소셜 회원의 번호 등록)
+- **소셜 가입은 본인인증을 받지 않는다.** 약관 동의로 끝난다 (만 14세 확인은 필수 약관으로 갈음)
+- `IDENTITY_PROVIDER` 또는 `IDENTITY_HASH_PEPPER` 가 비어 있으면 위 세 곳만 닫힌다. 소셜 가입·로그인은 된다
+- `MOCK` 은 로컬·개발 전용이고 `prod` 프로파일에서는 **기동이 실패한다**
+- 정산: 설치비 없음, 성공 건당 과금, 익월 10일 세금계산서 → 계좌 입금 (자동이체·카드 불가). **단가·운영 MID 발급 기간 회신 대기**
+- 기간이 2주를 넘기면 NICE평가정보로 전환 검토 — 공급자 인터페이스 뒤에 숨겨 두어 연동 부분만 바꾸면 된다
 
-**받아야 할 값**
+**운영 `/etc/hanseongge/api.env` 에 넣을 값**
 
 ```
 IDENTITY_PROVIDER=INICIS
-IDENTITY_CLIENT_ID=               # 상점 아이디(MID)
-IDENTITY_CLIENT_SECRET=           # 인증키(apiKey)
-IDENTITY_DI_CODE=                 # 이니시스가 DI 사이트코드를 안내한 경우에만
+IDENTITY_MID=                     # 상점 아이디
+IDENTITY_API_KEY=                 # 인증키(apiKey)
+IDENTITY_REQ_SVC_CD=01            # 간편인증 (기본값)
+IDENTITY_HASH_PEPPER=             # openssl rand -base64 48 — 한 번 정하면 절대 바꾸지 않는다
 ```
 
-**구현 완료 (2026-09-19)** — `InicisIdentityVerificationProvider` (통합인증 본인확인 `reqSvcCd=03`,
-규격 manual.inicis.com/sa/auth.html · 공식 샘플 SaSample.zip 기준). 결과조회 주소는 `kssa/fcsa.inicis.com` 만 허용,
-응답의 SEED-CBC 복호화는 `InicisSeedCipher`(BouncyCastle) — KISA 공식 코드로 만든 암호문으로 호환성 테스트가 있다.
+⚠️ **pepper 를 바꾸면** 이미 저장된 판정 키와 전부 어긋나, 가입한 사람이 다시 와도 알아보지 못한다. 서버를 옮길 때도
+같은 값을 가져간다. 잃어버리면 되돌릴 방법이 없다 — 비밀 보관소에 따로 적어 둘 것.
 
-- [ ] **계약 시 DI 제공 여부 확인 필수.** 같은 사람 판정이 DI 에 걸려 있다 (DI 는 서비스 03 에서만 온다)
-- [x] 계약 전 연동 확인 (2026-09-21) — 공식 샘플의 테스트 MID `INIiasTest` + 샘플의 테스트 apiKey 를 **로컬 `backend/.env` 에만** 넣고
-      `IDENTITY_PROVIDER=INICIS` 로 기동:
-  - ✅ 우리 요청(authHash·서비스 코드 03)을 이니시스가 받아 본인확인 창이 열린다. 테스트 MID 에 뜨는 인증 수단:
-    금융인증서·신한·카카오뱅크·우리WON·KB국민·토스 (**통신사 PASS 는 없다** — 계약 때 PASS 포함 여부 확인)
-  - ✅ 창에서 「취소」 → 우리 결과 수신 주소 → 가입 화면 「본인확인을 마치지 못했습니다」
-  - 🐞 **발견·수정: 결과 수신 주소가 CORS 에 막혔다.** 이니시스 화면이 `Origin: https://kssa.inicis.com` 으로 폼 POST 하는데
-    허용 목록에 없어 "Invalid CORS request". 목은 우리 화면이 POST 해서 드러나지 않았다 → 그 주소만 CORS 검사에서 뺐다(`SecurityConfig`)
-- [ ] **실제 인증 완료 한 바퀴** — 본인 명의 인증서(토스·카카오뱅크 등)로 끝까지 해서 DI 가 오는지, 결과조회·SEED 복호화가
-      실제 응답에서 맞는지. 사람이 휴대폰으로 해야 한다
-- [ ] 계약 후 운영 `/etc/hanseongge/api.env` 에 위 값 입력 → 재기동 → 운영 가입 열림
+**구현** — `InicisIdentityVerificationProvider`(요청 주소: 01 `https://sa.inicis.com/auth`, 03 `/id/auth`),
+결과조회 주소는 `kssa/fcsa.inicis.com` 만 허용, SEED-CBC 복호화는 `InicisSeedCipher`. CI 는 `IdentityVerificationService` 에서
+받자마자 `IdentityKeyHasher`(HMAC-SHA256)로 해시하고 버린다.
+
+- [x] 계약 전 연동 확인 (2026-09-21, 테스트 MID `INIiasTest`, 03 기준) — 인증창 열림·취소 복귀 확인, 결과 수신 주소 CORS 버그 발견·수정
+- [ ] **간편인증(01)으로 테스트 MID 인증창 다시 확인** — PASS·카카오·네이버가 뜨는지
+- [ ] **실제 인증 완료 한 바퀴** — 본인 명의로 끝까지 해서 CI 가 오는지, 결과조회·복호화가 실제 응답에서 맞는지. 사람이 휴대폰으로
+- [ ] **카카오 인증의 CI** — 규격상 "제한적 제공". 안 오면 "다른 인증 수단을 선택해 주세요"(`IDENTITY_KEY_UNAVAILABLE`)로 막는다.
+      실제로 안 오는지, 계약으로 받을 수 있는지 이니시스에 확인
+- [ ] 계약 후 운영 `api.env` 에 위 값 입력 → 재기동 → 휴대폰 가입 열림
 
 ⚠️ 지키고 있는 것 (바꿀 때 유지)
 
 - 브라우저가 들고 온 값을 믿지 않는다. 공급자 서버에 되물어 확인한 값만 쓴다
-- **CI 를 받지 않는다.** 응답에 있어도 `IdentityVerificationResult` 에 자리가 없다 —
-  2024-08-14 시행 정보통신망법 §23조의5·6 (목적 외 사용 5년 이하 징역)
-- `requestId` 대조 — 다른 요청의 결과를 이 요청에 붙이는 경로를 막는다
+- **CI 원본을 저장·로깅하지 않는다.** 결과 객체의 `toString` 도 가린다. DB 에는 해시만 — 2024-08-14 시행 정보통신망법 §23조의5·6
+- `mTxId` 대조 — 다른 요청의 결과를 이 요청에 붙이는 경로를 막는다
 - 실패 원문을 예외 메시지에 담지 않는다. 상점 아이디가 섞여 나온다
 
 ### E-5. 메일 발송 (NCP Cloud Outbound Mailer)
@@ -712,7 +713,7 @@ SENS_SENDER_PHONE=    # 등록·승인된 발신번호, 숫자만
   5. ✅ 5회 실패 → 잠금 → `locked_at` 을 31분 전으로 → 1회 실패 시 `login_fail_count=1`, 잠기지 않음
   6. ✅ 비밀번호 찾기 → 새 비밀번호 → 살아 있는 리프레시 토큰 0, 다른 브라우저는 로그인 화면으로
   7. ✅ 마이페이지 비밀번호 변경 → 새 비밀번호로 로그인, 「연결하기」 버튼 표시
-- [ ] **남은 한 가지 — 소셜 연결 확인 (위 목록의 3번)**: 네이버 로그인 → 약관 → 같은 사람 본인확인 → 「이 계정에 연결할까요?」
+- [~] ~~소셜 연결 확인~~ — 09-21 개편(H)으로 이 흐름 자체가 없어졌다. 원래 항목: 네이버 로그인 → 약관 → 같은 사람 본인확인 → 「이 계정에 연결할까요?」
       → 연결 / 취소 시 계정이 안 생기는지(DB), 연결 뒤 네이버로 들어와도 같은 `users.id` 인지. 실제 네이버 계정 로그인이 필요해 자동화하지 못했다 — 사람이 로컬에서 한 번
 - [x] **운영 안전장치 확인 — 2026-09-21 통과** — `SPRING_PROFILES_ACTIVE=prod` + `IDENTITY_PROVIDER=MOCK` 으로 bootRun 하면
       `MockIdentityVerificationProvider` 생성자 예외로 컨텍스트 초기화가 중단되어 뜨지 않는다
@@ -720,12 +721,47 @@ SENS_SENDER_PHONE=    # 등록·승인된 발신번호, 숫자만
 
 **외부·발주처 쪽**
 
-- [ ] KG이니시스 계약 + DI 제공 확인 → E-4
+- [ ] KG이니시스 계약 → E-4 (09-21 부터 간편인증·CI 기준 — H 참조)
 - [ ] SENS 발신번호 등록 → E-7
 - [ ] 메일러 설정 → E-5
 - [ ] `/terms`, `/privacy` — 수집 항목이 바뀌었다(이름·생년월일·성별·내외국인·**통신사**·휴대폰). 방침 문구를 맞출 것 → A-6
 - [ ] 운영 `/etc/hanseongge/api.env` 에 `IDENTITY_*`, `SENS_*` 추가 — **이미 있는 서버에는 `provision.sh` 가 다시 쓰지 않는다.**
       더 이상 쓰지 않는 `APP_IDENTITY_INICIS_ENABLED` 줄은 지워도 된다
+
+## H. 본인인증 방식 변경 — 간편인증·CI 해시·소셜 무인증 (2026-09-21) — 남은 일
+
+회원가입·본인확인 방식 변경 요청서(2026-09-21) 반영. G 의 "모든 가입에 본인확인"을 뒤집었다.
+
+| 항목 | G (09-19) | H (09-21) |
+|---|---|---|
+| 이니시스 서비스 | 본인확인 03 | **간편인증 01** (PASS 가능) |
+| 같은 사람 판정 | DI | **CI 해시** `identity_key` (UNIQUE 아님) |
+| 소셜 가입 | 본인확인 필수, 기존 회원이면 연결 확인 | **본인인증 없음**, 약관만 |
+| 매입·정산계좌 | — | 로그인한 채 **본인인증(STEP_UP)** — 붙일 자리만 만들었다 |
+
+**끝난 것**
+
+- [x] V23 — `di`·성별·내외국인 제거, `identity_key`, `phone_verified_at`→`identity_verified_at`, "신원 필수" 제약 해제
+- [x] 소셜 가입 `POST /auth/signup/social`, 마이페이지 본인인증 `POST /me/identity/start·complete`
+- [x] 매입 기능이 부를 곳: `IdentityVerificationService.requireRecentStepUp(userId, 기간)`
+- [x] 같은 사람의 휴대폰 계정이 있으면 소셜 계정 본인인증이 그 번호를 빼앗지 않는다 / 다른 명의면 `IDENTITY_MISMATCH`
+- [x] 순수 단위테스트 45개 통과 (CI 해시·이니시스 요청 주소·회원 신원 규칙·SEED·잠금)
+- [x] 로컬 브라우저 (Mock, 2026-09-22): 자체 가입·재가입 안내·휴대폰/인증번호 로그인·잠금 만료·비밀번호 찾기·마이페이지 비밀번호·
+      마이페이지 본인인증 8단계 통과, 다른 명의 본인인증 거부 확인. DB 에 CI 원본이 없고 64자 해시만 있음 확인
+
+**남은 것**
+
+- [ ] **통합테스트 실행** — 이번에 다시 쓴 `UserAuthIntegrationTest`(StepUp 추가)·`SelfSignUpIntegrationTest`·`PasswordResetIntegrationTest`·
+      `SignUpWithoutIdentityProviderIntegrationTest` 는 컴파일까지만. 다른 PC 나 서버에서 `./gradlew test`
+- [ ] **소셜 가입 브라우저 확인** — 실제 네이버 계정으로: 콜백 → 약관 → 가입 완료, 마이페이지 「본인인증하기」 → 번호 등록 → 휴대폰 로그인
+- [ ] **매입 신청·정산계좌 화면을 만들 때** `requireRecentStepUp` 호출 + 예금주와 본인인증 실명 대조
+- [ ] **운영 배포 후** — 소셜 가입이 열렸는지(`/signup` 소셜 흐름), 휴대폰 가입은 「준비 중」인지
+- [ ] 운영 `api.env` 변수 이름이 바뀌었다: `IDENTITY_CLIENT_ID`→`IDENTITY_MID`, `IDENTITY_CLIENT_SECRET`→`IDENTITY_API_KEY`,
+      `IDENTITY_DI_CODE` 삭제, `IDENTITY_REQ_SVC_CD`·`IDENTITY_HASH_PEPPER` 추가
+- [ ] **`/privacy`** — 수집 항목(이름·생년월일·휴대폰·**CI 해시**)과 보관 사실, 위탁(KG이니시스 간편인증)을 기재. 성별·내외국인·통신사는
+      더 이상 받지 않는다. "초안입니다" 문구·`{{회사명}}` 템플릿 변수도 정리 → A-6
+- [ ] ⚠️ **법무 확인 권장** — 간편인증 CI 는 이니시스가 "비교검증 후 파기"를 권고한다. 해시(비가역)로 보관하는 것이 그 권고와
+      정보통신망법상 CI 규정에 맞는지
 
 ## F. 화면 — 나중에 손볼 것
 

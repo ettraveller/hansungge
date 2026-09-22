@@ -139,14 +139,15 @@ public class UserProfileService {
     /**
      * 연동 해제.
      *
-     * <p>비밀번호가 없는 회원의 마지막 소셜은 끊을 수 없다 — 다 끊으면 <b>본인도 다시 들어올 수
-     * 없는 계정</b>이 된다. 인증번호 로그인은 세지 않는다. 문자 설정(SENS)이 없으면 그 문이
-     * 닫혀 있다.
+     * <p>휴대폰+비밀번호로 로그인할 수 없는 회원의 마지막 소셜은 끊을 수 없다 — 다 끊으면 <b>본인도
+     * 다시 들어올 수 없는 계정</b>이 된다. 비밀번호만 있고 휴대폰번호가 없으면(본인인증 전 소셜 회원)
+     * 로그인할 ID 가 없으므로 끊을 수 없다. 인증번호 로그인은 세지 않는다. 문자 설정(SENS)이 없으면
+     * 그 문이 닫혀 있다.
      */
     @Transactional
     public List<SocialAccountResponse> disconnect(Long userId, OAuthProviderType provider) {
         User user = find(userId);
-        if (!user.hasPassword() && socialAccountRepository.countByUserId(userId) <= 1) {
+        if (!user.canPasswordLogin() && socialAccountRepository.countByUserId(userId) <= 1) {
             throw new BusinessException(ErrorCode.SOCIAL_LAST_CONNECTION);
         }
         List<SocialAccount> targets = socialAccountRepository

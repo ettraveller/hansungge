@@ -2,7 +2,6 @@ package com.hanseongge;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import com.hanseongge.support.SignUpFlow;
 import com.hanseongge.support.StubIdentityConfig;
@@ -86,9 +85,9 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     /** 약관 → 본인확인까지. 신규면 SET_PASSWORD 와 진행 토큰이 온다. */
-    private JsonNode agreeAndVerify(VerifiedIdentity identity) throws Exception {
-        String agreed = flow.agree(null);
-        identityProvider.willReturn(identity);
+    private JsonNode agreeAndVerify(UserTestFixtures.Person person) throws Exception {
+        String agreed = flow.agree();
+        identityProvider.willReturn(person);
         return flow.verifyIdentity(agreed);
     }
 
@@ -132,7 +131,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @DisplayName("본인확인 값으로 가입된다 — 이름·생년월일·휴대폰을 입력받지 않는다")
         void signUpUsesIdentityValues() throws Exception {
             JsonNode verified = agreeAndVerify(
-                    UserTestFixtures.identityWith("DI-1", "홍길동", "010-1234-5678"));
+                    UserTestFixtures.personWith("CI-1", "홍길동", "010-1234-5678"));
 
             assertThat(verified.get("step").asText()).isEqualTo("SET_PASSWORD");
             // 비밀번호 화면에 읽기 전용으로 보여줄 본인 값
@@ -146,10 +145,12 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
             assertThat(read(done).get("accessToken").asText()).isNotBlank();
 
             Map<String, Object> user = jdbc.queryForMap(
-                    "SELECT name, phone, di, email, password_hash FROM users");
+                    "SELECT name, phone, identity_key, email, password_hash FROM users");
             assertThat(user.get("name")).isEqualTo("홍길동");
             assertThat(user.get("phone")).isEqualTo("01012345678");
-            assertThat(user.get("di")).isEqualTo("DI-1");
+            // CI 원본이 아니라 해시가 저장된다
+            assertThat(user.get("identity_key")).isEqualTo(UserTestFixtures.keyOf("CI-1"));
+            assertThat((String) user.get("identity_key")).hasSize(64).doesNotContain("CI-1");
             assertThat(user.get("email")).isNull();
             assertThat((String) user.get("password_hash")).startsWith("$2");
         }
@@ -157,7 +158,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("가입한 번호와 비밀번호로 로그인된다 — 하이픈이 있어도 같은 번호다")
         void signedUpMemberLogsInByPhone() throws Exception {
-            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
+            flow.phone(UserTestFixtures.personWith("CI-1", "홍길동", "01012345678"), PASSWORD);
 
             MvcResult result = login("010-1234-5678", PASSWORD);
             assertThat(result.getResponse().getStatus()).isEqualTo(200);
@@ -167,7 +168,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("이메일을 넣으면 인증번호를 확인해야 가입된다")
         void emailNeedsCode() throws Exception {
-            String token = agreeAndVerify(UserTestFixtures.identity("홍길동")).get("signUpToken").asText();
+            String token = agreeAndVerify(UserTestFixtures.person("홍길동")).get("signUpToken").asText();
 
             mockMvc.perform(post("/api/v1/auth/email/verification")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -192,7 +193,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("본인확인을 건너뛰고 가입을 마칠 수 없다")
         void identityCannotBeSkipped() throws Exception {
-            String agreedOnly = flow.agree(null);
+            String agreedOnly = flow.agree();
 
             MvcResult result = complete(agreedOnly, PASSWORD, null, null);
             assertThat(result.getResponse().getStatus()).isEqualTo(400);
@@ -203,8 +204,8 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("만 14세 미만은 본인확인 단계에서 막힌다 — 신원을 저장하지도 않는다")
         void underFourteenIsBlocked() throws Exception {
-            String agreed = flow.agree(null);
-            identityProvider.willReturn(UserTestFixtures.minorIdentity(LocalDate.now()));
+            String agreed = flow.agree();
+            identityProvider.willReturn(UserTestFixtures.minor(LocalDate.now()));
 
             MvcResult result = flow.verifyIdentityRaw(agreed);
             assertThat(result.getResponse().getStatus()).isEqualTo(403);
@@ -213,9 +214,21 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
+        @DisplayName("CI 를 주지 않는 인증 수단이면 다른 수단을 고르라고 한다 — 아무것도 저장하지 않는다")
+        void missingCiIsRejected() throws Exception {
+            String agreed = flow.agree();
+            identityProvider.omitCi = true;
+
+            MvcResult result = flow.verifyIdentityRaw(agreed);
+            assertThat(result.getResponse().getStatus()).isEqualTo(400);
+            assertThat(read(result).get("code").asText()).isEqualTo("IDENTITY_KEY_UNAVAILABLE");
+            assertThat(count("identity_verifications")).isZero();
+        }
+
+        @Test
         @DisplayName("비밀번호 정책에 맞지 않으면 400")
         void weakPasswordIsRejected() throws Exception {
-            String token = agreeAndVerify(UserTestFixtures.identity("홍길동")).get("signUpToken").asText();
+            String token = agreeAndVerify(UserTestFixtures.person("홍길동")).get("signUpToken").asText();
             assertThat(complete(token, "short", null, null).getResponse().getStatus()).isEqualTo(400);
         }
     }
@@ -225,13 +238,13 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
     // =================================================================
 
     @Nested
-    @DisplayName("같은 사람(같은 DI)은 두 계정을 만들 수 없다")
+    @DisplayName("같은 사람(같은 CI)은 휴대폰 계정을 두 개 만들 수 없다")
     class Duplicate {
 
         @Test
         @DisplayName("다시 가입하면 EXISTING_ACCOUNT — 가린 정보와 재설정 토큰을 주고, 계정은 늘지 않는다")
         void secondSignUpIsTurnedIntoExistingAccount() throws Exception {
-            VerifiedIdentity person = UserTestFixtures.identityWith("DI-SAME", "홍길동", "01012345678");
+            UserTestFixtures.Person person = UserTestFixtures.personWith("CI-SAME", "홍길동", "01012345678");
             flow.phone(person, PASSWORD);
 
             JsonNode again = agreeAndVerify(person);
@@ -246,7 +259,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("그 자리에서 바로 비밀번호를 다시 정할 수 있다 — 본인확인을 이미 통과했다")
         void existingAccountCanResetRightAway() throws Exception {
-            VerifiedIdentity person = UserTestFixtures.identityWith("DI-SAME", "홍길동", "01012345678");
+            UserTestFixtures.Person person = UserTestFixtures.personWith("CI-SAME", "홍길동", "01012345678");
             flow.phone(person, PASSWORD);
             String resetToken = agreeAndVerify(person).get("resetToken").asText();
 
@@ -259,11 +272,43 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
+        @DisplayName("소셜로 가입해 본인인증까지 한 사람이 휴대폰 가입을 하면 그 소셜 계정으로 안내한다 — 계정이 늘지 않는다")
+        void socialMemberWithIdentityIsExisting() throws Exception {
+            UserTestFixtures.Person person = UserTestFixtures.personWith("CI-SAME", "홍길동", "01012345678");
+            String token = flow.social("google-1", "buyer@test.local", "구글닉네임");
+            flow.verifyIdentityAsMember(token, person);
+
+            JsonNode again = agreeAndVerify(person);
+
+            assertThat(again.get("step").asText()).isEqualTo("EXISTING_ACCOUNT");
+            assertThat(again.get("accountHasPassword").asBoolean()).isFalse();
+            assertThat(count("users")).isEqualTo(1);
+
+            // 그 자리에서 비밀번호를 정하면 휴대폰 로그인이 된다
+            mockMvc.perform(post("/api/v1/auth/password/reset")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("resetToken", again.get("resetToken").asText(),
+                                    "newPassword", PASSWORD))))
+                    .andExpect(status().isNoContent());
+            assertThat(login("01012345678", PASSWORD).getResponse().getStatus()).isEqualTo(200);
+        }
+
+        @Test
+        @DisplayName("본인인증을 받지 않은 소셜 회원은 같은 사람인지 모른다 — 휴대폰 가입이 따로 된다 (중복가입 허용)")
+        void unverifiedSocialMemberDoesNotBlockPhoneSignUp() throws Exception {
+            flow.social("google-1", "buyer@test.local", "홍길동");
+
+            flow.phone(UserTestFixtures.person("홍길동"), PASSWORD);
+
+            assertThat(count("users")).isEqualTo(2);
+        }
+
+        @Test
         @DisplayName("번호를 바꾼 사람이 다시 본인확인하면 로그인 번호가 새 번호로 맞춰진다")
         void changedNumberIsRefreshed() throws Exception {
-            flow.phone(UserTestFixtures.identityWith("DI-SAME", "홍길동", "01011111111"), PASSWORD);
+            flow.phone(UserTestFixtures.personWith("CI-SAME", "홍길동", "01011111111"), PASSWORD);
 
-            agreeAndVerify(UserTestFixtures.identityWith("DI-SAME", "홍길동", "01022222222"));
+            agreeAndVerify(UserTestFixtures.personWith("CI-SAME", "홍길동", "01022222222"));
 
             assertThat(jdbc.queryForObject("SELECT phone FROM users", String.class)).isEqualTo("01022222222");
             assertThat(login("01022222222", PASSWORD).getResponse().getStatus()).isEqualTo(200);
@@ -281,14 +326,15 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("새 주인은 가입되고, 옛 계정은 로그인 번호를 잃는다 — 계정이 합쳐지지 않는다")
         void newOwnerSignsUpAndOldAccountLosesNumber() throws Exception {
-            flow.phone(UserTestFixtures.identityWith("DI-OLD", "김옛주인", "01012345678"), PASSWORD);
+            flow.phone(UserTestFixtures.personWith("CI-OLD", "김옛주인", "01012345678"), PASSWORD);
 
-            flow.phone(UserTestFixtures.identityWith("DI-NEW", "박새주인", "01012345678"), "New-owner-pass-1!");
+            flow.phone(UserTestFixtures.personWith("CI-NEW", "박새주인", "01012345678"), "New-owner-pass-1!");
 
             assertThat(count("users")).isEqualTo(2);
-            assertThat(jdbc.queryForObject("SELECT phone FROM users WHERE di = 'DI-OLD'", String.class)).isNull();
-            assertThat(jdbc.queryForObject("SELECT phone FROM users WHERE di = 'DI-NEW'", String.class))
-                    .isEqualTo("01012345678");
+            assertThat(jdbc.queryForObject("SELECT phone FROM users WHERE identity_key = ?", String.class,
+                    UserTestFixtures.keyOf("CI-OLD"))).isNull();
+            assertThat(jdbc.queryForObject("SELECT phone FROM users WHERE identity_key = ?", String.class,
+                    UserTestFixtures.keyOf("CI-NEW"))).isEqualTo("01012345678");
 
             // 그 번호로 로그인하면 새 주인이다
             MvcResult result = login("01012345678", "New-owner-pass-1!");
@@ -309,7 +355,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("없는 번호와 틀린 비밀번호는 같은 응답이다 — 가입 여부를 흘리지 않는다")
         void unknownAndWrongLookTheSame() throws Exception {
-            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
+            flow.phone(UserTestFixtures.personWith("CI-1", "홍길동", "01012345678"), PASSWORD);
 
             MvcResult unknown = login("01099999999", PASSWORD);
             MvcResult wrong = login("01012345678", "Wrong-pass-1234!");
@@ -324,10 +370,10 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("소셜로만 가입해 비밀번호가 없으면 그 사실을 알려준다 — 다음에 할 일이 다르다")
+        @DisplayName("본인인증으로 번호는 있지만 비밀번호가 없는 소셜 회원에게는 그 사실을 알려준다")
         void socialOnlyMemberIsTold() throws Exception {
-            flow.social("google-1", "buyer@test.local", "홍길동",
-                    UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"));
+            String token = flow.social("google-1", "buyer@test.local", "홍길동");
+            flow.verifyIdentityAsMember(token, UserTestFixtures.personWith("CI-1", "홍길동", "01012345678"));
 
             MvcResult result = login("01012345678", PASSWORD);
             assertThat(result.getResponse().getStatus()).isEqualTo(409);
@@ -337,7 +383,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("5번 틀리면 잠기고, 맞는 비밀번호도 통하지 않는다")
         void locksAfterFiveFailures() throws Exception {
-            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
+            flow.phone(UserTestFixtures.personWith("CI-1", "홍길동", "01012345678"), PASSWORD);
 
             for (int i = 0; i < 5; i++) {
                 login("01012345678", "Wrong-pass-1234!");
@@ -350,7 +396,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("30분이 지나 풀린 뒤 한 번 틀려도 곧바로 다시 잠기지 않는다 — 실패 횟수를 새로 센다")
         void expiredLockStartsCountingAgain() throws Exception {
-            flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", "01012345678"), PASSWORD);
+            flow.phone(UserTestFixtures.personWith("CI-1", "홍길동", "01012345678"), PASSWORD);
             for (int i = 0; i < 5; i++) {
                 login("01012345678", "Wrong-pass-1234!");
             }
@@ -376,23 +422,24 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
     class PrivacyGuards {
 
         @Test
-        @DisplayName("진행 토큰을 디코딩해도 이름·생년월일·휴대폰·DI 가 없다 — JWT 는 암호화가 아니다")
+        @DisplayName("진행 토큰을 디코딩해도 이름·생년월일·휴대폰·CI 가 없다 — JWT 는 암호화가 아니다")
         void signUpTokenCarriesNoPersonalData() throws Exception {
             JsonNode verified = agreeAndVerify(
-                    UserTestFixtures.identityWith("DI-SECRET-VALUE", "김철수", "01011112222"));
+                    UserTestFixtures.personWith("CI-SECRET-VALUE", "김철수", "01011112222"));
 
             String token = verified.get("signUpToken").asText();
             String payload = new String(java.util.Base64.getUrlDecoder()
                     .decode(token.split("\\.")[1]), java.nio.charset.StandardCharsets.UTF_8);
 
-            assertThat(payload).doesNotContain("DI-SECRET-VALUE");
+            assertThat(payload).doesNotContain("CI-SECRET-VALUE");
+            assertThat(payload).doesNotContain(UserTestFixtures.keyOf("CI-SECRET-VALUE"));
             assertThat(payload).doesNotContain("김철수");
             assertThat(payload).doesNotContain("01011112222");
             assertThat(payload).doesNotContain("1990");
         }
 
         @Test
-        @DisplayName("CI 를 담을 자리가 아예 없다")
+        @DisplayName("CI 원본을 담을 자리가 아예 없다 — 해시(identity_key)만 있다")
         void thereIsNoPlaceForCi() {
             Integer columns = jdbc.queryForObject("""
                     SELECT count(*) FROM information_schema.columns
@@ -404,7 +451,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("본인확인 신원은 고칠 수도 지울 수도 없다")
         void identityRowIsAppendOnly() throws Exception {
-            flow.phone(UserTestFixtures.identity("홍길동"), PASSWORD);
+            flow.phone(UserTestFixtures.person("홍길동"), PASSWORD);
             Long id = jdbc.queryForObject("SELECT id FROM identity_verifications LIMIT 1", Long.class);
 
             assertThatThrownBySql(() -> jdbc.update(
@@ -416,7 +463,7 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         @Test
         @DisplayName("한 번 쓴 본인확인은 다시 쓸 수 없다 — 가입에 쓴 인증으로 계정을 또 만들지 못한다")
         void consumedIdentityCannotBeReused() throws Exception {
-            JsonNode verified = agreeAndVerify(UserTestFixtures.identity("홍길동"));
+            JsonNode verified = agreeAndVerify(UserTestFixtures.person("홍길동"));
             String token = verified.get("signUpToken").asText();
             assertThat(complete(token, PASSWORD, null, null).getResponse().getStatus()).isEqualTo(200);
 

@@ -59,10 +59,10 @@ public record AppProperties(
     ) {}
 
     /**
-     * 휴대폰 본인확인 — KG이니시스 통합인증 (TODO E-4).
+     * 본인인증 — KG이니시스 통합인증 간편인증 (TODO E-4).
      *
      * <p>{@code provider} 는 {@code MOCK | INICIS} 중 하나이거나 비어 있다. 비어 있으면
-     * 본인확인을 쓸 수 없고 <b>가입이 닫힌다</b> — 기존 회원의 로그인은 그대로 된다.
+     * 본인인증을 쓸 수 없고 <b>자체(휴대폰) 가입이 닫힌다</b> — 소셜 가입과 로그인은 그대로 된다.
      *
      * <p>{@code MOCK} 은 아무것도 확인하지 않는다. 운영 프로필에서 MOCK 이면 기동이 실패한다
      * ({@code MockIdentityVerificationProvider}).
@@ -74,11 +74,23 @@ public record AppProperties(
     public record Identity(
             @DefaultValue("") String provider,
             /** 이니시스 상점아이디(MID) */
-            @DefaultValue("") String clientId,
+            @DefaultValue("") String mid,
             /** 이니시스 apiKey. authHash 계산에 쓰는 비밀값 */
-            @DefaultValue("") String clientSecret,
-            /** 이니시스 웹사이트 코드. DI 생성에 쓰인다. 계약 시 안내받은 값, 없으면 비운다 */
-            @DefaultValue("") String diCode,
+            @DefaultValue("") String apiKey,
+            /**
+             * 이니시스 요청구분코드. {@code 01} 간편인증(PASS·카카오·네이버·토스·은행 — CI 제공),
+             * {@code 03} 본인확인(은행·토스만 — DI 제공). 우리는 CI 로 판정하므로 {@code 01}.
+             */
+            @DefaultValue("01") String reqSvcCd,
+            /** 이니시스 결과 복호화 IV. 규격 고정값이라 바꿀 일이 없다 — 규격이 바뀌었을 때만. */
+            @DefaultValue("SASKGINICIS00000") String seedIv,
+            /**
+             * CI 해시용 서버 고정 비밀값 (pepper). <b>한 번 정하면 바꾸지 않는다</b> — 바꾸면 이미 저장된
+             * 판정 키와 대조가 전부 끊겨, 기존 회원을 같은 사람으로 알아보지 못한다.
+             *
+             * <p>비어 있으면 본인인증을 쓸 수 없다(자체 가입이 닫힌다). 생성: {@code openssl rand -base64 48}
+             */
+            @DefaultValue("") String hashPepper,
             /**
              * 공급자가 결과를 돌려보낼 <b>백엔드</b> 주소.
              *
@@ -89,10 +101,10 @@ public record AppProperties(
             /** 본인확인을 마친 사용자가 도착할 화면. */
             @DefaultValue("http://localhost:3000/auth/identity") String returnPageUrl,
             /**
-             * 개발용 목이 돌려줄 사람 번호. 같은 값이면 같은 사람(같은 DI·같은 휴대폰)이다.
+             * 개발용 목이 돌려줄 사람 번호. 같은 값이면 같은 사람(같은 CI·같은 휴대폰)이다.
              *
-             * <p>고정값이어야 "이미 가입한 사람이 다시 가입" "소셜 계정 연결"을 로컬에서
-             * 재현할 수 있다. 다른 사람으로 가입해 보려면 이 값을 바꿔 재기동한다.
+             * <p>고정값이어야 "이미 가입한 사람이 다시 가입" 같은 경우를 로컬에서 재현할 수 있다.
+             * 다른 사람으로 가입해 보려면 이 값을 바꿔 재기동한다.
              */
             @DefaultValue("1") int mockPersona
     ) {

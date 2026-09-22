@@ -37,8 +37,8 @@ type CallbackOutcome = { kind: 'signin'; result: SignInResult } | { kind: 'linke
  *       실제로 막는 것은 이쪽이다.</li>
  *   <li>인가코드를 서버에 넘긴다. 로그인 중이었으면 로그인, 마이페이지에서 [연결하기]를
  *       눌렀으면 그 계정에 연결한다.</li>
- *   <li>처음 오는 소셜 계정이면 <b>약관 화면</b>으로 넘긴다. 다음은 본인확인이다 —
- *       이미 가입한 사람이면 본인확인 직후 연결 여부를 묻는다.</li>
+ *   <li>처음 오는 소셜 계정이면 <b>약관 화면</b>으로 넘긴다. 약관에 동의하면 가입이 끝난다 —
+ *       본인인증을 받지 않는다(2026-09-21 개편).</li>
  * </ol>
  *
  * <h2>왜 useMutation 이 아니라 useQuery 인가</h2>
@@ -110,7 +110,7 @@ export function AuthCallbackView({ provider }: { provider: OAuthProviderType }) 
     const { result } = data;
 
     if (result.signUpRequired) {
-      // 처음 오는 소셜 계정 — 계정은 아직 없다. 약관 → 본인확인으로.
+      // 처음 오는 소셜 계정 — 계정은 아직 없다. 약관 동의로 가입이 끝난다.
       pendingSignUp.save({
         signUpToken: result.signUpToken ?? '',
         agreements: result.agreements ?? [],

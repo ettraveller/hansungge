@@ -61,6 +61,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             "/api/v1/auth/email/verification",
             "/api/v1/auth/identity/start",
             "/api/v1/auth/password/reset/identity/start",
+            "/api/v1/auth/signup/social",
+            "/api/v1/me/identity/start",
             "/api/v1/me/password");
 
     private final Set<String> guardedPaths;

@@ -53,11 +53,11 @@ export interface AuthProviders {
   providers: AuthProviderItem[];
   agreements: AgreementItem[];
   /**
-   * 새 가입을 지금 받는가 (자체·소셜 모두).
+   * 휴대폰(자체) 가입을 지금 받는가.
    *
-   * <p>모든 가입은 휴대폰 본인확인을 거친다. 본인확인(이니시스) 계약 전에는 false 이고,
-   * 기존 회원의 로그인만 된다. false 일 때 가입 버튼을 그리면 <b>눌러야만 실패를 아는</b>
-   * 화면이 된다.
+   * <p>자체 가입은 간편인증(PASS·토스 등)을 거친다. 본인인증(이니시스) 계약 전에는 false 다.
+   * 소셜 가입은 본인인증이 없어 이 값과 무관하게 된다. 본인인증이 필요한 비밀번호 찾기·
+   * 마이페이지 본인인증도 이 값을 따른다.
    */
   signUpAvailable: boolean;
   /** 인증번호(문자) 로그인을 지금 쓸 수 있는가. 문자 발송 설정이 없으면 false. */
@@ -73,14 +73,18 @@ export interface OAuthAuthorize {
 export interface User {
   id: number;
   email?: string | null;
-  /** 본인확인 실명. 회원이 고칠 수 없다 */
+  /** 본인인증을 마친 회원은 실명(고칠 수 없다). 본인인증 전 소셜 회원은 제공자가 준 이름이거나 없다 */
   name?: string | null;
-  /** 로그인 ID. 본인확인으로 확정된 번호, 숫자만(01012345678). 표시는 formatPhone */
+  /** 로그인 ID. 본인인증으로 받은 번호, 숫자만(01012345678). 본인인증 전 소셜 회원은 없다. 표시는 formatPhone */
   phone?: string | null;
   status: UserStatus;
   createdAt: string;
-  /** 비밀번호가 있는가. 소셜로만 가입했으면 false */
+  /** 비밀번호가 있는가 */
   hasPassword: boolean;
+  /** 휴대폰번호+비밀번호로 로그인할 수 있는가. 비밀번호만 있고 번호가 없으면 false */
+  canPasswordLogin: boolean;
+  /** 본인인증(간편인증)을 마쳤는가. 소셜 가입자는 본인인증 전까지 false */
+  identityVerified: boolean;
 }
 
 /**
@@ -89,7 +93,7 @@ export interface User {
  * <b>결말이 두 가지다.</b>
  *  - 로그인 완료: `signUpRequired=false`, `accessToken` 발급됨
  *  - 처음 오는 소셜: `signUpRequired=true`, 토큰 대신 `signUpToken` + 약관 목록.
- *    다음은 약관 동의 → 본인확인이다
+ *    다음은 약관 동의 — 그것으로 가입이 끝난다(본인인증 없음)
  *
  * 신규일 때 계정은 <b>아직 만들어지지 않았다.</b>
  *
@@ -124,18 +128,15 @@ export interface IdentityStart {
 }
 
 /**
- * 가입 중 본인확인을 마친 뒤 — 다음에 무엇을 할지. 서버가 정한다.
+ * 자체 가입 중 간편인증을 마친 뒤 — 다음에 무엇을 할지. 서버가 정한다.
  *
- *  - SET_PASSWORD      새 회원(자체 가입) — 비밀번호와 선택 이메일
+ *  - SET_PASSWORD      새 회원 — 비밀번호와 선택 이메일
  *  - EXISTING_ACCOUNT  이미 가입한 사람 — 로그인하거나 바로 비밀번호 재설정
- *  - CONFIRM_LINK      이미 가입한 사람(소셜로 옴) — 이 소셜 계정을 연결할지 묻는다
- *  - SIGNED_IN         새 회원(소셜 가입) — 가입 완료, 로그인됨
  */
-export type IdentityStep = 'SET_PASSWORD' | 'EXISTING_ACCOUNT' | 'CONFIRM_LINK' | 'SIGNED_IN';
+export type IdentityStep = 'SET_PASSWORD' | 'EXISTING_ACCOUNT';
 
 export interface IdentityResult {
   step: IdentityStep;
-  session?: SignInResult | null;
   signUpToken?: string | null;
   resetToken?: string | null;
   /** 이미 있는 계정의 이메일(가림) */

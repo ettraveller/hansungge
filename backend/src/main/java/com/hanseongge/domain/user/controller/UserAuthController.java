@@ -14,7 +14,6 @@ import com.hanseongge.domain.user.dto.PasswordSignInRequest;
 import com.hanseongge.domain.user.dto.SignInResponse;
 import com.hanseongge.domain.user.dto.SignUpCompleteRequest;
 import com.hanseongge.domain.user.dto.SignUpStartRequest;
-import com.hanseongge.domain.user.dto.SignUpTokenRequest;
 import com.hanseongge.domain.user.dto.SignUpTokenResponse;
 import com.hanseongge.domain.user.dto.SmsLoginRequest;
 import com.hanseongge.domain.user.dto.SmsSendRequest;
@@ -120,18 +119,28 @@ public class UserAuthController {
     }
 
     // -----------------------------------------------------------------
-    // 가입 — 약관 → 본인확인 → 비밀번호·이메일
+    // 가입 — 자체: 약관 → 간편인증 → 비밀번호·이메일 / 소셜: 약관
     // -----------------------------------------------------------------
 
-    @Operation(summary = "가입 시작 (약관 동의)",
-            description = "본인확인(개인정보 수집)보다 먼저 받는다. 소셜 가입이면 콜백에서 받은 토큰을 함께 보낸다.")
+    @Operation(summary = "자체 가입 시작 (약관 동의)",
+            description = "간편인증(개인정보 수집)보다 먼저 받는다. 본인인증 공급자가 없으면 503 SIGNUP_UNAVAILABLE.")
     @PostMapping("/signup/start")
     public ResponseEntity<SignUpTokenResponse> startSignUp(@Valid @RequestBody SignUpStartRequest request) {
-        return ResponseEntity.ok(new SignUpTokenResponse(
-                userAuthService.startSignUp(request.signUpToken(), request.agreements())));
+        return ResponseEntity.ok(new SignUpTokenResponse(userAuthService.startSignUp(request.agreements())));
     }
 
-    @Operation(summary = "본인확인 시작",
+    @Operation(summary = "소셜 가입 (약관 동의로 완료)",
+            description = "콜백에서 받은 토큰과 약관 동의. 본인인증 없이 계정을 만들고 로그인시킨다. "
+                    + "만 14세 확인은 필수 약관 동의로 갈음한다.")
+    @PostMapping("/signup/social")
+    public ResponseEntity<SignInResponse> signUpSocial(@Valid @RequestBody SignUpStartRequest request,
+                                                       HttpServletRequest httpRequest,
+                                                       HttpServletResponse response) {
+        return ResponseEntity.ok(userAuthService.signUpSocial(
+                request.signUpToken(), request.agreements(), RequestInfo.from(httpRequest), response));
+    }
+
+    @Operation(summary = "간편인증 시작 (자체 가입)",
             description = "인증창을 여는 폼을 준다. 화면은 hidden 필드로 담아 그대로 전송한다.")
     @PostMapping("/identity/start")
     public ResponseEntity<IdentityStartResponse> startIdentity(
@@ -155,25 +164,15 @@ public class UserAuthController {
                 .build();
     }
 
-    @Operation(summary = "본인확인 결과 제출 (가입)",
+    @Operation(summary = "간편인증 결과 제출 (자체 가입)",
             description = "서버가 공급자에 되물어 검증한다. 다음 단계(step)를 돌려준다 — "
-                    + "SET_PASSWORD · EXISTING_ACCOUNT · CONFIRM_LINK · SIGNED_IN.")
+                    + "SET_PASSWORD · EXISTING_ACCOUNT. CI 를 주지 않는 수단이면 400 IDENTITY_KEY_UNAVAILABLE.")
     @PostMapping("/identity/complete")
     public ResponseEntity<IdentityResultResponse> completeIdentity(
             @Valid @RequestBody IdentityCompleteRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse response) {
+            HttpServletRequest httpRequest) {
         return ResponseEntity.ok(userAuthService.completeIdentityVerification(
-                request.token(), request.providerToken(), RequestInfo.from(httpRequest), response));
-    }
-
-    @Operation(summary = "소셜 계정을 기존 계정에 연결",
-            description = "본인확인 결과 이미 가입한 사람일 때, 사용자가 [연결하기]를 누르면 부른다. "
-                    + "취소하면 아무것도 만들지 않는다.")
-    @PostMapping("/signup/link")
-    public ResponseEntity<SignInResponse> linkSocial(@Valid @RequestBody SignUpTokenRequest request,
-                                                     HttpServletResponse response) {
-        return ResponseEntity.ok(userAuthService.linkSocial(request.signUpToken(), response));
+                request.token(), request.providerToken(), RequestInfo.from(httpRequest)));
     }
 
     @Operation(summary = "가입 중 이메일 인증번호 발송",

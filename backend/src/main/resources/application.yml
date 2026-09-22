@@ -130,15 +130,18 @@ app:
     max-otp-failures: ${ADMIN_MAX_OTP_FAILURES:5}
     # 비우면 JWT 서명키에서 파생한다 (AdminOtpCipher).
     otp-encryption-key: ${ADMIN_OTP_ENCRYPTION_KEY:}
-  # 휴대폰 본인확인 — KG이니시스 통합인증 (TODO E-4). MOCK | INICIS, 비우면 가입이 닫힌다.
+  # 본인인증 — KG이니시스 통합인증 간편인증 (TODO E-4). MOCK | INICIS, 비우면 자체(휴대폰) 가입이 닫힌다.
   # local·dev 는 아래 프로파일 블록에서 MOCK 이 기본이다. 운영에서 MOCK 이면 기동이 실패한다.
-  # 계약 전 로컬 연동 테스트: IDENTITY_PROVIDER=INICIS, IDENTITY_CLIENT_ID=INIiasTest,
-  # IDENTITY_CLIENT_SECRET=<이니시스 샘플의 테스트 apiKey>
+  # 계약 전 로컬 연동 테스트: IDENTITY_PROVIDER=INICIS, IDENTITY_MID=INIiasTest,
+  # IDENTITY_API_KEY=<이니시스 샘플의 테스트 apiKey>
+  # IDENTITY_HASH_PEPPER — CI 해시용 비밀값. 비우면 본인인증을 쓸 수 없다. 한 번 정하면 바꾸지 않는다.
   identity:
     provider: ${IDENTITY_PROVIDER:}
-    client-id: ${IDENTITY_CLIENT_ID:}
-    client-secret: ${IDENTITY_CLIENT_SECRET:}
-    di-code: ${IDENTITY_DI_CODE:}
+    mid: ${IDENTITY_MID:}
+    api-key: ${IDENTITY_API_KEY:}
+    req-svc-cd: ${IDENTITY_REQ_SVC_CD:01}
+    seed-iv: ${IDENTITY_SEED_IV:SASKGINICIS00000}
+    hash-pepper: ${IDENTITY_HASH_PEPPER:}
     callback-url: ${IDENTITY_CALLBACK_URL:http://localhost:8080/api/v1/auth/identity/return}
     return-page-url: ${IDENTITY_RETURN_PAGE_URL:http://localhost:3000/auth/identity}
     mock-persona: ${IDENTITY_MOCK_PERSONA:1}
@@ -170,3 +173,5 @@ spring:
 app:
   identity:
     provider: ${IDENTITY_PROVIDER:MOCK}
+    # 로컬·개발 전용 고정값. 운영은 api.env 의 IDENTITY_HASH_PEPPER 로만 들어온다.
+    hash-pepper: ${IDENTITY_HASH_PEPPER:local-dev-pepper-not-a-secret-0123456789}

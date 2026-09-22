@@ -65,7 +65,7 @@ class PhoneCodeLoginIntegrationTest extends EmbeddedPostgresSupport {
         UserTestFixtures.deleteAll(jdbc);
 
         SignUpFlow flow = new SignUpFlow(mockMvc, objectMapper, google, identityProvider);
-        flow.phone(UserTestFixtures.identityWith("DI-1", "홍길동", PHONE), SignUpFlow.PASSWORD);
+        flow.phone(UserTestFixtures.personWith("CI-1", "홍길동", PHONE), SignUpFlow.PASSWORD);
         memberId = jdbc.queryForObject("SELECT id FROM users", Long.class);
         // 가입 과정에서 쌓인 것이 없게
         jdbc.update("DELETE FROM verification_codes");

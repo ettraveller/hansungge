@@ -87,7 +87,7 @@ export function AdminMembersView() {
           <h1 className={styles.title}>회원 관리</h1>
           <p className={styles.subtitle}>
             회원을 찾고, 로그인 잠금을 풀거나 이용을 정지합니다. 회원 정보는 고칠 수
-            없습니다 — 이름·생년월일·휴대폰은 본인확인으로만 채워지는 값입니다.
+            없습니다 — 이름·생년월일·휴대폰은 본인인증으로만 채워지는 값입니다.
           </p>
         </div>
       </header>
@@ -217,7 +217,7 @@ export function AdminMembersView() {
                     <td data-label="로그인 수단">
                       {loginMethods(member)}
                       {!member.identityVerified && (
-                        <span className={styles.cellSub}>본인확인 전</span>
+                        <span className={styles.cellSub}>본인인증 전</span>
                       )}
                     </td>
                     <td data-label="상태">

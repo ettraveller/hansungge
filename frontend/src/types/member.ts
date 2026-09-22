@@ -59,12 +59,11 @@ export interface AdminMemberDetail {
   status: MemberStatus;
   statusLabel: string;
   birthDate?: string | null;
-  gender?: 'MALE' | 'FEMALE' | null;
-  foreigner?: boolean | null;
   hasPassword: boolean;
+  /** 본인인증(간편인증)을 마쳤는가. 소셜 가입자는 본인인증 전까지 false */
   identityVerified: boolean;
   emailVerifiedAt?: string | null;
-  phoneVerifiedAt?: string | null;
+  identityVerifiedAt?: string | null;
   passwordChangedAt?: string | null;
   loginFailCount: number;
   lockedAt?: string | null;

@@ -43,12 +43,14 @@ app:
       client-id: ${OAUTH_KAKAO_CLIENT_ID}
       client-secret: ${OAUTH_KAKAO_CLIENT_SECRET}
 
-  # 본인확인 (TODO E-4).
+  # 본인인증 — 간편인증 (TODO E-4).
   #
-  # 비어 있으면 가입이 닫히고 기존 회원 로그인만 된다. 계약이 끝나면 INICIS.
+  # 비어 있으면 자체(휴대폰) 가입과 비밀번호 찾기가 닫힌다. 소셜 가입·로그인은 된다. 계약이 끝나면 INICIS.
   # ⚠️ MOCK 은 넣지 않는다 — 아무것도 확인하지 않는 목이라, 운영에서 MOCK 이면 기동이 실패한다.
+  # IDENTITY_HASH_PEPPER 가 비어 있어도 본인인증이 꺼진다. 한 번 정하면 바꾸지 않는다.
   identity:
     provider: ${IDENTITY_PROVIDER:}
+    hash-pepper: ${IDENTITY_HASH_PEPPER:}
     callback-url: ${IDENTITY_CALLBACK_URL:https://api.hanseongge.com/api/v1/auth/identity/return}
     return-page-url: ${IDENTITY_RETURN_PAGE_URL:https://hanseongge.com/auth/identity}
 

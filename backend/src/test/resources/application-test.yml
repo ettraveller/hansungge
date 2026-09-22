@@ -43,6 +43,10 @@ app:
   # AdminOtpIntegrationTest 가 이 값을 켜고 따로 검증한다.
   admin-security:
     otp-required: false
+  # 판정 키(CI 해시)용 비밀값. UserTestFixtures.TEST_PEPPER 와 같아야 한다 — 픽스처가 만든 회원의
+  # 판정 키와 스텁 본인인증이 만든 키가 같은 사람에서 일치해야 중복가입·비밀번호 찾기가 시험된다.
+  identity:
+    hash-pepper: test-pepper-for-integration-tests-only-0000
 
 logging:
   level:

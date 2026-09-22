@@ -57,6 +57,7 @@ public class OAuthTokenFactory {
     private static final String AUD_RESET_FLOW = "pw-reset-flow";
     private static final String AUD_RESET = "pw-reset";
     private static final String AUD_IDENTITY_RETURN = "identity-return";
+    private static final String AUD_STEP_UP_FLOW = "identity-step-up";
 
     private static final String CLAIM_PROVIDER = "prv";
     private static final String CLAIM_PROVIDER_USER_ID = "puid";
@@ -251,7 +252,7 @@ public class OAuthTokenFactory {
     /**
      * 본인확인을 통과한 회원이 새 비밀번호를 정할 수 있는 권한 — 5분.
      *
-     * <p>회원 id 와 본인확인 행 id 를 함께 담는다. 재설정 시 그 본인확인이 <b>그 회원의 DI</b> 인지,
+     * <p>회원 id 와 본인확인 행 id 를 함께 담는다. 재설정 시 그 본인확인이 <b>그 회원의 판정 키</b> 인지,
      * 아직 쓰지 않은 것인지를 DB 에서 다시 확인하고 소진한다.
      */
     public String issueResetToken(Long userId, Long identityVerificationId) {
@@ -282,6 +283,37 @@ public class OAuthTokenFactory {
     }
 
     public record ResetGrant(Long userId, Long identityVerificationId) {
+    }
+
+    // ---------- 로그인한 회원의 본인인증 ----------
+
+    /**
+     * 로그인한 회원이 본인인증 창을 여는 동안 거래번호를 나른다.
+     *
+     * <p>회원 id 를 함께 담는다 — 결과를 제출할 때 로그인한 회원과 같은지 확인한다. 다른 사람의
+     * 브라우저에서 연 창의 결과를 내 계정에 붙이는 경로를 막는다.
+     */
+    public String issueStepUpFlowToken(Long userId, String identityRequestId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .issuer(issuer)
+                .audience().add(AUD_STEP_UP_FLOW).and()
+                .subject(String.valueOf(userId))
+                .claim(CLAIM_IDENTITY_REQUEST, identityRequestId)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(signUpTtl)))
+                .signWith(key)
+                .compact();
+    }
+
+    /** @return 본인인증 창을 연 거래번호. 토큰의 회원이 {@code userId} 가 아니면 거부한다 */
+    public String readStepUpFlowToken(String token, Long userId) {
+        Claims claims = parse(token, AUD_STEP_UP_FLOW, ErrorCode.IDENTITY_VERIFICATION_INVALID);
+        String requestId = claims.get(CLAIM_IDENTITY_REQUEST, String.class);
+        if (requestId == null || requestId.isBlank() || !String.valueOf(userId).equals(claims.getSubject())) {
+            throw new BusinessException(ErrorCode.IDENTITY_VERIFICATION_INVALID, "본인인증 진행 토큰 불일치");
+        }
+        return requestId;
     }
 
     // ---------- 본인확인 결과 전달 ----------
