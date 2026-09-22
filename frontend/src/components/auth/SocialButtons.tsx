@@ -26,8 +26,10 @@ import styles from './auth.module.css';
  * 20px 은 공식 SVG 의 로고 크기다. 흰 바탕째 잘랐는데, 버튼 바탕도 같은 흰색이라 경계가 없다.
  * 출처: https://developers.google.com/identity/branding-guidelines
  *
- * <p>카카오는 아직 글자 마크다. 앱 등록(TODO A-4)이 끝나면 같은 방식으로 교체한다 —
- * 비슷하게 그린 로고를 쓰는 것이 글자보다 더 문제다.
+ * <p><b>카카오도 공식 심볼을 쓴다.</b> 카카오 로그인 디자인 가이드: "심볼 없이 카카오 로그인 버튼을 구성할 수
+ * 없습니다", 심볼의 형태·비율·색 변경 불가, 심볼 #000000. 공식 리소스(login-complete-ko.svg)의 말풍선 경로를
+ * 그대로 옮겨 여백 없이 잘랐다 — 전에 쓰던 글자 'K' 는 가이드 위반이었다.
+ * 출처: https://developers.kakao.com/docs/ko/kakaologin/design-guide
  */
 function Mark({ code }: { code: OAuthProviderType }) {
   if (code === 'NAVER') {
@@ -36,11 +38,7 @@ function Mark({ code }: { code: OAuthProviderType }) {
   if (code === 'GOOGLE') {
     return <Image src="/brand/google/google-g.png" alt="" width={20} height={20} />;
   }
-  return (
-    <span className={styles.socialMark} aria-hidden="true">
-      K
-    </span>
-  );
+  return <Image src="/brand/kakao/kakao-symbol.svg" alt="" width={18} height={18} />;
 }
 
 /**

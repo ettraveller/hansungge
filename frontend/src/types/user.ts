@@ -28,7 +28,9 @@ export const USER_STATUS_LABEL: Record<UserStatus, string> = {
  * 쓴다. 어두운 바탕용(Dark)은 #05AC4F 로 다르다.
  */
 export const PROVIDER_STYLE: Record<OAuthProviderType, { bg: string; fg: string; label: string }> = {
-  KAKAO: { bg: '#FEE500', fg: '#191600', label: '카카오로 시작하기' },
+  // 카카오 가이드의 국문 레이블은 「카카오 로그인」(완성형)·「로그인」(축약형)뿐이다 — 「카카오로 시작하기」는 없다.
+  // 바탕 #FEE500, 레이블 #000000 85%.
+  KAKAO: { bg: '#FEE500', fg: 'rgba(0, 0, 0, 0.85)', label: '카카오 로그인' },
   NAVER: { bg: '#03A94D', fg: '#ffffff', label: '네이버 로그인' },
   // 구글 가이드의 한국어 문구는 「Google 계정으로 로그인 / 가입 / 계속」, 「Google로 로그인」뿐이다.
   // 「Google로 시작하기」는 그 목록에 없다. 흰 바탕·#1F1F1F 글자는 가이드의 Light 테마 값이다.

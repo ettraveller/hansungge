@@ -42,9 +42,17 @@ public class KakaoOAuthProvider extends AbstractOAuthProvider {
         return "https://kapi.kakao.com/v2/user/me";
     }
 
+    /**
+     * 요청 범위를 보내지 않는다 — 카카오 콘솔 [카카오 로그인] > [동의항목] 에 설정한 항목을 그대로 요청한다.
+     *
+     * <p>이메일({@code account_email})은 비즈 앱 전환 + 개인정보 동의항목 심사(영업일 3~5일)를 통과해야
+     * 설정할 수 있다. 설정되지 않은 항목을 scope 로 요청하면 카카오가 로그인 자체를 거부한다(KOE205).
+     * 여기서 고정해 두면 심사 전에는 로그인이 막히고, 심사 뒤에는 코드를 고쳐 다시 배포해야 한다.
+     * 콘솔 설정을 따르면 지금은 닉네임만, 심사 뒤에는 이메일까지 코드 수정 없이 받는다.
+     */
     @Override
     protected String scope() {
-        return "account_email profile_nickname";
+        return null;
     }
 
     @Override
