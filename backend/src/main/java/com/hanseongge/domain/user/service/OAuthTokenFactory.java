@@ -69,6 +69,8 @@ public class OAuthTokenFactory {
     private static final String CLAIM_IDENTITY_REQUEST = "mtx";
     /** 본인확인 행 id. 본인확인을 마친 뒤에만 있다. */
     private static final String CLAIM_IDENTITY_VERIFICATION = "ivid";
+    /** 인증번호 행 id. 문자·이메일 인증번호로 비밀번호를 찾을 때만 있다. */
+    private static final String CLAIM_VERIFICATION_CODE = "vcid";
     /** 공급자가 수신 주소로 보낸 값 */
     private static final String CLAIM_RETURNED = "ret";
 
@@ -268,21 +270,51 @@ public class OAuthTokenFactory {
                 .compact();
     }
 
+    /**
+     * 인증번호(문자·이메일)를 통과한 회원이 새 비밀번호를 정할 수 있는 권한 — 5분.
+     *
+     * <p>본인인증 대신 인증번호로 온 경우다. 근거가 된 인증번호 행 id 를 담고, 재설정 시 그 행이
+     * 아직 살아 있는지 확인한 뒤 소진한다 — 그래야 토큰이 한 번만 쓰인다.
+     */
+    public String issueCodeResetToken(Long userId, Long verificationCodeId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .issuer(issuer)
+                .audience().add(AUD_RESET).and()
+                .subject(String.valueOf(userId))
+                .claim(CLAIM_VERIFICATION_CODE, verificationCodeId)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(resetTtl)))
+                .signWith(key)
+                .compact();
+    }
+
     public ResetGrant readResetToken(String token) {
         Claims claims = parse(token, AUD_RESET, ErrorCode.PASSWORD_RESET_TOKEN_INVALID);
         Long identityVerificationId = readId(claims, CLAIM_IDENTITY_VERIFICATION);
+        Long verificationCodeId = readId(claims, CLAIM_VERIFICATION_CODE);
         try {
             Long userId = Long.valueOf(claims.getSubject());
-            if (identityVerificationId == null) {
-                throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "본인확인 없음");
+            if (identityVerificationId == null && verificationCodeId == null) {
+                throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "근거가 없는 재설정 토큰");
             }
-            return new ResetGrant(userId, identityVerificationId);
+            return new ResetGrant(userId, identityVerificationId, verificationCodeId);
         } catch (NumberFormatException e) {
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "회원 식별자 형식 오류");
         }
     }
 
-    public record ResetGrant(Long userId, Long identityVerificationId) {
+    /**
+     * 무엇을 근거로 비밀번호를 바꾸는가 — 둘 중 하나만 채워진다.
+     *
+     * @param identityVerificationId 본인인증으로 왔을 때
+     * @param verificationCodeId     문자·이메일 인증번호로 왔을 때
+     */
+    public record ResetGrant(Long userId, Long identityVerificationId, Long verificationCodeId) {
+
+        public boolean isByIdentity() {
+            return identityVerificationId != null;
+        }
     }
 
     // ---------- 로그인한 회원의 본인인증 ----------

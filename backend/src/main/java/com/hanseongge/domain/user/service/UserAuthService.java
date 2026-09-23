@@ -14,6 +14,7 @@ import com.hanseongge.domain.user.entity.IdentityPurpose;
 import com.hanseongge.domain.user.entity.IdentityVerification;
 import com.hanseongge.domain.user.entity.OAuthProviderType;
 import com.hanseongge.domain.user.entity.SocialAccount;
+import com.hanseongge.domain.user.entity.User;
 import com.hanseongge.domain.user.entity.VerificationChannel;
 import com.hanseongge.domain.user.entity.VerificationPurpose;
 import com.hanseongge.domain.user.identity.IdentityStartForm;
@@ -29,6 +30,7 @@ import com.hanseongge.global.config.AppProperties;
 import com.hanseongge.global.error.BusinessException;
 import com.hanseongge.global.error.ErrorCode;
 import com.hanseongge.global.util.PhoneNumber;
+import com.hanseongge.global.util.PrivacyMask;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -107,7 +109,8 @@ public class UserAuthService {
                 .map(type -> new AuthProvidersResponse.ProviderItem(type, type.displayName()))
                 .toList();
         return new AuthProvidersResponse(providers, agreementCatalog.all(),
-                identityVerificationService.isAvailable(), codeService.isSmsAvailable());
+                identityVerificationService.isAvailable(), codeService.isSmsAvailable(),
+                codeService.isMailAvailable());
     }
 
     // =================================================================
@@ -361,35 +364,86 @@ public class UserAuthService {
     }
 
     /**
-     * 인증번호 로그인 — 문자 보내기.
+     * 인증번호 로그인 — 문자 또는 이메일로 보내기.
      *
-     * <p><b>가입 여부를 알려주지 않는다.</b> 회원이든 아니든 같은 응답이다. 회원이 아니면 문자는
-     * 보내지 않되 행은 남긴다 — 행을 남기지 않으면 쿨다운이 달라져 두 번째 요청에서 응답이 갈린다.
+     * <p><b>가입 여부를 알려주지 않는다.</b> 회원이든 아니든 같은 응답이다. 회원이 아니면 보내지
+     * 않되 행은 남긴다 — 행을 남기지 않으면 쿨다운이 달라져 두 번째 요청에서 응답이 갈린다.
+     * (문자는 비용까지 든다. 남의 번호로 문자를 보내게 두지 않는다.)
      */
-    public void sendLoginCode(String rawPhone, RequestInfo requestInfo) {
-        if (!codeService.isSmsAvailable()) {
-            throw new BusinessException(ErrorCode.SMS_UNAVAILABLE);
-        }
-        String phone = PhoneNumber.normalize(rawPhone);
-        boolean member = userRepository.findByPhone(phone)
+    public void sendLoginCode(VerificationChannel channel, String rawTarget, RequestInfo requestInfo) {
+        String target = requireSendable(channel, rawTarget);
+        boolean member = findMember(channel, target)
                 .filter(user -> user.getStatus().canSignIn())
                 .isPresent();
-        codeService.issue(VerificationChannel.SMS, phone, VerificationPurpose.LOGIN, requestInfo, member);
+        codeService.issue(channel, target, VerificationPurpose.LOGIN, requestInfo, member);
     }
 
     /** 인증번호 로그인 — 번호 확인. 성공 즉시 그 번호를 소진한다. */
-    public SignInResponse signInWithCode(String rawPhone, String code, HttpServletResponse response) {
-        String phone = PhoneNumber.normalizeOrNull(rawPhone);
-        if (phone == null) {
-            throw new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID);
-        }
-        Long codeId = codeService.confirm(VerificationChannel.SMS, phone, code, VerificationPurpose.LOGIN)
+    public SignInResponse signInWithCode(VerificationChannel channel, String rawTarget, String code,
+                                         HttpServletResponse response) {
+        String target = normalizeTarget(channel, rawTarget);
+        Long codeId = codeService.confirm(channel, target, code, VerificationPurpose.LOGIN)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
-        Long userId = userRepository.findByPhone(phone)
+        Long userId = findMember(channel, target)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID))
                 .getId();
         codeService.consume(codeId);
         return accountService.completeSignIn(userId, response);
+    }
+
+    // =================================================================
+    // 인증번호 대상 — 채널마다 다른 것을 여기서만 안다
+    // =================================================================
+
+    /**
+     * 보낼 수 있는지 확인하고 대상을 정규화한다.
+     *
+     * <p>형식이 틀린 대상은 <b>여기서 막는다.</b> 그대로 두면 이상한 주소로 메일을 보내거나
+     * 없는 번호로 문자를 보내 비용만 나간다.
+     */
+    private String requireSendable(VerificationChannel channel, String rawTarget) {
+        if (!codeService.isAvailable(channel)) {
+            throw new BusinessException(channel == VerificationChannel.SMS
+                    ? ErrorCode.SMS_UNAVAILABLE : ErrorCode.MAIL_UNAVAILABLE);
+        }
+        return switch (channel) {
+            case SMS -> PhoneNumber.normalize(rawTarget);
+            case EMAIL -> requireEmail(rawTarget);
+        };
+    }
+
+    /** 대조할 때 쓰는 정규화 — 형식이 틀리면 "번호가 틀렸다"와 같은 응답이다. */
+    private String normalizeTarget(VerificationChannel channel, String rawTarget) {
+        String target = switch (channel) {
+            case SMS -> PhoneNumber.normalizeOrNull(rawTarget);
+            case EMAIL -> rawTarget == null || rawTarget.isBlank() ? null : normalizeEmail(rawTarget);
+        };
+        if (target == null) {
+            throw new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID);
+        }
+        return target;
+    }
+
+    /**
+     * 그 대상으로 로그인할 수 있는 회원.
+     *
+     * <p>이메일은 <b>인증을 마친 주소</b>여야 한다. 확인하지 않은 주소로 로그인을 허용하면,
+     * 남의 주소를 적어 둔 계정으로 그 주소 주인이 들어가는 길이 된다.
+     */
+    private Optional<User> findMember(VerificationChannel channel, String target) {
+        return switch (channel) {
+            case SMS -> userRepository.findByPhone(target);
+            case EMAIL -> userRepository.findByEmail(target)
+                    .filter(user -> user.getEmailVerifiedAt() != null);
+        };
+    }
+
+    private static String requireEmail(String raw) {
+        String email = raw == null ? "" : raw.trim();
+        if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이메일 형식이 올바르지 않습니다.");
+        }
+        return normalizeEmail(email);
     }
 
     // =================================================================
@@ -435,9 +489,46 @@ public class UserAuthService {
                 account.maskedEmail(), account.maskedPhone());
     }
 
+    /**
+     * 비밀번호 찾기 — 문자·이메일 인증번호 보내기.
+     *
+     * <p>본인인증(건당 과금)까지 가지 않아도 되는 대부분의 경우를 여기서 받는다. 가입 여부는
+     * 알려주지 않는다 — 로그인 인증번호와 같은 규칙이다.
+     *
+     * <p>이 경로로 비밀번호를 바꿔도 <b>돈이 나가는 일은 막혀 있다.</b> 매입 신청·정산계좌 등록은
+     * 비밀번호가 아니라 본인인증(STEP_UP)을 따로 요구한다.
+     */
+    public void sendPasswordResetCode(VerificationChannel channel, String rawTarget, RequestInfo requestInfo) {
+        String target = requireSendable(channel, rawTarget);
+        boolean member = findMember(channel, target)
+                .filter(user -> user.getStatus().canSignIn())
+                .isPresent();
+        codeService.issue(channel, target, VerificationPurpose.PASSWORD_RESET, requestInfo, member);
+    }
+
+    /**
+     * 비밀번호 찾기 — 인증번호 확인. 통과하면 재설정 권한(5분)을 준다.
+     *
+     * <p>인증번호는 여기서 소진하지 않는다. 재설정을 마칠 때 소진해야 토큰이 <b>한 번만</b> 쓰인다.
+     */
+    public PasswordResetGrantResponse completePasswordResetCode(VerificationChannel channel, String rawTarget,
+                                                                String code) {
+        String target = normalizeTarget(channel, rawTarget);
+        Long codeId = codeService.confirm(channel, target, code, VerificationPurpose.PASSWORD_RESET)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
+        var user = findMember(channel, target)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
+        user.requireSignInAllowed();
+
+        return new PasswordResetGrantResponse(
+                tokenFactory.issueCodeResetToken(user.getId(), codeId),
+                user.getEmail() == null ? null : PrivacyMask.email(user.getEmail()),
+                user.getPhone() == null ? null : PrivacyMask.phone(user.getPhone()));
+    }
+
     public void resetPassword(String resetToken, String newPassword) {
         OAuthTokenFactory.ResetGrant grant = tokenFactory.readResetToken(resetToken);
-        accountService.resetPassword(grant.userId(), grant.identityVerificationId(), newPassword);
+        accountService.resetPassword(grant, newPassword);
     }
 
     // =================================================================

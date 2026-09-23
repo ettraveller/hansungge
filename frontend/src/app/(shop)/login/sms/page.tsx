@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
-import { SmsLoginView } from '@/views/auth/SmsLoginView';
+import { CodeLoginView } from '@/views/auth/CodeLoginView';
 
 export const metadata: Metadata = {
   title: '인증번호 로그인',
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function SmsLoginPage() {
   return (
     <Suspense fallback={null}>
-      <SmsLoginView />
+      <CodeLoginView />
     </Suspense>
   );
 }

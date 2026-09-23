@@ -133,8 +133,9 @@ class UserAuthIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(jsonPath("$.providers[0].code").value("GOOGLE"))
                     .andExpect(jsonPath("$.agreements.length()").value(5))
                     .andExpect(jsonPath("$.signUpAvailable").value(true))
-                    // 문자 대역을 넣지 않았다 — 운영 발송기는 설정이 비어 인증번호 로그인이 꺼진다
-                    .andExpect(jsonPath("$.smsLoginAvailable").value(false));
+                    // 문자·메일 대역을 넣지 않았다 — 운영 발송기는 설정이 비어 인증번호가 꺼진다
+                    .andExpect(jsonPath("$.smsLoginAvailable").value(false))
+                    .andExpect(jsonPath("$.emailCodeAvailable").value(false));
         }
 
         @Test

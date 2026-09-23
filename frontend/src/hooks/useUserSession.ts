@@ -5,7 +5,12 @@ import { useCallback, useEffect } from 'react';
 
 import * as authApi from '@/api/auth';
 import { useUserAuthStore } from '@/stores/useUserAuthStore';
-import type { AgreementCode, OAuthProviderType, SignInResult } from '@/types/user';
+import type {
+  AgreementCode,
+  OAuthProviderType,
+  SignInResult,
+  VerificationChannel,
+} from '@/types/user';
 
 export const userKeys = {
   all: ['user'] as const,
@@ -108,14 +113,17 @@ export function useSignInWithPassword() {
 }
 
 export function useSendLoginCode() {
-  return useMutation({ mutationFn: (phone: string) => authApi.sendLoginCode(phone) });
+  return useMutation({
+    mutationFn: ({ channel, target }: { channel: VerificationChannel; target: string }) =>
+      authApi.sendLoginCode(channel, target),
+  });
 }
 
 export function useSignInWithCode() {
   const apply = useApplySignIn();
   return useMutation({
-    mutationFn: ({ phone, code }: { phone: string; code: string }) =>
-      authApi.signInWithCode(phone, code),
+    mutationFn: ({ channel, target, code }: { channel: VerificationChannel; target: string; code: string }) =>
+      authApi.signInWithCode(channel, target, code),
     onSuccess: apply,
   });
 }
@@ -177,6 +185,20 @@ export function useStartMemberIdentity() {
 // =====================================================================
 // 비밀번호 찾기
 // =====================================================================
+
+export function useSendPasswordResetCode() {
+  return useMutation({
+    mutationFn: ({ channel, target }: { channel: VerificationChannel; target: string }) =>
+      authApi.sendPasswordResetCode(channel, target),
+  });
+}
+
+export function useVerifyPasswordResetCode() {
+  return useMutation({
+    mutationFn: ({ channel, target, code }: { channel: VerificationChannel; target: string; code: string }) =>
+      authApi.verifyPasswordResetCode(channel, target, code),
+  });
+}
 
 export function useStartPasswordReset() {
   return useMutation({ mutationFn: () => authApi.startPasswordReset() });

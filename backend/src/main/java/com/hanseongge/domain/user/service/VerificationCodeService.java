@@ -60,6 +60,18 @@ public class VerificationCodeService {
         return smsSender.isConfigured();
     }
 
+    public boolean isMailAvailable() {
+        return mailSender.isConfigured();
+    }
+
+    /** 이 채널로 인증번호를 보낼 수 있는가. 화면이 수단을 고를 때 쓴다. */
+    public boolean isAvailable(VerificationChannel channel) {
+        return switch (channel) {
+            case SMS -> isSmsAvailable();
+            case EMAIL -> isMailAvailable();
+        };
+    }
+
     /**
      * 인증번호를 만들어 보낸다.
      *
@@ -154,18 +166,29 @@ public class VerificationCodeService {
     }
 
     private void sendMail(String email, VerificationPurpose purpose, String code) {
+        // 제목에 "[한성금거래소]" 를 넣지 않는다 — 발신자명이 이미 "한성금거래소" 라 메일함에 두 번 보인다.
+        // 무엇에 쓰는 번호인지 제목에 적는다. 받는 사람이 "내가 요청한 게 맞나"를 열어 보기 전에 판단한다.
+        String subject = switch (purpose) {
+            case LOGIN -> "로그인 인증번호 안내";
+            case PASSWORD_RESET -> "비밀번호 찾기 인증번호 안내";
+            case EMAIL_VERIFY -> "이메일 인증번호 안내";
+        };
+        String notice = purpose == VerificationPurpose.EMAIL_VERIFY
+                ? "본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다."
+                : """
+                        본인이 요청하지 않았다면 이 메일을 무시해 주세요.
+                        누군가 회원님의 주소로 로그인이나 비밀번호 변경을 시도했을 수 있습니다.""";
         try {
-            // 제목에 "[한성금거래소]" 를 넣지 않는다 — 발신자명이 이미 "한성금거래소" 라 메일함에 두 번 보인다.
-            mailSender.send(email, "이메일 인증번호 안내", """
+            mailSender.send(email, subject, """
                     아래 인증번호를 입력해 주세요.
 
                         %s
 
                     유효 시간은 %d분입니다.
-                    본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다.
+                    %s
 
                     한성금거래소
-                    """.formatted(code, policy().codeTtlMinutes()));
+                    """.formatted(code, policy().codeTtlMinutes(), notice));
         } catch (MailSendException e) {
             // 발송에 실패했는데 성공으로 응답하면 사용자는 오지 않는 메일을 기다린다.
             log.warn("[AUTH] 인증 메일 발송 실패. purpose={}", purpose, e);

@@ -56,8 +56,10 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
      */
     public static final Set<String> MEMBER_PATHS = Set.of(
             "/api/v1/auth/login",
-            "/api/v1/auth/sms/send",
-            "/api/v1/auth/sms/login",
+            "/api/v1/auth/code/send",
+            "/api/v1/auth/code/login",
+            "/api/v1/auth/password/reset/code/send",
+            "/api/v1/auth/password/reset/code/verify",
             "/api/v1/auth/email/verification",
             "/api/v1/auth/identity/start",
             "/api/v1/auth/password/reset/identity/start",

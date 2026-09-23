@@ -1,6 +1,8 @@
 package com.hanseongge.domain.user.controller;
 
 import com.hanseongge.domain.user.dto.AuthProvidersResponse;
+import com.hanseongge.domain.user.dto.CodeSendRequest;
+import com.hanseongge.domain.user.dto.CodeVerifyRequest;
 import com.hanseongge.domain.user.dto.EmailVerificationRequest;
 import com.hanseongge.domain.user.dto.IdentityCompleteRequest;
 import com.hanseongge.domain.user.dto.IdentityResultResponse;
@@ -15,8 +17,6 @@ import com.hanseongge.domain.user.dto.SignInResponse;
 import com.hanseongge.domain.user.dto.SignUpCompleteRequest;
 import com.hanseongge.domain.user.dto.SignUpStartRequest;
 import com.hanseongge.domain.user.dto.SignUpTokenResponse;
-import com.hanseongge.domain.user.dto.SmsLoginRequest;
-import com.hanseongge.domain.user.dto.SmsSendRequest;
 import com.hanseongge.domain.user.entity.OAuthProviderType;
 import com.hanseongge.domain.user.service.UserAuthService;
 import com.hanseongge.domain.user.service.UserRefreshTokenService;
@@ -81,22 +81,24 @@ public class UserAuthController {
                 request.phone(), request.password(), response));
     }
 
-    @Operation(summary = "인증번호 로그인 — 문자 요청",
-            description = "가입 여부와 무관하게 같은 응답을 준다. 문자는 회원에게만 실제로 나간다. "
-                    + "번호당 60초에 1통, 1시간에 5통.")
-    @PostMapping("/sms/send")
-    public ResponseEntity<Void> sendLoginCode(@Valid @RequestBody SmsSendRequest request,
+    @Operation(summary = "인증번호 로그인 — 발송 요청 (문자 또는 이메일)",
+            description = "가입 여부와 무관하게 같은 응답을 준다. 회원에게만 실제로 나간다. "
+                    + "대상당 60초에 1통, 문자는 1시간에 5통.")
+    @PostMapping("/code/send")
+    public ResponseEntity<Void> sendLoginCode(@Valid @RequestBody CodeSendRequest request,
                                               HttpServletRequest httpRequest) {
-        userAuthService.sendLoginCode(request.phone(), RequestInfo.from(httpRequest));
+        userAuthService.sendLoginCode(request.channel(), request.target(), RequestInfo.from(httpRequest));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "인증번호 로그인",
-            description = "문자로 받은 6자리. 5분 유효, 5회까지, 성공 즉시 폐기.")
-    @PostMapping("/sms/login")
-    public ResponseEntity<SignInResponse> signInWithCode(@Valid @RequestBody SmsLoginRequest request,
+            description = "문자·메일로 받은 6자리. 5분 유효, 5회까지, 성공 즉시 폐기. "
+                    + "이메일은 <b>인증을 마친 주소</b>여야 한다.")
+    @PostMapping("/code/login")
+    public ResponseEntity<SignInResponse> signInWithCode(@Valid @RequestBody CodeVerifyRequest request,
                                                          HttpServletResponse response) {
-        return ResponseEntity.ok(userAuthService.signInWithCode(request.phone(), request.code(), response));
+        return ResponseEntity.ok(userAuthService.signInWithCode(
+                request.channel(), request.target(), request.code(), response));
     }
 
     @Operation(summary = "소셜 로그인 시작",
@@ -200,7 +202,27 @@ public class UserAuthController {
     // 비밀번호 찾기 — 본인확인 → 새 비밀번호
     // -----------------------------------------------------------------
 
-    @Operation(summary = "비밀번호 찾기 — 본인확인 시작")
+    @Operation(summary = "비밀번호 찾기 — 인증번호 발송 (문자 또는 이메일)",
+            description = "본인인증(건당 과금)까지 가지 않는 경로. 가입 여부는 알려주지 않는다.")
+    @PostMapping("/password/reset/code/send")
+    public ResponseEntity<Void> sendPasswordResetCode(@Valid @RequestBody CodeSendRequest request,
+                                                      HttpServletRequest httpRequest) {
+        userAuthService.sendPasswordResetCode(request.channel(), request.target(),
+                RequestInfo.from(httpRequest));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "비밀번호 찾기 — 인증번호 확인",
+            description = "통과하면 5분짜리 재설정 토큰을 준다. 인증번호는 재설정을 마칠 때 소진된다.")
+    @PostMapping("/password/reset/code/verify")
+    public ResponseEntity<PasswordResetGrantResponse> verifyPasswordResetCode(
+            @Valid @RequestBody CodeVerifyRequest request) {
+        return ResponseEntity.ok(userAuthService.completePasswordResetCode(
+                request.channel(), request.target(), request.code()));
+    }
+
+    @Operation(summary = "비밀번호 찾기 — 본인인증 시작",
+            description = "휴대폰번호가 바뀌었거나 문자·이메일을 못 쓸 때. 번호도 새 번호로 맞춰진다.")
     @PostMapping("/password/reset/identity/start")
     public ResponseEntity<IdentityStartResponse> startPasswordReset() {
         return ResponseEntity.ok(userAuthService.startPasswordReset());

@@ -12,6 +12,7 @@ import type {
   SignInResult,
   SocialAccount,
   User,
+  VerificationChannel,
 } from '@/types/user';
 
 /**
@@ -42,19 +43,19 @@ export function signInWithPassword(phone: string, password: string) {
 }
 
 /**
- * 인증번호 문자 요청.
+ * 인증번호 요청 — 문자 또는 이메일.
  *
- * <p>가입하지 않은 번호여도 성공으로 응답한다. 서버가 일부러 그렇게 한다 — 알려주면 회원
- * 명단을 훑는 도구가 된다. 문자는 회원에게만 실제로 간다.
+ * <p>가입하지 않은 대상이어도 성공으로 응답한다. 서버가 일부러 그렇게 한다 — 알려주면 회원
+ * 명단을 훑는 도구가 된다. 실제 발송은 회원에게만 한다.
  */
-export function sendLoginCode(phone: string) {
-  return request<void>('/api/v1/auth/sms/send', { method: 'POST', body: { phone } });
+export function sendLoginCode(channel: VerificationChannel, target: string) {
+  return request<void>('/api/v1/auth/code/send', { method: 'POST', body: { channel, target } });
 }
 
-export function signInWithCode(phone: string, code: string) {
-  return request<SignInResult>('/api/v1/auth/sms/login', {
+export function signInWithCode(channel: VerificationChannel, target: string, code: string) {
+  return request<SignInResult>('/api/v1/auth/code/login', {
     method: 'POST',
-    body: { phone, code },
+    body: { channel, target, code },
   });
 }
 
@@ -137,6 +138,26 @@ export function completeSignUp(input: CompleteSignUpInput) {
 // =====================================================================
 // 비밀번호 찾기 — 본인확인 → 새 비밀번호
 // =====================================================================
+
+/**
+ * 비밀번호 찾기 — 문자·이메일로 인증번호 보내기.
+ *
+ * <p>본인인증(건당 과금)까지 가지 않는 경로다. 가입 여부는 알려주지 않는다.
+ */
+export function sendPasswordResetCode(channel: VerificationChannel, target: string) {
+  return request<void>('/api/v1/auth/password/reset/code/send', {
+    method: 'POST',
+    body: { channel, target },
+  });
+}
+
+/** 인증번호를 확인하고 5분짜리 재설정 권한을 받는다. */
+export function verifyPasswordResetCode(channel: VerificationChannel, target: string, code: string) {
+  return request<PasswordResetGrant>('/api/v1/auth/password/reset/code/verify', {
+    method: 'POST',
+    body: { channel, target, code },
+  });
+}
 
 export function startPasswordReset() {
   return request<IdentityStart>('/api/v1/auth/password/reset/identity/start', { method: 'POST' });

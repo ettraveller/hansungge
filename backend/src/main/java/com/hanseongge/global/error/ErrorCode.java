@@ -150,6 +150,8 @@ public enum ErrorCode {
     MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "인증 메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
     /** 문자 발송 설정(SENS)이 없어 인증번호 로그인을 쓸 수 없다. */
     SMS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 인증번호 로그인을 사용할 수 없습니다. 비밀번호나 소셜 계정으로 로그인해 주세요."),
+    /** 메일 발송 설정(TODO E-5)이 없어 이메일 인증번호를 쓸 수 없다. 화면은 이메일 선택지를 숨긴다. */
+    MAIL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 이메일로 인증번호를 받을 수 없습니다. 다른 방법을 선택해 주세요."),
     /** 문자 발송 실패. 공급자 장애이거나 발신번호 미등록이다. */
     SMS_SEND_FAILED(HttpStatus.BAD_GATEWAY, "인증번호 문자를 보내지 못했습니다. 잠시 후 다시 시도해 주세요."),
     /** 소셜로만 가입한 계정에 비밀번호 로그인을 시도했다. */

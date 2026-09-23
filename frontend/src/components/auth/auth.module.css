@@ -114,6 +114,33 @@
   border-color: #747775;
 }
 
+/* ---------- 선택 버튼 (인증번호 받을 방법: 문자 / 이메일) ----------
+   라디오가 아니라 버튼이다. 두세 개짜리 선택은 눌러야 할 곳이 클수록 실수가 적고,
+   휴대폰에서 작은 동그라미를 겨냥하게 만들 이유가 없다. */
+.choiceRow {
+  display: flex;
+  gap: 8px;
+}
+
+.choice {
+  flex: 1;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--gray);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.choiceOn {
+  border-color: var(--gold-deep);
+  background: var(--gold);
+  color: var(--dark);
+}
+
 /* ---------- 안내 ---------- */
 .notice {
   display: flex;

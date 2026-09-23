@@ -9,6 +9,7 @@ import com.hanseongge.domain.user.entity.SocialAccount;
 import com.hanseongge.domain.user.entity.User;
 import com.hanseongge.domain.user.entity.UserAgreement;
 import com.hanseongge.domain.user.entity.VerificationCode;
+import com.hanseongge.domain.user.entity.VerificationPurpose;
 import com.hanseongge.domain.user.oauth.OAuthUserInfo;
 import com.hanseongge.domain.user.repository.IdentityVerificationRepository;
 import com.hanseongge.domain.user.repository.SocialAccountRepository;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -277,22 +279,61 @@ public class UserAccountService {
      * 구분되지 않는다. 남의 기기에 열려 있던 세션이 재설정 뒤에도 살아 있으면 소용이 없다.
      */
     @Transactional
-    public void resetPassword(Long userId, Long identityVerificationId, String rawPassword) {
-        IdentityVerification verification = findVerification(identityVerificationId);
-        if (!verification.isUsable(OffsetDateTime.now())) {
-            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "본인확인 만료·소진");
-        }
+    public void resetPassword(OAuthTokenFactory.ResetGrant grant, String rawPassword) {
+        Long userId = grant.userId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID));
-        if (!verification.getIdentityKey().equals(user.getIdentityKey())) {
-            log.warn("[AUTH] 재설정 토큰의 본인확인과 회원이 다름. userId={}", userId);
-            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "본인확인·회원 불일치");
-        }
         user.requireSignInAllowed();
+
+        String how = grant.isByIdentity()
+                ? consumeIdentity(grant.identityVerificationId(), user)
+                : consumeCode(grant.verificationCodeId(), user);
+
         user.changePassword(passwordEncoder.encode(rawPassword));
-        verification.consume(userId);
         refreshTokenService.revokeAll(userId);
-        log.info("[AUTH] 본인확인으로 비밀번호 재설정. userId={}", userId);
+        log.info("[AUTH] 비밀번호 재설정. userId={} 경로={}", userId, how);
+    }
+
+    /** 본인인증을 근거로 온 경우 — 그 인증이 <b>이 회원의 것</b>인지 다시 확인하고 소진한다. */
+    private String consumeIdentity(Long identityVerificationId, User user) {
+        IdentityVerification verification = findVerification(identityVerificationId);
+        if (!verification.isUsable(OffsetDateTime.now())) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "본인인증 만료·소진");
+        }
+        if (!verification.getIdentityKey().equals(user.getIdentityKey())) {
+            log.warn("[AUTH] 재설정 토큰의 본인인증과 회원이 다름. userId={}", user.getId());
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "본인인증·회원 불일치");
+        }
+        verification.consume(user.getId());
+        return "IDENTITY";
+    }
+
+    /**
+     * 문자·이메일 인증번호를 근거로 온 경우.
+     *
+     * <p>그 인증번호가 <b>이 회원의 연락처로</b> 간 것인지 다시 확인한다. 토큰은 우리가 서명했지만,
+     * 확인을 한 곳에만 두면 그 한 곳이 틀렸을 때 남의 비밀번호가 바뀐다.
+     *
+     * <p>여기서 소진한다 — 인증번호 확인 단계에서 소진하면 토큰을 여러 번 쓸 수 있다.
+     */
+    private String consumeCode(Long verificationCodeId, User user) {
+        VerificationCode code = codeRepository.findById(verificationCodeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID));
+        if (code.getPurpose() != VerificationPurpose.PASSWORD_RESET
+                || code.getConsumedAt() != null
+                || code.isExpired(OffsetDateTime.now())) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "인증번호 만료·소진");
+        }
+        String target = switch (code.getChannel()) {
+            case SMS -> user.getPhone();
+            case EMAIL -> user.getEmail() == null ? null : user.getEmail().toLowerCase(Locale.ROOT);
+        };
+        if (target == null || !target.equals(code.getTarget())) {
+            log.warn("[AUTH] 재설정 인증번호의 대상과 회원이 다름. userId={}", user.getId());
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "인증번호·회원 불일치");
+        }
+        code.consume();
+        return code.getChannel().name();
     }
 
     /** 쿠키 회전 후 새 Access 토큰을 낸다. */

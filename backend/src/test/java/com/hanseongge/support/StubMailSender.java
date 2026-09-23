@@ -25,6 +25,14 @@ public class StubMailSender implements MailSender {
     /** 설정해 두면 발송이 실패한다 — 발송 실패를 성공으로 응답하지 않는지 검증할 때 쓴다. */
     public MailSendException nextFailure;
 
+    /** false 로 두면 "메일 설정 없음"(이메일 인증번호 숨김)을 검증할 수 있다. */
+    public boolean configured = true;
+
+    @Override
+    public boolean isConfigured() {
+        return configured;
+    }
+
     @Override
     public void send(String to, String subject, String body) {
         if (nextFailure != null) {
@@ -48,5 +56,6 @@ public class StubMailSender implements MailSender {
     public void reset() {
         sent.clear();
         nextFailure = null;
+        configured = true;
     }
 }

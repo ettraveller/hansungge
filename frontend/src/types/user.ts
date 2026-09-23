@@ -10,6 +10,9 @@ export type OAuthProviderType = 'GOOGLE' | 'NAVER' | 'KAKAO';
 
 export type UserStatus = 'ACTIVE' | 'DORMANT' | 'WITHDRAWN' | 'BLOCKED';
 
+/** 인증번호를 받는 방법. 서버의 VerificationChannel 과 같은 값이다. */
+export type VerificationChannel = 'SMS' | 'EMAIL';
+
 export type AgreementCode = 'TERMS' | 'PRIVACY' | 'AGE_14' | 'MARKETING' | 'THIRD_PARTY';
 
 export const USER_STATUS_LABEL: Record<UserStatus, string> = {
@@ -64,6 +67,8 @@ export interface AuthProviders {
   signUpAvailable: boolean;
   /** 인증번호(문자) 로그인을 지금 쓸 수 있는가. 문자 발송 설정이 없으면 false. */
   smsLoginAvailable: boolean;
+  /** 이메일로 인증번호를 받을 수 있는가. 메일 발송 설정이 없으면 false. */
+  emailCodeAvailable: boolean;
 }
 
 export interface OAuthAuthorize {

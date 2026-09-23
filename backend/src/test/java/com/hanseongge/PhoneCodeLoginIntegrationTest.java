@@ -8,6 +8,8 @@ import com.hanseongge.support.StubIdentityConfig;
 import com.hanseongge.support.StubIdentityVerificationProvider;
 import com.hanseongge.support.StubOAuthConfig;
 import com.hanseongge.support.StubOAuthProvider;
+import com.hanseongge.support.StubMailConfig;
+import com.hanseongge.support.StubMailSender;
 import com.hanseongge.support.StubSmsConfig;
 import com.hanseongge.support.StubSmsSender;
 import com.hanseongge.support.UserTestFixtures;
@@ -30,16 +32,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
- * 인증번호(문자) 로그인.
+ * 인증번호 로그인 — 문자와 이메일.
  *
- * <p>휴대폰번호는 가입 때 본인확인으로 명의가 검증됐다. 로그인에서는 그 번호를 <b>지금 가지고
- * 있는지</b>만 확인한다 — 번호당 60초·시간당 5통, 5분·5회, 성공 즉시 폐기.
+ * <p>휴대폰번호는 가입 때 본인인증으로 명의가 검증됐다. 로그인에서는 그 번호를 <b>지금 가지고
+ * 있는지</b>만 확인한다 — 대상당 60초, 문자는 시간당 5통, 5분·5회, 성공 즉시 폐기.
+ *
+ * <p>이메일은 <b>가입 때 인증번호로 소유를 확인한 주소</b>만 통한다. 확인하지 않은 주소로 열어 두면
+ * 남의 주소를 적어 둔 계정에 그 주소 주인이 들어간다.
  *
  * <p>쿨다운은 기본값(60초) 그대로 둔다. 쿨다운 자체를 검증해야 하므로 끄지 않는다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({StubOAuthConfig.class, StubIdentityConfig.class, StubSmsConfig.class})
+@Import({StubOAuthConfig.class, StubIdentityConfig.class, StubSmsConfig.class, StubMailConfig.class})
 @TestPropertySource(properties = {
         "spring.main.allow-bean-definition-overriding=true",
         "app.oauth.redirect-base-url=http://localhost:3000/auth/callback"
@@ -54,6 +59,7 @@ class PhoneCodeLoginIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired StubOAuthProvider google;
     @Autowired StubIdentityVerificationProvider identityProvider;
     @Autowired StubSmsSender sms;
+    @Autowired StubMailSender mail;
 
     private Long memberId;
 
@@ -62,6 +68,7 @@ class PhoneCodeLoginIntegrationTest extends EmbeddedPostgresSupport {
         google.reset();
         identityProvider.reset();
         sms.reset();
+        mail.reset();
         UserTestFixtures.deleteAll(jdbc);
 
         SignUpFlow flow = new SignUpFlow(mockMvc, objectMapper, google, identityProvider);
@@ -72,16 +79,26 @@ class PhoneCodeLoginIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     private MvcResult send(String phone) throws Exception {
-        return mockMvc.perform(post("/api/v1/auth/sms/send")
+        return send("SMS", phone);
+    }
+
+    private MvcResult send(String channel, String target) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/code/send")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("phone", phone))))
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("channel", channel, "target", target))))
                 .andReturn();
     }
 
     private MvcResult login(String phone, String code) throws Exception {
-        return mockMvc.perform(post("/api/v1/auth/sms/login")
+        return login("SMS", phone, code);
+    }
+
+    private MvcResult login(String channel, String target, String code) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/code/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("phone", phone, "code", code))))
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("channel", channel, "target", target, "code", code))))
                 .andReturn();
     }
 
@@ -187,5 +204,52 @@ class PhoneCodeLoginIntegrationTest extends EmbeddedPostgresSupport {
         MvcResult result = send(PHONE);
         assertThat(result.getResponse().getStatus()).isEqualTo(503);
         assertThat(read(result).get("code").asText()).isEqualTo("SMS_UNAVAILABLE");
+    }
+
+    // =================================================================
+    // 이메일로 받기 (2026-09-23)
+    // =================================================================
+
+    @Test
+    @DisplayName("인증한 이메일로도 같은 계정에 로그인된다 — 문자비가 들지 않는다")
+    void emailCodeLogin() throws Exception {
+        jdbc.update("UPDATE users SET email = 'buyer@test.local', email_verified_at = now()");
+
+        assertThat(send("EMAIL", "Buyer@Test.local").getResponse().getStatus()).isEqualTo(204);
+        assertThat(mail.sent).hasSize(1);
+        assertThat(sms.sent).as("이메일을 골랐으면 문자는 나가지 않는다").isEmpty();
+
+        MvcResult result = login("EMAIL", "buyer@test.local", mail.lastCode());
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(read(result).get("user").get("id").asLong()).isEqualTo(memberId);
+    }
+
+    @Test
+    @DisplayName("인증하지 않은 이메일로는 로그인되지 않는다 — 남의 주소를 적어 둔 계정을 지킨다")
+    void unverifiedEmailCannotLogIn() throws Exception {
+        jdbc.update("UPDATE users SET email = 'buyer@test.local', email_verified_at = NULL");
+
+        assertThat(send("EMAIL", "buyer@test.local").getResponse().getStatus()).isEqualTo(204);
+        assertThat(mail.sent).as("회원으로 보지 않으므로 메일도 나가지 않는다").isEmpty();
+    }
+
+    @Test
+    @DisplayName("문자로 받은 번호를 이메일 쪽에 넣어도 통하지 않는다 — 채널까지 대조한다")
+    void channelIsPartOfTheMatch() throws Exception {
+        jdbc.update("UPDATE users SET email = 'buyer@test.local', email_verified_at = now()");
+        send(PHONE);
+
+        MvcResult result = login("EMAIL", "buyer@test.local", sms.lastCode());
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(read(result).get("code").asText()).isEqualTo("VERIFICATION_CODE_INVALID");
+    }
+
+    @Test
+    @DisplayName("메일 설정이 없으면 503 — 화면도 이메일 선택지를 그리지 않는다")
+    void unavailableWithoutMail() throws Exception {
+        mail.configured = false;
+        MvcResult result = send("EMAIL", "buyer@test.local");
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(read(result).get("code").asText()).isEqualTo("MAIL_UNAVAILABLE");
     }
 }

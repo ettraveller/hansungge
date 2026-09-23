@@ -62,6 +62,11 @@ public class NcpOutboundMailSender implements MailSender {
     }
 
     @Override
+    public boolean isConfigured() {
+        return config.isConfigured();
+    }
+
+    @Override
     public void send(String to, String subject, String body) {
         if (!config.isConfigured()) {
             throw new MailSendException("메일 발송 설정이 비어 있습니다 (TODO E-5)");

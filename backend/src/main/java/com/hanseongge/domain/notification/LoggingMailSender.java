@@ -22,6 +22,12 @@ import org.springframework.stereotype.Component;
 @Profile({"local", "dev"})
 public class LoggingMailSender implements MailSender {
 
+    /** 콘솔에 찍기만 하므로 언제나 쓸 수 있다. */
+    @Override
+    public boolean isConfigured() {
+        return true;
+    }
+
     @Override
     public void send(String to, String subject, String body) {
         log.info("""

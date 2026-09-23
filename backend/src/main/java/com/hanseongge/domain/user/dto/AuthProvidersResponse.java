@@ -22,18 +22,22 @@ public record AuthProvidersResponse(
         List<AgreementItem> agreements,
 
         /**
-         * 새 가입을 지금 받는가 (자체·소셜 모두).
+         * 휴대폰(자체) 가입을 지금 받는가.
          *
-         * <p>모든 가입은 휴대폰 본인확인을 거친다. 본인확인 공급자 계약(TODO E-4) 전에는 false
-         * 이고, 기존 회원의 로그인만 된다. 화면은 가입 링크를 그리지 않는다 — 눌러야만 실패를
-         * 아는 화면을 만들지 않는다.
+         * <p>자체 가입·비밀번호 찾기의 본인인증·마이페이지 본인인증이 모두 이 값을 따른다.
+         * 본인인증 공급자 계약(TODO E-4) 전에는 false 다. 소셜 가입은 본인인증이 없어 영향이 없다.
+         * 화면은 false 면 그 링크를 그리지 않는다 — 눌러야만 실패를 아는 화면을 만들지 않는다.
          */
-        @Schema(description = "회원가입 가능 여부", example = "false")
+        @Schema(description = "휴대폰(자체) 회원가입 가능 여부", example = "false")
         boolean signUpAvailable,
 
-        /** 인증번호(문자) 로그인을 지금 쓸 수 있는가. 문자 발송 설정(SENS)이 없으면 false. */
-        @Schema(description = "인증번호 로그인 가능 여부", example = "true")
-        boolean smsLoginAvailable
+        /** 문자로 인증번호를 받을 수 있는가. 문자 발송 설정(SENS)이 없으면 false. */
+        @Schema(description = "문자 인증번호 가능 여부", example = "true")
+        boolean smsLoginAvailable,
+
+        /** 이메일로 인증번호를 받을 수 있는가. 메일 발송 설정이 없으면 false. */
+        @Schema(description = "이메일 인증번호 가능 여부", example = "true")
+        boolean emailCodeAvailable
 ) {
 
     @Schema(name = "AuthProviderItem")

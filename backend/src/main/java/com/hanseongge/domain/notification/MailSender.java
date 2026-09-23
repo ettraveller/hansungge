@@ -22,4 +22,12 @@ public interface MailSender {
      * @throws MailSendException 발송 실패
      */
     void send(String to, String subject, String body);
+
+    /**
+     * 지금 실제로 보낼 수 있는가.
+     *
+     * <p>화면이 "이메일로 인증번호 받기"를 그릴지 정하는 데 쓴다 — 설정이 없는데 버튼을 그리면
+     * 눌러야만 실패를 아는 화면이 된다. 개발용 구현(콘솔 출력)은 언제나 true 다.
+     */
+    boolean isConfigured();
 }
