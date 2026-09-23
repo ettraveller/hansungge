@@ -486,39 +486,51 @@ lopr(저가), trqu(거래량).
 - [ ] 운영 도메인 SSL (A-5) — 콜백이 https 여야 한다
 - [ ] 발급받은 **Client Secret 을 저장소에 커밋하지 않는다.** 환경변수만 쓴다
 
-### E-2. 네이버 클라우드(NCP) PostgreSQL
+### E-2. PostgreSQL — 앱 서버에 직접 (2026-09-23 이후)
 
-DB 를 NCP 로 쓰기로 확정되었다면 준비할 것들이다. 애플리케이션은 접속 정보만
-바뀌므로 **코드 변경은 없다** — `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` 뿐이다.
+**`provision.sh` 5~7절이 전부 한다.** 설치·설정·역할/DB 생성·백업 크론까지. 사람이 할 일은
+**DB 비밀번호를 정해 양쪽에 같은 값을 넣는 것** 하나뿐이다.
 
-1. **상품 선택** — `Cloud DB for PostgreSQL`
-   - 버전 **16** 으로 맞춘다. Flyway 마이그레이션이 JSONB·plpgsql 트리거·부분 UNIQUE
-     인덱스를 쓰므로 하위 버전에서는 V1 부터 실패한다
-2. **DB·계정 생성**
-   - DB 이름 `hanseongge`, 사용자 `hanseongge`
-   - **DB 소유자를 `hanseongge` 로 지정한다.** PostgreSQL 15+ 는 `public` 스키마의
-     CREATE 권한을 PUBLIC 에서 회수해서, `GRANT ALL PRIVILEGES ON DATABASE` 만으로는
-     Flyway 가 V1 에서 `permission denied for schema public` 로 죽는다
-3. **네트워크** — ACG(방화벽)에 앱 서버 IP 만 5432 허용. 공인 IP 노출 금지
-4. **문자셋** — `UTF8`. 상품명·주소가 한글이다
-5. **백업** — 자동 백업 켜고 보관기간 설정 (설계서 §14.5)
-   - `market_prices_effective`·`order_items`·`audit_logs` 는 append-only 라
-     복구 불가 시점이 곧 데이터 손실이다
-6. **타임존** — 서버·DB 모두 `Asia/Seoul`. 시세 기준시각이 어긋나면 "노후 판정"이
-   틀어져 멀쩡한 시세가 "시세문의"로 바뀐다
-7. **접속 정보 주입** — `/etc/hanseongge/api.env` (권한 640) → systemd `EnvironmentFile`
+```bash
+sudo -u postgres psql -c "ALTER ROLE hanseongge PASSWORD '<정한 값>'"
+vi /etc/hanseongge/api.env     # DB_PASSWORD 에 같은 값
+```
 
 ```
-DB_URL=jdbc:postgresql://<NCP 엔드포인트>:5432/hanseongge
+DB_URL=jdbc:postgresql://localhost:5432/hanseongge
 DB_USERNAME=hanseongge
-DB_PASSWORD=<발급 비밀번호>
+DB_PASSWORD=<정한 값>
+DB_POOL_SIZE=20
 ```
 
-8. **최초 기동 시 Flyway 가 V1~V11 을 자동 적용**한다. 기동 로그에
-   `Successfully applied 11 migrations` 와 헬스체크의 `schemaVersion: 11` 로 확인한다
+스크립트가 지키는 것 — 바꿀 때 그대로 둘 것:
 
-> 함께 필요한 NCP 리소스: 앱 서버(Ubuntu), Object Storage(상품 이미지),
-> 도메인·SSL(A-5). 이미지 업로드는 아직 미구현이라 Object Storage 는 그 STEP 에서 붙인다.
+1. **버전 16**, PGDG 저장소. 우분투 기본 저장소는 배포판 수명 동안 한 버전에 묶여 마이너 보안
+   패치가 늦다. 하위 버전은 Flyway 가 V1 부터 실패한다 (JSONB·plpgsql 트리거·부분 UNIQUE 인덱스)
+2. **DB 소유자를 `hanseongge` 로.** PostgreSQL 15+ 는 `public` 스키마의 CREATE 권한을 PUBLIC 에서
+   회수해서, `GRANT ALL PRIVILEGES ON DATABASE` 만으로는 Flyway 가 V1 에서
+   `permission denied for schema public` 로 죽는다
+3. **`listen_addresses = 'localhost'`.** ACG·ufw 에도 5432 를 넣지 않는다 — 네트워크를 아예 타지 않는다
+4. **타임존 `Asia/Seoul` 을 DB 에도 따로.** PostgreSQL 은 OS 시간대를 그대로 따르지 않는다.
+   어긋나면 시세 "노후 판정"이 틀어져 멀쩡한 시세가 "시세문의"로 바뀐다
+5. **문자셋 UTF8** (PGDG 기본). 상품명·주소가 한글이다
+6. **메모리 배분** — `shared_buffers` 1GB / `effective_cache_size` 3GB, JVM 힙 상한 40%.
+   한쪽만 올리면 OOM killer 가 둘 중 하나를 죽인다
+7. **백업** 매일 04:00, 14일 (`/var/backups/pg`). `market_prices_effective`·`order_items`·
+   `audit_logs` 는 append-only 라 복구 불가 시점이 곧 데이터 손실이다.
+   복구 절차는 README 「배포 > DB 백업·복구」
+
+> 함께 필요한 NCP 리소스: 앱 서버(Ubuntu), Object Storage(상품 이미지 + 백업 오프사이트),
+> 도메인·SSL(A-5).
+
+#### ~~Cloud DB for PostgreSQL 을 쓸 때의 주의사항~~ (2026-09-23 폐기)
+
+매니지드 DB 를 다시 쓰게 되면 되살릴 것. 지금은 **해당 없음**이다.
+
+- ~~ACG(방화벽)에 앱 서버 IP 만 5432 허용. Cloud DB 가 자동 생성하는 ACG 에는 5432 규칙이 없어 손으로 넣어야 한다~~
+- ~~Private Domain(`pg-xxxx.vpc-cdb-kr.ntruss.com`)은 VPC 안에서만 resolve 된다. 개발 PC 에서 직접 붙지 못한다~~
+- ~~NCP 자동 백업 7일 — 지금은 cron `pg_dump` 가 대신하고, **오프사이트 복사가 아직 없다**(J 참조)~~
+- ~~HA(Primary+Secondary) — 포기했다. 이 트래픽에서 대기 서버 값(월 102,500원 중 대부분)이 장애 시간의 값보다 컸다~~
 
 ### E-6. GitHub Actions 자체 호스팅 러너 (배포)
 
@@ -816,6 +828,30 @@ SENS_SENDER_PHONE=    # 등록·승인된 발신번호, 숫자만
 
 ⚠️ 알고 받아들인 것: 이메일 경로는 메일 계정이 털리면 같이 털린다. 대신 돈이 나가는 일(매입 신청·정산계좌)은
 비밀번호가 아니라 본인인증(STEP_UP)을 따로 요구하고, 비밀번호를 재설정하면 다른 기기 세션이 전부 끊긴다.
+
+## J. DB 를 앱 서버로 들였다 (2026-09-23) — 남은 일
+
+NCP Cloud DB for PostgreSQL(HA) 를 없애고 앱 서버에 PostgreSQL 16 을 직접 설치했다.
+월 102,500원(전체의 66%)이 대부분 쓰이지 않는 대기 서버 몫이었다 → 전체 약 155,860원 → **약 53,000원**.
+DB 명·계정·비밀번호는 그대로라 **애플리케이션 코드는 바뀌지 않았다** — `DB_URL` 의 호스트만 `localhost` 다.
+
+레포에 반영한 것: `provision.sh` 5~7절(스왑·PostgreSQL·백업 크론), 유닛의 `MaxRAMPercentage=40`,
+설계서 §12 · 개발계획서 §14 · README 「DB 백업·복구」.
+
+**남은 것**
+
+- [ ] **사이트 동작 확인** — 시세·상품·관리자 로그인·구글 로그인
+- [ ] **익일 확인** — NCP Billing 에서 Cloud DB 과금이 끊겼는지, `/var/backups/pg` 에 04:00 백업이 생겼는지
+- [ ] **일주일 뒤 삭제** — `/root/migrate.dump`(Cloud DB 원본의 마지막 사본),
+      `/etc/hanseongge/api.env.bak-clouddb`
+- [ ] ⚠️ **오픈 전 필수 — 백업 오프사이트 복사.** 지금 백업은 DB 와 **같은 디스크**에 있다.
+      서버나 디스크가 통째로 죽으면 둘을 함께 잃는다. NCP Object Storage 로 일일 복사를 붙일 것.
+      Cloud DB 를 쓸 때는 NCP 자동 백업이 이 몫을 대신했다 — **매니지드를 버리면서 같이 잃은 것이 이것 하나다**
+- [ ] **PostgreSQL 보안 패치** — `apt upgrade` 에 `postgresql-16` 마이너 업데이트가 포함되는지 주기적으로 확인.
+      매니지드일 때는 NCP 가 해 주던 일이다
+- [ ] **복구를 한 번 해 볼 것** — 적어 둔 절차가 실제로 도는지. 오픈 전에, 데이터가 적을 때.
+      해 보지 않은 복구 절차는 없는 것과 같다
+- [ ] `hanseongge-app-acg` 에 남은 5432 규칙 정리 (지금은 쓰이지 않는다)
 
 ## F. 화면 — 나중에 손볼 것
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================================
-# 서버 최초 1회 세팅 (Ubuntu 22.04 LTS, NCP Server)
+# 서버 최초 1회 세팅 (Ubuntu 22.04 / 24.04 LTS, NCP Server)
 #
 #   서버에서 root 로 실행한다:
 #     sudo bash provision.sh
@@ -11,8 +11,12 @@
 #
 # 여러 번 실행해도 안전하다(멱등). 이미 있는 것은 건너뛴다.
 #
+# 2026-09-23 부터 **DB 도 이 서버에 있다.** NCP Cloud DB(HA) 를 없애고 PostgreSQL 을
+# 직접 설치했다 — 대기 서버 몫이 월 요금의 3분의 2였고, 이 트래픽에 HA 가 필요 없었다.
+#
 # 이 스크립트가 하지 않는 것
 #   · 비밀값 주입      /etc/hanseongge/*.env 는 템플릿만 만든다. 값은 사람이 채운다
+#   · DB 비밀번호 설정  역할(role)만 만든다. 비밀번호는 사람이 정해 api.env 와 맞춘다
 #   · SSL 인증서 발급   DNS 가 서버를 가리킨 뒤에 해야 한다 (아래 안내 참조)
 #   · 애플리케이션 배포  deploy.sh 가 한다
 # =====================================================================
@@ -21,6 +25,7 @@ set -euo pipefail
 APP_USER="hanseongge"
 APP_GROUP="hanseongge"
 JDK_VERSION="21"
+PG_VERSION="16"
 NODE_MAJOR="20"
 DOMAIN="${DOMAIN:-hanseongge.com}"
 
@@ -44,6 +49,9 @@ apt-get install -y -qq ca-certificates curl gnupg lsb-release ufw
 #
 # 어긋나면 시세 "노후" 판정(PRICE_STALE_MINUTES)이 틀어져 멀쩡한 시세가
 # "시세문의"로 바뀐다. 화면만 보고는 원인을 찾기 어렵다.
+#
+# DB 가 같은 서버로 들어온 지금도 각각 정한다 — PostgreSQL 은 OS 시간대를 그대로
+# 따르지 않아, 6절에서 timezone 을 따로 박아 둔다.
 # ---------------------------------------------------------------------
 log "시간대 Asia/Seoul"
 timedatectl set-timezone Asia/Seoul
@@ -93,7 +101,112 @@ if [ ! -x /usr/bin/node ]; then
 fi
 
 # ---------------------------------------------------------------------
-# 5. 앱 계정
+# 5. 스왑 2GB
+#
+# 8GB 서버에 JVM 과 PostgreSQL 이 같이 산다. 스왑이 없으면 순간적으로 메모리가
+# 몰릴 때 OOM killer 가 둘 중 하나를 죽인다 — 그리고 그것이 보통 DB 다.
+# 스왑은 느려서 쓰이면 안 되는 물건이지만, 없으면 프로세스가 사라진다.
+# ---------------------------------------------------------------------
+log "스왑 2GB"
+if ! swapon --show | grep -q /swapfile; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+fi
+if ! grep -q '^/swapfile' /etc/fstab; then
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+free -h | head -3
+
+# ---------------------------------------------------------------------
+# 6. PostgreSQL ${PG_VERSION} (이 서버에 직접)
+#
+# 2026-09-23 이전에는 NCP Cloud DB for PostgreSQL(HA) 였다. 월 102,500원으로
+# 전체 요금의 66% 였는데, 그 대부분이 쓰이지 않는 대기 서버(Secondary) 값이었다.
+#
+# ⚠️ 외부에 열지 않는다. listen_addresses 를 localhost 로 묶고, ACG·ufw 에도
+#    5432 를 넣지 않는다 — Private Subnet 에 있던 때와 노출 면이 같다.
+#    설계서의 "DB 외부 비노출"은 그대로 지켜진다.
+#
+# 우분투 기본 저장소 대신 PGDG 를 쓴다. 기본 저장소는 배포판 수명 동안 한 버전에
+# 묶여 있어, 마이너 보안 패치가 늦거나 끊긴다.
+# ---------------------------------------------------------------------
+log "PostgreSQL ${PG_VERSION}"
+if ! [ -d "/etc/postgresql/${PG_VERSION}" ]; then
+  install -d -m 0755 /usr/share/postgresql-common/pgdg
+  curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+  echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+    > /etc/apt/sources.list.d/pgdg.list
+  apt-get update -qq
+  apt-get install -y -qq "postgresql-${PG_VERSION}"
+fi
+
+# 설정은 별도 파일로 둔다. postgresql.conf 를 직접 고치면 패키지 업그레이드 때
+# 충돌하고, 무엇을 우리가 바꿨는지 알 수 없게 된다.
+#
+# shared_buffers 1GB / effective_cache_size 3GB 는 8GB 서버에서 JVM(최대 3GB)과
+# 나눠 쓰는 값이다. 서버 사양을 바꾸면 이 값과 유닛의 MaxRAMPercentage 를 같이 본다.
+PG_CONF="/etc/postgresql/${PG_VERSION}/main/conf.d/hanseongge.conf"
+cat > "${PG_CONF}.new" <<'PGCONF'
+listen_addresses = 'localhost'
+timezone = 'Asia/Seoul'
+shared_buffers = 1GB
+effective_cache_size = 3GB
+work_mem = 8MB
+maintenance_work_mem = 256MB
+PGCONF
+systemctl enable postgresql >/dev/null
+
+# 내용이 같으면 재시작하지 않는다. 이 스크립트는 여러 번 돌려도 안전해야 하는데,
+# 무조건 restart 하면 이미 돌고 있는 서비스의 DB 연결이 그때마다 끊긴다.
+if cmp -s "${PG_CONF}.new" "$PG_CONF"; then
+  rm -f "${PG_CONF}.new"
+  systemctl start postgresql
+else
+  mv "${PG_CONF}.new" "$PG_CONF"
+  systemctl restart postgresql
+  echo "  설정이 바뀌어 PostgreSQL 을 재시작했다"
+fi
+
+# 역할과 DB. 비밀번호는 넣지 않는다 — 비밀값은 사람 몫이다(아래 안내 2번).
+#
+# ⚠️ OWNER 를 반드시 준다. PostgreSQL 15 부터 public 스키마에 일반 사용자가
+#    테이블을 만들 수 없어, 소유자가 아니면 Flyway 가 첫 마이그레이션에서 멈춘다.
+if ! runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${APP_USER}'" | grep -q 1; then
+  runuser -u postgres -- psql -qc "CREATE ROLE ${APP_USER} LOGIN"
+fi
+if ! runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='${APP_USER}'" | grep -q 1; then
+  runuser -u postgres -- createdb -O "${APP_USER}" "${APP_USER}"
+fi
+
+# ---------------------------------------------------------------------
+# 7. DB 백업 (매일 04:00, 14일 보관)
+#
+# ⚠️ 이 백업은 **같은 디스크에 있다.** 실수로 지운 데이터는 되살리지만, 서버나
+#    디스크가 통째로 죽으면 DB 와 백업을 함께 잃는다. 오픈 전에 Object Storage 로
+#    복사하는 것을 반드시 붙일 것 (TODO J).
+#    Cloud DB 를 쓸 때는 NCP 자동 백업이 이 일을 대신했다.
+# ---------------------------------------------------------------------
+log "DB 백업 스크립트·크론"
+cat > /usr/local/bin/pg-backup.sh <<'BKEOF'
+#!/bin/bash
+set -euo pipefail
+DIR=/var/backups/pg
+mkdir -p $DIR
+chmod 700 $DIR
+TS=$(date +%Y%m%d_%H%M)
+runuser -u postgres -- pg_dump -Fc hanseongge > $DIR/hanseongge_$TS.dump
+find $DIR -name '*.dump' -mtime +14 -delete
+BKEOF
+chmod 0700 /usr/local/bin/pg-backup.sh
+install -d -o root -g root -m 0700 /var/backups/pg
+echo '0 4 * * * root /usr/local/bin/pg-backup.sh' > /etc/cron.d/pg-backup
+chmod 0644 /etc/cron.d/pg-backup
+
+# ---------------------------------------------------------------------
+# 8. 앱 계정
 #
 # 로그인 셸을 주지 않는다. 이 계정은 프로세스를 돌리기 위한 것이지 사람이 쓰는
 # 계정이 아니다. 다만 deploy.sh 가 scp/ssh 로 붙으므로 SSH 키는 받는다.
@@ -108,7 +221,7 @@ chown "$APP_USER:$APP_GROUP" "/home/$APP_USER/.ssh/authorized_keys"
 chmod 0600 "/home/$APP_USER/.ssh/authorized_keys"
 
 # ---------------------------------------------------------------------
-# 6. 디렉터리
+# 9. 디렉터리
 # ---------------------------------------------------------------------
 log "디렉터리"
 # ⚠️ install -d 는 <b>중간에 만들어지는 상위 디렉터리에 소유권을 적용하지 않는다.</b>
@@ -130,7 +243,7 @@ install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 /var/log/hanseongge
 install -d -o root -g root -m 0755 /var/www/certbot
 
 # ---------------------------------------------------------------------
-# 7. 환경변수 파일 (템플릿만)
+# 10. 환경변수 파일 (템플릿만)
 #
 # 값은 사람이 채운다. 640 · root:hanseongge 라 앱은 읽고 남은 못 읽는다.
 # ---------------------------------------------------------------------
@@ -142,8 +255,9 @@ if [ ! -f /etc/hanseongge/api.env ]; then
 # 백엔드 운영 환경변수. prod 프로파일은 기본값(:-)이 없어, 빠뜨리면 기동에 실패한다.
 # 조용히 잘못된 값으로 뜨는 것보다 낫다.
 
-# --- 데이터베이스 (NCP Cloud DB for PostgreSQL 16) ---
-DB_URL=jdbc:postgresql://<NCP-DB-엔드포인트>:5432/hanseongge
+# --- 데이터베이스 (이 서버의 PostgreSQL. 2026-09-23 이전에는 NCP Cloud DB) ---
+#     DB_PASSWORD 는 여기와 DB 역할 양쪽에 같은 값을 넣어야 한다 (아래 안내 2번)
+DB_URL=jdbc:postgresql://localhost:5432/hanseongge
 DB_USERNAME=hanseongge
 DB_PASSWORD=
 DB_POOL_SIZE=20
@@ -239,7 +353,7 @@ else
 fi
 
 # ---------------------------------------------------------------------
-# 8. sudoers — deploy.sh 가 재시작할 수 있도록
+# 11. sudoers — deploy.sh 가 재시작할 수 있도록
 #
 # 이것이 없으면 배포가 비밀번호를 물으며 멈춘다. 허용 범위를 이 두 서비스의
 # restart/status 로만 좁힌다.
@@ -255,7 +369,7 @@ chmod 0440 /etc/sudoers.d/hanseongge
 visudo -cf /etc/sudoers.d/hanseongge
 
 # ---------------------------------------------------------------------
-# 9. systemd 유닛
+# 12. systemd 유닛
 # ---------------------------------------------------------------------
 log "systemd 유닛"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -272,7 +386,7 @@ else
 fi
 
 # ---------------------------------------------------------------------
-# 10. Nginx
+# 13. Nginx
 # ---------------------------------------------------------------------
 log "Nginx"
 apt-get install -y -qq nginx
@@ -285,16 +399,19 @@ if [ -f "$NGINX_SRC" ]; then
 fi
 
 # ---------------------------------------------------------------------
-# 11. certbot
+# 14. certbot
 # ---------------------------------------------------------------------
 log "certbot"
 apt-get install -y -qq certbot python3-certbot-nginx
 
 # ---------------------------------------------------------------------
-# 12. 방화벽
+# 15. 방화벽
 #
-# DB(5432)는 열지 않는다 — NCP ACG 에서 앱 서버 IP 만 허용하고, 서버 쪽에서
-# 바깥으로 나가는 연결이라 인바운드 규칙이 필요 없다.
+# DB(5432)는 열지 않는다 — PostgreSQL 이 이 서버 안에 있고 localhost 에만 바인딩되어
+# 있어 네트워크를 타지 않는다. NCP ACG 에도 5432 를 넣지 않는다.
+#
+# (2026-09-23 이전: DB 가 Private Subnet 의 Cloud DB 였고 ACG 로 앱 서버만 허용했다.
+#  그때도 인바운드 규칙은 필요 없었다 — 나가는 연결이었기 때문이다.)
 # ---------------------------------------------------------------------
 log "방화벽 (ufw)"
 ufw allow OpenSSH >/dev/null
@@ -314,9 +431,17 @@ $(log "서버 준비 완료. 남은 것은 사람이 해야 한다")
    또는 서버에서 직접:
      vi /home/$APP_USER/.ssh/authorized_keys
 
-2. /etc/hanseongge/api.env 의 빈 값을 채운다
-     DB_PASSWORD · JWT_SECRET · ADMIN_INIT_* 는 반드시 필요하다.
-     소셜 로그인 값은 나중에 채워도 기동은 된다.
+2. DB 비밀번호를 정하고, **양쪽에 같은 값**을 넣는다
+     sudo -u postgres psql -c "ALTER ROLE $APP_USER PASSWORD '<정한 값>'"
+     vi /etc/hanseongge/api.env      # DB_PASSWORD 에 같은 값
+
+   나머지 빈 값도 채운다 — JWT_SECRET · ADMIN_INIT_* 는 반드시 필요하다.
+   소셜 로그인 값은 나중에 채워도 기동은 된다.
+
+   ⚠️ 옮겨 온 서버라면 **덤프를 먼저 넣는다.** 빈 DB 로 앱을 띄우면 Flyway 가
+      스키마만 새로 만들어 버리고, 데이터가 없다는 것을 한참 뒤에 안다.
+        pg_restore --no-owner --role=$APP_USER -h localhost -U $APP_USER \\
+          -d $APP_USER <덤프파일>
 
 3. DNS 가 이 서버를 가리키는지 확인한 뒤 SSL 을 발급한다
      dig +short $DOMAIN            # 서버 IP 가 나와야 한다

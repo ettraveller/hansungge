@@ -152,7 +152,7 @@ cd frontend && npm run build       # 프로덕션 빌드 (standalone)
 |---|---|---|---|
 | `local` (기본) | `application-local.yml` | **X** (템플릿만) | 개발자 PC + 로컬 PostgreSQL |
 | `dev` | `application-dev.yml` | O | NCP 개발 서버 |
-| `prod` | `application-prod.yml` | O | NCP 운영 |
+| `prod` | `application-prod.yml` | O | NCP 운영 (DB 는 같은 서버의 PostgreSQL) |
 | `test` | `src/test/resources/application-test.yml` | O | 자동화 테스트 (임베디드 PostgreSQL) |
 
 API 문서는 **기본이 차단**이고 `local`/`dev` 에서만 열립니다. `SwaggerConfig` 의
@@ -519,7 +519,7 @@ views/  →  hooks/  →  api/  →  api/client.ts
 
 ### 1. 서버 최초 1회 세팅
 
-`deploy.sh` 는 서버가 준비되어 있다고 전제합니다 — 계정·디렉터리·JDK·Node·systemd·
+`deploy.sh` 는 서버가 준비되어 있다고 전제합니다 — 계정·디렉터리·JDK·Node·**PostgreSQL**·systemd·
 sudoers 가 없으면 첫 배포가 중간에 멈춥니다. `provision.sh` 가 그 전제를 만듭니다.
 
 ```bash
@@ -550,6 +550,42 @@ export REMOTE_HOST=<NCP 서버 IP>
 ```
 
 릴리스는 타임스탬프 디렉터리에 풀고 symlink 를 교체합니다. 직전 3개를 보관하므로 롤백은 symlink 를 되돌리는 것으로 끝납니다.
+
+### DB 백업·복구
+
+**DB 는 앱 서버 안에 있습니다.** 2026-09-23 에 NCP Cloud DB for PostgreSQL(HA)를 없애고
+앱 서버에 PostgreSQL 16 을 직접 설치했습니다 — 월 102,500원으로 전체 요금의 66% 였는데,
+그 대부분이 쓰이지 않는 대기 서버 몫이었습니다. `listen_addresses = 'localhost'` 에
+ACG·방화벽에도 5432 가 없어 **바깥에서 닿을 경로는 없습니다.**
+
+매니지드 DB 를 버리면서 **자동 백업도 함께 잃었으므로**, 그 자리를 cron 이 대신합니다.
+
+| | |
+|---|---|
+| 스크립트 | `/usr/local/bin/pg-backup.sh` (`pg_dump -Fc`) |
+| 스케줄 | `/etc/cron.d/pg-backup` — 매일 04:00, root |
+| 위치 / 보관 | `/var/backups/pg/hanseongge_<날짜>_<시각>.dump`, 14일 |
+
+> ⚠️ **백업이 DB 와 같은 디스크에 있습니다.** 실수로 지운 데이터는 되살리지만, 서버나
+> 디스크가 통째로 죽으면 DB 와 백업을 함께 잃습니다. **오픈 전에 NCP Object Storage 로
+> 일일 복사를 붙여야 합니다** (`docs/TODO_보류항목.md` J).
+
+복구 — 되돌릴 시점의 덤프를 고른 뒤:
+
+```bash
+systemctl stop hanseongge-api          # 먼저 멈춘다. 붙어 있으면 dropdb 가 실패한다
+sudo -u postgres dropdb hanseongge
+sudo -u postgres createdb -O hanseongge hanseongge
+pg_restore --no-owner --role=hanseongge -h localhost -U hanseongge \
+  -d hanseongge /var/backups/pg/<파일명>.dump
+systemctl start hanseongge-api
+```
+
+`--no-owner --role=hanseongge` 를 빼면 덤프 안의 소유자 지정이 그대로 복원되어,
+그 역할이 없는 서버에서는 복구가 중간에 멈춥니다.
+
+복구 뒤 Flyway 가 스키마 버전을 확인합니다 — 덤프가 지금 코드보다 낮은 버전이면
+남은 마이그레이션이 이어서 돌고, **높으면 앱이 뜨지 않습니다**(코드를 먼저 되돌려야 합니다).
 
 ### SSL 인증서가 두 장인 이유
 

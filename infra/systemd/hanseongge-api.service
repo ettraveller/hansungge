@@ -14,7 +14,14 @@ EnvironmentFile=/etc/hanseongge/api.env
 Environment="SPRING_PROFILES_ACTIVE=prod"
 
 WorkingDirectory=/opt/hanseongge/api
-ExecStart=/usr/bin/java -XX:MaxRAMPercentage=70 -Duser.timezone=Asia/Seoul -jar /opt/hanseongge/api/current/app.jar
+
+# 힙 상한 40% (8GB 서버에서 약 3GB).
+#
+# 2026-09-23 이전까지는 70 이었다. 그때는 DB 가 NCP Cloud DB 라 이 서버의 메모리를 JVM 이
+# 거의 독차지했다. 지금은 **같은 서버에 PostgreSQL 이 함께 있다** — shared_buffers 1GB +
+# 커넥션별 work_mem + OS 페이지 캐시(effective_cache_size 3GB)가 필요하다.
+# 70 으로 되돌리면 두 프로세스가 메모리를 다투다 OOM killer 가 둘 중 하나를 죽인다.
+ExecStart=/usr/bin/java -XX:MaxRAMPercentage=40 -Duser.timezone=Asia/Seoul -jar /opt/hanseongge/api/current/app.jar
 
 # 무중단이 아닌 단순 재시작 (설계서 §14.2 — 초기에는 단일 인스턴스)
 Restart=on-failure

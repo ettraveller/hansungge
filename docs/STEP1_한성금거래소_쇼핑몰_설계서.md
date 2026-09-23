@@ -40,7 +40,7 @@
                                   ▼          ▼
                         ┌──────────────┐ ┌──────────────────┐
                         │ PostgreSQL   │ │ 외부 연동          │
-                        │ (Private)    │                         └──────────────┘ │ - PG (네이버/카카오/카드)│
+                        │ (localhost)  │                         └──────────────┘ │ - PG (네이버/카카오/카드)│
                                          │ - OAuth (G/N/K)   │
                                          │ - Object Storage  │
                                          └──────────────────┘
@@ -405,7 +405,7 @@ PriceResult calculateProductPrice(Long productId, Long optionId, LocalDateTime a
   /admin 화면은 robots noindex + 인증 가드 (일반 사용자 비노출)
 ```
 
-보안 체크리스트(지시서 37항): HTTPS 전 구간, BCrypt, CSRF(쿠키 사용 지점), CORS 화이트리스트, Bean Validation, JPA 파라미터 바인딩(SQLi), 출력 이스케이프(XSS), Bucket4j Rate Limit(로그인·결제), 민감정보 컬럼 암호화(전화번호 등), 로그 마스킹, DB Private Subnet.
+보안 체크리스트(지시서 37항): HTTPS 전 구간, BCrypt, CSRF(쿠키 사용 지점), CORS 화이트리스트, Bean Validation, JPA 파라미터 바인딩(SQLi), 출력 이스케이프(XSS), Bucket4j Rate Limit(로그인·결제), 민감정보 컬럼 암호화(전화번호 등), 로그 마스킹, DB 외부 비노출(2026-09-23 이전: Private Subnet → 이후: localhost 바인딩).
 
 ## 11. 결제 구조
 
@@ -441,13 +441,26 @@ NCP Load Balancer / 공인 IP + Nginx (TLS, WAF 성격의 기본 필터)
   ├─ hanseongge.com      → Next.js (Node, systemd 또는 Docker)
   └─ api.hanseongge.com  → Spring Boot (systemd 또는 Docker)
   ▼
-NCP Cloud DB for PostgreSQL (Private Subnet, 외부 비노출)
+     └─ 같은 서버 안: PostgreSQL 16 (localhost 바인딩, 외부 비노출)
 NCP Object Storage (상품 이미지, CDN+ 연계 가능)
 ```
 
+> **2026-09-23 변경 — DB 를 앱 서버로 들였다.**
+> 원래는 NCP Cloud DB for PostgreSQL(HA, Private Subnet)이었다. 월 102,500원으로 전체 요금의
+> 66% 였는데 그 대부분이 쓰이지 않는 대기 서버(Secondary) 몫이라, 매니지드 DB 를 없애고 앱 서버에
+> PostgreSQL 16 을 직접 설치했다(약 월 53,000원).
+>
+> 노출 면은 그대로다 — `listen_addresses = 'localhost'` 에 ACG·방화벽에도 5432 가 없어,
+> Private Subnet 에 있던 때와 마찬가지로 **바깥에서 닿을 경로가 없다.**
+>
+> 잃은 것은 **NCP 자동 백업과 HA** 다. 백업은 매일 04:00 `pg_dump`(14일 보관)로 대신하는데
+> **같은 디스크에 쌓인다** — 서버가 통째로 죽으면 DB 와 백업을 함께 잃는다. 오픈 전에
+> Object Storage 로 복사하는 것을 반드시 붙인다. HA 는 포기했다: 이 트래픽에서 대기 서버 값이
+> 장애 시간의 값보다 크다고 봤다.
+
 - 개발: 로컬 개발 → NCP dev DB (VPN 접속 패턴 재사용).
 - 배포: **Docker 미사용 확정.** systemd 서비스 2개(spring-boot jar, next standalone) + Nginx. 배포 스크립트 = scp + systemctl restart, 롤백 = 이전 jar 보관.
-- 공인망 노출은 Nginx 443 단일. 8080/3000은 localhost 바인딩, DB는 Private Subnet(앱 서버만 허용), /api/admin은 Nginx에서 고정 IP 제한, PG 콜백은 서명+IP 허용목록+금액 대조 3중 검증, Swagger/Actuator prod 비노출.
+- 공인망 노출은 Nginx 443 단일. 8080/3000/5432는 localhost 바인딩(DB 는 네트워크를 아예 타지 않는다), /api/admin은 Nginx에서 고정 IP 제한, PG 콜백은 서명+IP 허용목록+금액 대조 3중 검증, Swagger/Actuator prod 비노출.
 - 무중단은 초기 불필요, 단일 인스턴스로 시작.
 
 ## 13. 개발 Roadmap (지시서 43항 18 STEP 기준)
