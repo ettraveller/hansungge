@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PriceTag } from '@/components/ui/PriceTag';
+import { WishlistHeart } from '@/components/product/WishlistHeart';
 import { useAddToCart } from '@/hooks/useCart';
+import { useMarkViewed } from '@/hooks/useInterest';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
 import { METAL_LABEL } from '@/types/price';
@@ -30,6 +32,20 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   const addToCart = useAddToCart();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
+
+  /**
+   * "최근 본 상품"에 남긴다.
+   *
+   * <p>회원일 때만, 이 화면에서 <b>한 번만</b> 부른다. 옵션을 바꿀 때마다 부르면 같은
+   * 상품을 여러 번 기록하게 되고, 실패해도 화면에는 아무 일도 일어나지 않는다.
+   */
+  const markViewed = useMarkViewed();
+  const marked = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated || marked.current) return;
+    marked.current = true;
+    markViewed.mutate(product.id);
+  }, [isAuthenticated, product.id, markViewed]);
 
   const option = product.options[selectedIndex];
   const price = product.prices[selectedIndex];
@@ -65,6 +81,7 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
       <div className={styles.layout}>
         {/* ---------- 이미지 ---------- */}
         <div className={styles.gallery}>
+          <WishlistHeart productId={product.id} productName={product.name} />
           <div className={styles.mainImage} aria-hidden="true">
             <span className={styles.imageMark}>
               {product.metalType ? METAL_LABEL[product.metalType] : '한성금거래소'}

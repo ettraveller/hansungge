@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 
-import { RequireMember } from '@/components/auth/RequireMember';
 import { OrderListView } from '@/views/OrderListView';
 
 export const metadata: Metadata = {
@@ -9,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function OrdersPage() {
-  return <RequireMember><OrderListView /></RequireMember>;
+  return <OrderListView />;
 }

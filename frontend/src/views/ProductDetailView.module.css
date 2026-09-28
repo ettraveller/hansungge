@@ -20,7 +20,9 @@
 
 /* ---------- 이미지 ---------- */
 
+/* 하트 자리 */
 .gallery {
+  position: relative;
   min-width: 0;
 }
 
@@ -238,8 +240,8 @@
    가장 중요한 버튼이라, 여기가 안 읽히면 다른 곳을 고쳐도 소용없다. */
 .buyBtn {
   border: 1px solid var(--gold);
-  background: var(--gold);
-  color: var(--dark);
+  background: var(--action);
+  color: var(--on-action);
   font-weight: 700;
 }
 
@@ -248,8 +250,8 @@
 }
 
 .buyBtn:hover:not(:disabled) {
-  background: var(--gold-deep);
-  border-color: var(--gold-deep);
+  background: var(--action-hover);
+  border-color: var(--action-hover);
   color: #fff;
 }
 

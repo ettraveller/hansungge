@@ -297,12 +297,12 @@
 }
 
 .callBtn {
-  background: var(--gold);
-  color: var(--dark);
+  background: var(--action);
+  color: var(--on-action);
 }
 
 .callBtn:hover {
-  background: var(--gold-deep);
+  background: var(--action-hover);
   color: #fff;
 }
 

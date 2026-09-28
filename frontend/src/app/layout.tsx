@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Noto_Sans_KR } from 'next/font/google';
+import { Noto_Sans_KR, Noto_Serif_KR } from 'next/font/google';
 import { QueryProvider } from '@/app/providers';
 import '@/styles/globals.css';
 
@@ -7,6 +7,19 @@ const notoSansKr = Noto_Sans_KR({
   subsets: ['latin'],
   weight: ['300', '400', '500', '700'],
   variable: '--font-noto-sans-kr',
+  display: 'swap',
+});
+
+/**
+ * 제목과 금액에만 쓰는 명조 (2026-09-28).
+ *
+ * <p>굵기를 둘만 받는다 — 명조는 본문에 쓰지 않으므로 400·500 이면 충분하고,
+ * 한글 폰트는 굵기 하나가 파일 수십 조각이라 더 받으면 첫 화면이 느려진다.
+ */
+const notoSerifKr = Noto_Serif_KR({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-noto-serif-kr',
   display: 'swap',
 });
 
@@ -31,7 +44,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={notoSansKr.variable}>
+    <html lang="ko" className={`${notoSansKr.variable} ${notoSerifKr.variable}`}>
       <head>
         {/*
           Pretendard — 한글 본문용 가변 폰트 (OFL-1.1, node_modules/pretendard 에서 복사).

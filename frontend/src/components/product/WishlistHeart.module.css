@@ -1,0 +1,55 @@
+/* 찜하기 하트 — 상품 타일 오른쪽 위.
+
+   채우지 않은 선 하트가 기본이고, 찜하면 채운다. 색만으로 알리지 않도록
+   <b>모양(빈 하트 ↔ 찬 하트)</b>이 함께 바뀐다. */
+
+.heart {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ink-400);
+}
+
+.heart svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  transition: fill 0.12s ease, color 0.12s ease;
+}
+
+.heart:hover {
+  color: var(--dark);
+}
+
+.on {
+  color: var(--dark);
+}
+
+.on svg {
+  fill: currentColor;
+}
+
+/* 키보드로 훑는 사람에게 지금 어디인지 보여야 한다 */
+.heart:focus-visible {
+  outline: 2px solid var(--dark);
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart svg {
+    transition: none;
+  }
+}

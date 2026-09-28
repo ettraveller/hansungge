@@ -48,16 +48,16 @@
 .emptyLink {
   display: inline-block;
   padding: 11px 26px;
-  background: var(--gold);
-  border: 1px solid var(--gold-deep);
+  background: var(--action);
+  border: 1px solid var(--action);
   border-radius: var(--radius-sm);
-  color: var(--dark);
+  color: var(--on-action);
   font-weight: 700;
   font-size: 14px;
 }
 
 .emptyLink:hover {
-  background: var(--gold-deep);
+  background: var(--action-hover);
   color: #fff;
 }
 
@@ -372,9 +372,9 @@
 .order {
   width: 100%;
   height: 48px;
-  border: 1px solid var(--gold-deep);
-  background: var(--gold);
-  color: var(--dark);
+  border: 1px solid var(--action);
+  background: var(--action);
+  color: var(--on-action);
   border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 700;
@@ -391,7 +391,7 @@ a.order {
 }
 
 a.order:hover {
-  background: var(--gold-deep);
+  background: var(--action-hover);
 }
 
 .order:disabled {

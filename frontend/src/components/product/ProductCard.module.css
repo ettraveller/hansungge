@@ -196,3 +196,8 @@
     display: none;
   }
 }
+
+/* 하트를 얹기 위한 자리. 링크 바깥에서 카드를 감싼다 (ProductCard.tsx 주석 참조) */
+.card {
+  position: relative;
+}

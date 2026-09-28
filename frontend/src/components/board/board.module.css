@@ -281,13 +281,13 @@
 }
 
 .primaryBtn {
-  background: var(--gold);
-  color: var(--dark);
+  background: var(--action);
+  color: var(--on-action);
   font-weight: 700;
 }
 
 .primaryBtn:hover {
-  background: var(--gold-deep);
+  background: var(--action-hover);
   color: #fff;
 }
 

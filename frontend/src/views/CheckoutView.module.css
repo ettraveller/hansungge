@@ -37,16 +37,16 @@
   display: inline-block;
   margin-top: 18px;
   padding: 11px 26px;
-  background: var(--gold);
-  border: 1px solid var(--gold-deep);
+  background: var(--action);
+  border: 1px solid var(--action);
   border-radius: var(--radius-sm);
-  color: var(--dark);
+  color: var(--on-action);
   font-weight: 700;
   font-size: 14px;
 }
 
 .emptyLink:hover {
-  background: var(--gold-deep);
+  background: var(--action-hover);
 }
 
 /* ---------- 왼쪽: 배송지 ---------- */
@@ -113,17 +113,17 @@
   width: 100%;
   margin-top: 8px;
   padding: 13px;
-  background: var(--gold);
-  border: 1px solid var(--gold-deep);
+  background: var(--action);
+  border: 1px solid var(--action);
   border-radius: var(--radius-sm);
-  color: var(--dark);
+  color: var(--on-action);
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
 }
 
 .submit:hover:not(:disabled) {
-  background: var(--gold-deep);
+  background: var(--action-hover);
 }
 
 .submit:disabled {

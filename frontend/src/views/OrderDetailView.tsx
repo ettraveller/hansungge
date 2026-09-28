@@ -5,8 +5,8 @@ import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
 import { useCancelOrder, useOrder } from '@/hooks/useOrder';
-import { statusClass } from '@/views/OrderListView';
 import { ApiError } from '@/types/api';
+import type { OrderStatus } from '@/types/order';
 import { formatDateTime, formatKrw, formatPhone } from '@/utils/format';
 import styles from '@/views/CheckoutView.module.css';
 
@@ -16,6 +16,19 @@ import styles from '@/views/CheckoutView.module.css';
  * <p>항목마다 <b>그때의 시세</b>가 함께 나온다. "왜 이 금액이었나"를 고객이 스스로 확인할 수
  * 있어야 시세 상품에 대한 문의가 줄어든다.
  */
+/**
+ * 상태에 따라 배지 색을 바꾼다. <b>색만으로 알리지 않으므로</b> 문구는 항상 함께 나온다.
+ */
+function badgeClass(status: OrderStatus): string {
+  if (status === 'PAID' || status === 'PREPARING' || status === 'SHIPPED' || status === 'DELIVERED') {
+    return `${styles.statusBadge} ${styles.statusPaid}`;
+  }
+  if (status === 'CANCELLED' || status === 'REFUNDED' || status === 'REFUND_PENDING') {
+    return `${styles.statusBadge} ${styles.statusCancelled}`;
+  }
+  return styles.statusBadge;
+}
+
 export function OrderDetailView({ orderNo }: { orderNo: string }) {
   const { data: order, isLoading, error } = useOrder(orderNo);
   const cancel = useCancelOrder();
@@ -41,7 +54,7 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
       <article className={styles.form}>
         <div className={styles.orderHead}>
           <span className={styles.orderNo}>{order.orderNo}</span>
-          <span className={statusClass(order.status)}>{order.statusLabel}</span>
+          <span className={badgeClass(order.status)}>{order.statusLabel}</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--gray)' }}>
             {formatDateTime(order.orderedAt)}
           </span>

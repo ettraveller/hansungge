@@ -47,15 +47,15 @@
   height: 44px;
   padding: 0 22px;
   border-radius: var(--radius-pill);
-  background: var(--gold);
-  color: var(--dark);
+  background: var(--action);
+  color: var(--on-action);
   font-size: 14px;
   font-weight: 700;
   transition: 0.2s;
 }
 
 .callBtn:hover {
-  background: var(--gold-deep);
+  background: var(--action-hover);
   color: #fff;
 }
 

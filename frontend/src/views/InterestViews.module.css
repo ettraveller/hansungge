@@ -1,0 +1,93 @@
+/* 찜한 상품 · 최근 본 상품 — 주문 목록과 같은 뼈대(선으로만 나눔) */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-bottom: 14px;
+}
+
+.confirmText {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--dark);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 640px) {
+  .row {
+    flex-wrap: wrap;
+  }
+}
+
+/* 이미지 업로드(STEP 10) 전까지의 자리 */
+.thumb {
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  background: var(--light-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--ink-400);
+  text-decoration: none;
+}
+
+.info {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.cat {
+  font-size: 11.5px;
+  color: var(--ink-400);
+  letter-spacing: var(--tracking-wide);
+}
+
+.name {
+  display: block;
+  margin-top: 4px;
+  font-size: 14.5px;
+  color: var(--dark);
+  text-decoration: none;
+}
+
+.name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.price {
+  margin-top: 8px;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-snug);
+}
+
+.acts {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+/* 옵션이 여럿이면 "○○원~" 이다. 물결을 금액과 같은 크기로 두면 숫자의 일부로 읽힌다 */
+.from {
+  margin-left: 1px;
+  font-size: 14px;
+  color: var(--gray);
+}

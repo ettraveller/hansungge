@@ -1,4 +1,6 @@
 import Link from 'next/link';
+
+import { WishlistHeart } from '@/components/product/WishlistHeart';
 import { PRICE_INQUIRY_LABEL, formatKrw } from '@/utils/format';
 import { METAL_LABEL } from '@/types/price';
 import { PRODUCT_STATUS_LABEL, type ProductSummary } from '@/types/product';
@@ -24,7 +26,10 @@ export function ProductCard({ product, flag }: Props) {
   const blockedLabel = blockedReason(product);
 
   return (
-    <Link href={`/shop/product/${product.id}`} className={styles.prod}>
+    // 하트는 링크 <b>바깥</b>에 둔다 — 링크 안의 버튼은 누르면 링크가 함께 열린다.
+    <div className={styles.card}>
+      <WishlistHeart productId={product.id} productName={product.name} />
+      <Link href={`/shop/product/${product.id}`} className={styles.prod}>
       <div className={styles.thumb}>
         {flag && (
           <span className={flag === 'new' ? styles.flagNew : styles.flagBest}>
@@ -54,7 +59,8 @@ export function ProductCard({ product, flag }: Props) {
           <small>{product.price != null ? '시세 반영가' : '고시 후 표시'}</small>
         </div>
       </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
