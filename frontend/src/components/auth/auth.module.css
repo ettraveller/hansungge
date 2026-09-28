@@ -477,3 +477,42 @@
   letter-spacing: 0.3em;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 비밀번호 규칙 (PasswordRules) ----------
+   치는 동안 채워지는 조건을 보여준다. 한 줄에 늘어놓아 입력칸 아래 높이를
+   많이 먹지 않게 한다 — 가입 화면은 이미 길다. */
+.rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rule,
+.ruleOk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  /* 상태가 바뀔 때 눈이 따라가도록. 줄이기를 택한 사람에게는 즉시 바뀐다 */
+  transition: color 0.12s ease;
+}
+
+.rule {
+  color: var(--gray);
+}
+
+.ruleOk {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rule,
+  .ruleOk {
+    transition: none;
+  }
+}

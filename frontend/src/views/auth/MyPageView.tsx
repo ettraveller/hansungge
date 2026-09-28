@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { PasswordRules, isValidPassword } from '@/components/auth/PasswordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import {
   useAgreements,
@@ -178,7 +179,10 @@ function PasswordPanel() {
 
   const mismatch = passwordAgain !== '' && password !== passwordAgain;
   const canSubmit =
-    password !== '' && password === passwordAgain && (!hasPassword || current !== '') && !change.isPending;
+    isValidPassword(password) &&
+    password === passwordAgain &&
+    (!hasPassword || current !== '') &&
+    !change.isPending;
 
   const reset = () => {
     setOpen(false);
@@ -256,12 +260,13 @@ function PasswordPanel() {
               <PasswordInput
                 id="me-password"
                 inputClassName={styles.input}
+                aria-describedby="me-password-rules"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
                 required
               />
-              <span className={styles.hint}>영문·숫자·특수문자를 모두 포함한 10자 이상.</span>
+              <PasswordRules value={password} id="me-password-rules" />
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="me-password2">

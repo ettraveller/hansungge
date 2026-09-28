@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { AccountSummary, NewPasswordForm } from '@/components/auth/NewPasswordForm';
 import { Notice } from '@/components/auth/Notice';
+import { PasswordRules, isValidPassword } from '@/components/auth/PasswordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import * as authApi from '@/api/auth';
 import { useCompleteSignUp, useSendSignUpEmailCode, userKeys } from '@/hooks/useUserSession';
@@ -182,7 +183,10 @@ function SetPasswordStep({ result, onDone }: { result: IdentityResult; onDone: (
   const trimmedEmail = email.trim();
   // 인증번호를 받은 뒤 주소를 바꾸면 다시 받아야 한다
   const emailReady = trimmedEmail === '' || (codeSentTo === trimmedEmail && emailCode.length === 6);
-  const canSubmit = password !== '' && password === passwordAgain && emailReady && !complete.isPending;
+  // 규칙을 못 채운 채로 보내지 않는다. 가입 마지막 단계에서 서버가 거절하면
+  // 그만큼 가입 토큰(15분)을 까먹는다.
+  const canSubmit =
+    isValidPassword(password) && password === passwordAgain && emailReady && !complete.isPending;
 
   const failure = complete.error ?? sendCode.error;
 
@@ -223,12 +227,13 @@ function SetPasswordStep({ result, onDone }: { result: IdentityResult; onDone: (
           <PasswordInput
             id="su-password"
             inputClassName={styles.input}
+            aria-describedby="su-password-rules"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             required
           />
-          <span className={styles.hint}>영문·숫자·특수문자를 모두 포함한 10자 이상.</span>
+          <PasswordRules value={password} id="su-password-rules" />
         </div>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="su-password2">

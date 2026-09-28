@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { PasswordRules, isValidPassword } from '@/components/auth/PasswordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useResetPassword } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
@@ -33,7 +34,7 @@ export function NewPasswordForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (password === '' || password !== passwordAgain) return;
+        if (!isValidPassword(password) || password !== passwordAgain) return;
         reset.mutate({ resetToken: grant.resetToken, newPassword: password }, { onSuccess: onDone });
       }}
     >
@@ -58,12 +59,13 @@ export function NewPasswordForm({
         <PasswordInput
           id="np-password"
           inputClassName={styles.input}
+          aria-describedby="np-password-rules"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           required
         />
-        <span className={styles.hint}>영문·숫자·특수문자를 모두 포함한 10자 이상.</span>
+        <PasswordRules value={password} id="np-password-rules" />
       </div>
       <div className={styles.field}>
         <label className={styles.label} htmlFor="np-password2">
@@ -83,7 +85,7 @@ export function NewPasswordForm({
         <button
           type="submit"
           className={styles.primary}
-          disabled={reset.isPending || password === '' || password !== passwordAgain}
+          disabled={reset.isPending || !isValidPassword(password) || password !== passwordAgain}
         >
           {reset.isPending ? '바꾸는 중…' : '비밀번호 바꾸기'}
         </button>
