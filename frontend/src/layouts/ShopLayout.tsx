@@ -59,8 +59,10 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
           {/* 햄버거는 모바일에서만 보인다. 로고 왼쪽이 엄지가 닿는 자리다 */}
           <MobileDrawer nav={nav} />
 
+          {/* 헤더는 흰 배경이라 글자가 짙은 쪽(logo.svg)이다.
+              logo-dark 는 "어두운 배경용"이라 여기 쓰면 흰 글자가 묻혀 안 보인다. */}
           <Link href="/" className={styles.logo} aria-label="한성금거래소 홈">
-            <Image src="/logo.png" alt="한성금거래소" width={560} height={104} priority />
+            <Image src="/logo.svg" alt="한성금거래소" width={560} height={104} priority />
           </Link>
 
           <form className={styles.search} action="/shop" role="search">
@@ -130,8 +132,9 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
         <div className={styles.footMain}>
           <div className="wrap">
             <div className={styles.footInfo}>
+              {/* 푸터는 검정 바탕이다. 여기가 logo-dark(밝은 글자)를 쓸 자리다 */}
               <Image
-                src="/logo.png"
+                src="/logo-dark.svg"
                 alt="한성금거래소"
                 width={560}
                 height={104}

@@ -133,7 +133,8 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
 
             <aside className={open ? styles.drawerOn : styles.drawer} aria-hidden={!open}>
         <div className={styles.drawerHead}>
-          <Image src="/logo.png" alt="한성금거래소" width={560} height={104} />
+          {/* 서랍도 흰 바탕이라 헤더와 같은 로고다 */}
+          <Image src="/logo.svg" alt="한성금거래소" width={560} height={104} />
           <button
             type="button"
             className={styles.drawerClose}
