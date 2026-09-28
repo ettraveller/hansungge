@@ -1,5 +1,7 @@
 package com.hanseongge.domain.product.entity;
 
+import com.hanseongge.global.error.BusinessException;
+import com.hanseongge.global.error.ErrorCode;
 import com.hanseongge.global.util.Money;
 import com.hanseongge.global.util.Weight;
 import jakarta.persistence.Column;
@@ -123,6 +125,39 @@ public class ProductOption {
             throw new IllegalArgumentException("재고는 0 이상이어야 합니다: " + newStock);
         }
         this.stock = newStock;
+    }
+
+    /**
+     * 주문이 재고를 가져간다 (STEP 13).
+     *
+     * <h2>왜 결제 승인이 아니라 주문서 생성에서 빼나</h2>
+     * 결제 승인 때 빼면, 두 사람이 마지막 하나를 동시에 주문서에 담고 <b>둘 다 결제에
+     * 성공</b>할 수 있다. 그때는 이미 고객 돈이 빠져나간 뒤라 한쪽에게 취소를 사과해야 한다.
+     * 주문서를 만들 때 미리 가져가면 그 일이 생기지 않는다.
+     *
+     * <p>대신 결제하지 않고 떠난 주문이 재고를 물고 있게 된다. 그래서 취소·실패에서
+     * {@link #restoreStock} 로 돌려준다.
+     * ⚠️ 아직 <b>방치된 미결제 주문을 자동으로 정리하지 않는다</b> — 사람이 취소해야 풀린다
+     * (TODO K).
+     *
+     * @throws BusinessException 남은 재고보다 많이 가져가려 할 때
+     */
+    public void decreaseStock(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("차감 수량은 1 이상이어야 합니다: " + quantity);
+        }
+        if (stock < quantity) {
+            throw new BusinessException(ErrorCode.OUT_OF_STOCK);
+        }
+        this.stock -= quantity;
+    }
+
+    /** 주문 취소·결제 실패로 재고를 돌려준다. */
+    public void restoreStock(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("복구 수량은 1 이상이어야 합니다: " + quantity);
+        }
+        this.stock += quantity;
     }
 
     public boolean isInStock() {

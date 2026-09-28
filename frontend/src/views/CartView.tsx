@@ -253,10 +253,16 @@ function Summary({
         </p>
       )}
 
-      {/* 주문 기능은 STEP 13 이다. 눌러도 404 인 버튼을 두지 않는다. */}
-      <button type="button" className={styles.order} disabled title="주문 기능 준비 중입니다">
-        주문하기 (준비 중)
-      </button>
+      {/* 주문할 수 있는 줄이 하나도 없으면 다음 화면에서 되돌아오게 된다. 여기서 막는다. */}
+      {orderable ? (
+        <Link className={styles.order} href="/checkout">
+          주문하기
+        </Link>
+      ) : (
+        <button type="button" className={styles.order} disabled>
+          주문할 수 있는 상품이 없습니다
+        </button>
+      )}
 
       <p className={styles.disclaimer}>
         표시 금액은 현재 고시 시세 기준이며, 최종 금액은 주문하시는 시각의 시세로 확정됩니다.

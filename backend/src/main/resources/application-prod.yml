@@ -77,6 +77,14 @@ app:
   # ⚠️ 여기는 기본값을 둔다. 소셜 로그인 클라이언트와 같은 판단이다 — 비어 있으면
   # 기동은 되되 그 기능만 죽고, 기동 로그에 무엇이 없는지가 남는다. 메일이 없다고
   # 시세 조회까지 멈추는 것이 더 나쁘다. 대신 발송 시점에 명확히 실패한다.
+  # 결제 (토스페이먼츠, TODO A-3).
+  #
+  # ⚠️ secret-key 가 새면 승인·취소를 남이 부를 수 있다. 저장소에 두지 않고 api.env 에만 둔다.
+  # 계약 전에는 테스트 키를 넣어 두면 화면이 "테스트 결제" 안내를 띄운다.
+  payment:
+    client-key: ${PAYMENT_TOSS_CLIENT_KEY:}
+    secret-key: ${PAYMENT_TOSS_SECRET_KEY:}
+
   mail:
     access-key: ${APP_MAIL_ACCESS_KEY:}
     secret-key: ${APP_MAIL_SECRET_KEY:}

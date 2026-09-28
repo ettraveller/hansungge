@@ -21,7 +21,8 @@ public record AppProperties(
         @DefaultValue SignUp signUp,
         @DefaultValue Mail mail,
         @DefaultValue Identity identity,
-        @DefaultValue Sms sms
+        @DefaultValue Sms sms,
+        @DefaultValue Payment payment
 ) {
 
     /**
@@ -140,6 +141,31 @@ public record AppProperties(
      * {@code NcpOutboundMailSender} 는 빈으로 등록되고, 기동 로그에 경고를 남긴 뒤
      * <b>발송 시점에</b> 실패한다 — 메일이 없다고 서비스 전체가 못 뜨면 안 되기 때문이다.
      */
+    /**
+     * 결제 (토스페이먼츠, STEP 14).
+     *
+     * <p>메일·소셜과 같은 판단으로 기본값을 둔다 — 비어 있으면 기동은 되되 결제만 닫히고,
+     * 기동 로그에 무엇이 없는지가 남는다. 결제 키가 없다고 시세 조회까지 멈추면 더 나쁘다.
+     *
+     * <p>⚠️ {@code clientKey} 는 <b>브라우저에 그대로 나간다</b> — 그렇게 쓰라고 있는 값이다.
+     * {@code secretKey} 는 절대 나가면 안 된다. 그것 하나로 승인·취소를 마음대로 부를 수 있다.
+     */
+    public record Payment(
+            @DefaultValue("") String clientKey,
+            @DefaultValue("") String secretKey,
+            @DefaultValue("5") int connectTimeoutSeconds,
+            @DefaultValue("15") int readTimeoutSeconds
+    ) {
+        public boolean isConfigured() {
+            return !clientKey.isBlank() && !secretKey.isBlank();
+        }
+
+        /** 테스트 키인가. 화면에 "테스트 결제" 안내를 띄울지 판단하는 데 쓴다. */
+        public boolean isTestKey() {
+            return clientKey.startsWith("test_");
+        }
+    }
+
     public record Mail(
             @DefaultValue("") String accessKey,
             @DefaultValue("") String secretKey,

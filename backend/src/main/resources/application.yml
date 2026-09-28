@@ -151,6 +151,18 @@ app:
     secret-key: ${SENS_SECRET_KEY:}
     service-id: ${SENS_SERVICE_ID:}
     sender-phone: ${SENS_SENDER_PHONE:}
+  # 결제 (토스페이먼츠, TODO A-3). 비우면 결제만 닫히고 나머지는 그대로 돈다.
+  #
+  # 계약 전에도 토스가 공개한 테스트 키로 끝까지 돌려볼 수 있다. 실제 카드번호를 넣어도
+  # 가상 승인이라 돈이 빠지지 않는다. ⚠️ 클라이언트 키와 시크릿 키는 **한 세트**여야 한다 —
+  # 섞으면 INVALID_API_KEY 다.
+  #
+  # client-key 는 브라우저에 그대로 나가는 공개값이고, secret-key 는 절대 나가면 안 된다.
+  payment:
+    client-key: ${PAYMENT_TOSS_CLIENT_KEY:}
+    secret-key: ${PAYMENT_TOSS_SECRET_KEY:}
+    connect-timeout-seconds: ${PAYMENT_CONNECT_TIMEOUT:5}
+    read-timeout-seconds: ${PAYMENT_READ_TIMEOUT:15}
 
 logging:
   level:

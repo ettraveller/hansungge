@@ -382,6 +382,18 @@
   cursor: pointer;
 }
 
+/* 주문하기는 링크(a)다. 버튼 높이에 글자를 맞추려면 직접 가운데로 둬야 한다 */
+a.order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+a.order:hover {
+  background: var(--gold-deep);
+}
+
 .order:disabled {
   background: var(--light-gray);
   border-color: var(--line);

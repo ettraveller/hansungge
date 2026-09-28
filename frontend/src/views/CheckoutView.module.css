@@ -1,0 +1,346 @@
+/* 주문서 작성 · 결제 — 장바구니(CartView.module.css)와 같은 뼈대를 쓴다.
+   두 화면이 이어져 있어 간격·테두리가 다르면 단계가 바뀐 것처럼 보인다. */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  align-items: start;
+  margin-bottom: 60px;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.loading {
+  padding: 60px 16px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 14px;
+}
+
+.empty {
+  padding: 72px 16px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  margin-bottom: 60px;
+  color: var(--gray);
+  font-size: 15px;
+}
+
+.emptyLink {
+  display: inline-block;
+  margin-top: 18px;
+  padding: 11px 26px;
+  background: var(--gold);
+  border: 1px solid var(--gold-deep);
+  border-radius: var(--radius-sm);
+  color: var(--dark);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.emptyLink:hover {
+  background: var(--gold-deep);
+}
+
+/* ---------- 왼쪽: 배송지 ---------- */
+.form {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 24px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+
+.noticeWrap {
+  margin-bottom: 18px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 6px;
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.input,
+.inputShort {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--dark);
+  background: #fff;
+}
+
+.inputShort {
+  max-width: 160px;
+}
+
+.input:focus,
+.inputShort:focus {
+  outline: 2px solid var(--gold-deep);
+  outline-offset: 1px;
+  border-color: var(--gold-deep);
+}
+
+.submit {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px;
+  background: var(--gold);
+  border: 1px solid var(--gold-deep);
+  border-radius: var(--radius-sm);
+  color: var(--dark);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.submit:hover:not(:disabled) {
+  background: var(--gold-deep);
+}
+
+.submit:disabled {
+  background: var(--ink-100, #eee);
+  border-color: var(--line);
+  color: var(--gray);
+  cursor: not-allowed;
+}
+
+/* ---------- 오른쪽: 요약 ---------- */
+.summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 22px;
+  position: sticky;
+  top: 20px;
+}
+
+.summaryTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+
+.items {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  font-size: 13px;
+}
+
+.itemName {
+  color: var(--dark);
+  line-height: 1.5;
+}
+
+.itemOption {
+  color: var(--gray);
+}
+
+.itemMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  color: var(--gray);
+}
+
+.itemMeta strong {
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.rows li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.rows li strong {
+  color: var(--dark);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--dark);
+}
+
+.total strong {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.disclaimer {
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--gray);
+  line-height: 1.65;
+}
+
+/* ---------- 결제 단계 ---------- */
+.payButton {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--dark);
+  border: 1px solid var(--dark);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.payButton:hover:not(:disabled) {
+  background: var(--ink-700);
+}
+
+.payButton:disabled {
+  background: var(--ink-100, #eee);
+  border-color: var(--line);
+  color: var(--gray);
+  cursor: not-allowed;
+}
+
+.ghostButton {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--dark);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ghostButton:hover:not(:disabled) {
+  background: var(--light-gray);
+}
+
+/* 토스 결제위젯이 그려지는 자리. 높이를 잡아 두지 않으면 위젯이 뜰 때 화면이 튄다 */
+.widget {
+  min-height: 260px;
+}
+
+.agreement {
+  margin-top: 4px;
+}
+
+/* ---------- 주문 상세 · 완료 ---------- */
+.orderHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+
+.orderNo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--light-gray);
+  color: var(--ink-600);
+}
+
+.statusPaid {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.statusCancelled {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.addressBox {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--light-gray);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-700);
+}
+
+.addressBox dt {
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 2px;
+}
+
+.addressBox dd {
+  margin: 0 0 10px;
+}
+
+.addressBox dd:last-child {
+  margin-bottom: 0;
+}

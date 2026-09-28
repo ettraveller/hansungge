@@ -128,7 +128,10 @@ public class SecurityConfig {
                                 // 대신 작성자명은 서버가 가려서 내보내고(PrivacyMask), 비밀글은
                                 // 제목만 보이며 본문은 작성자·관리자만 받는다.
                                 "/api/v1/qnas",
-                                "/api/v1/qnas/**").permitAll()
+                                "/api/v1/qnas/**",
+                                // 결제창 스크립트를 미리 준비하기 위해 연다. 담긴 clientKey 는
+                                // 원래 브라우저에 나가는 공개값이고, 시크릿 키는 담기지 않는다.
+                                "/api/v1/payments/config").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // --- 문서 / 상태 (prod 에서는 SwaggerConfig 자체가 비활성) ---
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()

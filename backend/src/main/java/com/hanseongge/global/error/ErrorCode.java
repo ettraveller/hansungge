@@ -56,6 +56,14 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "결제 금액이 주문 금액과 일치하지 않습니다."),
     PAYMENT_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다."),
     PAYMENT_DUPLICATE(HttpStatus.CONFLICT, "이미 처리된 결제입니다."),
+    /** 장바구니가 비었거나, 담긴 줄이 전부 주문할 수 없는 상태다. */
+    ORDER_NOTHING_TO_ORDER(HttpStatus.CONFLICT, "주문할 수 있는 상품이 없습니다. 장바구니를 확인해 주세요."),
+    /** 주문서를 만드는 사이 품절되거나 판매가 중지됐다. */
+    ORDER_ITEM_UNAVAILABLE(HttpStatus.CONFLICT, "주문할 수 없는 상품이 있습니다. 장바구니를 다시 확인해 주세요."),
+    /** PG 가 승인을 거절했다. 사유는 로그에만 남긴다 — 응답에 담으면 가맹점 정보가 섞여 나간다. */
+    PAYMENT_APPROVAL_FAILED(HttpStatus.BAD_GATEWAY, "결제 승인에 실패했습니다. 결제 수단을 확인하고 다시 시도해 주세요."),
+    /** 결제 키가 비어 있다. 운영에서 이 코드가 보이면 환경변수를 빠뜨린 것이다. */
+    PAYMENT_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 결제를 진행할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
     // --- 인증 (STEP 4~5) ---
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다. 다시 로그인해 주세요."),
