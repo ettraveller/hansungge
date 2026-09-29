@@ -103,18 +103,33 @@
 @media (max-width: 640px) {
   .row,
   .rowBlocked {
-    grid-template-columns: 60px 1fr 28px;
+    /* ⚠️ 셋째 칸을 28px(삭제 버튼 크기)로 고정하면 안 된다.
+       그 칸에 금액도 함께 들어가는데, .amount 의 min-width 가 110px 이라
+       칸을 밀어내 줄이 화면 밖으로 63px 넘쳤다 (2026-09-29).
+       auto 로 두면 둘 중 넓은 쪽(금액)에 맞춰지고, 삭제 버튼은 오른쪽으로 붙인다. */
+    grid-template-columns: 60px minmax(0, 1fr) auto;
     grid-template-areas:
       'thumb info remove'
       'thumb qty  amount';
     row-gap: 10px;
+    column-gap: 10px;
   }
 
   .thumb { grid-area: thumb; }
   .info { grid-area: info; }
   .qty { grid-area: qty; }
-  .amount { grid-area: amount; }
-  .remove { grid-area: remove; }
+  .remove { grid-area: remove; justify-self: end; }
+
+  /* 좁은 화면에서는 내용만큼만 차지한다. 여기서 최소폭을 강제하면 칸이 다시 부푼다 */
+  .amount {
+    grid-area: amount;
+    min-width: 0;
+  }
+
+  /* 상품명이 길면 줄을 밀어낸다. 그리드 칸의 기본 최소폭이 "내용 크기"이기 때문이다 */
+  .info {
+    min-width: 0;
+  }
 }
 
 /* 이미지 업로드는 STEP 10(Object Storage) 이라 지금은 CSS 로 그린 금괴다 */
