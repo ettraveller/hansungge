@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { MyPageShell } from '@/layouts/MyPageShell';
 import { PasswordRules, isValidPassword } from '@/components/auth/PasswordRules';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import {
@@ -37,7 +38,7 @@ export function MyPageView() {
 
   useEffect(() => {
     if (restored && !isAuthenticated) {
-      router.replace('/login?reason=required&next=%2Fmypage');
+      router.replace('/login?reason=required&next=%2Fmypage%2Faccount');
     }
   }, [restored, isAuthenticated, router]);
 
@@ -49,12 +50,11 @@ export function MyPageView() {
   }
 
   return (
-    <div className={`${styles.page} ${styles.wide}`}>
-      <header className={styles.head}>
-        <h1 className={styles.title}>마이페이지</h1>
-        <p className={styles.lead}>{user.name ?? '고객'}님, 안녕하세요.</p>
-      </header>
-
+    // 다른 마이페이지 화면과 같은 껍데기를 쓴다. 여기만 메뉴가 없으면 계정 관리에 들어간
+    // 순간 왼쪽이 사라져, 고객은 뒤로가기 말고는 돌아갈 길을 찾지 못한다.
+    //
+    // 요약 줄은 감춘다 — 이 화면 자체가 회원 정보라 바로 아래 내용과 겹친다.
+    <MyPageShell title="계정 관리" lead={`${user.name ?? '고객'}님, 안녕하세요.`} showSummary={false}>
       {searchParams.get('linked') === '1' && (
         <div style={{ marginBottom: 16 }}>
           <Notice tone="info">소셜 계정을 연결했습니다. 다음부터 그 계정으로도 로그인됩니다.</Notice>
@@ -74,7 +74,7 @@ export function MyPageView() {
       <AgreementPanel />
       <SocialPanel />
       <AccountPanel />
-    </div>
+    </MyPageShell>
   );
 }
 

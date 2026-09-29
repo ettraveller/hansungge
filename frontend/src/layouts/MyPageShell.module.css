@@ -16,10 +16,16 @@
 
 @media (max-width: 900px) {
   .wrap {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    padding-top: 28px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-top: 24px;
   }
+}
+
+/* ⚠️ 그리드 칸은 기본 최소폭이 "내용 크기"라, 안쪽이 넓으면 칸이 같이 부풀어
+   페이지 전체가 가로로 넘친다. 메뉴 줄은 자기 안에서만 훑게 하려면 이게 필요하다. */
+.wrap > * {
+  min-width: 0;
 }
 
 /* ---------- 왼쪽 메뉴 ---------- */
@@ -61,30 +67,50 @@
   font-weight: 700;
 }
 
-/* 모바일에서는 세로 목록이 화면을 다 먹는다. 가로로 훑게 둔다 */
+/* 모바일에서는 세로 목록이 화면을 다 먹는다. 가로로 훑게 둔다.
+   ⚠️ 「마이페이지」 제목은 남긴다 — 전에는 이것까지 숨겨서, 들어온 사람이 지금 어디인지
+   알 수 없고 메뉴 줄만 덩그러니 떠 화면이 어긋나 보였다. */
 @media (max-width: 900px) {
-  .nav {
-    display: flex;
-    gap: 18px;
-    overflow-x: auto;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--line);
+  .navTitle {
+    font-size: 19px;
+    margin-bottom: 14px;
   }
 
-  .navTitle,
+  .nav {
+    display: flex;
+    gap: 0 16px;
+    overflow-x: auto;
+    /* 가로 스크롤 막대가 글자를 가리지 않게 자리를 준다 */
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    /* 훑을 때 항목이 반쯤 걸쳐 멈추지 않는다 */
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 그룹 제목은 가로줄에서 자리만 먹는다. 항목 이름만으로 충분히 구분된다 */
   .groupName {
     display: none;
   }
 
   .group {
     display: flex;
-    gap: 18px;
+    gap: 16px;
     margin: 0;
+    /* 그룹 사이를 세로선으로 나눈다 — 그러지 않으면 여덟 개가 한 덩어리로 읽힌다 */
+    padding-right: 16px;
+    border-right: 1px solid var(--line);
+  }
+
+  .group:last-child {
+    padding-right: 0;
+    border-right: 0;
   }
 
   .item {
     white-space: nowrap;
     padding: 4px 0;
+    scroll-snap-align: start;
   }
 }
 
@@ -136,6 +162,34 @@
 .stat {
   text-align: center;
   min-width: 68px;
+}
+
+/* 좁은 화면에서는 이름이 한 줄, 숫자 넷이 한 줄이다.
+   flex 로 두면 넷이 두 줄로 갈라지면서 아래 두 개만 남아 어긋나 보인다. */
+@media (max-width: 900px) {
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px 8px;
+    padding: 18px 0;
+  }
+
+  .who {
+    grid-column: 1 / -1;
+    margin-right: 0;
+  }
+
+  .stat {
+    min-width: 0;
+  }
+
+  .statName {
+    font-size: 11.5px;
+  }
+
+  .statValue {
+    font-size: 19px;
+  }
 }
 
 .statName {

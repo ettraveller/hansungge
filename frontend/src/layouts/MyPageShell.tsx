@@ -33,10 +33,11 @@ const GROUPS: { name: string; items: { name: string; href: string }[] }[] = [
     ],
   },
   {
-    name: '나의 정보관리',
+    name: '계정 관리',
     items: [
-      { name: '내 정보', href: '/mypage' },
-      { name: '본인인증', href: '/mypage#identity' },
+      // 내 정보·비밀번호·약관·소셜 연결·탈퇴가 한 화면에 모여 있다.
+      // /mypage 는 주문내역으로 보내므로 여기는 별도 주소를 쓴다.
+      { name: '계정 관리', href: '/mypage/account' },
     ],
   },
   {
@@ -86,11 +87,7 @@ function SideNav() {
           <div key={group.name} className={styles.group}>
             <p className={styles.groupName}>{group.name}</p>
             {group.items.map((item) => {
-              // '/mypage' 는 다른 모든 마이페이지 주소의 앞부분이라 startsWith 로 보면
-              // 어느 화면에서나 켜진 것으로 보인다. 정확히 같을 때만 켠다.
-              const on = item.href === '/mypage'
-                ? pathname === '/mypage'
-                : pathname.startsWith(item.href.split('#')[0]);
+              const on = pathname.startsWith(item.href.split('#')[0]);
               return (
                 <Link
                   key={item.href}
