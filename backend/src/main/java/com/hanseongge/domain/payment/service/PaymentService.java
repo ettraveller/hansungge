@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderItem;
+import com.hanseongge.domain.order.entity.OrderStatus;
+import com.hanseongge.domain.order.repository.OrderRepository;
 import com.hanseongge.domain.order.service.OrderService;
 import com.hanseongge.domain.payment.dto.PaymentConfigResponse;
 import com.hanseongge.domain.payment.entity.Payment;
@@ -49,6 +51,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentTransactionRepository transactionRepository;
     private final OrderService orderService;
+    private final OrderRepository orderRepository;
     private final ObjectMapper objectMapper;
 
     /** 화면이 결제창을 띄우기 위해 필요한 것. clientKey 는 공개해도 되는 값이다. */
@@ -117,7 +120,23 @@ public class PaymentService {
             throw new BusinessException(ErrorCode.PAYMENT_APPROVAL_FAILED);
         }
 
+        settle(order, payment, paymentKey, response, idempotencyKey);
+        return OrderResponse.of(order, items);
+    }
+
+    /**
+     * 승인 결과를 우리 쪽에 반영한다. 화면 경로와 웹훅이 함께 쓴다.
+     *
+     * <p>두 경로가 각자 이 일을 하면, 한쪽만 고쳤을 때 <b>결제된 주문과 결제되지 않은 주문이
+     * 같은 조건에서 갈린다.</b> 금액 대조도 한 곳에만 있어야 빠뜨리지 않는다.
+     *
+     * @throws BusinessException 승인 금액이 주문 금액과 다를 때
+     */
+    private void settle(Order order, Payment payment, String paymentKey,
+                        JsonNode response, String idempotencyKey) {
         BigDecimal approved = approvedAmountOf(response);
+        String orderNo = order.getOrderNo();
+
         // 승인은 됐는데 금액이 다르다 — 여기서 멈추면 고객 돈이 묶인다. 사람이 즉시 봐야 한다.
         if (approved == null || approved.compareTo(order.getTotalAmount()) != 0) {
             log.error("[PAY] ⚠️ 승인 금액 불일치. 수동 취소 필요 orderNo={} 주문={} 승인={} paymentKey={}",
@@ -128,13 +147,75 @@ public class PaymentService {
             throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
+        // 방치 주문 정리(StaleOrderSweeper)가 먼저 접은 뒤에 승인이 도착할 수 있다.
+        // 돈은 이미 빠져나갔으므로 사람이 환불해야 한다 — 조용히 넘기면 아무도 모른다.
+        if (!order.getStatus().isPayable() && order.getStatus() != OrderStatus.PAID) {
+            log.error("[PAY] ⚠️ 결제할 수 없는 주문에 승인이 도착했습니다. 수동 환불 필요 "
+                    + "orderNo={} status={} amount={} paymentKey={}",
+                    orderNo, order.getStatus(), approved, paymentKey);
+            record(payment, "APPROVE", requestOf(paymentKey, orderNo, order.getTotalAmount()),
+                    response, false, idempotencyKey);
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
+        }
+
         payment.approve(paymentKey, textOf(response, "method"), approved, approvedAtOf(response));
         order.markPaid(approved);
         record(payment, "APPROVE", requestOf(paymentKey, orderNo, order.getTotalAmount()),
                 response, true, idempotencyKey);
 
         log.info("[PAY] 승인 완료 orderNo={} amount={} method={}", orderNo, approved, payment.getMethod());
-        return OrderResponse.of(order, items);
+    }
+
+    /**
+     * 토스 웹훅으로 들어온 승인을 반영한다.
+     *
+     * <h2>웹훅 본문을 믿지 않는다</h2>
+     * 토스 웹훅에는 서명이 없다 — 주소만 알면 누구나 "결제됐다"고 알릴 수 있다. 그래서 본문에서는
+     * {@code paymentKey} 만 꺼내 쓰고, <b>토스에 직접 되물어</b> 그 응답으로만 판단한다.
+     * 주문번호도 그 응답의 것을 쓴다.
+     *
+     * <h2>왜 필요한가</h2>
+     * 고객이 결제를 마치고 <b>성공 화면에 돌아오지 못하면</b>(창을 닫았거나 네트워크가 끊겼거나)
+     * 승인이 우리 DB 에 남지 않는다. 돈은 빠져나갔는데 주문은 미결제인 상태가 된다.
+     * 웹훅이 그 구멍을 메운다.
+     */
+    @Transactional
+    public void settleFromWebhook(String paymentKey) {
+        if (!tossClient.isConfigured() || paymentKey == null || paymentKey.isBlank()) {
+            return;
+        }
+
+        String idempotencyKey = TossPaymentClient.PROVIDER + ":APPROVE:" + paymentKey;
+        if (transactionRepository.existsByIdempotencyKey(idempotencyKey)) {
+            // 화면 경로가 이미 처리했다. 정상이다 — 웹훅과 화면은 원래 겹친다.
+            return;
+        }
+
+        JsonNode response = tossClient.lookup(paymentKey);
+        String status = textOf(response, "status");
+        if (!"DONE".equals(status)) {
+            // 취소·실패·대기 상태의 알림이다. 승인만 여기서 다룬다.
+            log.info("[PAY] 웹훅 — 승인이 아닌 상태라 넘어간다. status={} paymentKey={}", status, paymentKey);
+            return;
+        }
+
+        String orderNo = textOf(response, "orderId");
+        Order order = orderRepository.findByOrderNo(orderNo).orElse(null);
+        if (order == null) {
+            log.error("[PAY] ⚠️ 웹훅이 가리키는 주문이 없습니다. 수동 확인 필요 orderNo={} paymentKey={}",
+                    orderNo, paymentKey);
+            return;
+        }
+        if (order.getStatus() == OrderStatus.PAID) {
+            return;
+        }
+
+        Payment payment = latestReady(order)
+                .orElseGet(() -> paymentRepository.save(Payment.ready(
+                        order.getId(), TossPaymentClient.PROVIDER, order.getTotalAmount())));
+
+        log.info("[PAY] 웹훅으로 승인을 반영합니다. orderNo={} paymentKey={}", orderNo, paymentKey);
+        settle(order, payment, paymentKey, response, idempotencyKey);
     }
 
     /**

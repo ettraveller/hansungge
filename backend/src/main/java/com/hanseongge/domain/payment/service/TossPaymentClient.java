@@ -115,6 +115,31 @@ public class TossPaymentClient {
         }
     }
 
+    /**
+     * 거래 조회. <b>웹훅을 믿지 않기 위해</b> 쓴다.
+     *
+     * <p>토스 웹훅에는 서명이 없다 — 주소만 알면 누구나 "결제됐다"고 우리 서버에 알릴 수 있다.
+     * 그래서 웹훅 본문을 그대로 쓰지 않고, 거기 담긴 paymentKey 로 <b>토스에 직접 되물어</b>
+     * 그 응답만 쓴다. 본인확인·소셜 로그인에서 쓰는 것과 같은 원칙이다.
+     *
+     * @throws PaymentApprovalException 조회에 실패했을 때
+     */
+    public JsonNode lookup(String paymentKey) {
+        try {
+            return restClient.get()
+                    .uri("/v1/payments/{paymentKey}", paymentKey)
+                    .header(HttpHeaders.AUTHORIZATION, basicAuth())
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException e) {
+            log.warn("[PAY] 거래 조회 실패 status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new PaymentApprovalException("토스 거래 조회 실패", e);
+        } catch (RuntimeException e) {
+            log.warn("[PAY] 거래 조회 요청 실패", e);
+            throw new PaymentApprovalException("토스 거래 조회 요청 실패", e);
+        }
+    }
+
     /** {@code Basic base64(secretKey + ":")} — 비밀번호 없이 콜론만 붙인다. */
     private String basicAuth() {
         String raw = config.secretKey() + ":";

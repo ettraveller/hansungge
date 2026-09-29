@@ -3,6 +3,8 @@ package com.hanseongge;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanseongge.domain.payment.service.PaymentApprovalException;
+import com.hanseongge.domain.order.service.StaleOrderSweeper;
+import com.hanseongge.domain.payment.service.PaymentService;
 import com.hanseongge.domain.payment.service.TossPaymentClient;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import com.hanseongge.support.SignUpFlow;
@@ -34,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -68,9 +71,11 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired ObjectMapper objectMapper;
     @Autowired StubOAuthProvider google;
     @Autowired StubIdentityVerificationProvider identityProvider;
+    @Autowired StaleOrderSweeper sweeper;
 
     /** 토스는 부르지 않는다. 승인 응답만 우리가 정한다. */
     @MockitoBean TossPaymentClient toss;
+    @Autowired PaymentService paymentService;
 
     private SignUpFlow flow;
     private String accessToken;
@@ -262,8 +267,148 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 방치 주문 정리 (2026-09-29)
+    // =================================================================
+
+    @Test
+    @DisplayName("결제 없이 방치된 주문을 접고 재고를 돌려준다")
+    void staleOrderIsSweptAndStockReturned() throws Exception {
+        addToCart(optionId, 3);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        assertThat(stockOf(optionId)).isEqualTo(7);
+
+        agedBy(orderNo, 31);
+        sweeper.sweep();
+
+        assertThat(statusOf(orderNo)).isEqualTo("CANCELLED");
+        assertThat(stockOf(optionId)).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("아직 시간이 지나지 않은 주문은 건드리지 않는다")
+    void freshOrderSurvivesSweep() throws Exception {
+        addToCart(optionId, 1);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+
+        agedBy(orderNo, 5);
+        sweeper.sweep();
+
+        assertThat(statusOf(orderNo)).isEqualTo("ORDER_CREATED");
+        assertThat(stockOf(optionId)).isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("결제가 끝난 주문은 오래되어도 접지 않는다 — 이미 받은 돈이다")
+    void paidOrderIsNeverSwept() throws Exception {
+        addToCart(optionId, 1);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        givenTossApproves(orderNo, "100000");
+        confirm(orderNo, "pk_sweep");
+
+        agedBy(orderNo, 120);
+        sweeper.sweep();
+
+        assertThat(statusOf(orderNo)).isEqualTo("PAID");
+        assertThat(stockOf(optionId)).isEqualTo(9);
+    }
+
+    // =================================================================
+    // 웹훅 (2026-09-29)
+    // =================================================================
+
+    @Test
+    @DisplayName("성공 화면에 돌아오지 못해도 웹훅이 결제를 마무리한다")
+    void webhookSettlesWhenCustomerNeverReturns() throws Exception {
+        addToCart(optionId, 2);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        // 결제창까지는 갔고, 고객은 돌아오지 않았다 (confirm 을 부르지 않는다)
+        mockMvc.perform(post("/api/v1/payments/" + orderNo + "/ready")
+                .header("Authorization", "Bearer " + accessToken)).andReturn();
+
+        when(toss.lookup("pk_web")).thenReturn(doneOf(orderNo, "200000"));
+        webhook("pk_web");
+
+        assertThat(statusOf(orderNo)).isEqualTo("PAID");
+    }
+
+    @Test
+    @DisplayName("웹훅 본문을 믿지 않는다 — paymentKey 로 토스에 되물은 값만 쓴다")
+    void webhookTrustsOnlyTossLookup() throws Exception {
+        addToCart(optionId, 1);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+
+        // 거짓 알림: 본문에는 결제됐다고 적혀 있지만, 토스는 아직 대기 중이라고 답한다
+        when(toss.lookup("pk_fake")).thenReturn(objectMapper.createObjectNode()
+                .put("orderId", orderNo)
+                .put("status", "WAITING_FOR_DEPOSIT")
+                .put("totalAmount", new BigDecimal("100000")));
+
+        webhook("pk_fake");
+
+        assertThat(statusOf(orderNo)).isEqualTo("ORDER_CREATED");
+    }
+
+    @Test
+    @DisplayName("웹훅 금액이 주문 금액과 달라도 결제 완료로 넘기지 않는다")
+    void webhookAmountMismatchIsRejected() throws Exception {
+        addToCart(optionId, 2);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+
+        when(toss.lookup("pk_bad")).thenReturn(doneOf(orderNo, "1000"));
+        webhook("pk_bad");
+
+        assertThat(statusOf(orderNo)).isEqualTo("ORDER_CREATED");
+    }
+
+    @Test
+    @DisplayName("화면이 먼저 처리했으면 웹훅은 토스에 묻지도 않는다")
+    void webhookSkipsWhatScreenAlreadyDid() throws Exception {
+        addToCart(optionId, 1);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        givenTossApproves(orderNo, "100000");
+        confirm(orderNo, "pk_dup");
+
+        webhook("pk_dup");
+
+        assertThat(statusOf(orderNo)).isEqualTo("PAID");
+        verify(toss, never()).lookup("pk_dup");
+    }
+
+    @Test
+    @DisplayName("웹훅은 우리 쪽이 실패해도 200 으로 답한다 — 오류를 주면 토스가 계속 재시도한다")
+    void webhookAlwaysAnswersOk() throws Exception {
+        when(toss.lookup(anyString()))
+                .thenThrow(new PaymentApprovalException("조회 실패", new RuntimeException()));
+
+        assertThat(webhook("pk_boom").getResponse().getStatus()).isEqualTo(200);
+    }
+
+    // =================================================================
     // 도우미
     // =================================================================
+
+    /** 주문한 지 {@code minutes} 분 지난 것으로 만든다. 시계를 돌리지 않고 데이터를 옮긴다. */
+    private void agedBy(String orderNo, int minutes) {
+        jdbc.update("UPDATE orders SET ordered_at = now() - (? * INTERVAL '1 minute') WHERE order_no = ?",
+                minutes, orderNo);
+    }
+
+    private MvcResult webhook(String paymentKey) throws Exception {
+        return mockMvc.perform(post("/api/v1/payments/webhook/toss")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("paymentKey", paymentKey))))
+                .andReturn();
+    }
+
+    /** 토스가 "승인 완료"로 답하는 조회 결과. */
+    private JsonNode doneOf(String orderNo, String amount) {
+        return objectMapper.createObjectNode()
+                .put("orderId", orderNo)
+                .put("status", "DONE")
+                .put("totalAmount", new BigDecimal(amount))
+                .put("method", "카드")
+                .put("approvedAt", "2026-09-29T15:00:00+09:00");
+    }
 
     private void givenTossApproves(String orderNo, String amount) {
         when(toss.confirm(anyString(), eq(orderNo), any())).thenReturn(approvalOf(orderNo, amount));

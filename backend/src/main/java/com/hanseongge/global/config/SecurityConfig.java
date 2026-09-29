@@ -133,6 +133,12 @@ public class SecurityConfig {
                                 // 원래 브라우저에 나가는 공개값이고, 시크릿 키는 담기지 않는다.
                                 "/api/v1/payments/config").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        // 토스 서버가 부르는 자리다. 로그인이 있을 수 없다.
+                        //
+                        // 서명이 없는 규격이라 이 주소를 아는 누구나 호출할 수 있는데, 서비스가
+                        // 본문을 믿지 않고 paymentKey 로 토스에 되물어 확인하므로 거짓 알림으로는
+                        // 아무것도 바뀌지 않는다.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook/**").permitAll()
                         // --- 문서 / 상태 (prod 에서는 SwaggerConfig 자체가 비활성) ---
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
