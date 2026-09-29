@@ -36,8 +36,9 @@ export function MyInquiryPanel() {
     <section className={styles.panel}>
       <header className={styles.panelHead}>
         <h2 className={styles.sectionTitle}>내 문의</h2>
-        <Link href={QNA_BOARD_PATH.GENERAL} className={panel.more}>
-          문의게시판
+        {/* 마이페이지 안쪽의 「내 문의」로 보낸다. 게시판으로 곧장 내보내면 왼쪽 메뉴가 사라진다 */}
+        <Link href="/mypage/inquiries" className={panel.more}>
+          전체 보기
         </Link>
       </header>
 

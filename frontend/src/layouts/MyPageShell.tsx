@@ -43,8 +43,10 @@ const GROUPS: { name: string; items: { name: string; href: string }[] }[] = [
   {
     name: '고객센터',
     items: [
-      { name: '1:1 문의', href: '/support/qna' },
-      { name: '상품 문의', href: '/support/product-qna' },
+      // ⚠️ 여기서 곧바로 게시판(/support/...)으로 내보내지 않는다.
+      // 그러면 왼쪽 메뉴가 통째로 사라져 마이페이지를 벗어난 것처럼 보이고,
+      // 돌아오려면 뒤로가기밖에 없다. 내 글만 보는 화면을 안쪽에 둔다.
+      { name: '내 문의', href: '/mypage/inquiries' },
     ],
   },
 ];
