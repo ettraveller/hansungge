@@ -84,7 +84,9 @@
 .row,
 .rowBlocked {
   display: grid;
-  grid-template-columns: 72px 1fr auto auto 32px;
+  /* 수량(98)·금액(136) 칸을 고정한다. auto 로 두면 수량을 올릴 때 칸이 넓어지며
+     줄 전체가 밀려 화면이 출렁인다. */
+  grid-template-columns: 72px minmax(0, 1fr) 98px 136px 32px;
   /* 사진·상품명·수량·금액은 서로 다른 정보다. 14px 은 붙어 보였다 */
   gap: 20px;
   align-items: center;
@@ -152,11 +154,12 @@
     grid-row: 2;
   }
 
-  /* 좁은 화면에서는 내용만큼만 차지한다. 여기서 최소폭을 강제하면 칸이 다시 부푼다 */
+  /* 폭은 여전히 고정이되(출렁임 방지) 좁은 화면에 맞춰 줄인다.
+     124px 은 "8,690,000원"이 들어가는 폭이고, 남는 자리를 수량 조절기가 쓴다. */
   .amount {
     grid-column: 3;
     grid-row: 2;
-    min-width: 0;
+    width: 124px;
   }
 
   /* 한글은 단어 중간에서 끊지 않는다. 끊기면 "순금 24 / K" 처럼 읽힌다 */
@@ -243,6 +246,10 @@
 .qty {
   display: flex;
   align-items: center;
+  /* 숫자가 한 자리에서 두 자리가 되어도 조절기 폭이 변하지 않게 고정한다 —
+     + 버튼이 손가락 밑에서 움직이면 연달아 누를 수 없다 */
+  width: 98px;
+  flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -277,10 +284,18 @@
   line-height: 32px;
 }
 
-/* ---------- 금액 ---------- */
+/* ---------- 금액 ----------
+
+   ⚠️ 폭을 <b>고정</b>한다. min-width 로 두면 수량을 올려 자릿수가 늘어날 때
+   (895,000 → 1,790,000) 칸이 넓어지면서 줄 전체가 좌우로 밀린다 —
+   버튼을 연달아 누르면 화면이 출렁인다. 눌러야 할 + 버튼이 손가락 밑에서 움직인다.
+
+   136px 은 "999,999,999원"(15px 굵게)까지 들어가는 폭이다. 한 줄이 그보다 커지려면
+   1억짜리 상품을 열 개 담아야 하는데, 그때는 금액이 넘치더라도 줄이 흔들리지 않는 편이 낫다. */
 .amount {
   text-align: right;
-  min-width: 110px;
+  width: 136px;
+  white-space: nowrap;
 }
 
 .amount strong {
