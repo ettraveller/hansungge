@@ -313,6 +313,12 @@
   color: var(--gray);
 }
 
+/* 1개일 때 「개당」 줄의 자리만 잡아 둔다. display:none 으로 지우면 줄 높이가 달라져
+   수량을 올릴 때 아래가 통째로 밀린다 (CartView.tsx 주석 참조). */
+.unitPlaceholder {
+  visibility: hidden;
+}
+
 /* 금액 자리에 "시세문의"가 들어갈 때. 0원으로 보이지 않아야 한다 */
 .inquiry {
   color: var(--maroon) !important;

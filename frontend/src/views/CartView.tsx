@@ -174,9 +174,22 @@ function CartRow({ item }: { item: CartItem }) {
         {item.lineAmount != null ? (
           <>
             <strong>{formatKrw(item.lineAmount)}</strong>
-            {item.quantity > 1 && item.unitPrice != null && (
-              <span className={styles.unit}>개당 {formatKrw(item.unitPrice)}</span>
-            )}
+            {/*
+              「개당」 줄은 2개 이상일 때만 뜻이 있다(1개면 합계와 같은 값이다).
+              그런데 그때만 그리면 수량을 1 → 2 로 올릴 때 줄이 한 칸 자라 아래가 통째로
+              밀린다 — 버튼을 연달아 누르면 화면이 위아래로 출렁인다.
+              그래서 자리는 늘 잡아 두고 1개일 때는 보이지만 않게 한다.
+            */}
+            <span
+              className={
+                item.quantity > 1 && item.unitPrice != null
+                  ? styles.unit
+                  : `${styles.unit} ${styles.unitPlaceholder}`
+              }
+              aria-hidden={item.quantity <= 1 || item.unitPrice == null}
+            >
+              개당 {formatKrw(item.unitPrice ?? item.lineAmount)}
+            </span>
           </>
         ) : (
           <strong className={styles.inquiry}>{item.priceText}</strong>
