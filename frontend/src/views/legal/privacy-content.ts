@@ -27,15 +27,10 @@
 
 /** 공개 전에 실제 값으로 바꿔야 하는 자리표시자. 하나라도 남으면 공개 금지. */
 export const TODO_PLACEHOLDERS = [
-  '{{상호}}',
-  '{{대표자}}',
-  '{{사업자등록번호}}',
-  '{{주소}}',
   '{{대표전화}}',
   '{{보호책임자_성명}}',
   '{{보호책임자_직책}}',
   '{{보호책임자_이메일}}',
-  '{{시행일}}',
 ] as const;
 
 export interface PolicySection {
@@ -57,7 +52,7 @@ export interface PolicySection {
   callout?: string | string[];
 }
 
-export const PRIVACY_EFFECTIVE_DATE = '{{시행일}}';
+export const PRIVACY_EFFECTIVE_DATE = '2026. 10. 1.';
 
 /**
  * 개정 이력.
@@ -66,17 +61,27 @@ export const PRIVACY_EFFECTIVE_DATE = '{{시행일}}';
  * 남아야 하는 것은 공지와 같다.
  */
 export const PRIVACY_HISTORY: { version: string; date: string; note: string }[] = [
-  { version: '1.0', date: '{{시행일}}', note: '최초 제정' },
+  { version: '1.0', date: '2026. 10. 1.', note: '최초 제정' },
 ];
 
 export const PRIVACY_SECTIONS: PolicySection[] = [
   {
     title: '1. 총칙',
     body: [
-      '{{상호}}(이하 "회사")는 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 등 관련 법령을 준수합니다.',
+      '주식회사 금한성(이하 "회사")는 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 등 관련 법령을 준수합니다.',
       '회사는 본 개인정보처리방침을 통해 이용자가 제공한 개인정보가 어떤 용도와 방식으로 이용되고 있으며, 개인정보 보호를 위해 어떤 조치가 취해지고 있는지 알려드립니다.',
       '본 방침은 회사가 운영하는 웹사이트(https://hanseongge.com)에 적용됩니다.',
     ],
+    table: {
+      head: ['구분', '내용'],
+      rows: [
+        ['상호', '주식회사 금한성 (한성금거래소)'],
+        ['대표자', '강성구'],
+        ['사업자등록번호', '702-86-03859'],
+        ['주소', '서울특별시 종로구 돈화문로6나길 37, 2층 202-1호 (봉익동, 엄지귀금속상가)'],
+        ['이메일', 'hsggold999@naver.com'],
+      ],
+    },
   },
   {
     title: '2. 수집하는 개인정보 항목과 수집 방법',

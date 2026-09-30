@@ -25,7 +25,8 @@ import styles from './PrivacyView.module.css';
  * 값을 채우면 경고는 저절로 사라진다.
  */
 export function PrivacyView() {
-  const draft = hasPlaceholders();
+  const missing = missingFields();
+  const draft = missing.length > 0;
 
   return (
     <div className={styles.page}>
@@ -36,9 +37,9 @@ export function PrivacyView() {
           <div className={styles.draft} role="alert">
             <p className={styles.draftTitle}>초안입니다 — 아직 공개용이 아닙니다</p>
             <p>
-              상호·사업자등록번호·개인정보 보호책임자 등 회사 정보가 채워지지 않았습니다.
-              개인정보처리방침은 회사가 실제로 무엇을 하는지에 대한 법적 선언이라, 사실과
-              다른 내용이 공개되면 그 자체가 문제가 됩니다.
+              아직 채우지 않은 항목이 있습니다 — {missing.join(', ')}. 개인정보처리방침은
+              회사가 실제로 무엇을 하는지에 대한 법적 선언이라, 사실과 다른 내용이 공개되면
+              그 자체가 문제가 됩니다.
             </p>
             <p className={styles.draftFile}>
               채울 곳 : frontend/src/views/legal/privacy-content.ts
@@ -137,7 +138,16 @@ function slug(title: string): string {
   return num ? `s${num[0]}` : 'appendix';
 }
 
-function hasPlaceholders(): boolean {
+/**
+ * 아직 채우지 않은 자리표시자를 사람이 읽는 이름으로 돌려준다.
+ *
+ * <p>「어떤 정보가 비었는지」를 경고에 그대로 적기 위한 것이다. 예전에는 경고가
+ * "상호·사업자등록번호 등"을 고정으로 적고 있었는데, 상호를 채운 뒤에도 그렇게 적혀
+ * 있으면 경고 자체가 사실과 달라진다.
+ */
+function missingFields(): string[] {
   const text = JSON.stringify(PRIVACY_SECTIONS) + PRIVACY_EFFECTIVE_DATE;
-  return TODO_PLACEHOLDERS.some((p) => text.includes(p));
+  return TODO_PLACEHOLDERS.filter((p) => text.includes(p)).map((p) =>
+    p.replace(/[{}]/g, '').replace(/_/g, ' '),
+  );
 }
