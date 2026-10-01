@@ -61,8 +61,10 @@
   margin-top: var(--space-4);
   padding: 12px 14px;
   border-radius: var(--radius);
-  background: var(--warn-soft);
-  border: 1px solid rgba(180, 114, 20, 0.18);
+  /* 경고가 아니라 늘 붙어 있는 안내다. 경고색(--warn-soft)을 쓰면 화면이 누렇게
+     뜨고, 정작 진짜 경고가 왔을 때 구별되지 않는다. */
+  background: var(--ink-50);
+  border: 1px solid var(--line);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   color: var(--ink-600);

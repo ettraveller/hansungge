@@ -1064,8 +1064,10 @@
 .inquiryNote {
   padding: 13px 15px;
   border-radius: var(--radius);
-  background: var(--warn-soft);
-  border: 1px solid rgba(180, 114, 20, 0.18);
+  /* 위와 같은 이유로 경고색을 쓰지 않는다 — 입력할 것이 없다는 <b>사실</b>을
+     알리는 안내이지, 잘못됐다는 뜻이 아니다. */
+  background: var(--ink-50);
+  border: 1px solid var(--line);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--ink-700);
