@@ -188,7 +188,7 @@
 .itemOn {
   border-color: var(--gold);
   background: var(--ink-50);
-  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.14);
+  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.14);
 }
 
 .itemRegion {

@@ -252,10 +252,10 @@
   );
   --sheen-dark: radial-gradient(
       110% 80% at 22% 4%,
-      rgba(201, 162, 39, 0.07) 0%,
+      rgba(198, 161, 91, 0.07) 0%,
       transparent 54%
     ),
-    linear-gradient(172deg, #171b1f 0%, var(--hero-bg) 64%);
+    linear-gradient(172deg, #16233a 0%, var(--hero-bg) 64%);
 
   /* 필름 그레인 — 완전한 평면에서 오는 인쇄물 같은 어색함을 걷어낸다 */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
