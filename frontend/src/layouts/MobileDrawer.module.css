@@ -18,7 +18,8 @@
 .hamburger span {
   display: block;
   height: 2.5px;
-  background: #333;
+  /* 헤더가 남색 판이다 (2026-10-01). #333 은 거기서 보이지 않았다. */
+  background: #fff;
   border-radius: 2px;
 }
 

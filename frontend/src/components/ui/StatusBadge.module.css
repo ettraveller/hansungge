@@ -19,8 +19,8 @@
 }
 
 .warning {
-  background: #faeeda;
-  color: var(--gold-deep);
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .danger {

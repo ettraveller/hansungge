@@ -21,7 +21,8 @@
 
 .sellGroup {
   border-left: 1px solid var(--line);
-  background: #f2efe6 !important;
+  /* 박아 둔 베이지(#f2efe6)였다. 램프가 남색 기로 바뀌어 혼자 누렇게 떴다. */
+  background: var(--ink-50) !important;
 }
 
 .quote td {

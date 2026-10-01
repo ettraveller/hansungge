@@ -42,11 +42,13 @@
   width: 120px;
   height: 64px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(152deg, #fbeeb8 0%, #e6c458 42%, #c39a24 74%, #a8811b 100%);
+  /* 로고의 금(#c6a15b)을 가운데 두고 위아래로 명암만 준다. 예전 그라데이션은
+     #e6c458 쪽이라 로고보다 노랬고, 한 화면에 금이 둘로 보였다. */
+  background: linear-gradient(152deg, #f0e2c0 0%, #d9bf8b 42%, #c6a15b 74%, #94763a 100%);
   box-shadow:
-    0 10px 20px -6px rgba(90, 68, 12, 0.34),
-    inset 0 2px 3px rgba(255, 255, 255, 0.72),
-    inset 0 -2px 4px rgba(120, 90, 16, 0.32);
+    0 10px 20px -6px rgba(70, 56, 24, 0.3),
+    inset 0 2px 3px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 4px rgba(100, 80, 34, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
