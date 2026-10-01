@@ -94,7 +94,8 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--gold);
+  /* 금색 바탕에 흰 숫자는 2.4:1 이라 읽히지 않았다. 먹이면 17:1 이다. */
+  background: var(--dark);
   color: #fff;
   font-size: 12px;
   font-weight: 700;

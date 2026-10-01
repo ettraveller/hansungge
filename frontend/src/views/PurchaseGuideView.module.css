@@ -113,7 +113,8 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--gold);
+  /* 금색 바탕에 흰 숫자는 2.4:1 이라 읽히지 않았다. 먹이면 17:1 이다. */
+  background: var(--dark);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -159,7 +160,7 @@
 .prepare {
   padding: 22px 24px;
   background: var(--light-gray);
-  border-left: 3px solid var(--gold);
+  border-left: 3px solid var(--dark);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 

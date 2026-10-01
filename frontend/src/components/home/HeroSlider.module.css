@@ -181,7 +181,8 @@
      보이는 편이 신뢰를 준다. */
   border-radius: var(--radius-sm);
   background: var(--gold-500);
-  color: #1a1400;
+  /* 금색 버튼 위의 글자. 팔레트에 따뜻한 먹이 더는 없으므로 남색 먹을 쓴다 (7.1:1) */
+  color: var(--ink-900);
   font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: var(--tracking-snug);

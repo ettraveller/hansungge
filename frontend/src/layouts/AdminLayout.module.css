@@ -94,8 +94,8 @@
   letter-spacing: var(--tracking-label);
   padding: 3px 7px;
   border-radius: var(--radius-xs);
-  background: var(--gold-500);
-  color: #1a1400;
+  background: var(--ink-900);
+  color: #fff;
 }
 
 .nav {

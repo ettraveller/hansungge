@@ -341,15 +341,18 @@
   border-color: var(--ink-800);
 }
 
+/* 가장 중요한 버튼이다. 그래서 금색으로 <b>칠하지</b> 않는다 — 흰 화면 위의 금색
+   면은 누렇게 뜨고, 버튼이 많은 관리자 화면에서는 그게 전부 경고처럼 읽힌다.
+   먹으로 채우고 금은 테두리 한 줄로 남겨, 이 버튼만 브랜드 색을 갖게 한다. */
 .btnGold {
-  background: var(--gold-500);
+  background: var(--ink-900);
   border-color: var(--gold-600);
-  color: #1a1400;
+  color: #fff;
   font-weight: 650;
 }
 
 .btnGold:hover:not(:disabled) {
-  background: var(--gold-400);
+  background: var(--ink-700);
   border-color: var(--gold-500);
 }
 

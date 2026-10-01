@@ -82,8 +82,10 @@
   z-index: 1;
 }
 
+/* BEST(먹)와 구별되어야 해서 금색을 유지하되, 500 은 흰 글자가 2.4:1 로 읽히지
+   않는다. 700 이면 5.0:1 이고 노란 기도 덜하다. */
 .flagNew {
-  background: var(--gold);
+  background: var(--gold-700);
 }
 
 .flagBest {

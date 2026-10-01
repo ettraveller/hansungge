@@ -173,7 +173,7 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
 
         {!order.cancellable && order.status === 'PAID' && (
           <p className={styles.disclaimer}>
-            결제 후 취소·환불은 고객센터(1551-0000)로 문의해 주세요.
+            결제 후 취소·환불은 고객센터로 문의해 주세요.
           </p>
         )}
       </article>

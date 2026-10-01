@@ -140,10 +140,11 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
                 height={104}
                 className={styles.footLogo}
               />
-              <p>
-                대표자 : 강성구 &nbsp;|&nbsp; 사업자등록번호 : 702-86-03859 &nbsp;|&nbsp;
-                통신판매업신고 : 제0000-서울중구-0000호
-              </p>
+              {/* 통신판매업신고번호는 아직 받지 못했다 (TODO A-12). 예시값
+                  「제0000-서울중구-0000호」가 박혀 있었는데, 주소는 종로구인데 중구로
+                  적혀 있어 눈에 띄게 틀린 값이었다. 받기 전까지는 줄 자체를 뺀다 —
+                  고객이 읽는 자리에 틀린 신고번호를 두는 것이 비워 두는 것보다 나쁘다. */}
+              <p>대표자 : 강성구 &nbsp;|&nbsp; 사업자등록번호 : 702-86-03859</p>
               <p>본사 : 서울특별시 종로구 돈화문로6나길 37, 2층 202-1호 (봉익동, 엄지귀금속상가)</p>
               <p>이메일 : hsggold999@naver.com</p>
               <p className={styles.footNote}>
@@ -151,11 +152,14 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
+            {/* 대표전화·온라인 문의번호도 아직 없다 (TODO A-12). 예시값이던
+                1588-0000 · 1551-0000 은 <b>실제로 쓰는 회사가 있을 수 있는 번호</b>라,
+                그대로 두면 우리 고객이 엉뚱한 곳으로 전화를 건다. 번호를 받기 전까지는
+                비워 두고, 지금 사실인 것(운영시간)만 남긴다. */}
             <div className={styles.footCs}>
-              <p className={styles.csLabel}>대표전화</p>
-              <p className={styles.tel}>1588-0000</p>
-              <p>온라인 구매 문의 1551-0000</p>
-              <p>운영시간 : 월-토 10:00 ~ 19:00 (일/공휴일 휴무)</p>
+              <p className={styles.csLabel}>운영시간</p>
+              <p>월-토 10:00 ~ 19:00</p>
+              <p>일요일·공휴일 휴무</p>
             </div>
           </div>
         </div>

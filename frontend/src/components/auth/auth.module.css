@@ -137,7 +137,7 @@
 
 .choiceOn {
   border-color: var(--gold-deep);
-  background: var(--gold);
+  background: var(--gold-50);
   color: var(--dark);
 }
 
