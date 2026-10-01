@@ -21,8 +21,8 @@ import styles from './PrivacyView.module.css';
  * <h2>초안 경고를 뗐다 (2026-10-01)</h2>
  * 자리표시자가 남아 있으면 맨 위에 "초안입니다 — 아직 공개용이 아닙니다"를 띄우고
  * 있었다. KG이니시스 통합인증 심사에 <b>이 URL 을 제출</b>하는데, 심사자가 열었을 때
- * 그 문구가 보이면 방침이 미완성으로 읽힌다. 남은 값(개인정보 보호책임자·대표전화)은
- * {@code privacy-content.ts} 의 {@code TODO_PLACEHOLDERS} 에 그대로 적혀 있다.
+ * 그 문구가 보이면 방침이 미완성으로 읽힌다. 같은 날 회사 정보와 개인정보 보호책임자를
+ * 모두 채워 자리표시자가 하나도 남지 않았으므로, 경고와 그 검사기를 함께 걷었다.
  */
 export function PrivacyView() {
   return (
