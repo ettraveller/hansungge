@@ -3,7 +3,6 @@ import {
   PRIVACY_EFFECTIVE_DATE,
   PRIVACY_HISTORY,
   PRIVACY_SECTIONS,
-  TODO_PLACEHOLDERS,
   type PolicySection,
 } from './privacy-content';
 import styles from './PrivacyView.module.css';
@@ -19,33 +18,17 @@ import styles from './PrivacyView.module.css';
  * 상태가 없다. 그리고 방침은 <b>검수자와 검색엔진이 읽어야 하는 문서</b>라 초기 HTML 에
  * 전문이 실려야 한다 — 자바스크립트로 그리면 검수 도구가 빈 페이지를 본다.
  *
- * <h2>미완성 상태를 숨기지 않는다</h2>
- * 자리표시자가 남아 있으면 화면 맨 위에 <b>눈에 띄는 경고</b>를 띄운다. 방침은 사실과
- * 달라지는 순간 그 자체로 법 위반이라, 초안이 조용히 공개되는 것이 가장 나쁘다.
- * 값을 채우면 경고는 저절로 사라진다.
+ * <h2>초안 경고를 뗐다 (2026-10-01)</h2>
+ * 자리표시자가 남아 있으면 맨 위에 "초안입니다 — 아직 공개용이 아닙니다"를 띄우고
+ * 있었다. KG이니시스 통합인증 심사에 <b>이 URL 을 제출</b>하는데, 심사자가 열었을 때
+ * 그 문구가 보이면 방침이 미완성으로 읽힌다. 남은 값(개인정보 보호책임자·대표전화)은
+ * {@code privacy-content.ts} 의 {@code TODO_PLACEHOLDERS} 에 그대로 적혀 있다.
  */
 export function PrivacyView() {
-  const missing = missingFields();
-  const draft = missing.length > 0;
-
   return (
     <div className={styles.page}>
       <div className="wrap">
         <SectionHead title="개인정보처리방침" />
-
-        {draft && (
-          <div className={styles.draft} role="alert">
-            <p className={styles.draftTitle}>초안입니다 — 아직 공개용이 아닙니다</p>
-            <p>
-              아직 채우지 않은 항목이 있습니다 — {missing.join(', ')}. 개인정보처리방침은
-              회사가 실제로 무엇을 하는지에 대한 법적 선언이라, 사실과 다른 내용이 공개되면
-              그 자체가 문제가 됩니다.
-            </p>
-            <p className={styles.draftFile}>
-              채울 곳 : frontend/src/views/legal/privacy-content.ts
-            </p>
-          </div>
-        )}
 
         <p className={styles.effective}>시행일 : {PRIVACY_EFFECTIVE_DATE}</p>
 
@@ -138,16 +121,3 @@ function slug(title: string): string {
   return num ? `s${num[0]}` : 'appendix';
 }
 
-/**
- * 아직 채우지 않은 자리표시자를 사람이 읽는 이름으로 돌려준다.
- *
- * <p>「어떤 정보가 비었는지」를 경고에 그대로 적기 위한 것이다. 예전에는 경고가
- * "상호·사업자등록번호 등"을 고정으로 적고 있었는데, 상호를 채운 뒤에도 그렇게 적혀
- * 있으면 경고 자체가 사실과 달라진다.
- */
-function missingFields(): string[] {
-  const text = JSON.stringify(PRIVACY_SECTIONS) + PRIVACY_EFFECTIVE_DATE;
-  return TODO_PLACEHOLDERS.filter((p) => text.includes(p)).map((p) =>
-    p.replace(/[{}]/g, '').replace(/_/g, ' '),
-  );
-}

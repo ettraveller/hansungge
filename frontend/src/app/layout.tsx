@@ -1,27 +1,6 @@
 import type { Metadata } from 'next';
-import { Noto_Sans_KR, Noto_Serif_KR } from 'next/font/google';
 import { QueryProvider } from '@/app/providers';
 import '@/styles/globals.css';
-
-const notoSansKr = Noto_Sans_KR({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '700'],
-  variable: '--font-noto-sans-kr',
-  display: 'swap',
-});
-
-/**
- * 제목과 금액에만 쓰는 명조 (2026-09-28).
- *
- * <p>굵기를 둘만 받는다 — 명조는 본문에 쓰지 않으므로 400·500 이면 충분하고,
- * 한글 폰트는 굵기 하나가 파일 수십 조각이라 더 받으면 첫 화면이 느려진다.
- */
-const notoSerifKr = Noto_Serif_KR({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-noto-serif-kr',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
@@ -44,7 +23,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" className={`${notoSansKr.variable} ${notoSerifKr.variable}`}>
+    <html lang="ko">
       <head>
         {/*
           Pretendard — 한글 본문용 가변 폰트 (OFL-1.1, node_modules/pretendard 에서 복사).
@@ -67,6 +46,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         */}
         {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link rel="stylesheet" href="/fonts/pretendard/pretendard.css" />
+        {/*
+          Noto Serif KR — 제목과 금액에만 쓰는 명조 (2026-09-28). 본문에는 쓰지 않는다.
+
+          Pretendard 와 같은 방식으로 저장소에 두고 직접 내보낸다. next/font/google 로
+          두었더니 <b>배포할 때마다</b> 서버가 fonts.gstatic.com 에서 조각 수백 개를
+          다시 받았고(워크플로가 매번 node_modules 를 지우므로 캐시가 없다), 그 중
+          하나가 실패해 빌드가 module-not-found 로 죽었다 — 2026-09-30 배포 실패.
+
+          Noto Sans KR 도 같이 받고 있었는데, --font-sans 에서 Pretendard 뒤에 있어
+          실제로는 한 번도 쓰이지 않았다. 함께 걷어냈다.
+        */}
+        {/* eslint-disable-next-line @next/next/no-css-tags */}
+        <link rel="stylesheet" href="/fonts/noto-serif-kr/noto-serif-kr.css" />
       </head>
       <body>
         {/* 키보드 사용자가 헤더 메뉴를 전부 지나치지 않고 본문으로 간다 */}

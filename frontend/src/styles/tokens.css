@@ -128,16 +128,15 @@
      에서 숫자와 '원'의 서체가 갈려 어긋나 보인다.
      ------------------------------------------------------------------ */
   --font-sans:
-    'Pretendard Variable', Pretendard, var(--font-noto-sans-kr),
-    'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+    'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    system-ui, sans-serif;
 
   /* 제목과 금액에만 쓰는 명조 (2026-09-28).
      고급 시계·주얼리 브랜드가 예외 없이 쓰는 방식이다 — 본문은 고딕으로 읽기 쉽게 두고,
      제목·금액에만 명조를 얹으면 화면의 격이 한 단계 올라간다.
      ⚠️ 본문·버튼·라벨에는 쓰지 않는다. 명조를 작게 많이 쓰면 오히려 읽기 어렵고 낡아 보인다. */
   --font-serif:
-    var(--font-noto-serif-kr), 'Noto Serif KR', 'Nanum Myeongjo',
-    'Apple SD Gothic Neo', Georgia, serif;
+    'Noto Serif KR', 'Nanum Myeongjo', 'Apple SD Gothic Neo', Georgia, serif;
 
   /* 큰 화면에서만 커지는 유동 크기 — 모바일에서 제목이 화면을 넘지 않는다 */
   --text-xs: 0.75rem;
