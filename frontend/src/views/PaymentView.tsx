@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
@@ -66,7 +65,6 @@ function loadTossSdk(): Promise<void> {
  * 결제창까지 갔다가 돌아오지 않은 주문을 나중에 가려낼 수 있다.
  */
 export function PaymentView({ orderNo }: { orderNo: string }) {
-  const router = useRouter();
   const { user } = useUserSession();
   const { data: order, isLoading, error } = useOrder(orderNo);
   const { data: config } = usePaymentConfig();
@@ -184,9 +182,15 @@ export function PaymentView({ orderNo }: { orderNo: string }) {
         {config && !config.available && (
           <div className={styles.noticeWrap}>
             <Notice tone="error" title="지금은 결제할 수 없습니다">
-              결제 설정이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.
+              결제 설정(PG 키)이 서버에 없습니다. 운영자에게 알려 주세요.
             </Notice>
           </div>
+        )}
+
+        {/* 설정은 있는데 위젯이 뜨지 않는 경우 — 버튼만 잠겨 있으면 왜 못 누르는지
+            알 수 없다. 기다리는 중인지 실패한 것인지 구분해 준다. */}
+        {canPay && !widgetReady && !failure && (
+          <p className={styles.loading}>결제 수단을 불러오는 중…</p>
         )}
 
         {failure && (
@@ -235,13 +239,6 @@ export function PaymentView({ orderNo }: { orderNo: string }) {
           {requesting ? '결제창을 여는 중…' : `${formatKrw(order.totalAmount)} 결제하기`}
         </button>
 
-        <button
-          type="button"
-          className={styles.ghostButton}
-          onClick={() => router.push(`/mypage/orders/${order.orderNo}`)}
-        >
-          나중에 결제하기
-        </button>
 
         <p className={styles.disclaimer}>
           이 금액은 주문하신 시각의 시세로 <strong>이미 확정된</strong> 금액입니다. 결제를 마칠

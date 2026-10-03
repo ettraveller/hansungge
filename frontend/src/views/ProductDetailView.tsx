@@ -57,7 +57,7 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
    * <p>수량과 옵션만 보낸다 — 가격은 서버가 담는 순간 계산해 기록한다 (원칙 P1).
    * 비회원이면 로그인으로 보내되, 로그인 후 이 상품으로 돌아오게 next 를 실어 준다.
    */
-  const handleAddToCart = () => {
+  const handleAddToCart = (then?: () => void) => {
     if (restored && !isAuthenticated) {
       const next = encodeURIComponent(`/shop/product/${product.id}`);
       router.push(`/login?reason=required&next=${next}`);
@@ -66,9 +66,19 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
     setAdded(false);
     addToCart.mutate(
       { productId: product.id, optionId: option?.id ?? null, quantity: 1 },
-      { onSuccess: () => setAdded(true) },
+      { onSuccess: () => (then ? then() : setAdded(true)) },
     );
   };
+
+  /**
+   * 바로 구매 — 담고 주문서로 보낸다.
+   *
+   * <p>⚠️ 주문서는 <b>장바구니 전체</b>를 주문으로 만든다. 그래서 장바구니에 다른
+   * 상품이 남아 있으면 그것도 함께 주문된다. 이 상품 하나만 사는 흐름은 서버에
+   * 별도 경로가 필요하다(지금 주문 API 는 금액·상품을 받지 않고 장바구니를 읽는다).
+   * 그때까지는 "담고 바로 주문서로" 다.
+   */
+  const handleBuyNow = () => handleAddToCart(() => router.push('/checkout'));
 
   return (
     <div className="wrap">
@@ -179,18 +189,17 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
               type="button"
               className={styles.cartBtn}
               disabled={!orderable || addToCart.isPending}
-              onClick={handleAddToCart}
+              onClick={() => handleAddToCart()}
             >
               {addToCart.isPending ? '담는 중…' : '장바구니 담기'}
             </button>
-            {/* 주문 기능은 STEP 13 이다. 눌러도 아무 일도 없는 버튼을 두지 않는다. */}
             <button
               type="button"
               className={styles.buyBtn}
-              disabled
-              title="주문 기능 준비 중입니다"
+              disabled={!orderable || addToCart.isPending}
+              onClick={handleBuyNow}
             >
-              바로 구매 (준비 중)
+              바로 구매
             </button>
           </div>
 

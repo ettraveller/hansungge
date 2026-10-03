@@ -64,7 +64,11 @@ export function usePaymentConfig() {
   return useQuery({
     queryKey: orderKeys.paymentConfig,
     queryFn: () => orderApi.fetchPaymentConfig(),
-    staleTime: 5 * 60 * 1000,
+    // 캐시에 묶어 두지 않는다. 서버에서 결제 키를 넣고 재시작해도 열어 둔 탭이
+    // 옛 답(available=false)을 계속 들고 있어, "설정했는데 여전히 막혀 있다"가 된다.
+    // 설정 한 줄 읽는 요청이라 매번 물어도 부담이 없다.
+    staleTime: 0,
+    refetchOnMount: true,
     retry: false,
   });
 }
