@@ -208,6 +208,23 @@
   color: var(--gold-deep);
 }
 
+/* 로그아웃은 버튼이어야 한다 — 링크로 두면 크롤러·프리페치가 눌러 버린다.
+   보이는 모양은 옆의 링크와 같게 맞춘다. */
+.drawerFoot button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.drawerFoot button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 /* 하단 탭바는 MobileTabBar 로 옮겼다 — 드로어와 탭바는 서로 다른 상태를 다룬다. */
 
 @media (max-width: 960px) {

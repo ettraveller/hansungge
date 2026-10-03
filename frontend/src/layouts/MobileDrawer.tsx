@@ -2,9 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+import { useSignOut, useUserSession } from '@/hooks/useUserSession';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './MobileDrawer.module.css';
 
@@ -31,11 +32,19 @@ const onServer = () => false;
  *
  * <p>드로어 안에서는 하위 메뉴를 <b>펼침/접힘</b>으로 다룬다. 좁은 화면에서 마우스오버
  * 드롭다운은 쓸 수 없고, 하위 항목을 전부 펼쳐 두면 목록이 40줄이 넘는다.
+ *
+ * <p>맨 아래 로그인 영역은 {@link HeaderAuth} 와 같은 것을 보여 준다. 예전에는 링크 두
+ * 개가 박혀 있어 <b>로그인한 뒤에도 "로그인 · 회원가입"이 그대로 남았다.</b> 휴대폰에서는
+ * 상단 유틸 바가 접혀 있어 여기가 로그인 상태를 알 수 있는 유일한 곳이라, 사용자는
+ * 로그인이 풀린 줄 알게 된다.
  */
 export function MobileDrawer({ nav }: { nav: NavItem[] }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated } = useUserSession();
+  const signOut = useSignOut();
 
   // 페이지를 옮기면 드로어를 닫는다. 열어둔 채로 이동하면 새 화면 위에 메뉴가 남는다.
   //
@@ -179,8 +188,34 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
         </nav>
 
             <div className={styles.drawerFoot}>
-              <Link href="/login">로그인</Link>
-              <Link href="/signup">회원가입</Link>
+              {isAuthenticated ? (
+                <>
+                  <Link href="/mypage">
+                    <strong>{user?.name ?? '고객'}</strong>님
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={signOut.isPending}
+                    onClick={() =>
+                      // 홈에서 로그아웃하면 경로가 그대로라 드로어를 닫는 effect 가 돌지
+                      // 않는다. 직접 닫는다.
+                      signOut.mutate(undefined, {
+                        onSuccess: () => {
+                          setOpen(false);
+                          router.replace('/');
+                        },
+                      })
+                    }
+                  >
+                    {signOut.isPending ? '로그아웃 중…' : '로그아웃'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login">로그인</Link>
+                  <Link href="/signup">회원가입</Link>
+                </>
+              )}
             </div>
             </aside>
           </>,
