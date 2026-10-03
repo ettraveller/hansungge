@@ -5,13 +5,21 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import {
+  DeliveryAddressSection,
+  EMPTY_ADDRESS,
+  toAddressForm,
+  type AddressForm,
+} from '@/components/checkout/DeliveryAddressSection';
+import { DeliveryMemoSelect } from '@/components/checkout/DeliveryMemoSelect';
 import { useCart } from '@/hooks/useCart';
+import { useAddresses, useCreateAddress } from '@/hooks/useAddresses';
 import { useCreateOrder } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
 import { formatKrw, formatPhone } from '@/utils/format';
-import { PostcodeSearch } from '@/components/ui/PostcodeSearch';
 import styles from '@/views/CheckoutView.module.css';
+
 
 /**
  * 주문서 작성 — 배송지를 받고 주문을 만든다.
@@ -30,33 +38,51 @@ export function CheckoutView() {
   const { user } = useUserSession();
   const { data: cart, isLoading } = useCart();
   const createOrder = useCreateOrder();
+  const createAddress = useCreateAddress();
+  const { data: addresses, isLoading: addressesLoading } = useAddresses();
 
-  const [receiverName, setReceiverName] = useState('');
-  const [receiverPhone, setReceiverPhone] = useState('');
-  const [zipcode, setZipcode] = useState('');
-  const [address1, setAddress1] = useState('');
-  const [address2, setAddress2] = useState('');
+  // 직접 입력 중일 때의 값. 저장해 둔 것을 고른 동안에는 쓰이지 않는다.
+  const [form, setForm] = useState<AddressForm>(EMPTY_ADDRESS);
+  // null = 아직 아무것도 고르지 않았다 → 기본 배송지를 쓴다.
+  const [choice, setChoice] = useState<number | 'new' | null>(null);
+  const [saveForNext, setSaveForNext] = useState(true);
   const [orderMemo, setOrderMemo] = useState('');
 
-  // 회원 정보를 기본값으로 넣어 둔다. 대부분 자기 주소로 받는다.
+  // 회원 정보를 기본값으로 넣어 둔다. 대부분 자기 이름·번호로 받는다.
   const [prefilled, setPrefilled] = useState(false);
   if (!prefilled && user) {
     setPrefilled(true);
-    setReceiverName(user.name ?? '');
-    setReceiverPhone(formatPhone(user.phone) || '');
+    setForm((prev) => ({
+      ...prev,
+      receiverName: user.name ?? '',
+      receiverPhone: formatPhone(user.phone) || '',
+    }));
   }
 
+  /**
+   * 지금 어느 주소로 보내는가.
+   *
+   * <p>상태를 맞추지 않고 <b>계산한다.</b> 목록이 다시 불려올 때마다 effect 로 덮어쓰면,
+   * 주소를 바꾼 줄 알았던 사람이 기본 배송지로 받게 된다 — 결제 직전 화면에서 그것은
+   * 되돌릴 수 없는 종류의 오류다.
+   */
+  const addressList = addresses ?? [];
+  const chosen =
+    choice === null
+      ? (addressList[0] ?? null)
+      : choice === 'new'
+        ? null
+        : (addressList.find((a) => a.id === choice) ?? null);
+  const address: AddressForm = chosen ? toAddressForm(chosen) : form;
+
   const orderableItems = cart?.items.filter((item) => item.orderable) ?? [];
-  // 우편번호 찾기를 못 불러왔을 때만 두 칸을 직접 입력으로 연다.
-  // 평소에는 잠가 둔다 — 우편번호와 주소가 어긋난 주문은 배송이 실패한 뒤에야 드러난다.
-  const [addressManual, setAddressManual] = useState(false);
 
   const canSubmit =
     orderableItems.length > 0 &&
-    receiverName.trim() !== '' &&
-    receiverPhone.trim() !== '' &&
-    zipcode.trim() !== '' &&
-    address1.trim() !== '' &&
+    address.receiverName.trim() !== '' &&
+    address.receiverPhone.trim() !== '' &&
+    address.zipcode.trim() !== '' &&
+    address.address1.trim() !== '' &&
     !createOrder.isPending;
 
   if (isLoading) {
@@ -74,178 +100,141 @@ export function CheckoutView() {
     );
   }
 
+  const submit = () => {
+    if (!canSubmit) return;
+    createOrder.mutate(
+      {
+        receiverName: address.receiverName.trim(),
+        receiverPhone: address.receiverPhone.trim(),
+        zipcode: address.zipcode.trim(),
+        address1: address.address1.trim(),
+        address2: address.address2.trim() || undefined,
+        orderMemo: orderMemo.trim() || undefined,
+      },
+      {
+        onSuccess: (order) => {
+          // 주소 저장은 주문이 된 뒤에 곁들인다. 기다리지 않는다 —
+          // 주소록에 못 넣었다고 주문을 막으면 본말이 뒤집힌다.
+          if (saveForNext && !chosen) {
+            createAddress.mutate({
+              receiverName: address.receiverName.trim(),
+              receiverPhone: address.receiverPhone.trim(),
+              zipcode: address.zipcode.trim(),
+              address1: address.address1.trim(),
+              address2: address.address2.trim() || undefined,
+              setDefault: false,
+            });
+          }
+          router.push(`/checkout/${order.orderNo}`);
+        },
+      },
+    );
+  };
+
   return (
-    <div className={styles.layout}>
-      <form
-        className={styles.form}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!canSubmit) return;
-          createOrder.mutate(
-            {
-              receiverName: receiverName.trim(),
-              receiverPhone: receiverPhone.trim(),
-              zipcode: zipcode.trim(),
-              address1: address1.trim(),
-              address2: address2.trim() || undefined,
-              orderMemo: orderMemo.trim() || undefined,
-            },
-            { onSuccess: (order) => router.push(`/checkout/${order.orderNo}`) },
-          );
-        }}
-      >
-        <h2 className={styles.sectionTitle}>받는 분</h2>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <Steps />
 
-        {createOrder.error && (
-          <div className={styles.noticeWrap}>
-            <Notice tone="error" title="주문서를 만들지 못했습니다">
-              {createOrder.error instanceof ApiError
-                ? createOrder.error.message
-                : '잠시 후 다시 시도해 주세요.'}
-            </Notice>
-          </div>
-        )}
+      <div className={styles.layout}>
+        <div className={styles.main}>
+          {createOrder.error && (
+            <div className={styles.noticeWrap}>
+              <Notice tone="error" title="주문서를 만들지 못했습니다">
+                {createOrder.error instanceof ApiError
+                  ? createOrder.error.message
+                  : '잠시 후 다시 시도해 주세요.'}
+              </Notice>
+            </div>
+          )}
 
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="co-name">
-            이름
-          </label>
-          <input
-            id="co-name"
-            className={styles.input}
-            value={receiverName}
-            onChange={(e) => setReceiverName(e.target.value)}
-            maxLength={100}
-            autoComplete="name"
-            required
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="co-phone">
-            연락처
-          </label>
-          <input
-            id="co-phone"
-            className={styles.input}
-            value={receiverPhone}
-            onChange={(e) => setReceiverPhone(e.target.value)}
-            placeholder="010-1234-5678"
-            maxLength={30}
-            autoComplete="tel"
-            required
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="co-zip">
-            우편번호
-          </label>
-          <div className={styles.zipRow}>
-            <input
-              id="co-zip"
-              className={styles.inputShort}
-              value={zipcode}
-              onChange={(e) => setZipcode(e.target.value)}
-              maxLength={10}
-              inputMode="numeric"
-              autoComplete="postal-code"
-              readOnly={!addressManual}
-              placeholder={addressManual ? undefined : '우편번호 찾기'}
-              required
-            />
-            <PostcodeSearch
-              onPick={({ zipcode: zip, address }) => {
-                setZipcode(zip);
-                setAddress1(address);
-                // 고른 직후에는 상세 주소만 남는다. 거기로 커서를 옮겨 준다 —
-                // 어디를 눌러야 하는지 다시 찾게 하지 않는다.
-                document.getElementById('co-addr2')?.focus();
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>배송지</h2>
+            <DeliveryAddressSection
+              list={addressList}
+              isLoading={addressesLoading}
+              chosen={chosen}
+              form={form}
+              onForm={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+              onChoose={(next) => {
+                setChoice(next);
+                // 새로 입력하러 갈 때만 '다음에도 사용' 을 켠다. 저장해 둔 것을
+                // 고른 경우에는 이미 주소록에 있으므로 물을 필요가 없다.
+                setSaveForNext(next === 'new');
               }}
-              onUnavailable={() => setAddressManual(true)}
+              saveForNext={saveForNext}
+              onSaveForNextChange={setSaveForNext}
             />
+
+            <div className={styles.memo}>
+              <DeliveryMemoSelect value={orderMemo} onChange={setOrderMemo} />
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>주문 상품</h2>
+            <ul className={styles.items}>
+              {orderableItems.map((item) => (
+                <li key={item.id} className={styles.item}>
+                  <div className={styles.itemName}>
+                    {item.productName}
+                    {item.optionName && <span className={styles.itemOption}> · {item.optionName}</span>}
+                  </div>
+                  <div className={styles.itemMeta}>
+                    <span>{item.quantity}개</span>
+                    <strong>{formatKrw(item.lineAmount)}</strong>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+
+        <aside className={styles.summary} aria-label="결제 금액">
+          <h2 className={styles.summaryTitle}>결제 금액</h2>
+
+          <div className={styles.total}>
+            <span>예상 금액</span>
+            <strong>{formatKrw(cart?.subtotal)}</strong>
           </div>
+
+          <p className={styles.disclaimer}>
+            <strong>최종 금액은 주문서를 만드는 시각의 시세로 확정됩니다.</strong> 금이 시세 상품이라
+            지금 보이는 금액과 다를 수 있고, 다음 화면에서 확정 금액을 다시 확인하신 뒤 결제하시게
+            됩니다.
+          </p>
+        </aside>
+      </div>
+
+      {/* 화면 아래에 고정한다. 긴 주문서에서 "다음" 버튼을 찾으러 끝까지 내려가지
+          않게 — 결제 직전 화면에서 그 스크롤이 이탈로 이어진다. */}
+      <div className={styles.payBar}>
+        <div className={styles.payBarInner}>
+          <p className={styles.agree}>주문 내용을 확인하였으며, 정보 제공 등에 동의합니다.</p>
+          <button type="submit" className={styles.submit} disabled={!canSubmit}>
+            {createOrder.isPending ? '주문서를 만드는 중…' : `${formatKrw(cart?.subtotal)} 주문서 작성`}
+          </button>
         </div>
+      </div>
+    </form>
+  );
+}
 
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="co-addr1">
-            주소
-          </label>
-          <input
-            id="co-addr1"
-            className={styles.input}
-            value={address1}
-            onChange={(e) => setAddress1(e.target.value)}
-            maxLength={200}
-            autoComplete="address-line1"
-            readOnly={!addressManual}
-            placeholder={addressManual ? undefined : '우편번호를 찾으면 채워집니다'}
-            required
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="co-addr2">
-            상세 주소 <span className={styles.optional}>(선택)</span>
-          </label>
-          <input
-            id="co-addr2"
-            className={styles.input}
-            value={address2}
-            onChange={(e) => setAddress2(e.target.value)}
-            maxLength={200}
-            autoComplete="address-line2"
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="co-memo">
-            배송 요청사항 <span className={styles.optional}>(선택)</span>
-          </label>
-          <input
-            id="co-memo"
-            className={styles.input}
-            value={orderMemo}
-            onChange={(e) => setOrderMemo(e.target.value)}
-            maxLength={300}
-            placeholder="부재 시 경비실에 맡겨 주세요"
-          />
-        </div>
-
-        <button type="submit" className={styles.submit} disabled={!canSubmit}>
-          {createOrder.isPending ? '주문서를 만드는 중…' : '주문서 작성'}
-        </button>
-      </form>
-
-      <aside className={styles.summary} aria-label="주문 요약">
-        <h2 className={styles.summaryTitle}>주문 상품</h2>
-
-        <ul className={styles.items}>
-          {orderableItems.map((item) => (
-            <li key={item.id} className={styles.item}>
-              <div className={styles.itemName}>
-                {item.productName}
-                {item.optionName && <span className={styles.itemOption}> · {item.optionName}</span>}
-              </div>
-              <div className={styles.itemMeta}>
-                <span>{item.quantity}개</span>
-                <strong>{formatKrw(item.lineAmount)}</strong>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        <div className={styles.total}>
-          <span>예상 금액</span>
-          <strong>{formatKrw(cart?.subtotal)}</strong>
-        </div>
-
-        <p className={styles.disclaimer}>
-          <strong>최종 금액은 주문서를 만드는 시각의 시세로 확정됩니다.</strong> 금이 시세 상품이라
-          지금 보이는 금액과 다를 수 있고, 다음 화면에서 확정 금액을 다시 확인하신 뒤 결제하시게
-          됩니다.
-        </p>
-      </aside>
-    </div>
+/** 장바구니 → 주문/결제 → 완료. 지금 어디쯤인지 보여 준다. */
+function Steps() {
+  return (
+    <ol className={styles.steps} aria-label="주문 단계">
+      <li>
+        <Link href="/cart">장바구니</Link>
+      </li>
+      <li aria-current="step" className={styles.stepOn}>
+        주문/결제
+      </li>
+      <li>완료</li>
+    </ol>
   );
 }

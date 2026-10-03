@@ -123,6 +123,7 @@ public final class UserTestFixtures {
             "cart_items",
             "carts",
             // 그 밖의 회원 소유 데이터
+            "delivery_addresses",
             "wishlist_items",
             "recently_viewed",
             "event_entries",

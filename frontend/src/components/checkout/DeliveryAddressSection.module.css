@@ -1,0 +1,262 @@
+.loading {
+  padding: 24px 0;
+  color: var(--gray);
+  font-size: 14px;
+}
+
+/* ---------- 고른 배송지 카드 ---------- */
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  background: #fff;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.label {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.change {
+  flex: none;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 13px;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.change:hover {
+  border-color: var(--dark);
+}
+
+.cardPhone,
+.cardAddress {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+.cardAddress {
+  color: var(--dark);
+}
+
+/* ---------- 직접 입력 ---------- */
+
+.backToSaved {
+  margin-bottom: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--dark);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.input,
+.inputShort {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+
+.inputShort {
+  max-width: 160px;
+}
+
+/* 읽기 전용 칸은 눌러도 소용없다는 것이 보여야 한다. */
+.input[readonly],
+.inputShort[readonly] {
+  background: var(--light-gray, #f5f5f5);
+  cursor: default;
+}
+
+/* 우편번호 칸 + 찾기 버튼은 한 줄에 둔다 — 떨어지면 무엇을 눌러야 하는지 안 읽힌다. */
+.zipRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.saveRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+/* ---------- 배송지 선택 레이어 ---------- */
+
+.dim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgb(0 0 0 / 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 32px);
+  background: #fff;
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panelTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.pickList {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.pickItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pickButton {
+  flex: 1;
+  display: block;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.pickName {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--dark);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.pickAddress,
+.pickPhone {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.5;
+}
+
+.remove {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 12px;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.addNew {
+  flex: none;
+  padding: 14px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.addNew:hover {
+  background: var(--light-gray, #f5f5f5);
+}

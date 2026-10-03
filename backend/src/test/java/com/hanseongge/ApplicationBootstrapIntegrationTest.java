@@ -52,7 +52,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 44개 테이블이 생성된다")
+    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 45개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
@@ -77,6 +77,8 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V23(간편인증·CI 해시)은 컬럼만 바꾼다 — 테이블 수는 그대로.
         // V24(비밀번호 재설정 코드)·V25(결제 키 길이)는 컬럼만 손본다.
         // V26(위시리스트·최근 본 상품)은 wishlist_items, recently_viewed 2개를 더한다 → 42 + 2.
+        // V27 은 인증번호 용도(EMAIL_CHANGE)만 더한다 — 제약 조건이라 표는 그대로.
+        // V28(배송지 주소록)은 delivery_addresses 1개를 더한다 → 44 + 1.
         //
         // 기대값을 숫자로 적지 않는다. 그러면 마이그레이션을 더할 때마다 이 테스트가
         // 기능과 무관하게 빨개지고, 실제로 V20 에 멈춘 채 V26 까지 가 있었다.
@@ -93,7 +95,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // 테이블 수는 일부러 손으로 둔다 — 마이그레이션이 의도치 않게 테이블을
         // 만들거나 지우면 걸려야 한다. 늘어난 것이 의도된 것이면 위 주석에 이유를
         // 한 줄 적고 이 숫자를 올린다.
-        assertThat(tableCount).isEqualTo(44);
+        assertThat(tableCount).isEqualTo(45);
     }
 
     @Test

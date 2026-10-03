@@ -6,7 +6,8 @@
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 28px;
   align-items: start;
-  margin-bottom: 60px;
+  /* 아래 고정 결제바에 본문이 가리지 않도록 자리를 비운다. */
+  margin-bottom: 110px;
 }
 
 @media (max-width: 860px) {
@@ -359,4 +360,128 @@
 
 .addressBox dd:last-child {
   margin-bottom: 0;
+}
+
+
+/* =====================================================================
+   주문서 — 카드로 나눈 본문 + 아래 고정 결제바
+
+   한 장의 긴 폼이 아니라 "배송지 / 주문 상품" 처럼 묶어 둔다. 결제 직전 화면은
+   확인하는 곳이지 읽는 곳이 아니라, 무엇이 한 덩어리인지가 바로 보여야 한다.
+   ===================================================================== */
+
+.steps {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.steps li + li::before {
+  content: '›';
+  margin-right: 8px;
+  color: var(--line);
+}
+
+.stepOn {
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 22px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.memo {
+  margin-top: 14px;
+}
+
+/* ---------- 아래 고정 결제바 ---------- */
+
+.payBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -2px 12px rgb(0 0 0 / 6%);
+}
+
+.payBarInner {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 14px var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.agree {
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.5;
+}
+
+/* 결제바 안의 버튼은 폭을 내용에 맞춘다 — .submit 의 width:100% 를 덮는다. */
+.payBar .submit {
+  width: auto;
+  min-width: 240px;
+  margin-top: 0;
+  padding: 15px 28px;
+  font-size: 16px;
+}
+
+@media (max-width: 960px) {
+  /* 하단 탭바 위에 올린다. 겹치면 결제 버튼이나 탭 중 하나를 못 누른다. */
+  .payBar {
+    bottom: var(--tabbar-h, 60px);
+  }
+}
+
+@media (max-width: 640px) {
+  .payBarInner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px var(--gutter);
+  }
+
+  .agree {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .payBar .submit {
+    width: 100%;
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .layout {
+    margin-bottom: 150px;
+  }
 }

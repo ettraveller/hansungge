@@ -92,3 +92,31 @@ export interface PaymentConfig {
   /** 테스트 키인가 — 화면에 "실제 결제가 아닙니다" 안내를 띄운다 */
   testMode: boolean;
 }
+
+/**
+ * 저장해 둔 배송지.
+ *
+ * <p>주문은 주소를 자기 칸에 복사해 간다. 그래서 여기를 고치거나 지워도 지나간 주문의
+ * 배송지는 바뀌지 않는다 — 어디로 보냈는지는 분쟁의 근거다.
+ */
+export interface DeliveryAddress {
+  id: number;
+  /** 별칭("집", "회사"). 없을 수 있다 */
+  label: string | null;
+  receiverName: string;
+  receiverPhone: string;
+  zipcode: string;
+  address1: string;
+  address2: string | null;
+  isDefault: boolean;
+}
+
+export interface DeliveryAddressInput {
+  label?: string;
+  receiverName: string;
+  receiverPhone: string;
+  zipcode: string;
+  address1: string;
+  address2?: string;
+  setDefault: boolean;
+}
