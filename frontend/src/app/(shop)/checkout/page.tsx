@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { RequireMember } from '@/components/auth/RequireMember';
+import { PageHead } from '@/components/ui/PageHead';
 import { CheckoutView } from '@/views/CheckoutView';
 
 export const metadata: Metadata = {
@@ -20,6 +21,8 @@ export const metadata: Metadata = {
 export default function CheckoutPage() {
   return (
     <div className="wrap">
+      {/* 금액 확정 안내는 오른쪽 주문 요약이 이미 한다 — 한 화면에서 같은 말을 두 번 하지 않는다. */}
+      <PageHead title="주문서 작성" lead="받으실 분과 주소를 확인해 주세요." />
       <RequireMember><CheckoutView /></RequireMember>
     </div>
   );

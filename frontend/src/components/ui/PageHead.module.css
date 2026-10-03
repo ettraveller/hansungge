@@ -1,0 +1,23 @@
+/* 장바구니(CartView.module.css)의 머리글과 같은 값이다.
+   장바구니 → 주문서 → 결제 → 주문 상세가 한 줄기라, 간격이나 밑줄이 다르면
+   단계가 바뀐 것이 아니라 다른 사이트로 넘어온 것처럼 보인다. */
+
+.head {
+  padding: 36px 0 20px;
+  border-bottom: 2px solid var(--dark);
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dark);
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.7;
+}
