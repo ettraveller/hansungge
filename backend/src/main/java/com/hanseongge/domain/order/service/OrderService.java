@@ -115,12 +115,35 @@ public class OrderService {
                     .toList());
         }
 
-        // 주문서가 만들어졌으면 장바구니는 비운다. 남겨 두면 같은 것을 또 주문하게 된다.
-        cartItemRepository.deleteAll(cartItems);
+        // ⚠️ 여기서 장바구니를 비우지 않는다.
+        //
+        // 주문서는 아직 결제되지 않은 상태다. 여기서 비우면 결제창에서 그만둔 고객이
+        // <b>돌아왔을 때 빈 장바구니를 본다</b> — 무엇을 담았는지 다시 찾아야 하고,
+        // 그 지점에서 대부분 떠난다. 비우는 일은 결제가 승인된 뒤에 한다
+        // ({@code PaymentService.settle}).
 
         log.info("[ORDER] 주문서 생성 orderNo={} userId={} amount={} lines={}",
                 order.getOrderNo(), userId, order.getTotalAmount(), items.size());
         return OrderResponse.of(order, items);
+    }
+
+    /**
+     * 결제가 끝난 주문에 들어간 줄만 장바구니에서 지운다.
+     *
+     * <p>통째로 비우지 않는 이유 — 주문서를 만든 뒤 결제하기까지 사이에 다른 상품을
+     * 담았을 수 있다. 그것까지 지우면 산 적도 없는 물건이 사라진다.
+     */
+    @Transactional
+    public void clearOrdered(Long userId, List<OrderItem> items) {
+        Cart cart = cartRepository.findByUserId(userId).orElse(null);
+        if (cart == null || items.isEmpty()) {
+            return;
+        }
+        for (OrderItem item : items) {
+            cartItemRepository
+                    .findByCartIdAndProductIdAndOptionId(cart.getId(), item.getProductId(), item.getOptionId())
+                    .ifPresent(cartItemRepository::delete);
+        }
     }
 
     /** 장바구니 한 줄을 주문 가능 여부까지 확인하며 값매김한다. */

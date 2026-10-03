@@ -116,14 +116,41 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
-    @DisplayName("주문서를 만들면 재고가 줄고 장바구니가 빈다")
-    void orderTakesStockAndClearsCart() throws Exception {
+    @DisplayName("주문서를 만들면 재고가 준다 — 장바구니는 아직 그대로다")
+    void orderTakesStockButKeepsCart() throws Exception {
         addToCart(optionId, 3);
 
         createOrder();
 
         assertThat(stockOf(optionId)).isEqualTo(7);          // 10 - 3
+        // 아직 결제 전이다. 여기서 비우면 결제창에서 그만둔 고객이 돌아왔을 때
+        // 빈 장바구니를 보고, 무엇을 담았는지 다시 찾아야 한다.
+        assertThat(count("cart_items")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("결제가 승인되면 그때 장바구니가 빈다")
+    void cartClearsAfterPayment() throws Exception {
+        addToCart(optionId, 3);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        givenTossApproves(orderNo, "300000");
+
+        confirm(orderNo, "pay-cart-clear");
+
         assertThat(count("cart_items")).isZero();
+    }
+
+    @Test
+    @DisplayName("결제하지 않고 주문을 취소하면 장바구니는 그대로 남는다")
+    void cancelKeepsCart() throws Exception {
+        addToCart(optionId, 3);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+
+        mockMvc.perform(post("/api/v1/orders/" + orderNo + "/cancel")
+                .header("Authorization", "Bearer " + accessToken)).andReturn();
+
+        // 다시 주문할 수 있어야 한다. 담은 것이 사라지면 처음부터 고르게 된다.
+        assertThat(count("cart_items")).isEqualTo(1);
     }
 
     @Test

@@ -163,6 +163,18 @@ public class PaymentService {
         record(payment, "APPROVE", requestOf(paymentKey, orderNo, order.getTotalAmount()),
                 response, true, idempotencyKey);
 
+        // 여기서 장바구니를 비운다. 주문서를 만들 때가 아니라 <b>돈이 오간 뒤</b>다 —
+        // 결제창에서 그만둔 고객이 돌아왔을 때 담아 둔 것이 그대로 있어야 한다.
+        //
+        // 화면 경로와 웹훅이 모두 이 메서드를 지나므로 어느 쪽으로 승인이 와도 비워진다.
+        // 실패해도 승인을 되돌리지 않는다 — 장바구니가 남는 것보다 결제가 뒤집히는 것이
+        // 훨씬 나쁘다.
+        try {
+            orderService.clearOrdered(order.getUserId(), orderService.itemsOf(order.getId()));
+        } catch (RuntimeException e) {
+            log.warn("[PAY] 결제 후 장바구니를 비우지 못했습니다. orderNo={}", orderNo, e);
+        }
+
         log.info("[PAY] 승인 완료 orderNo={} amount={} method={}", orderNo, approved, payment.getMethod());
     }
 
