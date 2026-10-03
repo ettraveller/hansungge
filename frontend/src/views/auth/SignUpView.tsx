@@ -15,7 +15,7 @@ import {
 import { pendingSignUp, safeNext, type PendingSignUp } from '@/utils/authStorage';
 import { pendingIdentity, submitIdentityForm } from '@/utils/identityReturn';
 import { ApiError } from '@/types/api';
-import type { AgreementCode } from '@/types/user';
+import type { AgreementCode, IdentityMethod } from '@/types/user';
 import styles from '@/components/auth/auth.module.css';
 
 /**
@@ -49,6 +49,15 @@ export function SignUpView() {
 
   const startSignUp = useStartSignUp();
   const startIdentity = useStartIdentity();
+
+  /**
+   * 어떻게 본인확인을 받을 것인가.
+   *
+   * <p>간편인증은 PASS·토스 <b>앱</b>이 깔려 있어야 한다. 그 앱이 없는 분을 인증창 앞에
+   * 세워 두면 거기서 가입이 끝난다 — 되돌아올 길이 화면에 없기 때문이다.
+   * 문자 인증은 휴대폰만 있으면 되므로, 고를 수 있게 둔다.
+   */
+  const [method, setMethod] = useState<IdentityMethod>('SIMPLE');
   const signUpSocial = useSignUpSocial();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
@@ -111,13 +120,16 @@ export function SignUpView() {
 
     startSignUp.mutate(choices(), {
       onSuccess: ({ signUpToken }) =>
-        startIdentity.mutate(signUpToken, {
-          onSuccess: (res) => {
-            // 우리 화면을 떠난다. 돌아왔을 때 이어갈 것을 남긴다.
-            pendingIdentity.save({ token: res.token, flow: 'signup', next });
-            submitIdentityForm(res.form);
+        startIdentity.mutate(
+          { signUpToken, method },
+          {
+            onSuccess: (res) => {
+              // 우리 화면을 떠난다. 돌아왔을 때 이어갈 것을 남긴다.
+              pendingIdentity.save({ token: res.token, flow: 'signup', next });
+              submitIdentityForm(res.form);
+            },
           },
-        }),
+        ),
     });
   };
 
@@ -130,9 +142,9 @@ export function SignUpView() {
             <>약관에 동의하면 가입이 끝납니다.</>
           ) : (
             <>
-              약관에 동의한 뒤 본인인증(PASS·토스 등)을 진행합니다.
+              약관에 동의한 뒤 본인확인을 진행합니다.
               <br />
-              이름·생년월일·휴대폰번호는 본인인증 결과로 채워지며 직접 입력하지 않습니다.
+              이름·생년월일·휴대폰번호는 본인확인 결과로 채워지며 직접 입력하지 않습니다.
             </>
           )}
         </p>
@@ -175,6 +187,46 @@ export function SignUpView() {
           onChange={setChecked}
         />
 
+        {!social && (
+          <fieldset className={styles.methods}>
+            <legend className={styles.sectionTitle}>본인확인 방법</legend>
+
+            <label className={method === 'SIMPLE' ? styles.methodOn : styles.method}>
+              <input
+                type="radio"
+                name="identity-method"
+                value="SIMPLE"
+                checked={method === 'SIMPLE'}
+                onChange={() => setMethod('SIMPLE')}
+                disabled={busy}
+              />
+              <span>
+                <strong>간편인증</strong>
+                <span className={styles.methodNote}>
+                  PASS · 토스 · 카카오 등 <b>앱</b>으로 확인합니다. 앱이 깔려 있어야 합니다.
+                </span>
+              </span>
+            </label>
+
+            <label className={method === 'PHONE' ? styles.methodOn : styles.method}>
+              <input
+                type="radio"
+                name="identity-method"
+                value="PHONE"
+                checked={method === 'PHONE'}
+                onChange={() => setMethod('PHONE')}
+                disabled={busy}
+              />
+              <span>
+                <strong>휴대폰 문자인증</strong>
+                <span className={styles.methodNote}>
+                  통신사가 보낸 <b>문자</b>의 인증번호를 입력합니다. 앱이 없어도 됩니다.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+        )}
+
         <div style={{ marginTop: 20 }}>
           <button type="submit" className={styles.primary} disabled={!canSubmit}>
             {social
@@ -182,8 +234,10 @@ export function SignUpView() {
                 ? '가입 처리 중…'
                 : '동의하고 가입하기'
               : busy
-                ? '본인인증으로 이동 중…'
-                : '동의하고 본인인증'}
+                ? '본인확인으로 이동 중…'
+                : method === 'PHONE'
+                  ? '동의하고 문자로 인증'
+                  : '동의하고 간편인증'}
           </button>
           {missingRequired.length > 0 && (
             <p className={styles.error} style={{ marginTop: 8 }}>

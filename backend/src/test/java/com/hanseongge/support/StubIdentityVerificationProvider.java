@@ -1,5 +1,6 @@
 package com.hanseongge.support;
 
+import com.hanseongge.domain.user.identity.IdentityMethod;
 import com.hanseongge.domain.user.identity.IdentityStartForm;
 import com.hanseongge.domain.user.identity.IdentityVerificationException;
 import com.hanseongge.domain.user.identity.IdentityVerificationProvider;
@@ -30,6 +31,9 @@ public class StubIdentityVerificationProvider implements IdentityVerificationPro
     /** 다음 호출이 돌려줄 사람. null 이면 매번 새 사람(새 CI·새 번호)을 만든다. */
     public UserTestFixtures.Person nextPerson;
 
+    /** 어느 방식으로 불렸는지 — 화면이 고른 값이 공급자까지 가는지 테스트가 본다. */
+    public IdentityMethod lastMethod;
+
     /** true 면 다음 결과에서 CI 를 뺀다. */
     public boolean omitCi;
 
@@ -50,7 +54,8 @@ public class StubIdentityVerificationProvider implements IdentityVerificationPro
     }
 
     @Override
-    public IdentityStartForm start(String requestId, String callbackUrl) {
+    public IdentityStartForm start(String requestId, String callbackUrl, IdentityMethod method) {
+        this.lastMethod = method;
         this.lastRequestId = requestId;
         this.lastCallbackUrl = callbackUrl;
         return new IdentityStartForm(callbackUrl, "POST", Map.of(

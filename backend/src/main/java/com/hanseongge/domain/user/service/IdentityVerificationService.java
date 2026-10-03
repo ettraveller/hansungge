@@ -4,6 +4,7 @@ import com.hanseongge.domain.user.entity.IdentityPurpose;
 import com.hanseongge.domain.user.entity.IdentityVerification;
 import com.hanseongge.domain.user.entity.VerifiedIdentity;
 import com.hanseongge.domain.user.identity.IdentityKeyHasher;
+import com.hanseongge.domain.user.identity.IdentityMethod;
 import com.hanseongge.domain.user.identity.IdentityStartForm;
 import com.hanseongge.domain.user.identity.IdentityVerificationException;
 import com.hanseongge.domain.user.identity.IdentityVerificationProvider;
@@ -55,8 +56,17 @@ public class IdentityVerificationService {
      * <p>결과는 공급자가 우리 <b>백엔드 수신 주소</b>로 보낸다 ({@code app.identity.callback-url}).
      * 화면(Next.js 페이지)은 폼 POST 를 받을 수 없어서다.
      */
-    public IdentityStartForm start(String requestId) {
-        return registry.require().start(requestId, appProperties.identity().callbackUrl());
+    public IdentityStartForm start(String requestId, IdentityMethod method) {
+        var provider = registry.require();
+        if (!provider.supports(method)) {
+            throw method.unsupported();
+        }
+        return provider.start(requestId, appProperties.identity().callbackUrl(), method);
+    }
+
+    /** 설정에 적힌 기본 방식. 화면이 고르지 않았을 때 쓴다. */
+    public IdentityMethod defaultMethod() {
+        return IdentityMethod.ofCode(appProperties.identity().reqSvcCd().trim());
     }
 
     /** 공급자가 있고 판정 키를 만들 비밀값도 있어야 본인인증을 쓸 수 있다. */

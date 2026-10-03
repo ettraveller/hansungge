@@ -34,8 +34,14 @@ public interface IdentityVerificationProvider {
      *
      * @param requestId   우리가 만든 거래번호(20자 이하). 결과가 <b>이 요청의 것인지</b> 대조하는 데 쓴다
      * @param callbackUrl 공급자가 결과를 보낼 백엔드 주소
+     * @param method      간편인증(앱)인가 휴대폰 본인확인(문자)인가. 쓰는 사람이 고른다
      */
-    IdentityStartForm start(String requestId, String callbackUrl);
+    IdentityStartForm start(String requestId, String callbackUrl, IdentityMethod method);
+
+    /** 이 공급자가 그 방식을 쓸 수 있는가. 설정으로 한쪽만 열어 둘 수 있다. */
+    default boolean supports(IdentityMethod method) {
+        return true;
+    }
 
     /**
      * 돌아온 결과를 공급자에게 되물어 검증하고 신원을 가져온다.

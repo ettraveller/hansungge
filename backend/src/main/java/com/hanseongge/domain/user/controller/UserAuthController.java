@@ -1,5 +1,6 @@
 package com.hanseongge.domain.user.controller;
 
+import com.hanseongge.domain.user.identity.IdentityMethod;
 import com.hanseongge.domain.user.dto.AuthProvidersResponse;
 import com.hanseongge.domain.user.dto.CodeSendRequest;
 import com.hanseongge.domain.user.dto.CodeVerifyRequest;
@@ -147,7 +148,7 @@ public class UserAuthController {
     @PostMapping("/identity/start")
     public ResponseEntity<IdentityStartResponse> startIdentity(
             @Valid @RequestBody IdentityStartRequest request) {
-        return ResponseEntity.ok(userAuthService.startIdentityVerification(request.signUpToken()));
+        return ResponseEntity.ok(userAuthService.startIdentityVerification(request.signUpToken(), request.method()));
     }
 
     /**
@@ -224,8 +225,9 @@ public class UserAuthController {
     @Operation(summary = "비밀번호 찾기 — 본인인증 시작",
             description = "휴대폰번호가 바뀌었거나 문자·이메일을 못 쓸 때. 번호도 새 번호로 맞춰진다.")
     @PostMapping("/password/reset/identity/start")
-    public ResponseEntity<IdentityStartResponse> startPasswordReset() {
-        return ResponseEntity.ok(userAuthService.startPasswordReset());
+    public ResponseEntity<IdentityStartResponse> startPasswordReset(
+            @RequestParam(required = false) IdentityMethod method) {
+        return ResponseEntity.ok(userAuthService.startPasswordReset(method));
     }
 
     @Operation(summary = "비밀번호 찾기 — 본인확인 결과 제출",

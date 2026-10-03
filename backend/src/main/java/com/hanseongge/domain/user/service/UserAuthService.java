@@ -17,6 +17,7 @@ import com.hanseongge.domain.user.entity.SocialAccount;
 import com.hanseongge.domain.user.entity.User;
 import com.hanseongge.domain.user.entity.VerificationChannel;
 import com.hanseongge.domain.user.entity.VerificationPurpose;
+import com.hanseongge.domain.user.identity.IdentityMethod;
 import com.hanseongge.domain.user.identity.IdentityStartForm;
 import com.hanseongge.domain.user.oauth.OAuthException;
 import com.hanseongge.domain.user.oauth.OAuthProvider;
@@ -212,7 +213,7 @@ public class UserAuthService {
      * <p>창을 열 때마다 새 거래번호를 만들어 진행 토큰에 넣는다. 돌아온 결과를 공급자에게
      * 되물었을 때 그 거래번호가 나와야 이 요청의 결과다.
      */
-    public IdentityStartResponse startIdentityVerification(String signUpToken) {
+    public IdentityStartResponse startIdentityVerification(String signUpToken, IdentityMethod method) {
         PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
         if (pending.isSocial()) {
             throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "소셜 가입은 본인인증을 받지 않는다");
@@ -224,7 +225,7 @@ public class UserAuthService {
             throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "이미 본인확인을 마친 토큰");
         }
         String requestId = tokenFactory.newIdentityRequestId();
-        IdentityStartForm form = identityVerificationService.start(requestId);
+        IdentityStartForm form = identityVerificationService.start(requestId, chosen(method));
         return new IdentityStartResponse(IdentityStartResponse.Form.from(form),
                 tokenFactory.issuePendingToken(pending.withIdentityRequest(requestId)));
     }
@@ -456,10 +457,10 @@ public class UserAuthService {
      * <p>이메일 인증번호로 하지 않는다 — 이메일은 선택 항목이라 없는 회원이 있다. 비밀번호가 있는
      * 회원은 자체 가입 때 본인인증을 거쳤으므로 누구나 할 수 있다.
      */
-    public IdentityStartResponse startPasswordReset() {
+    public IdentityStartResponse startPasswordReset(IdentityMethod method) {
         requireIdentityAvailable();
         String requestId = tokenFactory.newIdentityRequestId();
-        IdentityStartForm form = identityVerificationService.start(requestId);
+        IdentityStartForm form = identityVerificationService.start(requestId, chosen(method));
         return new IdentityStartResponse(IdentityStartResponse.Form.from(form),
                 tokenFactory.issueResetFlowToken(requestId));
     }
@@ -542,10 +543,10 @@ public class UserAuthService {
      * 이때 처음으로 신원이 채워진다. 매입 기능은 {@link IdentityVerificationService#requireRecentStepUp}
      * 로 "최근에 본인인증을 받았는가"를 확인한다.
      */
-    public IdentityStartResponse startStepUp(Long userId) {
+    public IdentityStartResponse startStepUp(Long userId, IdentityMethod method) {
         requireIdentityAvailable();
         String requestId = tokenFactory.newIdentityRequestId();
-        IdentityStartForm form = identityVerificationService.start(requestId);
+        IdentityStartForm form = identityVerificationService.start(requestId, chosen(method));
         return new IdentityStartResponse(IdentityStartResponse.Form.from(form),
                 tokenFactory.issueStepUpFlowToken(userId, requestId));
     }
@@ -617,6 +618,11 @@ public class UserAuthService {
         Map<String, String> errors = new LinkedHashMap<>();
         missing.forEach(type -> errors.put(type.name(), type.displayName() + "에 동의해야 합니다."));
         throw new BusinessException(ErrorCode.AGREEMENT_REQUIRED, "필수 약관 미동의: " + missing, errors);
+    }
+
+    /** 화면이 고른 방식. 안 보냈으면 설정의 기본값(간편인증)을 쓴다. */
+    private IdentityMethod chosen(IdentityMethod method) {
+        return IdentityMethod.ofNullable(method, identityVerificationService.defaultMethod());
     }
 
     /** 소문자로 — 대소문자만 다른 주소로 쿨다운을 우회하거나 두 계정을 만들 수 없게 한다. */

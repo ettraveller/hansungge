@@ -1,5 +1,6 @@
 package com.hanseongge.domain.user.controller;
 
+import com.hanseongge.domain.user.identity.IdentityMethod;
 import com.hanseongge.domain.user.dto.AgreementStatusResponse;
 import com.hanseongge.domain.user.dto.EmailChangeRequest;
 import com.hanseongge.domain.user.dto.EmailCodeSendRequest;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -59,8 +61,9 @@ public class UserProfileController {
             description = "로그인한 회원의 간편인증 — 매입 신청·정산계좌 등록 앞에서, 또는 소셜 회원이 휴대폰 "
                     + "로그인을 쓰려고 번호를 등록할 때. 인증창을 여는 폼과 진행 토큰을 준다.")
     @PostMapping("/identity/start")
-    public ResponseEntity<IdentityStartResponse> startIdentity(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(authService.startStepUp(principal.id()));
+    public ResponseEntity<IdentityStartResponse> startIdentity(@AuthenticationPrincipal UserPrincipal principal,
+                                                              @RequestParam(required = false) IdentityMethod method) {
+        return ResponseEntity.ok(authService.startStepUp(principal.id(), method));
     }
 
     @Operation(summary = "본인인증 결과 제출",

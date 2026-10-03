@@ -1,5 +1,6 @@
 package com.hanseongge.domain.user.dto;
 
+import com.hanseongge.domain.user.identity.IdentityMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
@@ -14,5 +15,9 @@ import jakarta.validation.constraints.NotBlank;
 public record IdentityStartRequest(
         @Schema(description = "약관 동의를 마친 가입 진행 토큰", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "가입 진행 토큰이 없습니다.")
-        String signUpToken
+        String signUpToken,
+
+        @Schema(description = "SIMPLE 간편인증(앱) / PHONE 휴대폰 본인확인(문자). 비우면 기본값",
+                example = "PHONE")
+        IdentityMethod method
 ) {}

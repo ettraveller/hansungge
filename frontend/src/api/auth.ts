@@ -4,6 +4,7 @@ import type {
   AgreementCode,
   AgreementStatus,
   AuthProviders,
+  IdentityMethod,
   IdentityResult,
   IdentityStart,
   OAuthAuthorize,
@@ -95,10 +96,10 @@ export function signUpSocial(signUpToken: string, agreements: AgreementChoice[])
 }
 
 /** 본인확인 창을 여는 폼. 화면은 그 폼을 그대로 전송한다({@code submitIdentityForm}). */
-export function startIdentity(signUpToken: string) {
+export function startIdentity(signUpToken: string, identityMethod: IdentityMethod) {
   return request<IdentityStart>('/api/v1/auth/identity/start', {
     method: 'POST',
-    body: { signUpToken },
+    body: { signUpToken, method: identityMethod },
   });
 }
 

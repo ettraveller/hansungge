@@ -71,7 +71,7 @@ public class MockIdentityVerificationProvider implements IdentityVerificationPro
      * 같은 분기를 넣으면 그 분기 자체가 검증되지 않는다.
      */
     @Override
-    public IdentityStartForm start(String requestId, String callbackUrl) {
+    public IdentityStartForm start(String requestId, String callbackUrl, IdentityMethod method) {
         return new IdentityStartForm(callbackUrl, "POST", Map.of(
                 "resultCode", "0000",
                 "txId", "mock-" + UUID.randomUUID(),

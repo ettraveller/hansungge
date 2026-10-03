@@ -6,6 +6,7 @@ import { useCallback, useEffect } from 'react';
 import * as authApi from '@/api/auth';
 import { useUserAuthStore } from '@/stores/useUserAuthStore';
 import type {
+  IdentityMethod,
   AgreementCode,
   OAuthProviderType,
   SignInResult,
@@ -159,7 +160,10 @@ export function useSignUpSocial() {
 }
 
 export function useStartIdentity() {
-  return useMutation({ mutationFn: (signUpToken: string) => authApi.startIdentity(signUpToken) });
+  return useMutation({
+    mutationFn: ({ signUpToken, method }: { signUpToken: string; method: IdentityMethod }) =>
+      authApi.startIdentity(signUpToken, method),
+  });
 }
 
 export function useSendSignUpEmailCode() {

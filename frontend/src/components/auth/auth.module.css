@@ -516,3 +516,38 @@
     transition: none;
   }
 }
+
+/* 본인확인 방법 고르기 — 간편인증(앱) / 휴대폰 문자.
+   앱이 없는 분이 인증창 앞에서 막히지 않도록 가입 전에 고르게 한다. */
+.methods {
+  margin-top: 20px;
+  border: 0;
+  padding: 0;
+}
+
+.method,
+.methodOn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--dark);
+}
+
+.methodOn {
+  border-color: var(--dark);
+  box-shadow: inset 0 0 0 1px var(--dark);
+}
+
+.methodNote {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--gray);
+  line-height: 1.6;
+}

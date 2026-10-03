@@ -119,11 +119,14 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
     }
 
     @Override
-    public IdentityStartForm start(String requestId, String callbackUrl) {
+    public IdentityStartForm start(String requestId, String callbackUrl, IdentityMethod method) {
         String mid = config.mid();
+        // 설정값은 "기본 방식" 일 뿐이다. 실제로 어느 창을 띄울지는 쓰는 사람이 고른다 —
+        // 간편인증 앱이 없는 분은 문자로 받아야 가입을 마칠 수 있다.
+        String svcCd = method.code();
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("mid", mid);
-        fields.put("reqSvcCd", serviceCode);
+        fields.put("reqSvcCd", svcCd);
         fields.put("mTxId", requestId);
         fields.put("successUrl", callbackUrl);
         fields.put("failUrl", callbackUrl);
@@ -132,7 +135,7 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
         fields.put("flgFixedUser", "N");
         // 결과조회 응답의 개인정보를 SEED 로 암호화해 받는다. 규격상 필수 고정값.
         fields.put("reservedMsg", "isUseToken=Y");
-        return new IdentityStartForm(authUrl(serviceCode), "POST", fields);
+        return new IdentityStartForm(authUrl(svcCd), "POST", fields);
     }
 
     /** 요청 주소는 서비스마다 다르다 (규격 "통합인증 요청URL"). */
@@ -164,9 +167,12 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
         if (!requestId.equals(text(body, "mTxId"))) {
             throw new IdentityVerificationException("이니시스 거래번호 불일치 — 다른 요청의 인증 결과");
         }
+        // 어느 방식으로 왔는지는 묻지 않는다. 결과가 <b>이 요청의 것인지</b>는 바로 위에서
+        // 거래번호(txId == mTxId)로 이미 확인했고, 그 값은 우리가 만들어 서명된 토큰에만
+        // 넣어 둔 것이라 남이 맞출 수 없다. 간편인증이든 문자든 둘 다 CI 를 준다.
         String svcCd = text(body, "svcCd");
-        if (svcCd != null && !serviceCode.equals(svcCd)) {
-            throw new IdentityVerificationException("요청한 서비스(" + serviceCode + ")가 아닌 인증 결과 svcCd=" + svcCd);
+        if (svcCd != null && !SERVICE_CODES.contains(svcCd)) {
+            throw new IdentityVerificationException("알 수 없는 인증 서비스 코드 svcCd=" + svcCd);
         }
 
         String iv = config.seedIv();

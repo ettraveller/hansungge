@@ -140,6 +140,14 @@ export interface IdentityStart {
  *  - SET_PASSWORD      새 회원 — 비밀번호와 선택 이메일
  *  - EXISTING_ACCOUNT  이미 가입한 사람 — 로그인하거나 바로 비밀번호 재설정
  */
+/**
+ * 본인확인 방식.
+ *
+ * <p>SIMPLE 은 PASS·토스 같은 <b>앱</b>으로, PHONE 은 통신사가 보낸 <b>문자</b>로 확인한다.
+ * 앱이 없는 분을 간편인증 창 앞에 세워 두면 거기서 가입이 끝나므로 고르게 한다.
+ */
+export type IdentityMethod = 'SIMPLE' | 'PHONE';
+
 export type IdentityStep = 'SET_PASSWORD' | 'EXISTING_ACCOUNT';
 
 export interface IdentityResult {
