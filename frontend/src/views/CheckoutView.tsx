@@ -226,12 +226,14 @@ export function CheckoutView() {
           않게 — 결제 직전 화면에서 그 스크롤이 이탈로 이어진다. */}
       <div className={styles.payBar}>
         <div className={styles.payBarInner}>
-          <p className={styles.agree}>주문 내용을 확인하였으며, 정보 제공 등에 동의합니다.</p>
+          <p className={styles.agree}>약관 및 주문 내용을 확인하였으며, 정보 제공 등에 동의합니다.</p>
           {/* type="submit" 이 아니다 — 폼의 암묵적 제출 경로를 아예 없앤다.
               Enter 든, 레이어가 닫히며 밑으로 떨어진 클릭이든, 이 버튼을 직접 누른
               것이 아니면 주문서가 만들어지지 않는다. 주문은 되돌리기 어렵다. */}
           <button type="button" className={styles.submit} disabled={!canSubmit} onClick={submit}>
-            {createOrder.isPending ? '주문서를 만드는 중…' : `${formatKrw(cart?.subtotal)} 주문서 작성`}
+            {/* "주문서 작성" 이 아니라 "결제하기" 다. 누르는 사람이 하려는 일은 결제이고,
+                주문서는 그 과정에서 서버가 만드는 것이라 굳이 이름 붙일 필요가 없다. */}
+            {createOrder.isPending ? '결제 화면으로 넘어가는 중…' : `${formatKrw(cart?.subtotal)} 결제하기`}
           </button>
         </div>
       </div>
