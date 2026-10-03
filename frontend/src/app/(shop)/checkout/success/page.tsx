@@ -18,7 +18,10 @@ export const metadata: Metadata = {
 export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={<p style={{ padding: 60, textAlign: 'center' }}>결제를 확인하고 있습니다…</p>}>
-      <RequireMember><PaymentSuccessView /></RequireMember>
+      {/* 바깥 여백은 페이지에서 준다 — 이유는 checkout/page.tsx 참조. */}
+      <div className="wrap">
+        <RequireMember><PaymentSuccessView /></RequireMember>
+      </div>
     </Suspense>
   );
 }

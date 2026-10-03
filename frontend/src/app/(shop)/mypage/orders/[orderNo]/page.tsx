@@ -10,5 +10,10 @@ export const metadata: Metadata = {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ orderNo: string }> }) {
   const { orderNo } = await params;
-  return <RequireMember><OrderDetailView orderNo={decodeURIComponent(orderNo)} /></RequireMember>;
+  // 바깥 여백은 페이지에서 준다 — 이유는 checkout/page.tsx 참조.
+  return (
+    <div className="wrap">
+      <RequireMember><OrderDetailView orderNo={decodeURIComponent(orderNo)} /></RequireMember>
+    </div>
+  );
 }
