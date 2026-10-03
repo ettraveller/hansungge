@@ -137,6 +137,17 @@ export function CheckoutView() {
         e.preventDefault();
         submit();
       }}
+      onKeyDown={(e) => {
+        // 입력칸에서 Enter 를 눌러도 주문서가 만들어지지 않게 한다.
+        //
+        // 브라우저는 폼 안에서 Enter 를 누르면 제출 버튼을 누른 것으로 친다. 주소를
+        // 고른 뒤 상세 주소로 커서가 옮겨 가는데, 거기서 Enter 를 치면 <b>배송지를
+        // 입력하자마자 결제 화면으로 넘어간다.</b> 주문은 되돌리기 어려운 동작이라
+        // 눌렀다는 뜻이 분명할 때만 만든다.
+        if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {
+          e.preventDefault();
+        }
+      }}
     >
       <Steps />
 
