@@ -128,6 +128,14 @@ public record AppProperties(
             @DefaultValue("5") int connectTimeoutSeconds,
             @DefaultValue("10") int readTimeoutSeconds
     ) {
+        /** 메일과 같은 이유로 앞뒤 공백을 떼어낸다. */
+        public Sms {
+            accessKey = accessKey.strip();
+            secretKey = secretKey.strip();
+            serviceId = serviceId.strip();
+            senderPhone = senderPhone.strip();
+        }
+
         public boolean isConfigured() {
             return !accessKey.isBlank() && !secretKey.isBlank()
                     && !serviceId.isBlank() && !senderPhone.isBlank();
@@ -169,14 +177,32 @@ public record AppProperties(
     public record Mail(
             @DefaultValue("") String accessKey,
             @DefaultValue("") String secretKey,
+            /** 콘솔 SENS > Mail 의 서비스 ID. {@code ncp:mail:kr:<번호>:<이름>} 꼴. */
+            @DefaultValue("") String serviceId,
             /** 보내는 주소. SPF/DKIM/DMARC 가 이 도메인에 설정되어 있어야 스팸함으로 가지 않는다. */
             @DefaultValue("") String fromAddress,
             @DefaultValue("한성금거래소") String fromName,
             @DefaultValue("5") int connectTimeoutSeconds,
             @DefaultValue("10") int readTimeoutSeconds
     ) {
+        /**
+         * 앞뒤 공백을 떼어낸다.
+         *
+         * <p>{@code isBlank()} 는 {@code "키 "} 를 통과시킨다. 그러면 설정이 "있는" 것으로
+         * 보이지만 서명이 어긋나 NCP 가 401 로 거부한다 — 응답이 원인을 말해주지 않아
+         * 찾는 데 오래 걸린다. 환경변수 파일에 공백이 딸려 들어가는 일은 흔하고,
+         * NCP 키에 공백이 들어갈 일은 없으므로 여기서 잘라낸다.
+         */
+        public Mail {
+            accessKey = accessKey.strip();
+            secretKey = secretKey.strip();
+            serviceId = serviceId.strip();
+            fromAddress = fromAddress.strip();
+        }
+
         public boolean isConfigured() {
-            return !accessKey.isBlank() && !secretKey.isBlank() && !fromAddress.isBlank();
+            return !accessKey.isBlank() && !secretKey.isBlank()
+                    && !serviceId.isBlank() && !fromAddress.isBlank();
         }
     }
 

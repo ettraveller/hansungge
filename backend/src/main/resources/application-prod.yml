@@ -107,6 +107,9 @@ app:
   mail:
     access-key: ${APP_MAIL_ACCESS_KEY:}
     secret-key: ${APP_MAIL_SECRET_KEY:}
+    # 콘솔 SENS > Mail 의 서비스 ID (ncp:mail:kr:<번호>:<이름>).
+    # 비밀값이 아니지만 계정마다 달라 코드에 두지 않는다.
+    service-id: ${APP_MAIL_SERVICE_ID:}
     from-address: ${APP_MAIL_FROM_ADDRESS:}
     from-name: ${APP_MAIL_FROM_NAME:한성금거래소}
 
