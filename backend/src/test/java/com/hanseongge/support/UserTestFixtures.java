@@ -7,6 +7,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -92,28 +94,68 @@ public final class UserTestFixtures {
     }
 
     /**
-     * 회원 관련 행을 전부 지운다.
+     * 삭제 순서. 참조의 역순이다 — 자식을 먼저 지워야 부모를 지울 수 있다.
      *
-     * <p>테스트마다 이 순서를 손으로 쓰면 <b>새 테이블이 생길 때마다 여러 파일을 같이
-     * 고쳐야 하고</b>, 한 곳을 빠뜨리면 그 테스트만 외래키 위반으로 이상하게 실패한다.
+     * <p><b>{@code users} 에 닿는 테이블이 새로 생기면 여기에 넣어야 한다.</b> 빠뜨리면
+     * 회원을 만드는 테스트가 통째로 외래키 위반으로 무너지는데, 증상이 원인을 가리키지
+     * 않아 기능 쪽을 먼저 뒤지게 된다. 실제로 장바구니·주문·위시리스트가 들어올 때
+     * 이 목록이 따라가지 못해 139개가 빨간 채로 남아 있었다.
      *
-     * <p>삭제 순서는 참조의 역순이다. 그리고 append-only 트리거가 걸린 두 테이블은
-     * 잠시 내렸다 올린다 — 운영에서는 절대 하지 않는 일이라 테스트에만 둔다.
+     * <p>그 일이 다시 일어나지 않도록 {@code UserCleanupCoverageTest} 가 카탈로그에서
+     * {@code users} 에 닿는 테이블을 읽어 이 목록과 대조한다.
      */
+    public static final List<String> DELETE_ORDER = List.of(
+            // 주문. 세 단계로 깊다 —
+            //   orders -> order_items -> order_item_price_components / order_item_adjustments
+            //   orders -> payments    -> payment_transactions
+            // 손으로 적다 보면 맨 아래 단을 빠뜨리기 쉽다. UserCleanupCoverageTest 가 본다.
+            "order_item_adjustments",
+            "order_item_price_components",
+            "order_items",
+            "order_status_histories",
+            "payment_transactions",
+            "payments",
+            "shipments",
+            // 쿠폰 발급은 users 와 orders 를 모두 참조한다 — 주문보다 먼저
+            "coupon_issues",
+            "orders",
+            // 장바구니
+            "cart_items",
+            "carts",
+            // 그 밖의 회원 소유 데이터
+            "wishlist_items",
+            "recently_viewed",
+            "event_entries",
+            "qnas",
+            "user_agreements",
+            "identity_verifications",
+            "verification_codes",
+            "refresh_tokens",
+            "social_accounts",
+            "user_roles",
+            "users");
+
+    /**
+     * append-only 트리거. 지우려면 잠시 내렸다 올려야 한다.
+     *
+     * <p>운영에서는 절대 하지 않는 일이다. 그 보호 장치가 실제로 걸려 있는지는
+     * {@code ApplicationBootstrapIntegrationTest} 가 따로 확인한다.
+     */
+    private static final Map<String, String> APPEND_ONLY_GUARDS = Map.of(
+            "user_agreements", "trg_user_agreement_guard",
+            "identity_verifications", "trg_identity_verification_guard",
+            "order_items", "trg_order_item_immutable",
+            "order_item_price_components", "trg_oipc_immutable");
+
+    /** 회원 관련 행을 전부 지운다. */
     public static void deleteAll(JdbcTemplate jdbc) {
-        jdbc.execute("ALTER TABLE user_agreements DISABLE TRIGGER trg_user_agreement_guard");
-        jdbc.execute("ALTER TABLE identity_verifications DISABLE TRIGGER trg_identity_verification_guard");
+        APPEND_ONLY_GUARDS.forEach((table, trigger) ->
+                jdbc.execute("ALTER TABLE " + table + " DISABLE TRIGGER " + trigger));
         try {
-            jdbc.update("DELETE FROM user_agreements");
-            jdbc.update("DELETE FROM identity_verifications");
-            jdbc.update("DELETE FROM verification_codes");
-            jdbc.update("DELETE FROM refresh_tokens");
-            jdbc.update("DELETE FROM social_accounts");
-            jdbc.update("DELETE FROM user_roles");
-            jdbc.update("DELETE FROM users");
+            DELETE_ORDER.forEach(table -> jdbc.update("DELETE FROM " + table));
         } finally {
-            jdbc.execute("ALTER TABLE identity_verifications ENABLE TRIGGER trg_identity_verification_guard");
-            jdbc.execute("ALTER TABLE user_agreements ENABLE TRIGGER trg_user_agreement_guard");
+            APPEND_ONLY_GUARDS.forEach((table, trigger) ->
+                    jdbc.execute("ALTER TABLE " + table + " ENABLE TRIGGER " + trigger));
         }
     }
 }

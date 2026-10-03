@@ -8,6 +8,7 @@ import com.hanseongge.global.util.PriceRoundingResolver;
 import com.hanseongge.global.util.RoundingPolicy;
 import com.hanseongge.global.util.VatMode;
 import com.hanseongge.support.EmbeddedPostgresSupport;
+import com.hanseongge.support.Migrations;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +52,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("Flyway V1~V20 이 적용되고 42개 테이블이 생성된다")
+    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 44개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
@@ -74,16 +75,25 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // V21(휴대폰 로그인)은 users 에 컬럼·제약·인덱스만 더한다.
         // V22 는 email_verifications 를 verification_codes 로 이름만 바꾼다 — 둘 다 테이블 수는 그대로.
         // V23(간편인증·CI 해시)은 컬럼만 바꾼다 — 테이블 수는 그대로.
+        // V24(비밀번호 재설정 코드)·V25(결제 키 길이)는 컬럼만 손본다.
+        // V26(위시리스트·최근 본 상품)은 wishlist_items, recently_viewed 2개를 더한다 → 42 + 2.
+        //
+        // 기대값을 숫자로 적지 않는다. 그러면 마이그레이션을 더할 때마다 이 테스트가
+        // 기능과 무관하게 빨개지고, 실제로 V20 에 멈춘 채 V26 까지 가 있었다.
+        // 파일에서 읽으면 "전부 적용됐는가" 를 보게 되어 검증력은 오히려 올라간다.
         assertThat(versions)
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
-                        "16", "17", "18", "19", "20", "21", "22", "23");
+                .describedAs("db/migration 의 파일 전부가 적용되어야 한다")
+                .containsExactlyElementsOf(Migrations.versions());
 
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM information_schema.tables "
                         + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                         + "AND table_name <> 'flyway_schema_history'",
                 Integer.class);
-        assertThat(tableCount).isEqualTo(42);
+        // 테이블 수는 일부러 손으로 둔다 — 마이그레이션이 의도치 않게 테이블을
+        // 만들거나 지우면 걸려야 한다. 늘어난 것이 의도된 것이면 위 주석에 이유를
+        // 한 줄 적고 이 숫자를 올린다.
+        assertThat(tableCount).isEqualTo(44);
     }
 
     @Test
@@ -172,7 +182,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
                 .andExpect(jsonPath("$.service").value("hanseongge-api"))
                 .andExpect(jsonPath("$.profile").value("test"))
                 .andExpect(jsonPath("$.database").value("UP"))
-                .andExpect(jsonPath("$.schemaVersion").value("20"))
+                .andExpect(jsonPath("$.schemaVersion").value(Migrations.latest()))
                 // A-2 확정값이 V11 로 반영되어 있으므로 임시 정책이 아니다.
                 .andExpect(jsonPath("$.roundingPolicy").value(RoundingPolicy.CEIL_100.name()))
                 .andExpect(jsonPath("$.roundingPolicyTemporary").value(false))

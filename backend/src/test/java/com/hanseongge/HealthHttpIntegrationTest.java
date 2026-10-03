@@ -1,6 +1,7 @@
 package com.hanseongge;
 
 import com.hanseongge.support.EmbeddedPostgresSupport;
+import com.hanseongge.support.Migrations;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ class HealthHttpIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(response.getBody())
                 .contains("\"service\":\"hanseongge-api\"")
                 .contains("\"database\":\"UP\"")
-                .contains("\"schemaVersion\":\"20\"")
+                .contains("\"schemaVersion\":\"" + Migrations.latest() + "\"")
                 .contains("\"roundingPolicy\":\"CEIL_100\"");
     }
 

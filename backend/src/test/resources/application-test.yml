@@ -43,6 +43,20 @@ app:
   # AdminOtpIntegrationTest 가 이 값을 켜고 따로 검증한다.
   admin-security:
     otp-required: false
+  sign-up:
+    # IP 단위 Rate Limit 을 테스트에서는 사실상 풀어 둔다.
+    #
+    # 필터는 IP 로 버킷을 잡는데 테스트는 전부 같은 IP 에서 돈다. 운영 기본값(10/분)을
+    # 그대로 쓰면 인증 관련 호출이 열 번을 넘는 순간 그 뒤가 전부 429 가 되고,
+    # 실패는 무관한 테스트에서 난다 — 원인을 찾기 어려운 종류다.
+    #
+    # 한도 자체를 검증하는 테스트는 @TestPropertySource 로 자기 값을 내려 쓴다
+    # (AdminLoginRateLimitIntegrationTest 가 3 으로 둔다). 그래서 여기를 올려도
+    # 그 검증은 그대로 남는다.
+    #
+    # 번호·주소마다 거는 쿨다운은 VerificationCodeService 쪽이라 여기와 무관하다 —
+    # PhoneCodeLoginIntegrationTest 가 보는 429 는 그쪽이다.
+    auth-rate-per-minute: 10000
   # 판정 키(CI 해시)용 비밀값. UserTestFixtures.TEST_PEPPER 와 같아야 한다 — 픽스처가 만든 회원의
   # 판정 키와 스텁 본인인증이 만든 키가 같은 사람에서 일치해야 중복가입·비밀번호 찾기가 시험된다.
   identity:
