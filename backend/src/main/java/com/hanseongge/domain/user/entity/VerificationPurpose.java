@@ -15,5 +15,13 @@ public enum VerificationPurpose {
     /** 가입 시 입력한 이메일이 본인 것인지 확인 */
     EMAIL_VERIFY,
     /** 비밀번호 찾기 — 이 번호를 통과하면 새 비밀번호를 정할 수 있다 */
-    PASSWORD_RESET
+    PASSWORD_RESET,
+    /**
+     * 로그인한 회원이 마이페이지에서 이메일을 등록·변경한다.
+     *
+     * <p>{@link #EMAIL_VERIFY} 와 묻는 것은 같지만 쓰는 사람이 다르다 — 저쪽은 가입 중
+     * (로그인 전), 이쪽은 로그인한 회원이다. 같은 값으로 두면 한쪽에서 받은 번호가
+     * 다른 쪽에서 통한다.
+     */
+    EMAIL_CHANGE
 }

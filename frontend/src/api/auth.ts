@@ -227,6 +227,26 @@ export function changePassword(newPassword: string, currentPassword?: string) {
   });
 }
 
+/**
+ * 등록·변경할 주소로 인증번호를 보낸다.
+ *
+ * <p>이미 다른 계정이 쓰는 주소면 서버가 여기서 거절한다 — 번호를 다 받고 마지막에
+ * 막히는 것보다 낫다.
+ */
+export function sendEmailCode(email: string) {
+  return authed<void>('/api/v1/me/email/code', { method: 'POST', body: { email } });
+}
+
+/**
+ * 인증번호로 이메일을 확정한다.
+ *
+ * <p>주소를 다시 보낸다 — 인증번호는 주소에 묶여 발급되므로 서버가 어느 주소의 번호인지
+ * 알아야 대조할 수 있다.
+ */
+export function changeEmail(email: string, code: string) {
+  return authed<User>('/api/v1/me/email', { method: 'POST', body: { email, code } });
+}
+
 export function fetchAgreements() {
   return authed<AgreementStatus[]>('/api/v1/me/agreements');
 }

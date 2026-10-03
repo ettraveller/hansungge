@@ -8,6 +8,8 @@ import com.hanseongge.domain.user.entity.OAuthProviderType;
 import com.hanseongge.domain.user.entity.SocialAccount;
 import com.hanseongge.domain.user.entity.User;
 import com.hanseongge.domain.user.entity.UserAgreement;
+import com.hanseongge.domain.user.entity.VerificationChannel;
+import com.hanseongge.domain.user.entity.VerificationPurpose;
 import com.hanseongge.domain.user.repository.SocialAccountRepository;
 import com.hanseongge.domain.user.repository.UserAgreementRepository;
 import com.hanseongge.domain.user.repository.UserRepository;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +41,7 @@ public class UserProfileService {
     private final AgreementCatalog agreementCatalog;
     private final UserRefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final VerificationCodeService codeService;
 
     @Transactional(readOnly = true)
     public UserResponse me(Long userId) {
@@ -68,6 +72,70 @@ public class UserProfileService {
             user.attachPassword(passwordEncoder.encode(newPassword));
         }
         log.info("[AUTH] 마이페이지 비밀번호 {}. userId={}", hadPassword ? "변경" : "설정", userId);
+    }
+
+    // =================================================================
+    // 이메일
+    // =================================================================
+
+    /**
+     * 새 주소로 인증번호를 보낸다.
+     *
+     * <p>가입 때 이메일을 건너뛴 회원(소셜 가입자 전부)이 나중에 주소를 넣는 경로다.
+     *
+     * <p><b>보내기 전에 중복을 본다.</b> 가입 흐름은 일부러 마지막에 판정하지만 —
+     * 거기서는 "이 주소가 이미 가입돼 있다" 를 알려주는 것이 가입 여부 조회가 되기
+     * 때문이다 — 여기는 이미 로그인한 회원이라 그 걱정이 없고, 인증번호를 다 받고 나서
+     * 마지막에 거절당하는 것이 더 나쁘다.
+     *
+     * <p>트랜잭션을 걸지 않는다. 안에서 <b>메일을 보낸다</b> — 외부 HTTP 가 끝날 때까지
+     * DB 연결을 붙잡고 있게 되고, 메일 서버가 느리면 연결 풀이 먼저 마른다.
+     * 인증번호 저장은 {@code codeService.issue} 가 자기 트랜잭션에서 한다.
+     */
+    public void sendEmailCode(Long userId, String rawEmail, RequestInfo requestInfo) {
+        User user = find(userId);
+        String email = normalizeEmail(rawEmail);
+        requireEmailFree(email, user);
+        codeService.issue(VerificationChannel.EMAIL, email,
+                VerificationPurpose.EMAIL_CHANGE, requestInfo, true);
+    }
+
+    /**
+     * 인증번호를 확인하고 주소를 확정한다.
+     *
+     * <p>중복을 여기서 다시 본다. 인증번호를 받는 사이에 다른 사람이 같은 주소로
+     * 가입할 수 있다 — 그 창이 좁다고 없는 것은 아니다. 최종 방어선은 DB 의 부분 UNIQUE
+     * 인덱스({@code ux_users_email_active}) 지만, 거기까지 가면 사용자에게는 알 수 없는
+     * 오류가 된다.
+     */
+    @Transactional
+    public UserResponse changeEmail(Long userId, String rawEmail, String code) {
+        User user = find(userId);
+        String email = normalizeEmail(rawEmail);
+        requireEmailFree(email, user);
+
+        Long codeId = codeService.confirm(VerificationChannel.EMAIL, email, code,
+                        VerificationPurpose.EMAIL_CHANGE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_CODE_INVALID));
+        codeService.consume(codeId);
+
+        user.changeEmail(email);
+        log.info("[AUTH] 마이페이지 이메일 변경. userId={}", userId);
+        return UserResponse.from(user);
+    }
+
+    /** 남이 쓰고 있지 않은 주소인가. 자기가 이미 쓰는 주소는 통과시킨다 — 재인증일 수 있다. */
+    private void requireEmailFree(String email, User me) {
+        userRepository.findByEmail(email)
+                .filter(owner -> !owner.getId().equals(me.getId()))
+                .ifPresent(owner -> {
+                    throw new BusinessException(ErrorCode.EMAIL_OWNED_BY_ANOTHER);
+                });
+    }
+
+    /** 소문자로 — 대소문자만 다른 주소로 두 계정이 생기지 않게 한다. */
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     // =================================================================

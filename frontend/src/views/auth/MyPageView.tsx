@@ -12,8 +12,10 @@ import {
   useAgreements,
   useAuthProviders,
   useChangeAgreement,
+  useChangeEmail,
   useChangePassword,
   useDisconnectSocial,
+  useSendEmailCode,
   useSignOut,
   useSocialAccounts,
   useStartMemberIdentity,
@@ -67,6 +69,7 @@ export function MyPageView() {
       )}
 
       <ProfilePanel />
+      <EmailPanel />
       <PasswordPanel />
       {/* 내가 쓴 글은 게시판이 아니라 내 계정에 속한 정보다 — 비밀글로 쓴 문의는
           목록에서 제목만 보이므로 답변이 왔는지 확인할 곳이 따로 있어야 한다 */}
@@ -152,6 +155,181 @@ function ProfilePanel() {
           <div className={styles.actions} style={{ marginTop: 14 }}>
             <button type="button" className={styles.ghost} disabled={start.isPending} onClick={verify}>
               {start.isPending ? '본인인증으로 이동 중…' : verified ? '본인인증 다시 받기' : '본인인증하기'}
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 이메일 등록·변경.
+ *
+ * <p>가입 때 이메일을 건너뛴 회원 — 소셜 가입자 전부와, 자체 가입에서 주소를 비워 둔
+ * 회원 — 이 나중에 넣는 경로다. 이것이 없으면 "(등록하지 않음)" 이라고만 적혀 있고
+ * 바꿀 방법이 화면 어디에도 없다.
+ *
+ * <p>두 단계다. 주소를 적어 인증번호를 받고, 그 번호로 확정한다. 주소만 받아 바로
+ * 저장하면 오타가 그대로 들어가고, 그 주소로 가는 비밀번호 찾기 메일을 영영 못 받는다.
+ */
+function EmailPanel() {
+  const { user } = useUserSession();
+  const setUser = useUserAuthStore((s) => s.setUser);
+  const send = useSendEmailCode();
+  const change = useChangeEmail();
+
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [done, setDone] = useState(false);
+
+  const reset = () => {
+    setOpen(false);
+    setEmail('');
+    setSentTo(null);
+    setCode('');
+    send.reset();
+    change.reset();
+  };
+
+  // 주소를 고치면 받아 둔 번호는 그 주소의 것이 아니다. 같이 버린다 —
+  // 남겨 두면 "번호는 맞는데 왜 안 되지" 가 된다.
+  const editEmail = (value: string) => {
+    setEmail(value);
+    if (sentTo !== null) {
+      setSentTo(null);
+      setCode('');
+      change.reset();
+    }
+  };
+
+  const error = send.error ?? change.error;
+
+  return (
+    <section className={styles.panel}>
+      <header className={styles.panelHead}>
+        <h2 className={styles.sectionTitle}>이메일</h2>
+        <p className={styles.sectionNote}>
+          {user?.email
+            ? '주문 내역과 문의 답변 안내를 이 주소로 받습니다.'
+            : '아직 이메일이 없습니다. 등록하면 주문 내역과 문의 답변 안내를 받을 수 있고, 비밀번호를 잊었을 때 이 주소로 찾을 수 있습니다.'}
+        </p>
+      </header>
+      <div className={styles.panelBody}>
+        <div className={styles.rows}>
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>등록된 주소</span>
+            <span className={styles.rowValue}>{user?.email ?? '(등록하지 않음)'}</span>
+          </div>
+        </div>
+
+        {done && !open && (
+          <div style={{ marginTop: 14 }}>
+            <Notice tone="info">이메일을 저장했습니다.</Notice>
+          </div>
+        )}
+
+        {open ? (
+          <form
+            style={{ marginTop: 14 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (sentTo === null) {
+                if (!email.trim() || send.isPending) return;
+                send.mutate(email.trim(), { onSuccess: () => setSentTo(email.trim()) });
+                return;
+              }
+              if (!code.trim() || change.isPending) return;
+              change.mutate(
+                { email: sentTo, code: code.trim() },
+                {
+                  onSuccess: (updated) => {
+                    setUser(updated);
+                    setDone(true);
+                    reset();
+                  },
+                },
+              );
+            }}
+          >
+            {error && (
+              <div style={{ marginBottom: 14 }}>
+                <Notice tone="error">
+                  {error instanceof ApiError ? error.message : '처리하지 못했습니다.'}
+                </Notice>
+              </div>
+            )}
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="me-email">
+                이메일 주소
+              </label>
+              <input
+                id="me-email"
+                className={styles.input}
+                type="email"
+                value={email}
+                onChange={(e) => editEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="example@domain.com"
+                required
+              />
+            </div>
+
+            {sentTo !== null && (
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="me-email-code">
+                  인증번호
+                </label>
+                <input
+                  id="me-email-code"
+                  className={styles.input}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
+                <span className={styles.hint}>
+                  {sentTo} 로 인증번호를 보냈습니다. 메일이 보이지 않으면 스팸함도 확인해 주세요.
+                </span>
+              </div>
+            )}
+
+            <div className={styles.actions}>
+              <button type="submit" className={styles.ghost} disabled={send.isPending || change.isPending}>
+                {sentTo === null
+                  ? send.isPending
+                    ? '인증번호 보내는 중…'
+                    : '인증번호 받기'
+                  : change.isPending
+                    ? '저장 중…'
+                    : '저장'}
+              </button>
+              <button
+                type="button"
+                className={styles.ghost}
+                disabled={send.isPending || change.isPending}
+                onClick={reset}
+              >
+                취소
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className={styles.actions} style={{ marginTop: 14 }}>
+            <button
+              type="button"
+              className={styles.ghost}
+              onClick={() => {
+                setDone(false);
+                setEmail(user?.email ?? '');
+                setOpen(true);
+              }}
+            >
+              {user?.email ? '이메일 변경' : '이메일 등록'}
             </button>
           </div>
         )}

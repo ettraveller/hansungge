@@ -172,8 +172,15 @@ public class VerificationCodeService {
             case LOGIN -> "로그인 인증번호 안내";
             case PASSWORD_RESET -> "비밀번호 찾기 인증번호 안내";
             case EMAIL_VERIFY -> "이메일 인증번호 안내";
+            case EMAIL_CHANGE -> "이메일 등록 인증번호 안내";
         };
-        String notice = purpose == VerificationPurpose.EMAIL_VERIFY
+        // 주소를 처음 확인하는 두 경우(가입 중·마이페이지 등록)는 안내 문구가 가볍다.
+        // 이 메일은 그 주소를 입력한 사람에게만 가고, 받는 쪽 계정이 걸려 있지 않다.
+        // 반대로 로그인·비밀번호 쪽은 이미 그 주소를 쓰는 계정이 있다는 뜻이라,
+        // 요청한 적 없는 메일이 왔다면 그 자체가 신호다.
+        boolean firstTimeAddress = purpose == VerificationPurpose.EMAIL_VERIFY
+                || purpose == VerificationPurpose.EMAIL_CHANGE;
+        String notice = firstTimeAddress
                 ? "본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다."
                 : """
                         본인이 요청하지 않았다면 이 메일을 무시해 주세요.

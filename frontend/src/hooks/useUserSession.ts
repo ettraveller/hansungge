@@ -250,6 +250,16 @@ export function useChangePassword() {
   });
 }
 
+export function useSendEmailCode() {
+  return useMutation({ mutationFn: (email: string) => authApi.sendEmailCode(email) });
+}
+
+export function useChangeEmail() {
+  return useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) => authApi.changeEmail(email, code),
+  });
+}
+
 export function useAgreements(enabled: boolean) {
   return useQuery({
     queryKey: userKeys.agreements(),

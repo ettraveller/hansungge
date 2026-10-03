@@ -273,6 +273,18 @@ public class User {
     }
 
     /**
+     * 이메일을 등록·변경한다. 인증번호를 통과한 주소만 들어온다.
+     *
+     * <p>인증을 거친 주소만 받으므로 {@code emailVerifiedAt} 을 같이 찍는다. 주소만 바뀌고
+     * 인증 시각이 옛날 그대로면, 나중에 "인증된 주소인가" 를 보는 쪽이 틀린 답을 얻는다.
+     */
+    public void changeEmail(String email) {
+        this.email = email;
+        this.emailVerifiedAt = OffsetDateTime.now();
+        this.updatedAt = this.emailVerifiedAt;
+    }
+
+    /**
      * 소셜로만 가입한 회원에게 비밀번호를 붙인다.
      *
      * <p>같은 사람이 자체 로그인을 원할 때 계정을 새로 만들지 않기 위한 경로다.

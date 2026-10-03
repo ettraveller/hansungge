@@ -1,6 +1,8 @@
 package com.hanseongge.domain.user.controller;
 
 import com.hanseongge.domain.user.dto.AgreementStatusResponse;
+import com.hanseongge.domain.user.dto.EmailChangeRequest;
+import com.hanseongge.domain.user.dto.EmailCodeSendRequest;
 import com.hanseongge.domain.user.dto.AgreementUpdateRequest;
 import com.hanseongge.domain.user.dto.IdentityCompleteRequest;
 import com.hanseongge.domain.user.dto.IdentityStartResponse;
@@ -80,6 +82,27 @@ public class UserProfileController {
                                                @Valid @RequestBody PasswordChangeRequest request) {
         profileService.changePassword(principal.id(), request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "이메일 인증번호 발송 (마이페이지)",
+            description = "등록·변경할 주소로 인증번호를 보낸다. 이미 다른 계정이 쓰는 주소면 "
+                    + "보내기 전에 거절한다 — 번호를 다 받고 마지막에 막히는 것보다 낫다.")
+    @PostMapping("/email/code")
+    public ResponseEntity<Void> sendEmailCode(@AuthenticationPrincipal UserPrincipal principal,
+                                              @Valid @RequestBody EmailCodeSendRequest request,
+                                              HttpServletRequest httpRequest) {
+        profileService.sendEmailCode(principal.id(), request.email(), RequestInfo.from(httpRequest));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "이메일 등록·변경",
+            description = "받은 인증번호로 주소를 확정한다. 가입 때 이메일을 건너뛴 회원이 "
+                    + "나중에 넣는 경로이기도 하다.")
+    @PostMapping("/email")
+    public ResponseEntity<UserResponse> changeEmail(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @Valid @RequestBody EmailChangeRequest request) {
+        return ResponseEntity.ok(
+                profileService.changeEmail(principal.id(), request.email(), request.code()));
     }
 
     @Operation(summary = "약관 동의 현황",
