@@ -10,6 +10,7 @@ import { useCreateOrder } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
 import { formatKrw, formatPhone } from '@/utils/format';
+import { PostcodeSearch } from '@/components/ui/PostcodeSearch';
 import styles from '@/views/CheckoutView.module.css';
 
 /**
@@ -46,6 +47,10 @@ export function CheckoutView() {
   }
 
   const orderableItems = cart?.items.filter((item) => item.orderable) ?? [];
+  // 우편번호 찾기를 못 불러왔을 때만 두 칸을 직접 입력으로 연다.
+  // 평소에는 잠가 둔다 — 우편번호와 주소가 어긋난 주문은 배송이 실패한 뒤에야 드러난다.
+  const [addressManual, setAddressManual] = useState(false);
+
   const canSubmit =
     orderableItems.length > 0 &&
     receiverName.trim() !== '' &&
@@ -136,16 +141,30 @@ export function CheckoutView() {
           <label className={styles.label} htmlFor="co-zip">
             우편번호
           </label>
-          <input
-            id="co-zip"
-            className={styles.inputShort}
-            value={zipcode}
-            onChange={(e) => setZipcode(e.target.value)}
-            maxLength={10}
-            inputMode="numeric"
-            autoComplete="postal-code"
-            required
-          />
+          <div className={styles.zipRow}>
+            <input
+              id="co-zip"
+              className={styles.inputShort}
+              value={zipcode}
+              onChange={(e) => setZipcode(e.target.value)}
+              maxLength={10}
+              inputMode="numeric"
+              autoComplete="postal-code"
+              readOnly={!addressManual}
+              placeholder={addressManual ? undefined : '우편번호 찾기'}
+              required
+            />
+            <PostcodeSearch
+              onPick={({ zipcode: zip, address }) => {
+                setZipcode(zip);
+                setAddress1(address);
+                // 고른 직후에는 상세 주소만 남는다. 거기로 커서를 옮겨 준다 —
+                // 어디를 눌러야 하는지 다시 찾게 하지 않는다.
+                document.getElementById('co-addr2')?.focus();
+              }}
+              onUnavailable={() => setAddressManual(true)}
+            />
+          </div>
         </div>
 
         <div className={styles.field}>
@@ -159,6 +178,8 @@ export function CheckoutView() {
             onChange={(e) => setAddress1(e.target.value)}
             maxLength={200}
             autoComplete="address-line1"
+            readOnly={!addressManual}
+            placeholder={addressManual ? undefined : '우편번호를 찾으면 채워집니다'}
             required
           />
         </div>

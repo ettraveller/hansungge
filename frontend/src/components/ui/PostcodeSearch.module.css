@@ -1,0 +1,94 @@
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.button {
+  flex: none;
+  padding: 0 16px;
+  height: 44px;
+  border: 1px solid var(--dark);
+  border-radius: var(--radius-sm);
+  background: var(--dark);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+/* ---------- 검색 레이어 ---------- */
+
+/* 팝업 창(window.open)이 아니라 레이어로 띄우는 이유 — 팝업은 차단기에 막히고,
+   휴대폰에서는 새 탭으로 열려 입력하던 폼에서 튕겨 나온다. 결제 직전 화면에서
+   그런 일이 나면 사용자는 주문을 포기한다. */
+.dim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgb(0 0 0 / 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* 다음 우편번호는 최소 높이가 있어야 목록이 보인다. 화면이 작으면 화면에 맞춘다. */
+  height: min(560px, calc(100vh - 32px));
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panelTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.embed {
+  flex: 1;
+  min-height: 0;
+}

@@ -3,22 +3,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useIsBrowser } from '@/hooks/useIsBrowser';
 import { useSignOut, useUserSession } from '@/hooks/useUserSession';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './MobileDrawer.module.css';
 
-/**
- * 서버 렌더에서는 false, 브라우저에서는 true.
- *
- * <p>{@code document} 가 없는 서버에서 포털을 만들 수 없어 "지금 브라우저인가"를 알아야
- * 한다. effect 안에서 setState 하는 방식이 흔하지만, 그건 렌더를 한 번 더 돌리고
- * React 규칙에도 걸린다. 바뀔 일이 없는 값이라 구독은 빈 함수로 둔다.
- */
-const subscribeNothing = () => () => {};
-const onClient = () => true;
-const onServer = () => false;
 
 /**
  * 모바일 햄버거 · 드로어.
@@ -115,7 +106,7 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
    * <p>맥락 밖으로 꺼내면 z-index 가 제 값대로 동작한다. 헤더의 z-index 를 올리는
    * 방법도 있지만, 그건 다음에 z-index 를 쓰는 사람이 또 같은 함정에 빠진다.
    */
-  const mounted = useSyncExternalStore(subscribeNothing, onClient, onServer);
+  const mounted = useIsBrowser();
 
   return (
     <>

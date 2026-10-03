@@ -57,6 +57,22 @@
   padding: 24px;
 }
 
+/* 우편번호 칸 + 찾기 버튼. 버튼을 아래로 떨어뜨리지 않는다 —
+   한 줄에 있어야 "저걸 눌러야 하는구나" 가 바로 읽힌다. */
+.zipRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* 읽기 전용 칸은 눌러도 소용없다는 것이 보여야 한다. */
+.input[readonly],
+.inputShort[readonly] {
+  background: var(--light-gray, #f5f5f5);
+  cursor: default;
+}
+
 .sectionTitle {
   font-size: 16px;
   font-weight: 700;
