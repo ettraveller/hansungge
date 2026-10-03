@@ -78,6 +78,12 @@ export function useConfirmPayment() {
   return useMutation({
     mutationFn: (input: { orderNo: string; paymentKey: string }) =>
       orderApi.confirmPayment(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      // 결제가 끝나면 서버가 그 상품을 장바구니에서 지운다. 여기서 캐시를 비우지
+      // 않으면 헤더 배지에 방금 산 상품 수가 남는다 — 눌러 보면 비어 있어서
+      // "장바구니가 깨졌나" 로 보인다.
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+    },
   });
 }
