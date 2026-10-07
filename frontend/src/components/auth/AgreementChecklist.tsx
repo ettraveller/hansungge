@@ -73,7 +73,6 @@ export function AgreementChecklist({
                 </Link>
               </>
             )}
-            <span className={styles.agreeVersion}>버전 {agreement.version}</span>
           </span>
         </label>
       ))}
