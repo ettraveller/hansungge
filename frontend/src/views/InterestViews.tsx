@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { Toast } from '@/components/ui/Toast';
 import { MyPageShell, myPageStyles as shell } from '@/layouts/MyPageShell';
 import {
   useClearRecentlyViewed,
@@ -120,11 +121,41 @@ function ProductRows({
     );
   }
 
+  return <ProductList products={products} showWishlistToggle={showWishlistToggle} />;
+}
+
+/**
+ * 목록과 알림.
+ *
+ * <p>알림은 줄마다가 아니라 <b>목록에 하나</b>다. 줄마다 두면 여러 개를 연달아 담았을 때
+ * 알림이 겹쳐 쌓인다. 나중에 누른 것이 앞의 것을 덮어쓰는 편이 맞다 — 사람이 알고 싶은 것은
+ * 방금 누른 그 하나다.
+ */
+function ProductList({
+  products,
+  showWishlistToggle,
+}: {
+  products: ProductSummary[];
+  showWishlistToggle?: boolean;
+}) {
+  const [added, setAdded] = useState<string | null>(null);
+
   return (
     <div>
       {products.map((product) => (
-        <ProductRow key={product.id} product={product} showWishlistToggle={showWishlistToggle} />
+        <ProductRow
+          key={product.id}
+          product={product}
+          showWishlistToggle={showWishlistToggle}
+          onAdded={(name) => setAdded(`${name} · 장바구니에 담았습니다`)}
+        />
       ))}
+
+      <Toast
+        message={added}
+        onDone={() => setAdded(null)}
+        action={{ href: '/cart', label: '장바구니 보기' }}
+      />
     </div>
   );
 }
@@ -132,13 +163,14 @@ function ProductRows({
 function ProductRow({
   product,
   showWishlistToggle,
+  onAdded,
 }: {
   product: ProductSummary;
   showWishlistToggle?: boolean;
+  onAdded: (productName: string) => void;
 }) {
   const toggle = useToggleWishlist();
   const addToCart = useAddToCart();
-  const [added, setAdded] = useState(false);
 
   // 주문 가능 여부는 서버가 이미 판단해서 내려준다. 화면에서 다시 따지지 않는다 (원칙 P1).
   const orderable = product.orderable;
@@ -162,6 +194,11 @@ function ProductRow({
       </div>
 
       <div className={styles.acts}>
+        {/*
+          글자를 바꾸지 않는다. 「담았습니다」로 바뀌면 버튼 너비가 변해 옆 버튼이 밀리고,
+          한 번 바뀐 뒤 돌아오지 않아 같은 상품을 다시 담을 수 없는 것처럼 보였다.
+          담긴 사실은 아래 Toast 가 알린다.
+        */}
         <button
           type="button"
           className={shell.pillDark}
@@ -169,11 +206,11 @@ function ProductRow({
           onClick={() =>
             addToCart.mutate(
               { productId: product.id, quantity: 1 },
-              { onSuccess: () => setAdded(true) },
+              { onSuccess: () => onAdded(product.name) },
             )
           }
         >
-          {added ? '담았습니다' : '장바구니 담기'}
+          장바구니 담기
         </button>
 
         {showWishlistToggle && (

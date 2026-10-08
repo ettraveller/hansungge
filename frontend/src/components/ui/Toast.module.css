@@ -1,0 +1,70 @@
+/* 화면 아래 가운데. 모바일에서는 탭바를 피해 조금 더 올라간다. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  padding: 13px 18px;
+  border-radius: var(--radius-pill);
+
+  /* 본문 어디에 떠도 읽혀야 하므로 먹 바탕에 흰 글자다 (17:1) */
+  background: var(--ink-900);
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.5;
+
+  /* 여기만 그림자를 쓴다. 떠 있는 것이 실제로 떠 있어야 하는 유일한 자리다 */
+  box-shadow: 0 10px 30px -10px rgba(15, 27, 45, 0.45);
+
+  animation: toastIn 0.22s var(--ease-out) both;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* 움직임을 줄여 달라고 한 사람에게는 그냥 떠 있게 둔다 */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+.text {
+  min-width: 0;
+}
+
+/* 금색은 어두운 바탕 위에서만 쓴다 — 여기가 그 자리다 (7.1:1) */
+.action {
+  flex-shrink: 0;
+  color: var(--gold-500);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.action:hover {
+  color: var(--gold-400);
+}
+
+/* 모바일 하단 탭바(MobileTabBar) 위로 띄운다 */
+@media (max-width: 760px) {
+  .toast {
+    bottom: 82px;
+    width: calc(100vw - 32px);
+    justify-content: space-between;
+  }
+}
