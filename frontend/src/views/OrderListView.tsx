@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { Toast } from '@/components/ui/Toast';
 import { MyPageShell, myPageStyles as shell } from '@/layouts/MyPageShell';
+import { useReorder } from '@/hooks/useCart';
 import { useMyPageSummary } from '@/hooks/useInterest';
 import { useOrders } from '@/hooks/useOrder';
 import { ApiError } from '@/types/api';
@@ -48,6 +50,8 @@ export function OrderListView() {
 function OrderList() {
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState('all');
+  // 알림은 목록에 하나다. 주문마다 두면 연달아 담았을 때 겹쳐 쌓인다.
+  const [toast, setToast] = useState<string | null>(null);
   const { data, isLoading, error } = useOrders(page, 20);
   const { data: summary } = useMyPageSummary();
 
@@ -109,10 +113,16 @@ function OrderList() {
       ) : (
         <div>
           {shown.map((order) => (
-            <OrderRow key={order.orderNo} order={order} />
+            <OrderRow key={order.orderNo} order={order} onReordered={setToast} />
           ))}
         </div>
       )}
+
+      <Toast
+        message={toast}
+        onDone={() => setToast(null)}
+        action={{ href: '/cart', label: '장바구니 보기' }}
+      />
 
       {data && data.totalPages > 1 && (
         <div className={styles.pager}>
@@ -141,8 +151,43 @@ function OrderList() {
   );
 }
 
-function OrderRow({ order }: { order: Order }) {
+function OrderRow({
+  order,
+  onReordered,
+}: {
+  order: Order;
+  onReordered: (message: string) => void;
+}) {
   const item = order.items[0];
+  const reorder = useReorder();
+
+  /**
+   * 같은 상품을 다시 담는다.
+   *
+   * <p>수량과 규격까지 그대로 가져간다. 금액은 <b>가져가지 않는다</b> — 주문 금액은
+   * 그때의 시세로 굳은 값이고, 장바구니는 오늘 시세로 다시 계산한다. 담은 뒤 값이
+   * 달라져 있으면 장바구니가 차액을 알려 준다.
+   */
+  const addAllToCart = () => {
+    const lines = order.items.map((i) => ({
+      productId: i.productId,
+      optionId: i.optionId,
+      quantity: i.quantity,
+    }));
+
+    reorder.mutate(lines, {
+      onSuccess: ({ added, failed }) => {
+        if (added === 0) {
+          onReordered('지금 담을 수 있는 상품이 없습니다');
+        } else if (failed > 0) {
+          onReordered(`${added}개를 담았습니다 · ${failed}개는 지금 담을 수 없습니다`);
+        } else {
+          onReordered(`${added}개를 장바구니에 담았습니다`);
+        }
+      },
+      onError: () => onReordered('장바구니에 담지 못했습니다. 잠시 후 다시 시도해 주세요'),
+    });
+  };
 
   return (
     <article className={styles.row}>
@@ -188,6 +233,15 @@ function OrderRow({ order }: { order: Order }) {
           </>
         ) : (
           <>
+            {/* 결제 대기 주문에는 두지 않는다. 거기서 할 일은 다시 담는 것이 아니라 결제다. */}
+            <button
+              type="button"
+              className={shell.pillDark}
+              disabled={reorder.isPending}
+              onClick={addAllToCart}
+            >
+              장바구니 담기
+            </button>
             <Link href={`/mypage/orders/${order.orderNo}`} className={shell.pill}>
               주문 상세
             </Link>

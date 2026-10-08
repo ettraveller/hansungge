@@ -46,6 +46,8 @@ public record OrderResponse(
     @Schema(name = "OrderItemResponse", description = "주문 항목 (주문 시점 스냅샷)")
     public record Item(
             Long productId,
+            @Schema(description = "주문한 규격. 같은 규격으로 다시 담을 때 쓴다. 옵션 없는 상품이면 null")
+            Long optionId,
             String productName,
             String optionName,
             MetalType metalType,
@@ -56,7 +58,8 @@ public record OrderResponse(
             BigDecimal finalAmount
     ) {
         static Item of(OrderItem item) {
-            return new Item(item.getProductId(), item.getProductName(), item.getOptionName(),
+            return new Item(item.getProductId(), item.getOptionId(),
+                    item.getProductName(), item.getOptionName(),
                     item.getMetalType(), item.getWeightG(), item.getMarketPrice(),
                     item.getFinalUnitPrice(), item.getQuantity(), item.getFinalAmount());
         }

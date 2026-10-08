@@ -26,6 +26,8 @@ export type OrderStatus =
  */
 export interface OrderItem {
   productId: number;
+  /** 주문한 규격. 같은 규격으로 다시 담을 때 쓴다. 옵션 없는 상품이면 null */
+  optionId?: number | null;
   productName: string;
   optionName?: string | null;
   metalType?: MetalType | null;

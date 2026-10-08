@@ -104,6 +104,17 @@
   margin-top: 16px;
 }
 
+/* 버튼이 셋이 되면서(장바구니 담기 추가) 좁은 화면에서 두 줄로 넘어갔다.
+   알약을 줄이면 한 줄에 들어간다. 넘치면 여전히 줄바꿈된다 — 여기는 버튼만 있는
+   띠라서, 목록 줄 안쪽과 달리 줄이 바뀌어도 어디를 눌러야 할지 헷갈리지 않는다. */
+@media (max-width: 640px) {
+  .acts > * {
+    height: 34px;
+    padding: 0 13px;
+    font-size: 12.5px;
+  }
+}
+
 .pager {
   display: flex;
   align-items: center;
