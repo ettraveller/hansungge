@@ -113,12 +113,55 @@ export function formatBoardDate(iso: string | null | undefined): string {
  *
  * <p>서버는 숫자만 저장·전송한다(로그인 ID 라 한 가지 모양이어야 한다). 사람이 읽을 때만
  * 하이픈을 넣는다. 이미 가린 값({@code 010-****-5678})이나 모르는 모양은 그대로 둔다.
+ *
+ * <p>⚠️ <b>입력칸의 값으로 쓰지 마라.</b> 번호가 없으면 "-" 를 돌려준다 — 화면에 "없음"을
+ * 적으려는 것이다. 그 값이 input 에 들어가면 사용자는 하이픈 한 글자가 적힌 칸을 보게 된다
+ * (주문서 연락처에서 실제로 그랬다, 2026-10-08). 입력칸에는 {@link formatPhoneInput} 을 쓴다.
  */
 export function formatPhone(phone: string | null | undefined): string {
   if (!phone) return '-';
   if (/^\d{11}$/.test(phone)) return `${phone.slice(0, 3)}-${phone.slice(3, 7)}-${phone.slice(7)}`;
   if (/^\d{10}$/.test(phone)) return `${phone.slice(0, 3)}-${phone.slice(3, 6)}-${phone.slice(6)}`;
   return phone;
+}
+
+/**
+ * 전화번호 <b>입력칸</b>용. 숫자만 남기고 하이픈을 자동으로 넣는다.
+ *
+ * <p>사람이 하이픈을 직접 치게 하면 「01012345678」「010 1234 5678」「010-1234-5678」이
+ * 뒤섞여 저장된다. 치는 대로 모양을 잡아 주면 입력도 쉽고 저장도 한 가지가 된다.
+ *
+ * <p>값이 없으면 <b>빈 문자열</b>이다 — {@link formatPhone} 과 다른 점이다.
+ *
+ * <p>끝에 하이픈을 붙이지 않는다("010-" 이 아니라 "010"). 붙여 두면 지우려고 Backspace 를
+ * 눌러도 하이픈이 곧바로 다시 생겨 글자가 지워지지 않는 것처럼 보인다.
+ *
+ * <p>서울 국번(02)은 자릿수가 달라 따로 센다. 배송지 연락처에는 집·사무실 번호도 들어온다.
+ */
+export function formatPhoneInput(value: string | null | undefined): string {
+  const d = (value ?? '').replace(/\D/g, '').slice(0, 11);
+  if (!d) return '';
+
+  if (d.startsWith('02')) {
+    if (d.length <= 2) return d;
+    if (d.length <= 5) return `${d.slice(0, 2)}-${d.slice(2)}`;
+    if (d.length <= 9) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`;
+    return `${d.slice(0, 2)}-${d.slice(2, 6)}-${d.slice(6, 10)}`;
+  }
+
+  // 010 은 반드시 11자리라 처음부터 3-4-4 로 끊을 수 있다. 아래 일반 규칙에 맡기면
+  // 10자리까지는 3-3-4 로 보다가 11번째 글자에서 하이픈이 한 칸 옮겨 가 눈에 거슬린다.
+  if (d.startsWith('010')) {
+    if (d.length <= 3) return d;
+    if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  }
+
+  // 011·016·017·018·019 와 지역번호(031 등)는 10자리일 수도 11자리일 수도 있다.
+  if (d.length <= 3) return d;
+  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  if (d.length <= 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
 }
 
 /** 시세를 표시할 수 없을 때의 문구 (설계서 §12.4) */

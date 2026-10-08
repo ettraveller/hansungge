@@ -7,7 +7,7 @@ import { PostcodeSearch } from '@/components/ui/PostcodeSearch';
 import { useDeleteAddress } from '@/hooks/useAddresses';
 import { useIsBrowser } from '@/hooks/useIsBrowser';
 import type { DeliveryAddress } from '@/types/order';
-import { formatPhone } from '@/utils/format';
+import { formatPhone, formatPhoneInput } from '@/utils/format';
 import styles from './DeliveryAddressSection.module.css';
 
 export interface AddressForm {
@@ -133,13 +133,19 @@ export function DeliveryAddressSection({
             <label className={styles.fieldLabel} htmlFor="co-phone">
               연락처
             </label>
+            {/*
+              하이픈은 치지 않는다 — 숫자만 받아 모양은 우리가 잡는다.
+              inputMode="numeric" 은 휴대폰에서 숫자 자판을 먼저 띄운다.
+              maxLength 는 완성된 모양("010-1234-5678")의 길이다.
+            */}
             <input
               id="co-phone"
               className={styles.input}
               value={form.receiverPhone}
-              onChange={(e) => onForm({ receiverPhone: e.target.value })}
-              placeholder="010-1234-5678"
-              maxLength={30}
+              onChange={(e) => onForm({ receiverPhone: formatPhoneInput(e.target.value) })}
+              placeholder="숫자만 입력"
+              inputMode="numeric"
+              maxLength={13}
               autoComplete="tel"
               required
             />

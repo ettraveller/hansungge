@@ -17,7 +17,7 @@ import { useAddresses, useCreateAddress } from '@/hooks/useAddresses';
 import { useCreateOrder } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
-import { formatKrw, formatPhone } from '@/utils/format';
+import { formatKrw, formatPhoneInput } from '@/utils/format';
 import styles from '@/views/CheckoutView.module.css';
 
 
@@ -55,7 +55,9 @@ export function CheckoutView() {
     setForm((prev) => ({
       ...prev,
       receiverName: user.name ?? '',
-      receiverPhone: formatPhone(user.phone) || '',
+      // formatPhone 을 쓰면 안 된다 — 번호가 없는 회원(본인인증 전 소셜 가입)에게
+      // "-" 한 글자가 적힌 칸이 나온다. 입력칸용은 빈 문자열을 돌려준다.
+      receiverPhone: formatPhoneInput(user.phone),
     }));
   }
 
