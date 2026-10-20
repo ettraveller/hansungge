@@ -22,6 +22,13 @@ import java.time.LocalDate;
 public record IdentityVerificationResult(
         String providerTxId,
         String ci,
+        /**
+         * DI(중복가입확인정보). 이용기관마다 다른 값이라 다른 곳의 DI 와 맞춰 볼 수 없다.
+         *
+         * <p>주지 않는 수단이 있다 — 간편인증(reqSvcCd=01)은 CI 만 준다. 그때는 null 이고,
+         * 판정은 CI 쪽으로만 한다.
+         */
+        String di,
         String name,
         LocalDate birthDate,
         String phone,
@@ -37,9 +44,15 @@ public record IdentityVerificationResult(
         return ci != null && !ci.isBlank();
     }
 
+    public boolean hasDi() {
+        return di != null && !di.isBlank();
+    }
+
     /** 예외 메시지·로그에 CI·실명·번호가 섞이지 않게 한다. record 기본 toString 은 전부 찍는다. */
     @Override
     public String toString() {
-        return "IdentityVerificationResult[providerTxId=" + providerTxId + ", ci=" + (hasCi() ? "***" : "none") + "]";
+        return "IdentityVerificationResult[providerTxId=" + providerTxId
+                + ", ci=" + (hasCi() ? "***" : "none")
+                + ", di=" + (hasDi() ? "***" : "none") + "]";
     }
 }

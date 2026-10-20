@@ -16,7 +16,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class UserIdentityTest {
 
     private static VerifiedIdentity person(String key, String name, String phone) {
-        return new VerifiedIdentity(key, name, LocalDate.of(1990, 1, 1), phone);
+        return new VerifiedIdentity(key, null, name, LocalDate.of(1990, 1, 1), phone);
+    }
+
+    /** DI 까지 있는 사람. CI 를 주지 않는 수단과 섞어 시험할 때 쓴다. */
+    private static VerifiedIdentity person(String key, String duplicateKey, String name, String phone) {
+        return new VerifiedIdentity(key, duplicateKey, name, LocalDate.of(1990, 1, 1), phone);
     }
 
     @Test

@@ -126,7 +126,7 @@ public class UserAccountService {
     @Transactional
     public Optional<ExistingAccount> findExistingAndRefresh(Long identityVerificationId) {
         IdentityVerification verification = findVerification(identityVerificationId);
-        Optional<User> found = userRepository.findByIdentityKey(verification.getIdentityKey());
+        Optional<User> found = findSamePerson(verification);
         if (found.isEmpty()) {
             return Optional.empty();
         }
@@ -167,7 +167,7 @@ public class UserAccountService {
         // 약관·비밀번호 화면에 머무는 사이 다른 탭에서 이미 가입했을 수 있다. 판정 키에 UNIQUE 가
         // 없으므로(V23) 막는 곳은 여기뿐이다. 소셜 계정만 있는 사람은 막지 않는다(중복가입 허용) —
         // 휴대폰으로 로그인되는 계정이 이미 있을 때만 막는다.
-        boolean hasPhoneAccount = userRepository.findByIdentityKey(verification.getIdentityKey())
+        boolean hasPhoneAccount = findSamePerson(verification)
                 .filter(User::canPasswordLogin)
                 .isPresent();
         if (hasPhoneAccount) {
@@ -377,6 +377,23 @@ public class UserAccountService {
      *
      * @param keepUserId 이 번호를 가질 계정. 새 가입이면 null
      */
+    /**
+     * 이 인증 결과의 주인과 같은 사람의 계정.
+     *
+     * <p>CI 해시로 먼저 찾고, 없으면 DI 해시로 한 번 더 본다. 두 값은 범위가 다르다 —
+     * CI 는 모든 인증수단을 아우르지만 <b>주지 않는 수단이 있고</b>, DI 는 이 이용기관 안에서만
+     * 유효하지만 그 수단에서는 확실히 온다. 한쪽만 보면 같은 사람이 두 계정을 갖는 경로가
+     * 남는다.
+     *
+     * <p>DI 가 없으면 DI 조회는 건너뛴다 — 없는 것은 "아무나" 가 아니라 "모른다" 다.
+     */
+    private Optional<User> findSamePerson(IdentityVerification verification) {
+        Optional<User> byCi = userRepository.findByIdentityKey(verification.getIdentityKey());
+        return byCi.isPresent()
+                ? byCi
+                : userRepository.findByDuplicateKey(verification.getDuplicateKey());
+    }
+
     private void releasePhoneFromOthers(String phone, Long keepUserId) {
         userRepository.findByPhone(phone)
                 .filter(holder -> !holder.getId().equals(keepUserId))

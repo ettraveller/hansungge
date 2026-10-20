@@ -47,6 +47,27 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findActiveByIdentityKey(@Param("key") String identityKey,
                                        @Param("excluded") UserStatus excluded);
 
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.duplicateKey = :key AND u.status <> :excluded
+            ORDER BY CASE WHEN u.phone IS NOT NULL AND u.passwordHash IS NOT NULL THEN 0 ELSE 1 END, u.id
+            """)
+    List<User> findActiveByDuplicateKey(@Param("key") String duplicateKey,
+                                        @Param("excluded") UserStatus excluded);
+
+    /**
+     * DI 해시로 같은 사람을 찾는다. CI 를 주지 않는 인증 수단에서 쓰인다.
+     *
+     * <p>{@code null} 을 넣으면 찾지 않는다 — DI 가 없는 것은 "아무나" 가 아니라 "모른다" 다.
+     * 그대로 조회하면 DI 가 비어 있는 모든 회원이 걸려 남의 계정을 내 것으로 만들 수 있다.
+     */
+    default Optional<User> findByDuplicateKey(String duplicateKey) {
+        if (duplicateKey == null || duplicateKey.isBlank()) {
+            return Optional.empty();
+        }
+        return findActiveByDuplicateKey(duplicateKey, UserStatus.WITHDRAWN).stream().findFirst();
+    }
+
     /** 같은 사람의 대표 계정 — {@link #findActiveByIdentityKey} 의 첫 번째. */
     default Optional<User> findByIdentityKey(String identityKey) {
         return findActiveByIdentityKey(identityKey, UserStatus.WITHDRAWN).stream().findFirst();

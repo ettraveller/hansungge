@@ -256,6 +256,33 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
             assertThat(count("users")).isEqualTo(1);
         }
 
+
+        @Test
+        @DisplayName("DI 가 오지 않아도 CI 로 알아본다 — 간편인증으로 가입한 사람이 문자인증으로 다시 와도 한 계정")
+        void ciCatchesSamePersonWhenDiMissing() throws Exception {
+            UserTestFixtures.Person person = UserTestFixtures.personWith("CI-ONLY", "홍길동", "01012345678");
+            // 첫 가입은 DI 를 주지 않는 수단으로.
+            identityProvider.omitDi = true;
+            flow.phone(person, PASSWORD);
+
+            // 두 번째는 DI 까지 주는 수단으로 돌아온다.
+            identityProvider.omitDi = false;
+            JsonNode again = agreeAndVerify(person);
+
+            assertThat(again.get("step").asText()).isEqualTo("EXISTING_ACCOUNT");
+            assertThat(count("users")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("다른 사람은 DI 가 달라 그대로 새 계정이 된다")
+        void differentPersonStillSignsUp() throws Exception {
+            flow.phone(UserTestFixtures.personWith("CI-A", "홍길동", "01011112222"), PASSWORD);
+
+            JsonNode other = agreeAndVerify(UserTestFixtures.personWith("CI-B", "김철수", "01033334444"));
+
+            assertThat(other.get("step").asText()).isEqualTo("SET_PASSWORD");
+        }
+
         @Test
         @DisplayName("그 자리에서 바로 비밀번호를 다시 정할 수 있다 — 본인확인을 이미 통과했다")
         void existingAccountCanResetRightAway() throws Exception {

@@ -22,6 +22,14 @@ import java.time.Period;
  */
 public record VerifiedIdentity(
         String identityKey,
+        /**
+         * DI 해시. 공급자가 DI 를 주지 않으면 null 이다.
+         *
+         * <p>{@code identityKey}(CI 해시)와 역할이 같지만 범위가 다르다 — CI 는 모든 인증수단을
+         * 아우르고, DI 는 이 이용기관 안에서만 유효하다. 그래서 CI 가 오지 않는 수단에서도
+         * 같은 사람을 알아보는 <b>보완</b> 키다.
+         */
+        String duplicateKey,
         String name,
         LocalDate birthDate,
         String phone) {

@@ -122,6 +122,19 @@ public class User {
     @Column(name = "identity_key", length = 64)
     private String identityKey;
 
+    /**
+     * DI(중복가입확인정보) 해시. 공급자가 DI 를 주지 않으면 NULL 이다.
+     *
+     * <p>{@link #identityKey} 와 역할이 같지만 범위가 다르다 — CI 는 모든 인증수단을 아우르고,
+     * DI 는 이 이용기관 안에서만 유효하다. <b>CI 를 주지 않는 수단</b>에서도 같은 사람을
+     * 알아보기 위한 보완 키다.
+     *
+     * <p>활성 회원 사이에서 UNIQUE 다 (V30). identityKey 와 달리 DB 에서 막는 이유는, 이 값이
+     * 들어오는 경로가 나중에 늘어날 때 조회를 빠뜨려도 두 계정이 생기지 않게 하기 위해서다.
+     */
+    @Column(name = "duplicate_key", length = 64)
+    private String duplicateKey;
+
     @Column(name = "email_verified_at")
     private OffsetDateTime emailVerifiedAt;
 
@@ -223,14 +236,31 @@ public class User {
         this.phone = kept;
     }
 
+    /**
+     * 이 계정의 주인과 같은 사람인가.
+     *
+     * <p>두 키 중 <b>어느 하나라도</b> 다르면 다른 사람이다. 하나만 보면, 한 값이 바뀌거나
+     * 비어 있을 때 남의 계정에 신원을 덮어쓸 수 있다.
+     */
     private void requireSamePerson(VerifiedIdentity identity) {
-        if (this.identityKey != null && !this.identityKey.equals(identity.identityKey())) {
+        if (differs(this.identityKey, identity.identityKey())
+                || differs(this.duplicateKey, identity.duplicateKey())) {
             throw new BusinessException(ErrorCode.IDENTITY_MISMATCH);
         }
     }
 
+    /** 양쪽에 값이 있을 때만 비교한다 — 한쪽이 없는 것은 "다르다" 가 아니라 "모른다" 다. */
+    private static boolean differs(String mine, String incoming) {
+        return mine != null && incoming != null && !mine.equals(incoming);
+    }
+
     private void applyIdentity(VerifiedIdentity identity, String carrier, OffsetDateTime now) {
         this.identityKey = identity.identityKey();
+        // 한 번 채워진 DI 를 null 로 되돌리지 않는다 — DI 를 주지 않는 수단으로 다시
+        // 인증했다고 해서 이미 아는 사실을 잊을 이유가 없다.
+        if (identity.duplicateKey() != null) {
+            this.duplicateKey = identity.duplicateKey();
+        }
         this.name = identity.name();
         this.phone = PhoneNumber.normalize(identity.phone());
         this.birthDate = identity.birthDate();

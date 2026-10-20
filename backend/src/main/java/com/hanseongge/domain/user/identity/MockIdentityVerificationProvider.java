@@ -95,6 +95,9 @@ public class MockIdentityVerificationProvider implements IdentityVerificationPro
         return new IdentityVerificationResult(
                 "mock-tx-" + UUID.randomUUID(),
                 "MOCK-CI-PERSONA-" + persona,
+                // DI 도 persona 마다 고정한다. 실물에서는 CI 가 없는 수단도 있으므로
+                // "DI 만 있는" 경우를 시험할 수 있어야 한다 — 그때는 ci 를 null 로 둔다.
+                "MOCK-DI-PERSONA-" + persona,
                 "테스트회원" + persona,
                 LocalDate.of(1990, 1, 1),
                 phone(),

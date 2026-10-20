@@ -55,6 +55,10 @@ public class IdentityVerification {
     @Column(name = "identity_key", length = 64, nullable = false)
     private String identityKey;
 
+    /** DI 해시. 공급자가 DI 를 주지 않으면 NULL 이다. */
+    @Column(name = "duplicate_key", length = 64)
+    private String duplicateKey;
+
     @Column(name = "name", length = 100, nullable = false)
     private String name;
 
@@ -89,6 +93,7 @@ public class IdentityVerification {
         this.providerTxId = providerTxId;
         this.purpose = purpose;
         this.identityKey = identity.identityKey();
+        this.duplicateKey = identity.duplicateKey();
         this.name = identity.name();
         this.birthDate = identity.birthDate();
         this.phone = identity.phone();
@@ -106,7 +111,7 @@ public class IdentityVerification {
 
     /** 저장된 값으로 신원을 되돌린다. 가입 시점에 회원 정보를 채우는 데 쓴다. */
     public VerifiedIdentity toIdentity() {
-        return new VerifiedIdentity(identityKey, name, birthDate, phone);
+        return new VerifiedIdentity(identityKey, duplicateKey, name, birthDate, phone);
     }
 
     /**

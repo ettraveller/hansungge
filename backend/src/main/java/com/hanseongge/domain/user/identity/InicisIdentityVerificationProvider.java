@@ -181,12 +181,20 @@ public class InicisIdentityVerificationProvider implements IdentityVerificationP
         String phone = requireValue(InicisSeedCipher.decrypt(text(body, "userPhone"), token, iv), "userPhone");
         // 없을 수 있다(카카오 "제한적 제공"). 여기서 막지 않고 넘긴다 — 판정은 서비스 계층이 한다.
         String ci = InicisSeedCipher.decrypt(text(body, "userCi"), token, iv);
+        // DI 는 본인확인(reqSvcCd=03)에서 온다. 간편인증(01)은 주지 않으므로 보통 비어 있다.
+        //
+        // ⚠️ 필드 이름을 규격서로 확인하지 못했다 — 03 은 아직 계약 전이라 실제 응답을 본 적이
+        //    없다. userCi 와 짝이 되는 userDi 로 읽되, 아래 로그가 "없음" 으로만 남으면
+        //    규격서에서 이름을 확인할 것 (TODO E-8).
+        String di = InicisSeedCipher.decrypt(text(body, "userDi"), token, iv);
 
         // providerDevCd 는 인증 수단(PASS·토스 등)이다. 로그로 남겨 두면 "CI 가 안 온 수단"을 가려낼 수 있다.
-        log.info("[IDENTITY] 이니시스 인증 통과. svcCd={} txId={} provider={} ci={}",
-                serviceCode, txId, text(body, "providerDevCd"), ci == null || ci.isBlank() ? "없음" : "있음");
+        log.info("[IDENTITY] 이니시스 인증 통과. svcCd={} txId={} provider={} ci={} di={}",
+                serviceCode, txId, text(body, "providerDevCd"),
+                ci == null || ci.isBlank() ? "없음" : "있음",
+                di == null || di.isBlank() ? "없음" : "있음");
         // 통신사는 주지 않는다. providerDevCd 는 인증 수단이지 통신사가 아니라 넣지 않는다.
-        return new IdentityVerificationResult(txId, ci, name, birth, phone, null);
+        return new IdentityVerificationResult(txId, ci, di, name, birth, phone, null);
     }
 
     private JsonNode lookup(URI lookupUrl, String txId) {

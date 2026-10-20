@@ -38,9 +38,21 @@ public final class UserTestFixtures {
      */
     public record Person(String ci, String name, LocalDate birthDate, String phone) {
 
+        /**
+         * 이 사람의 DI. CI 에서 만들어 내되 값이 겹치지 않게 한다 —
+         * 실물에서도 둘은 다른 값이고, 섞여 들어가면 테스트가 통과해도 뜻이 없다.
+         */
+        public String di() {
+            return "DI-" + ci;
+        }
+
         /** 이 사람이 본인인증을 마쳤을 때 회원에 남는 신원. */
         public VerifiedIdentity identity() {
-            return new VerifiedIdentity(keyOf(ci), name, birthDate, phone);
+            return new VerifiedIdentity(keyOf(ci), keyOf(di()), name, birthDate, phone);
+        }
+
+        public String duplicateKey() {
+            return keyOf(di());
         }
 
         public String identityKey() {

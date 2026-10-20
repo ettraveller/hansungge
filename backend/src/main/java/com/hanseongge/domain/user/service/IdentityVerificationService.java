@@ -120,11 +120,17 @@ public class IdentityVerificationService {
                 purpose, expiresAt, requestInfo);
     }
 
-    /** 여기서 CI 원본이 판정 키로 바뀐다. 이 뒤로 CI 는 어디에도 전달되지 않는다. */
+    /**
+     * 여기서 CI·DI 원본이 판정 키로 바뀐다. 이 뒤로 원본은 어디에도 전달되지 않는다.
+     *
+     * <p>DI 는 주지 않는 수단이 있어 없을 수 있다. 그때는 null 로 두고 CI 쪽으로만 판정한다.
+     */
     private VerifiedIdentity toVerifiedIdentity(IdentityVerificationResult result) {
         try {
             return new VerifiedIdentity(
-                    keyHasher.hash(result.ci()), result.name(), result.birthDate(), result.phone());
+                    keyHasher.hash(result.ci()),
+                    result.hasDi() ? keyHasher.hash(result.di()) : null,
+                    result.name(), result.birthDate(), result.phone());
         } catch (IllegalArgumentException e) {
             // 이름·생년월일 누락 등. 원문(개인정보)을 싣지 않는다.
             log.warn("[IDENTITY] 본인인증 응답 형식 오류. txId={}", result.providerTxId());

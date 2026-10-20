@@ -37,6 +37,13 @@ public class StubIdentityVerificationProvider implements IdentityVerificationPro
     /** true 면 다음 결과에서 CI 를 뺀다. */
     public boolean omitCi;
 
+    /**
+     * true 면 다음 결과에서 DI 를 뺀다.
+     *
+     * <p>간편인증은 DI 를 주지 않는다. 그 경로를 시험하려면 뺄 수 있어야 한다.
+     */
+    public boolean omitDi;
+
     /** 설정해 두면 {@link #verify} 가 그 예외를 던진다. */
     public IdentityVerificationException nextFailure;
 
@@ -78,7 +85,9 @@ public class StubIdentityVerificationProvider implements IdentityVerificationPro
             throw new IdentityVerificationException("스텁 본인인증 거래번호 불일치");
         }
         UserTestFixtures.Person person = nextPerson != null ? nextPerson : UserTestFixtures.person("테스트회원");
-        return new IdentityVerificationResult(returned.get("txId"), omitCi ? null : person.ci(),
+        return new IdentityVerificationResult(returned.get("txId"),
+                omitCi ? null : person.ci(),
+                omitDi ? null : person.di(),
                 person.name(), person.birthDate(), person.phone(), "STUB");
     }
 
@@ -95,6 +104,7 @@ public class StubIdentityVerificationProvider implements IdentityVerificationPro
         this.configured = true;
         this.nextPerson = null;
         this.omitCi = false;
+        this.omitDi = false;
         this.nextFailure = null;
         this.lastRequestId = null;
         this.lastCallbackUrl = null;
