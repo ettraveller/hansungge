@@ -292,7 +292,8 @@ public class OrderService {
                         itemsTotal, shippingFee,
                         request.receiverName().trim(), request.receiverPhone().trim(),
                         request.zipcode().trim(), request.address1().trim(),
-                        blankToNull(request.address2()), blankToNull(request.orderMemo())));
+                        blankToNull(request.address2()), blankToNull(request.orderMemo()),
+                        request.withdrawalConsent()));
             } catch (DataIntegrityViolationException e) {
                 last = e;
                 log.warn("[ORDER] 주문번호 충돌 {}. 다시 채번한다 ({}회차)", orderNo, attempt + 1);

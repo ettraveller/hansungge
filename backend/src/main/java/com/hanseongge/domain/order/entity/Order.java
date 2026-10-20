@@ -77,6 +77,14 @@ public class Order {
     @Column(name = "order_memo", length = 300)
     private String orderMemo;
 
+    /**
+     * 청약철회 제한 안내에 동의한 시각. NULL 이면 동의를 받지 않고 만들어진 주문이다.
+     *
+     * <p>지나간 주문을 소급해 채우지 않는다 — 받은 적 없는 동의를 받았다고 적는 것이다.
+     */
+    @Column(name = "withdrawal_consent_at")
+    private OffsetDateTime withdrawalConsentAt;
+
     @Column(name = "ordered_at", nullable = false)
     private OffsetDateTime orderedAt;
 
@@ -86,7 +94,8 @@ public class Order {
     public static Order create(String orderNo, Long userId,
                                BigDecimal itemsTotal, BigDecimal shippingFee,
                                String receiverName, String receiverPhone,
-                               String zipcode, String address1, String address2, String memo) {
+                               String zipcode, String address1, String address2, String memo,
+                               boolean withdrawalConsent) {
         Order order = new Order();
         order.orderNo = orderNo;
         order.userId = userId;
@@ -101,6 +110,7 @@ public class Order {
         order.address2 = address2;
         order.orderMemo = memo;
         order.orderedAt = OffsetDateTime.now();
+        order.withdrawalConsentAt = withdrawalConsent ? order.orderedAt : null;
         order.updatedAt = order.orderedAt;
         return order;
     }

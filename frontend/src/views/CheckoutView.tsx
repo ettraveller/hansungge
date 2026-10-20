@@ -46,6 +46,13 @@ export function CheckoutView() {
   // null = 아직 아무것도 고르지 않았다 → 기본 배송지를 쓴다.
   const [choice, setChoice] = useState<number | 'new' | null>(null);
   const [saveForNext, setSaveForNext] = useState(true);
+  /**
+   * 청약철회 제한 동의.
+   *
+   * <p>기본값은 꺼짐이다. 미리 켜 두면 "읽고 눌렀다" 가 아니라 "그냥 지나쳤다" 가 되어,
+   * 분쟁에서 동의로 인정받기 어렵다. 받는 이유 자체가 그 증거를 남기는 것이다.
+   */
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [orderMemo, setOrderMemo] = useState('');
 
   // 회원 정보를 기본값으로 넣어 둔다. 대부분 자기 이름·번호로 받는다.
@@ -85,6 +92,7 @@ export function CheckoutView() {
     address.receiverPhone.trim() !== '' &&
     address.zipcode.trim() !== '' &&
     address.address1.trim() !== '' &&
+    withdrawalConsent &&
     !createOrder.isPending;
 
   if (isLoading) {
@@ -112,6 +120,7 @@ export function CheckoutView() {
         address1: address.address1.trim(),
         address2: address.address2.trim() || undefined,
         orderMemo: orderMemo.trim() || undefined,
+        withdrawalConsent,
       },
       {
         onSuccess: (order) => {
@@ -205,6 +214,35 @@ export function CheckoutView() {
                 </li>
               ))}
             </ul>
+          </section>
+
+          {/* 안내만으로는 청약철회 제한이 성립하지 않는다. 전자상거래법 제17조 제2항
+              단서가 "소비자가 쉽게 알 수 있는 곳에 명기" 를 요구하고, 분쟁에서는
+              "이 주문에서 동의했다" 를 보여야 한다. 그래서 결제 직전에 받고 기록한다. */}
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>청약철회 안내</h2>
+            <p className={styles.consentBody}>
+              금·은 현물은 <strong>국제 시세에 따라 값이 계속 바뀌는 상품</strong>이고, 주문하신
+              규격으로 따로 준비해 드리는 상품입니다. 그래서 전자상거래법 제17조 제2항
+              제3호·제5호에 따라 <strong>단순 변심에 의한 청약철회가 제한</strong>됩니다.
+            </p>
+            <p className={styles.consentBody}>
+              다만 <strong>상품에 하자가 있거나 주문과 다른 물건이 온 경우</strong>에는 제한되지
+              않습니다. 받으신 날부터 3개월 이내, 그 사실을 안 날부터 30일 이내에 교환·반품하실
+              수 있습니다. 자세한 내용은 <Link href="/guide">이용안내</Link>에 있습니다.
+            </p>
+
+            <label className={styles.consentCheck}>
+              <input
+                type="checkbox"
+                checked={withdrawalConsent}
+                onChange={(e) => setWithdrawalConsent(e.target.checked)}
+              />
+              <span>
+                위 내용을 확인했으며 <strong>청약철회가 제한되는 상품</strong>임에 동의합니다.
+                <span className={styles.consentRequired}>(필수)</span>
+              </span>
+            </label>
           </section>
         </div>
 

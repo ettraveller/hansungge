@@ -165,6 +165,31 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
+    @DisplayName("청약철회 제한에 동의하지 않으면 주문이 만들어지지 않는다")
+    void withdrawalConsentIsRequired() throws Exception {
+        addToCart(optionId, 1);
+
+        MvcResult result = createOrderRaw(false);
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(count("orders")).isZero();
+        // 재고도 건드리지 않아야 한다 — 만들어지지 않은 주문이다.
+        assertThat(stockOf(optionId)).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("동의한 시각을 주문에 남긴다 — 분쟁에서 \"안내했다\" 가 아니라 \"동의했다\" 를 보여야 한다")
+    void withdrawalConsentIsRecorded() throws Exception {
+        addToCart(optionId, 1);
+
+        createOrder();
+
+        Integer consented = jdbc.queryForObject(
+                "SELECT count(*) FROM orders WHERE withdrawal_consent_at IS NOT NULL", Integer.class);
+        assertThat(consented).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("빈 장바구니로는 주문할 수 없다")
     void emptyCartCannotOrder() throws Exception {
         MvcResult result = createOrderRaw();
@@ -467,6 +492,11 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     private MvcResult createOrderRaw() throws Exception {
+        return createOrderRaw(true);
+    }
+
+    /** 청약철회 제한 동의 여부를 지정해 주문한다. */
+    private MvcResult createOrderRaw(boolean withdrawalConsent) throws Exception {
         return mockMvc.perform(post("/api/v1/orders")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -474,7 +504,8 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
                                 "receiverName", "홍길동",
                                 "receiverPhone", "010-1234-5678",
                                 "zipcode", "03187",
-                                "address1", "서울특별시 종로구 돈화문로 00"))))
+                                "address1", "서울특별시 종로구 돈화문로 00",
+                                "withdrawalConsent", withdrawalConsent))))
                 .andReturn();
     }
 

@@ -485,3 +485,51 @@
     margin-bottom: 150px;
   }
 }
+
+/* ---------- 청약철회 동의 ---------- */
+
+.consentBody {
+  font-size: 13px;
+  color: var(--gray);
+  line-height: 1.75;
+}
+
+.consentBody + .consentBody {
+  margin-top: 10px;
+}
+
+.consentBody strong {
+  color: var(--dark);
+}
+
+.consentBody a {
+  color: var(--dark);
+  text-decoration: underline;
+}
+
+/* 눌러야 하는 곳이라 본문과 떼어 놓는다. 읽고 누르는 순서가 보여야 한다. */
+.consentCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.consentCheck input {
+  flex: none;
+  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+}
+
+.consentRequired {
+  margin-left: 4px;
+  color: var(--danger, #c0392b);
+  font-weight: 700;
+}

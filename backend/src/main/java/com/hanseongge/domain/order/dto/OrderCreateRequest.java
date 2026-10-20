@@ -1,6 +1,7 @@
 package com.hanseongge.domain.order.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -41,6 +42,17 @@ public record OrderCreateRequest(
 
         @Schema(description = "배송 요청사항")
         @Size(max = 300, message = "요청사항은 300자까지 입력할 수 있습니다.")
-        String orderMemo
+        String orderMemo,
+
+        /**
+         * 청약철회 제한 안내에 동의했는가.
+         *
+         * <p>안내만으로는 제한이 성립하지 않는다 — 전자상거래법 제17조 제2항 단서는
+         * 사업자가 그 사실을 소비자가 쉽게 알 수 있는 곳에 <b>명기</b>하도록 요구하고,
+         * 분쟁에서는 "이 주문에서 동의했다" 를 보여야 한다. 그래서 받고, 기록한다.
+         */
+        @Schema(description = "청약철회 제한 안내 동의", requiredMode = Schema.RequiredMode.REQUIRED)
+        @AssertTrue(message = "청약철회 제한 안내에 동의해야 주문할 수 있습니다.")
+        boolean withdrawalConsent
 ) {
 }

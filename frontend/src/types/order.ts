@@ -75,6 +75,8 @@ export interface OrderPage {
 }
 
 export interface OrderCreateInput {
+  /** 청약철회 제한 안내 동의. 서버가 false 면 거절한다 */
+  withdrawalConsent: boolean;
   receiverName: string;
   receiverPhone: string;
   zipcode: string;
