@@ -1,0 +1,125 @@
+.page {
+  padding: 8px 0 72px;
+}
+
+.lead {
+  max-width: 72ch;
+  margin-bottom: 36px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--gray);
+}
+
+/* 목차 — 절이 다섯이라 위에서 한눈에 보이면 찾는 절로 바로 간다 */
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+
+.toc a {
+  padding: 7px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  color: var(--dark);
+  text-decoration: none;
+}
+
+.toc a:hover {
+  border-color: var(--dark);
+}
+
+.section {
+  padding: 34px 0;
+  border-bottom: 1px solid var(--line);
+  /* 목차에서 눌러 내려올 때 제목이 헤더 밑에 가리지 않게 한다 */
+  scroll-margin-top: 120px;
+}
+
+.heading {
+  margin: 0 0 14px;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.sectionLead {
+  max-width: 72ch;
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-600);
+}
+
+.list {
+  max-width: 72ch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 점 대신 가는 선 — 목록이 길어도 화면이 시끄럽지 않다 */
+.list li {
+  position: relative;
+  padding: 0 0 0 16px;
+  margin-bottom: 11px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-700);
+  word-break: keep-all;
+}
+
+.list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 6px;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.list li:last-child {
+  margin-bottom: 0;
+}
+
+.callout {
+  max-width: 72ch;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-left: 2px solid var(--dark);
+  background: var(--ink-50);
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--ink-700);
+  word-break: keep-all;
+}
+
+.foot {
+  max-width: 72ch;
+  margin-top: 32px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--gray);
+}
+
+.foot a {
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .section {
+    padding: 26px 0;
+  }
+
+  .heading {
+    font-size: 17px;
+  }
+}
