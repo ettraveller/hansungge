@@ -156,15 +156,9 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
-            {/* 대표전화는 아직 못 받았다 (TODO A-12).
-
-                예시번호(1588-0000 등)를 두지 않는 것은 그대로다 — 실제로 쓰는 회사가
-                있을 수 있는 번호라, 우리 고객이 엉뚱한 곳으로 전화를 건다. 대신 「-」로
-                자리만 둔다. 줄 자체를 빼면 "전화를 안 받는 곳" 으로 읽히고, 번호를 받았을 때
-                어디에 넣을지 다시 찾아야 한다. 「-」는 아직 없다는 뜻이 분명하다. */}
             <div className={styles.footCs}>
               <p className={styles.csLabel}>대표전화</p>
-              <p>-</p>
+              <p>02-743-4176</p>
               <p className={styles.csLabel}>운영시간</p>
               <p>월-토 10:00 ~ 19:00</p>
               <p>일요일·공휴일 휴무</p>
