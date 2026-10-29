@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
+import { ImageUploader } from '../ImageUploader';
 import { DecimalInput, Field, MoneyInput, SelectInput, TextArea, TextInput } from '../Field';
 import { flattenCategories, useAdminCategories } from '@/hooks/admin/useCategories';
 import type { ProductInput } from '@/api/admin/products';
@@ -384,20 +385,25 @@ export function ProductForm({
           />
         </Field>
 
-        <Field
-          label="대표 이미지 키"
-          htmlFor="p-thumb"
-          hint="URL 이 아니라 Object Storage 키다. 업로드 기능은 아직 없다 (STEP 10)."
-        >
-          <TextInput
-            id="p-thumb"
-            value={thumbnailKey}
-            maxLength={300}
-            placeholder="products/2026/goldbar-375.jpg"
-            onChange={(e) => setThumbnailKey(e.target.value)}
-          />
-        </Field>
       </div>
+
+      {/*
+        대표이미지는 상세 이미지와 쓰이는 자리가 다르다 — 목록·검색결과·장바구니·
+        주문서·주문내역이 모두 이 한 장을 쓴다. 상세 이미지와 한 칸에 섞여 있으면
+        "첫 번째 장이 대표"라는 암묵적 규칙에 기대야 하고, 순서를 바꾸는 순간
+        목록에 뜨는 사진이 조용히 바뀐다. 그래서 칸을 나눠 둔다.
+      */}
+      <Field
+        label="대표 이미지"
+        hint="목록 · 장바구니 · 주문서에 쓰이는 한 장이다. 정사각형으로 잘려 보인다."
+      >
+        <ImageUploader
+          value={thumbnailKey === '' ? [] : [thumbnailKey]}
+          onChange={(keys) => setThumbnailKey(keys[0] ?? '')}
+          max={1}
+          emptyLabel="대표 사진을 끌어다 놓거나 클릭해서 선택하세요"
+        />
+      </Field>
 
       <Field label="상품 설명" htmlFor="p-desc" hint="HTML 을 넣을 수 있다.">
         <TextArea

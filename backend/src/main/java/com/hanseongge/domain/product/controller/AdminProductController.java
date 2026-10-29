@@ -173,9 +173,10 @@ public class AdminProductController {
 
     // ---------- 이미지 ----------
 
-    @Operation(summary = "이미지 목록 교체",
-            description = "보낸 순서대로 정렬된다. Object Storage 업로드는 STEP 10 이며 "
-                    + "여기서는 이미 업로드된 키만 연결한다.")
+    @Operation(summary = "상세 이미지 목록 교체",
+            description = "보낸 순서대로 상세 페이지에 나열된다. 파일 업로드는 "
+                    + "POST /api/admin/media 가 받고, 그 응답의 objectKey 를 여기로 보낸다. "
+                    + "대표이미지는 이 목록이 아니라 상품의 thumbnailKey 다.")
     @PreAuthorize("hasRole('MANAGER')")
     @PutMapping("/{id}/images")
     public ResponseEntity<List<String>> replaceImages(@PathVariable Long id,

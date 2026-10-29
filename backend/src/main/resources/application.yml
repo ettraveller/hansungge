@@ -35,6 +35,15 @@ spring:
         jdbc:
           time_zone: Asia/Seoul
 
+  # 상품 이미지 업로드. 요청 전체 상한을 장당 상한(app.media.max-bytes-per-file)보다
+  # 넉넉히 둔다 — 여러 장을 한 번에 올리면 합계가 그만큼 커진다. 톰캣이 먼저 끊으면
+  # 응답이 우리 오류 형식이 아니라 사유를 알려줄 수 없으므로, 장수·장당 판단은
+  # AdminMediaController 가 하게 남겨 둔다.
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:12MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:60MB}
+
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -182,6 +191,17 @@ app:
     secret-key: ${PAYMENT_TOSS_SECRET_KEY:}
     connect-timeout-seconds: ${PAYMENT_CONNECT_TIMEOUT:5}
     read-timeout-seconds: ${PAYMENT_READ_TIMEOUT:15}
+
+  # 업로드 이미지. dir 은 앱 서버 디스크이고, public-base-url 은 nginx 가 그 디렉터리를
+  # 내보내는 주소다 (infra/nginx/hanseongge.conf 의 `location /media/`).
+  #
+  # 기본값은 로컬 기준이다 — 백엔드를 8080 으로 띄우면 정적 서빙이 없어 미리보기가
+  # 깨지는데, 로컬에서는 Spring 이 /media/** 를 직접 내보낸다 (MediaResourceConfig).
+  media:
+    dir: ${UPLOAD_DIR:./var/uploads}
+    public-base-url: ${UPLOAD_PUBLIC_BASE_URL:http://localhost:8080/media}
+    max-bytes-per-file: ${UPLOAD_MAX_BYTES_PER_FILE:10485760}
+    max-count: ${UPLOAD_MAX_COUNT:10}
 
 logging:
   level:

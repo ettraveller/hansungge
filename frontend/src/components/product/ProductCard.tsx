@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { WishlistHeart } from '@/components/product/WishlistHeart';
+import { mediaUrl } from '@/utils/media';
 import { PRICE_INQUIRY_LABEL, formatKrw } from '@/utils/format';
 import { METAL_LABEL } from '@/types/price';
 import { PRODUCT_STATUS_LABEL, type ProductSummary } from '@/types/product';
@@ -15,14 +16,15 @@ interface Props {
 /**
  * 상품 카드 (레퍼런스 시안 `.prod`).
  *
- * <p>썸네일은 시안의 CSS 금괴 일러스트를 그대로 쓴다. 실제 상품 사진은 Object Storage
- * 연동(STEP 10) 후에 들어오는데, 그 전까지 회색 네모를 두면 화면이 비어 보인다.
- * 금속 종류에 따라 금색/은색으로 갈리고, 반지·기념품처럼 중량이 작은 것은 원형이다.
+ * <p>대표이미지가 등록된 상품은 그 사진을 쓰고, 아직 없는 상품은 시안의 CSS 금괴
+ * 일러스트로 대신한다 — 회색 네모를 두면 "불러오지 못했다"로 읽힌다. 일러스트는 금속
+ * 종류에 따라 금색/은색으로 갈리고, 반지·기념품처럼 중량이 작은 것은 원형이다.
  *
  * <p>가격은 서버가 계산한 값을 표시만 한다. 시세×중량을 여기서 계산하면 목록·상세·결제
  * 금액이 서로 어긋날 수 있다 (설계서 원칙 P1).
  */
 export function ProductCard({ product, flag }: Props) {
+  const thumbUrl = mediaUrl(product.thumbnailKey);
   const blockedLabel = blockedReason(product);
 
   return (
@@ -36,7 +38,26 @@ export function ProductCard({ product, flag }: Props) {
             {flag.toUpperCase()}
           </span>
         )}
-        <div className={barClassName(product)}>{barLabel(product)}</div>
+        {/*
+          사진이 있으면 사진, 없으면 일러스트. 사진이 없는 상품에 회색 네모를 두면
+          "불러오지 못했다"로 읽히는데, 실제로는 아직 안 올린 것이다.
+
+          next/image 를 쓰지 않는다 — 이미지 주소가 환경변수에서 오고(API 도메인 또는
+          나중의 CDN), next/image 는 허용 도메인을 빌드 시점 설정에 적어둬야 한다.
+          주소가 바뀌는 날 설정 두 곳이 어긋나면 사진이 전부 사라진다.
+        */}
+        {thumbUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className={styles.photo}
+            src={thumbUrl}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className={barClassName(product)}>{barLabel(product)}</div>
+        )}
         {blockedLabel && (
           <span className={styles.soldOut}>
             <b className={styles.soldOutLabel}>{blockedLabel}</b>

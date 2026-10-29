@@ -202,7 +202,8 @@ function OrderRow({
       </div>
 
       <div className={styles.body}>
-        {/* 상품 사진 자리. 이미지 업로드(STEP 10)가 붙으면 여기에 들어온다 */}
+        {/* 상품 사진 자리. 주문 항목은 주문 당시를 복사한 스냅샷이라 이미지 키를 들고
+                있지 않다 — 넣으려면 스냅샷에 키를 추가하는 마이그레이션이 먼저다 */}
         <div className={styles.thumb} aria-hidden="true">
           상품
           <br />

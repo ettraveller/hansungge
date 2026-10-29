@@ -131,7 +131,13 @@ public class SecurityConfig {
                                 "/api/v1/qnas/**",
                                 // 결제창 스크립트를 미리 준비하기 위해 연다. 담긴 clientKey 는
                                 // 원래 브라우저에 나가는 공개값이고, 시크릿 키는 담기지 않는다.
-                                "/api/v1/payments/config").permitAll()
+                                "/api/v1/payments/config",
+                                // 업로드된 상품 사진 (MediaResourceConfig). 상품 상세에 그대로
+                                // 실리는 공개 이미지라 토큰을 요구할 이유가 없고, 요구하면
+                                // <img> 가 헤더를 붙이지 못해 전부 깨진다.
+                                //
+                                // GET 만 열린다 — 쓰기는 /api/admin/media (MANAGER 권한)다.
+                                "/media/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // 토스 서버가 부르는 자리다. 로그인이 있을 수 없다.
                         //

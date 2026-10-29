@@ -16,7 +16,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080'
 const FALLBACK_MESSAGE = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
-  /** JSON 으로 직렬화할 요청 본문 */
+  /** 요청 본문. {@link FormData} 면 그대로 보내고, 그 밖에는 JSON 으로 직렬화한다. */
   body?: unknown;
   /** 쿼리 파라미터 (undefined/null/빈문자열은 제외된다) */
   query?: Record<string, string | number | boolean | undefined | null>;
@@ -39,11 +39,19 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, query, headers, next, ...rest } = options;
 
+  // 파일 업로드.
+  //
+  // ⚠️ Content-Type 을 직접 넣으면 안 된다. multipart 는 헤더에 경계 문자열
+  // (`boundary=----WebKitFormBoundary…`)이 함께 들어가야 하고, 그 값은 fetch 가
+  // FormData 를 보면서 만든다. 손으로 `multipart/form-data` 만 적으면 경계가
+  // 빠져서 서버가 본문을 파싱하지 못하고, 원인을 말해주지 않는 400 이 돌아온다.
+  const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;
+
   const response = await fetch(buildUrl(path, query), {
     ...rest,
     next,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isMultipart ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     },
     // 관리자 토큰은 쿠키가 아니라 응답 본문으로 오고 Authorization 헤더로 되돌아간다
@@ -51,7 +59,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     // 회원 세션이 붙을 때를 위해 자격증명은 허용해 둔다. 백엔드 CORS 도 이에 맞춰
     // allowCredentials=true + 명시적 origin 목록으로 설정돼 있다.
     credentials: 'include',
-    body: body == null ? undefined : JSON.stringify(body),
+    body: body == null ? undefined : isMultipart ? (body as FormData) : JSON.stringify(body),
   });
 
   // 204 등 본문 없는 응답

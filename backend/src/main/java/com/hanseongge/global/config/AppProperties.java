@@ -22,8 +22,33 @@ public record AppProperties(
         @DefaultValue Mail mail,
         @DefaultValue Identity identity,
         @DefaultValue Sms sms,
-        @DefaultValue Payment payment
+        @DefaultValue Payment payment,
+        @DefaultValue Media media
 ) {
+
+    /**
+     * 업로드 이미지 저장 (상품 사진·이벤트 배너).
+     *
+     * <p>비밀값이 없다 — 저장 위치와 상한뿐이라 기본값을 둔다. {@code dir} 기본값이
+     * 상대경로인 이유: local 에서 프로젝트 밖에 쓰면 개발자가 지우기 어렵고,
+     * 운영은 {@code application-prod.yml} 이 절대경로를 지정한다.
+     *
+     * <p>⚠️ {@code publicBaseUrl} 은 nginx 의 {@code location /media/} 와 짝이다.
+     * 한쪽만 바꾸면 업로드는 성공하는데 화면에서 전부 깨진다.
+     */
+    public record Media(
+            @DefaultValue("./var/uploads") String dir,
+            @DefaultValue("http://localhost:8080/media") String publicBaseUrl,
+            /** 장당 상한. 바꾸면 {@code ErrorCode.MEDIA_TOO_LARGE} 문구도 함께 고친다. */
+            @DefaultValue("10485760") long maxBytesPerFile,
+            /** 한 요청에 올릴 수 있는 장수. {@code ErrorCode.MEDIA_TOO_MANY} 문구와 짝이다. */
+            @DefaultValue("10") int maxCount
+    ) {
+        public Media {
+            dir = dir.strip();
+            publicBaseUrl = publicBaseUrl.strip();
+        }
+    }
 
     /**
      * 가입·로그인 정책.

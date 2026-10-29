@@ -17,8 +17,9 @@ import lombok.NoArgsConstructor;
  * CDN 도메인이 바뀌는 날 전 행이 무효가 되고, 그때 일괄 UPDATE 를 돌려야 한다.
  * 키만 두면 URL 조립은 조회 시점의 설정이 결정한다.
  *
- * <p>업로드 자체(NCP Object Storage 연동)는 STEP 10 이다. 여기서는 <b>이미 업로드된 키를
- * 상품에 연결·정렬·해제</b>하는 것만 다룬다.
+ * <p>업로드는 {@code AdminMediaController} 가 받고, 저장 위치는 {@code MediaStorage} 구현이
+ * 정한다. 지금은 앱 서버 디스크이고, Object Storage 로 옮겨도 이 테이블은 그대로 둔다 —
+ * 키만 있고 URL 이 없는 것이 그 때문이다.
  */
 @Entity
 @Getter

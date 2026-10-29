@@ -12,6 +12,7 @@ import { ApiError } from '@/types/api';
 import { METAL_LABEL } from '@/types/price';
 import type { ProductDetail } from '@/types/product';
 import { formatGram, formatKrw, formatPricePerGram } from '@/utils/format';
+import { mediaUrl } from '@/utils/media';
 import styles from './ProductDetailView.module.css';
 
 /**
@@ -32,6 +33,20 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   const addToCart = useAddToCart();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  /**
+   * 보여줄 사진들.
+   *
+   * <p>대표이미지를 맨 앞에 둔다 — 목록에서 그 사진을 보고 눌러 들어왔으므로, 상세의
+   * 첫 장이 다른 사진이면 같은 상품인지 한 번 더 확인하게 된다. 상세 이미지에 대표와
+   * 같은 키가 또 들어 있으면 중복을 걷어낸다.
+   */
+  const photos = [
+    ...new Set([product.thumbnailKey, ...product.imageKeys].filter((key) => key != null)),
+  ]
+    .map((key) => mediaUrl(key))
+    .filter((url): url is string => url != null);
 
   /**
    * "최근 본 상품"에 남긴다.
@@ -92,15 +107,45 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
         {/* ---------- 이미지 ---------- */}
         <div className={styles.gallery}>
           <WishlistHeart productId={product.id} productName={product.name} />
-          <div className={styles.mainImage} aria-hidden="true">
-            <span className={styles.imageMark}>
-              {product.metalType ? METAL_LABEL[product.metalType] : '한성금거래소'}
-            </span>
-          </div>
-          {product.imageKeys.length > 0 && (
-            <p className={styles.imageNote}>
-              이미지 {product.imageKeys.length}장 · 스토리지 연동 후 표시됩니다
-            </p>
+          {photos.length > 0 ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.mainPhoto}
+                src={photos[Math.min(photoIndex, photos.length - 1)]}
+                alt={product.name}
+                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+                loading="eager"
+                decoding="async"
+              />
+              {photos.length > 1 && (
+                <ul className={styles.photoStrip}>
+                  {photos.map((url, index) => (
+                    <li key={url}>
+                      <button
+                        type="button"
+                        className={
+                          index === photoIndex ? styles.photoPickerOn : styles.photoPicker
+                        }
+                        aria-label={`${index + 1}번째 사진 보기`}
+                        aria-current={index === photoIndex}
+                        onClick={() => setPhotoIndex(index)}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" loading="lazy" decoding="async" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <div className={styles.mainImage} aria-hidden="true">
+              <span className={styles.imageMark}>
+                {product.metalType ? METAL_LABEL[product.metalType] : '한성금거래소'}
+              </span>
+            </div>
           )}
         </div>
 

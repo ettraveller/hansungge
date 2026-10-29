@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
 import { Field, TextArea, TextInput } from '@/components/admin/Field';
+import { ImageUploader } from '@/components/admin/ImageUploader';
 import { Modal } from '@/components/admin/Modal';
 import { Pagination } from '@/components/admin/Pagination';
 import { Panel } from '@/components/admin/Panel';
@@ -293,16 +294,14 @@ function EventDialog({
         />
       </Field>
 
-      <Field
-        label="대표 이미지 키"
-        hint="URL 이 아니라 Object Storage 키입니다. 업로드 기능은 아직 없습니다 (STEP 10)."
-      >
-        <TextInput
-          value={thumbnailKey}
-          maxLength={300}
+      <Field label="대표 이미지" hint="이벤트 목록과 상세 상단에 쓰이는 한 장입니다.">
+        <ImageUploader
+          value={thumbnailKey === '' ? [] : [thumbnailKey]}
+          onChange={(keys) => setThumbnailKey(keys[0] ?? '')}
+          folder="events"
+          max={1}
           disabled={readOnly || pending}
-          onChange={(e) => setThumbnailKey(e.target.value)}
-          placeholder="events/2026/september.jpg"
+          emptyLabel="배너를 끌어다 놓거나 클릭해서 선택하세요"
         />
       </Field>
 

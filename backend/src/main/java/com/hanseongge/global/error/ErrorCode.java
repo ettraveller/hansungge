@@ -193,7 +193,23 @@ public enum ErrorCode {
      */
     MEMBER_WITHDRAWN_IMMUTABLE(HttpStatus.CONFLICT, "탈퇴한 회원의 상태는 변경할 수 없습니다."),
     /** 관리자가 회원을 탈퇴시키지 않는다. 탈퇴는 본인만 할 수 있다. */
-    MEMBER_WITHDRAW_DENIED(HttpStatus.BAD_REQUEST, "탈퇴 처리는 회원 본인만 할 수 있습니다.");
+    MEMBER_WITHDRAW_DENIED(HttpStatus.BAD_REQUEST, "탈퇴 처리는 회원 본인만 할 수 있습니다."),
+
+    // --- 이미지 업로드 ---
+    /**
+     * 확장자가 아니라 <b>실제 바이트</b>로 판정한 결과다. {@code .jpg} 로 이름을 바꾼
+     * HTML·PDF 가 여기서 걸린다.
+     */
+    MEDIA_UNSUPPORTED_TYPE(HttpStatus.BAD_REQUEST, "JPG · PNG · WEBP · GIF 이미지만 올릴 수 있습니다."),
+    /**
+     * ⚠️ 숫자가 {@code app.media.max-bytes-per-file} 기본값(10MB)과 묶여 있다.
+     * 설정을 바꾸면 이 문구도 함께 고쳐야 한다 — 거절당한 사람이 몇 MB 까지 되는지
+     * 모르면 크기를 줄여 볼 수조차 없다.
+     */
+    MEDIA_TOO_LARGE(HttpStatus.BAD_REQUEST, "이미지 한 장은 10MB 까지 올릴 수 있습니다."),
+    MEDIA_TOO_MANY(HttpStatus.BAD_REQUEST, "한 번에 최대 10장까지 올릴 수 있습니다."),
+    /** 디스크·권한 문제다. 올린 사람이 할 수 있는 일이 없으므로 재시도만 안내한다. */
+    MEDIA_STORE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String message;

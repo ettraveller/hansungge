@@ -1,0 +1,177 @@
+/* =====================================================================
+   이미지 업로더 — 드롭존 + 미리보기
+   ===================================================================== */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* --- 드롭존 --------------------------------------------------------- */
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--ink-50);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    background var(--dur) var(--ease-out);
+}
+
+.drop:hover {
+  border-color: var(--gold-600);
+  background: var(--gold-50);
+}
+
+/* 클릭해서 포커스를 잡은 상태가 곧 "여기에 붙여넣을 수 있다"는 뜻이다.
+   그래서 포커스 링을 지우지 않고 오히려 또렷하게 둔다. */
+.drop:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: 2px;
+  border-color: var(--gold-600);
+  background: var(--gold-50);
+}
+
+.dropActive {
+  border-color: var(--gold-600);
+  border-style: solid;
+  background: var(--gold-100);
+}
+
+.dropDisabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dropDisabled:hover {
+  border-color: var(--line-strong);
+  background: var(--ink-50);
+}
+
+.dropTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: var(--tracking-snug);
+  color: var(--dark);
+}
+
+.dropHint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--gray);
+  line-height: var(--leading-normal);
+}
+
+.dropMeta {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-400);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--red);
+}
+
+/* --- 미리보기 ------------------------------------------------------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 대표이미지는 한 장뿐이라 격자가 필요 없다. 더 크게 보여준다 — 이 사진이
+   목록·장바구니·주문서에 모두 쓰이므로 잘림을 눈으로 확인해야 한다. */
+.single {
+  display: block;
+  width: min(240px, 100%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  /* contain 이 아니라 cover 다 — 화면에 실제로 어떻게 잘려 나가는지 봐야 한다. */
+  object-fit: cover;
+  background: var(--ink-100);
+}
+
+.itemBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--line);
+  background: var(--ink-50);
+}
+
+.iconButton {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  font-size: var(--text-xs);
+  color: var(--ink-600);
+  cursor: pointer;
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.order {
+  flex: 1;
+  text-align: center;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--gray);
+}
+
+.remove {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-size: var(--text-xs);
+  color: var(--red);
+  cursor: pointer;
+}
+
+.remove:hover:not(:disabled) {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+.remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

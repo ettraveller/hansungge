@@ -239,6 +239,18 @@ install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 \
 # systemd 유닛의 ProtectSystem=strict 아래에서 유일하게 쓰기 가능한 경로다
 install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 /var/log/hanseongge
 
+# 업로드한 상품 사진 (app.media.dir).
+#
+# ⚠️ /opt/hanseongge <b>밖</b>에 둔다. 배포는 releases 디렉터리를 새로 만들고 심볼릭
+# 링크를 갈아끼우므로, 릴리스 안에 두면 배포 한 번에 올려둔 사진이 전부 사라진다.
+#
+# ⚠️ systemd 유닛의 ReadWritePaths 에 이 경로가 있어야 한다. ProtectSystem=strict
+# 아래에서는 디렉터리가 있고 소유자가 맞아도 쓰기가 거부된다 — 업로드만 500 이 나고,
+# 권한을 봐도 이상한 데가 없어서 원인을 찾기 어렵다.
+install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 \
+  /var/lib/hanseongge \
+  /var/lib/hanseongge/uploads
+
 # certbot 의 HTTP-01 검증용
 install -d -o root -g root -m 0755 /var/www/certbot
 

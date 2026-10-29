@@ -43,3 +43,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 로컬에서 올린 이미지 (app.media.dir 기본값) ###
+# 개발 중 올린 상품 사진이다. 저장소에 들어갈 물건이 아니고, 운영은
+# /var/lib/hanseongge/uploads 를 쓴다 (application-prod.yml).
+var/
