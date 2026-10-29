@@ -27,7 +27,22 @@ import styles from './ProductDetailView.module.css';
  * 합계는 이미 서버에서 맞춰져 있고, 프론트엔드가 다시 계산하면 두 값이 어긋날 수 있다
  * (설계서 원칙 P1).
  */
-export function ProductDetailView({ product }: { product: ProductDetail }) {
+export function ProductDetailView({
+  product,
+  preview = false,
+}: {
+  product: ProductDetail;
+  /**
+   * 관리자 미리보기로 그리는 중인가.
+   *
+   * <p>true 면 <b>바깥을 건드리는 동작을 전부 끈다</b> — 아직 상품이 아니라서
+   * 장바구니·찜·최근본상품이 가리킬 id 가 없다. 그대로 두면 없는 상품으로
+   * 요청이 나가 404 가 나고, 최근 본 상품에는 엉뚱한 기록이 남는다.
+   *
+   * <p>화면은 그대로 그린다. 그것이 미리보기의 목적이다.
+   */
+  preview?: boolean;
+}) {
   const router = useRouter();
   const { restored, isAuthenticated } = useUserSession();
   const addToCart = useAddToCart();
@@ -67,10 +82,11 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   const markViewed = useMarkViewed();
   const marked = useRef(false);
   useEffect(() => {
-    if (!isAuthenticated || marked.current) return;
+    // 미리보기에는 기록할 상품이 없다. 그대로 두면 없는 id 로 요청이 나간다.
+    if (preview || !isAuthenticated || marked.current) return;
     marked.current = true;
     markViewed.mutate(product.id);
-  }, [isAuthenticated, product.id, markViewed]);
+  }, [preview, isAuthenticated, product.id, markViewed]);
 
   const option = product.options[selectedIndex];
   const price = product.prices[selectedIndex];
@@ -116,7 +132,7 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
       <div className={styles.layout}>
         {/* ---------- 이미지 ---------- */}
         <div className={styles.gallery}>
-          <WishlistHeart productId={product.id} productName={product.name} />
+          {!preview && <WishlistHeart productId={product.id} productName={product.name} />}
           {photos.length > 0 ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -241,11 +257,16 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
           )}
 
           {/* ---------- 구매 ---------- */}
+          {/*
+            미리보기에서도 버튼은 그린다 — 고객이 보는 화면이 어떤 모양인지가 미리보기의
+            목적이고, 버튼을 빼면 그 아래 여백과 배치가 달라진다. 대신 누르지 못하게 한다.
+            아직 상품이 아니라서 담을 대상이 없다.
+          */}
           <div className={styles.actions}>
             <button
               type="button"
               className={styles.cartBtn}
-              disabled={!orderable || addToCart.isPending}
+              disabled={preview || !orderable || addToCart.isPending}
               onClick={() => handleAddToCart()}
             >
               {addToCart.isPending ? '담는 중…' : '장바구니 담기'}
@@ -253,7 +274,7 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
             <button
               type="button"
               className={styles.buyBtn}
-              disabled={!orderable || addToCart.isPending}
+              disabled={preview || !orderable || addToCart.isPending}
               onClick={handleBuyNow}
             >
               바로 구매

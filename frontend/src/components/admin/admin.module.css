@@ -1200,3 +1200,13 @@ a.hint:hover {
 .dialogWide {
   width: min(1040px, calc(100vw - 32px));
 }
+
+/* 미리보기 안에서 고객 화면을 그리는 자리.
+   쇼핑몰 레이아웃은 `.wrap`(페이지 좌우 여백)을 전제로 짜여 있는데, 모달 본문에는
+   그 여백이 없다. 여기서 같은 폭 제한만 흉내 내고 나머지는 쇼핑몰 CSS 에 맡긴다. */
+.previewFrame {
+  width: 100%;
+  /* 관리자 화면의 글자색·줄간격이 섞여 들어가지 않게 기본값으로 되돌린다. */
+  color: var(--dark);
+  font-size: var(--text-base);
+}

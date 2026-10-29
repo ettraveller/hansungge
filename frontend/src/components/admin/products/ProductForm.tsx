@@ -538,13 +538,17 @@ export function ProductForm({
           description,
           galleryKeys,
           detailKeys,
-          priceType,
-          metalType: marketLinked ? (metalType === '' ? null : metalType) : null,
-          weightG: marketLinked ? weightG : null,
-          purity: purity.trim() === '' ? null : purity.trim(),
-          laborCost: laborCost === '' ? '0' : laborCost,
-          multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',
-          fixedPrice: marketLinked ? null : fixedPrice,
+          // 가격 재료는 등록할 때 보내는 값과 똑같이 만든다. 여기서 한 줄이라도
+          // 달라지면 미리보기 금액과 등록 후 금액이 갈린다.
+          pricing: {
+            priceType,
+            metalType: marketLinked ? (metalType === '' ? null : metalType) : null,
+            weightG: marketLinked ? weightG : null,
+            purity: purity.trim() === '' ? null : purity.trim(),
+            laborCost: laborCost === '' ? '0' : laborCost,
+            multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',
+            fixedPrice: marketLinked ? null : fixedPrice,
+          },
         }}
       />
     </form>

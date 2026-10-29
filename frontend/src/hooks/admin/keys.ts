@@ -32,6 +32,9 @@ export const adminKeys = {
     [...adminKeys.products(), id, 'images', kind] as const,
   productPreview: (id: number) => [...adminKeys.products(), id, 'preview'] as const,
   /** 등록 전 가격 미리보기. 입력값이 키의 일부다 — 값이 바뀌면 다시 계산해야 한다 */
+  /** 등록 전 상세 미리보기. 입력값이 키의 일부다 — 값이 바뀌면 다시 받아야 한다 */
+  productDraftPreview: (input: unknown) =>
+    [...adminKeys.products(), 'draft-preview', input] as const,
   productDraftPrice: (input: unknown) =>
     [...adminKeys.products(), 'draft-price', input] as const,
 

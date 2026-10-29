@@ -1,7 +1,7 @@
 import { adminApi } from '@/api/admin/client';
 import type { AdminPriceQuote, AdminProduct, AdminProductOption } from '@/types/admin';
 import type { MetalType, ProductPriceType } from '@/types/price';
-import type { ProductStatus } from '@/types/product';
+import type { ProductDetail, ProductStatus } from '@/types/product';
 import type { PageResponse } from '@/types/api';
 
 export interface ProductSearch {
@@ -172,4 +172,24 @@ export interface DraftPriceInput {
 
 export function previewDraftPrice(input: DraftPriceInput) {
   return adminApi.post<AdminPriceQuote>('/api/admin/products/price-preview', { body: input });
+}
+
+/** 상세 미리보기 입력. 가격 재료는 {@link DraftPriceInput} 를 그대로 품는다. */
+export interface DraftDetailInput {
+  name: string;
+  description?: string | null;
+  galleryKeys: string[];
+  detailKeys: string[];
+  pricing: DraftPriceInput;
+}
+
+/**
+ * 등록 전 상세 미리보기.
+ *
+ * <p>공개 상세({@code GET /api/v1/products/{id}})와 <b>같은 모양</b>으로 돌아온다.
+ * 관리자 화면이 그 응답으로 고객용 상세 컴포넌트를 그대로 그린다 — 비슷하게 다시
+ * 그리면 그쪽이 바뀔 때 미리보기만 낡아서 "미리보기와 실제가 다르다"가 된다.
+ */
+export function previewDraftDetail(input: DraftDetailInput) {
+  return adminApi.post<ProductDetail>('/api/admin/products/detail-preview', { body: input });
 }

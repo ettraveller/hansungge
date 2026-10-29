@@ -5,7 +5,11 @@ import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductImage;
 import com.hanseongge.domain.pricing.service.PriceCalculationService;
 import com.hanseongge.domain.pricing.service.PriceQuote;
+import com.hanseongge.domain.product.dto.ProductDetailResponse;
+import com.hanseongge.domain.product.dto.ProductDraftDetailRequest;
 import com.hanseongge.domain.product.dto.ProductDraftPriceRequest;
+import com.hanseongge.domain.product.dto.ProductOptionResponse;
+import com.hanseongge.domain.pricing.dto.PublicPriceQuoteResponse;
 import com.hanseongge.domain.product.entity.ProductImageKind;
 import com.hanseongge.domain.product.entity.ProductOption;
 import com.hanseongge.domain.product.entity.ProductPricing;
@@ -133,34 +137,65 @@ public class ProductService {
     }
 
     /**
-     * 등록 전 가격 미리보기 — 상품을 만들지 않고 입력값만으로 계산한다.
+     * 등록 전 상세 화면 미리보기 — 상품을 만들지 않고 입력값만으로 조립한다.
      *
-     * <p>관리자가 등록 폼을 채우면서 "이 중량·공임이면 얼마가 되는가"를 확인하는 데 쓴다.
-     * 그 금액을 화면에서 계산하면 안 된다 — 시세·보정·부가세·반올림 규칙이 전부 서버에
+     * <p>등록 직후 상품은 {@code HIDDEN} 이라 고객 화면으로 확인할 방법이 없다. 그것이
+     * 없으면 가격을 보려고 "일단 판매중으로 바꿔 보고 되돌리는" 절차를 쓰게 되고, 그 몇 초
+     * 동안 확인되지 않은 가격이 실제로 주문 가능한 상태가 된다.
+     *
+     * <p>응답이 고객 화면이 받는 것과 <b>같은 모양</b>이다({@link ProductDetailResponse}).
+     * 관리자 화면은 그 응답으로 고객용 상세 컴포넌트를 그대로 그린다 — 비슷하게 다시
+     * 그리면 쇼핑몰이 바뀔 때 미리보기만 낡아서 "미리보기와 실제가 다르다"가 된다.
+     *
+     * <p>금액도 화면에서 계산하지 않는다. 시세·보정·부가세·반올림 규칙이 전부 서버에
      * 있고, 둘이 갈라지는 날 미리보기와 실제 판매가가 달라진다 (설계서 원칙 P1).
      *
      * <p>⚠️ 여기서 만드는 {@link Product}·{@link ProductOption} 은 <b>리포지토리에 넘기지
      * 않는다.</b> 저장하면 폼을 채워 보기만 해도 상품이 생기고, 그 상품은 아무도 지우지
-     * 않는다. 영속화되지 않은 인스턴스라 id 가 null 이고, 돌려주는 산출 결과의 productId 도
-     * null 이다.
+     * 않는다. 영속화되지 않은 인스턴스라 id 가 null 이다.
      *
-     * <p>카테고리·상품명은 가격에 쓰이지 않으므로 받지 않는다. 받으면 폼을 반만 채운
-     * 상태에서는 미리보기를 볼 수 없게 된다 — 가격을 확인하려는 시점이 바로 그 상태다.
+     * <p>카테고리는 받지 않는다. 가격에도 화면에도 쓰이지 않는데 필수로 두면, 폼을 반만
+     * 채운 상태에서 미리보기를 볼 수 없게 된다 — 확인하려는 시점이 바로 그 상태다.
      */
     @Transactional(readOnly = true)
-    public PriceQuote previewDraftPrice(ProductDraftPriceRequest request) {
-        ProductPricing pricing = request.toPricing();   // 방식별 필수 필드를 여기서 검증한다
+    public ProductDetailResponse previewDraftDetail(ProductDraftDetailRequest request) {
+        ProductDraftPriceRequest pricingRequest = request.pricing();
+        ProductPricing pricing = pricingRequest.toPricing();
 
-        Product draft = Product.create(null, "미리보기", pricing, null, null, "preview");
+        Product draft = Product.create(null, request.name(), pricing, request.description(),
+                request.galleryKeys().isEmpty() ? null : request.galleryKeys().get(0), "preview");
 
-        // 기본 옵션 하나를 가정한다. 등록하면 실제로 그렇게 만들어지고(D-7), 재고를
-        // 1 로 두는 이유는 0 이면 품절로 판정되어 금액 대신 품절 상태가 돌아오기 때문이다.
-        ProductOption draftOption = ProductOption.createDefault(
+        // ⚠️ 판매중으로 두고 계산한다. Product.create 는 HIDDEN 으로 시작하는데, 그대로
+        // 두면 공개 응답이 금액을 가리고 "시세문의"만 내보낸다 — 판매하지 않는 상품의
+        // 가격을 고객에게 보여주지 않기 위한 규칙이고, 그 자체는 맞다.
+        //
+        // 다만 미리보기에서 확인하려는 것이 바로 그 금액이다. 그래서 이 미리보기는
+        // <b>"판매를 시작하면 이렇게 보인다"</b>를 그린다. 관리자 화면이 그 전제를
+        // 화면에 적는다 (ProductPreviewModal).
+        draft.changeStatus(ProductStatus.ON_SALE, "preview");
+
+        ProductOption draftOption = draftOptionOf(pricingRequest);
+
+        return ProductDetailResponse.of(draft,
+                request.galleryKeys(), request.detailKeys(),
+                List.of(ProductOptionResponse.forPublic(draftOption)),
+                List.of(PublicPriceQuoteResponse.from(
+                        priceCalculationService.previewDraft(draft, draftOption))));
+    }
+
+    /**
+     * 저장하지 않는 기본 옵션.
+     *
+     * <p>등록하면 실제로 기본 옵션 하나가 만들어진다 (D-7). 재고를 1 로 두는 이유는
+     * 0 이면 품절로 판정되어 금액 대신 품절 상태가 돌아오기 때문이다 — 미리보기에서
+     * 보고 싶은 것은 금액이다.
+     */
+    private ProductOption draftOptionOf(ProductDraftPriceRequest request) {
+        ProductPricing pricing = request.toPricing();
+        return ProductOption.createDefault(
                 null, resolveDefaultOptionName(null, pricing), pricing.weightG(),
                 request.additionalLaborCost() == null ? BigDecimal.ZERO : request.additionalLaborCost(),
                 1, 0);
-
-        return priceCalculationService.previewDraft(draft, draftOption);
     }
 
     // =================================================================

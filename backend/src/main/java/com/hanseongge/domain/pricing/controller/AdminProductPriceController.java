@@ -1,6 +1,8 @@
 package com.hanseongge.domain.pricing.controller;
 
 import com.hanseongge.domain.pricing.dto.PriceQuoteResponse;
+import com.hanseongge.domain.product.dto.ProductDetailResponse;
+import com.hanseongge.domain.product.dto.ProductDraftDetailRequest;
 import com.hanseongge.domain.product.dto.ProductDraftPriceRequest;
 import com.hanseongge.domain.product.service.ProductService;
 import com.hanseongge.domain.pricing.service.PriceCalculationService;
@@ -59,24 +61,28 @@ public class AdminProductPriceController {
     }
 
     /**
-     * 등록 전 가격 미리보기.
+     * 등록 전 상세 미리보기.
      *
      * <p>상품 id 가 없다. 등록 폼을 채우는 중이라 아직 상품이 없고, 그래서 위의
      * {@code /{productId}/price-preview} 를 쓸 수 없다.
      *
+     * <p>응답이 <b>공개 상세와 같은 모양</b>이다({@code GET /api/v1/products/{id}} 와
+     * 같은 {@link ProductDetailResponse}). 관리자 화면이 그 응답으로 고객용 상세
+     * 컴포넌트를 그대로 그린다 — 비슷하게 다시 그리면 쇼핑몰이 바뀔 때 미리보기만
+     * 낡아서 "미리보기와 실제가 다르다"가 된다.
+     *
      * <p><b>POST 지만 아무것도 저장하지 않는다.</b> 입력값을 본문으로 받아야 해서
-     * POST 일 뿐이다 — 가격 재료가 일곱 개라 쿼리스트링에 담으면 읽기 어렵고,
-     * 소수점이 섞인 값이 URL 인코딩을 거치면서 틀어질 여지가 생긴다.
+     * POST 일 뿐이다 — 가격 재료만 일곱 개에 이미지 키 목록까지 붙으므로 쿼리스트링에
+     * 담을 수 없다.
      */
-    @Operation(summary = "등록 전 가격 미리보기",
-            description = "상품을 만들지 않고 입력값만으로 계산한다. 아무것도 저장하지 않는다. "
-                    + "등록 직후 상품은 HIDDEN 이므로 status 는 NOT_FOR_SALE 로 오고, "
-                    + "금액은 그대로 계산되어 담긴다.")
+    @Operation(summary = "등록 전 상세 미리보기",
+            description = "공개 상세와 같은 응답 모양이다. 상품을 만들지 않고, 아무것도 저장하지 않는다. "
+                    + "옵션은 등록 시 자동 생성될 기본 옵션 하나를 가정한다. "
+                    + "등록 직후 상품은 HIDDEN 이므로 status 는 HIDDEN 으로 오고, 금액은 그대로 계산된다.")
     @PreAuthorize("hasRole('MANAGER')")
-    @PostMapping("/price-preview")
-    public ResponseEntity<PriceQuoteResponse> previewDraft(
-            @Valid @RequestBody ProductDraftPriceRequest request) {
-        return ResponseEntity.ok(
-                PriceQuoteResponse.from(productService.previewDraftPrice(request)));
+    @PostMapping("/detail-preview")
+    public ResponseEntity<ProductDetailResponse> previewDraftDetail(
+            @Valid @RequestBody ProductDraftDetailRequest request) {
+        return ResponseEntity.ok(productService.previewDraftDetail(request));
     }
 }

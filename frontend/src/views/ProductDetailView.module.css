@@ -330,12 +330,23 @@
 
 /* 자리표시자(.mainImage)와 같은 비율·모서리다. 사진이 있는 상품과 없는 상품을
    나란히 봐도 레이아웃이 흔들리지 않아야 한다. */
+/* ⚠️ cover 가 아니라 contain 이다.
+   상세는 상품을 <b>확인하는</b> 자리다. 잘라서 채우면 반지 모양이나 팔찌 잠금쇠처럼
+   가장자리에 있는 특징이 화면 밖으로 나간다 — 목록에서 눌러 들어온 이유가 그것을
+   보려는 것인데 거기서 잘린다.
+
+   목록 카드(ProductCard .photo)는 반대로 cover 다. 거기는 격자라서 한 칸이라도
+   비율이 다르면 줄이 어긋나 보인다. 두 자리의 목적이 다르다.
+
+   비율은 1:1 로 고정한다. 사진마다 높이가 달라지면 옆 칸(가격·버튼)이 사진에 따라
+   위아래로 움직인다. */
 .mainPhoto {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
-  background: var(--ink-100);
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
 
@@ -395,6 +406,8 @@
 .photoPickerOn img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* 큰 사진과 같은 방식으로 담는다. 여기만 잘라 두면 고른 썸네일과 위에 뜨는
+     그림이 달라 보여서 다른 사진을 고른 줄 안다. */
+  object-fit: contain;
   display: block;
 }
