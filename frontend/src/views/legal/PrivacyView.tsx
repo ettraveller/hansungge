@@ -105,11 +105,15 @@ function Section({ section }: { section: PolicySection }) {
         </div>
       )}
 
+      {/* 본문과 같은 방식으로 그린다. 여기만 평문으로 두면 <b> 가 글자 그대로 보인다 —
+          강조를 쓰라고 만든 자리에 강조를 쓰면 깨지는 셈이었다 (2026-10-29). */}
       {section.callout &&
         (Array.isArray(section.callout) ? section.callout : [section.callout]).map((text) => (
-          <p key={text} className={styles.callout}>
-            {text}
-          </p>
+          <p
+            key={text}
+            className={styles.callout}
+            dangerouslySetInnerHTML={{ __html: text }}
+          />
         ))}
     </section>
   );

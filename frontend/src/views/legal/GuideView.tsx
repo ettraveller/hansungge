@@ -53,16 +53,22 @@ function Section({ section }: { section: GuideSection }) {
     <section className={styles.section} id={slug(section.title)}>
       <h2 className={styles.heading}>{section.title}</h2>
 
-      {section.lead && <p className={styles.sectionLead}>{section.lead}</p>}
+      {/* 세 자리 모두 같은 방식으로 그린다. 내용은 저장소 안의 고정 문자열이고 사용자
+          입력이 아니다. 한 자리만 평문으로 두면 거기에 <b> 를 쓰는 날 글자 그대로
+          보인다 — 개인정보처리방침의 callout 이 실제로 그랬다 (2026-10-29). */}
+      {section.lead && (
+        <p className={styles.sectionLead} dangerouslySetInnerHTML={{ __html: section.lead }} />
+      )}
 
       <ul className={styles.list}>
         {section.items.map((item, i) => (
-          // 본문에만 <b> 를 쓴다. 내용은 저장소 안의 고정 문자열이고 사용자 입력이 아니다.
           <li key={i} dangerouslySetInnerHTML={{ __html: item }} />
         ))}
       </ul>
 
-      {section.callout && <p className={styles.callout}>{section.callout}</p>}
+      {section.callout && (
+        <p className={styles.callout} dangerouslySetInnerHTML={{ __html: section.callout }} />
+      )}
     </section>
   );
 }
