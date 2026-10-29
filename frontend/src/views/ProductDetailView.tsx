@@ -145,49 +145,52 @@ export function ProductDetailView({
           {!preview && <WishlistHeart productId={product.id} productName={product.name} />}
           {photos.length > 0 ? (
             <>
-              <div className={styles.mainPhotoWrap}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  className={styles.mainPhoto}
-                  src={photos[shown]}
-                  alt={product.name}
-                  // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
-                  // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
-                  loading="eager"
-                  decoding="async"
-                />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.mainPhoto}
+                src={photos[shown]}
+                alt={product.name}
+                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+                loading="eager"
+                decoding="async"
+              />
 
-                {/*
-                  좌우 넘김. 아래 썸네일 줄만 있으면 사진이 여러 장이라는 것을
-                  알아채지 못하고 첫 장만 보고 나가는 경우가 많다.
+              {/*
+                좌우 넘김. 아래 썸네일 줄만 있으면 사진이 여러 장이라는 것을
+                알아채지 못하고 첫 장만 보고 나가는 경우가 많다.
 
-                  끝에서 처음으로 돌아간다. 막아 두면 마지막 장에서 오른쪽 버튼이
-                  회색이 되는데, 그때 "더 없다"가 아니라 "고장났다"로 읽힌다.
-                */}
-                {photos.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      className={`${styles.navBtn} ${styles.navPrev}`}
-                      aria-label="이전 사진"
-                      onClick={() => setPhotoIndex((shown - 1 + photos.length) % photos.length)}
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.navBtn} ${styles.navNext}`}
-                      aria-label="다음 사진"
-                      onClick={() => setPhotoIndex((shown + 1) % photos.length)}
-                    >
-                      ›
-                    </button>
-                    <span className={styles.photoCount} aria-hidden="true">
-                      {shown + 1} / {photos.length}
-                    </span>
-                  </>
-                )}
-              </div>
+                ⚠️ 사진 <b>위에 얹지 않는다.</b> 상세는 상품을 확인하는 자리인데,
+                반투명 버튼이라도 그 자리를 덮으면 하필 가장자리의 특징(잠금쇠,
+                각인)을 가린다. 사진 아래 한 줄로 내린다.
+
+                끝에서 처음으로 돌아간다. 막아 두면 마지막 장에서 오른쪽 버튼이
+                회색이 되는데, 그때 "더 없다"가 아니라 "고장났다"로 읽힌다.
+              */}
+              {photos.length > 1 && (
+                <div className={styles.photoNav}>
+                  <button
+                    type="button"
+                    className={styles.navBtn}
+                    aria-label="이전 사진"
+                    onClick={() => setPhotoIndex((shown - 1 + photos.length) % photos.length)}
+                  >
+                    ‹
+                  </button>
+                  {/* 버튼만 있으면 끝까지 눌러 봐야 몇 장인지 알 수 있다. */}
+                  <span className={styles.photoCount}>
+                    {shown + 1} / {photos.length}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.navBtn}
+                    aria-label="다음 사진"
+                    onClick={() => setPhotoIndex((shown + 1) % photos.length)}
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
 
               {photos.length > 1 && (
                 <ul className={styles.photoStrip}>

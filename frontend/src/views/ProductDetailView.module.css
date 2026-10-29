@@ -414,75 +414,45 @@
   display: block;
 }
 
-/* --- 큰 사진 좌우 넘김 --------------------------------------------- */
+/* --- 사진 좌우 넘김 ------------------------------------------------ */
 
-.mainPhotoWrap {
-  position: relative;
+/* 사진 아래 한 줄. 사진 위에 얹지 않는 이유 — 상세는 상품을 확인하는 자리인데,
+   반투명 버튼이라도 하필 가장자리의 특징(잠금쇠, 각인)을 가린다. */
+.photoNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
-/* 사진 위에 얹는다. 사진 바깥에 두면 좁은 화면에서 그만큼 사진이 줄어든다.
-   흰 배경 위에 흰 버튼이 놓일 수 있어 테두리와 그림자로 띄운다. */
 .navBtn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--shadow-md);
-  font-size: 22px;
+  background: #fff;
+  font-size: 20px;
   line-height: 1;
   color: var(--dark);
   cursor: pointer;
   transition:
-    background var(--dur) var(--ease-out),
-    border-color var(--dur) var(--ease-out);
+    border-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
 }
 
 .navBtn:hover {
-  background: #fff;
   border-color: var(--gold-600);
+  color: var(--gold-700);
 }
 
-.navPrev {
-  left: 10px;
-}
-
-.navNext {
-  right: 10px;
-}
-
-/* 몇 장 중 몇 번째인지. 버튼만 있으면 끝까지 눌러 봐야 장수를 알 수 있다. */
 .photoCount {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  background: rgba(15, 27, 45, 0.62);
-  font-size: var(--text-xs);
+  min-width: 52px;
+  text-align: center;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
-  color: #fff;
-}
-
-/* 손가락으로 쓰는 화면에서는 버튼을 조금 키우고 가장자리에 붙인다 */
-@media (max-width: 640px) {
-  .navBtn {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-  }
-
-  .navPrev {
-    left: 6px;
-  }
-
-  .navNext {
-    right: 6px;
-  }
+  color: var(--gray);
 }
