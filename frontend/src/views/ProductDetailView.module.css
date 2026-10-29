@@ -360,7 +360,9 @@
   display: flex;
   flex-direction: column;
   width: min(860px, 100%);
-  margin: var(--space-5) 0 0;
+  /* 가운데로 모은다. 왼쪽에 붙여 두면 넓은 화면에서 오른쪽만 크게 비어,
+     이미지가 잘못 올라간 것처럼 보인다. */
+  margin: var(--space-5) auto 0;
 }
 
 /* 이미지 사이에 틈을 두지 않는다. 한 장을 여러 조각으로 잘라 올리는 경우가 많아

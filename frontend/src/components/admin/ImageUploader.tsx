@@ -53,6 +53,9 @@ export function ImageUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // 포커스를 받으면 "이제 Ctrl+V" 로 문구를 바꾼다. 붙여넣기는 눈에 보이지 않는
+  // 동작이라, 준비가 됐다는 표시가 없으면 눌러도 되는지 알 수 없다.
+  const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const single = max === 1;
@@ -110,27 +113,25 @@ export function ImageUploader({
         클릭·탭으로 포커스를 받을 수 있게 하고, 거기에 onPaste 를 붙인다.
         window 에 전역으로 달면 화면에 업로더가 둘 있을 때 어느 쪽에 붙을지
         알 수 없어진다 — 대표이미지와 상세이미지가 한 화면에 있으므로 실제로 문제다.
+
+        ⚠️ 여기를 눌러도 파일 선택창이 열리지 않는다. 열리게 두면 <b>붙여넣으려고
+        클릭하는 순간 창이 뜬다</b> — 포커스를 주는 동작과 파일을 고르는 동작이 같은
+        클릭에 묶여 있어서다. 파일 선택은 아래 버튼이 맡는다.
       */}
       <div
         className={[
           styles.drop,
           dragging ? styles.dropActive : '',
+          focused ? styles.dropFocused : '',
           disabled ? styles.dropDisabled : '',
         ]
           .filter(Boolean)
           .join(' ')}
         tabIndex={disabled ? -1 : 0}
-        role="button"
-        aria-disabled={disabled}
         aria-busy={busy}
-        onClick={() => !disabled && inputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (disabled) return;
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
+        aria-label="이미지 붙여넣기 영역"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onPaste={(e) => {
           const files = Array.from(e.clipboardData.files);
           if (files.length === 0) return;
@@ -160,12 +161,36 @@ export function ImageUploader({
           disabled={disabled}
           onChange={(e) => void upload(Array.from(e.target.files ?? []))}
         />
-        <p className={styles.dropTitle}>{busy ? '올리는 중…' : emptyLabel}</p>
+        <p className={styles.dropTitle}>
+          {busy ? '올리는 중…' : focused ? '이제 Ctrl+V 를 누르세요' : emptyLabel}
+        </p>
         <p className={styles.dropHint}>
           {full && !single
             ? `${max}장을 모두 채웠습니다. 지우고 다시 올려 주세요.`
-            : '여기를 클릭한 뒤 Ctrl+V 로 캡처한 이미지를 바로 붙여넣을 수 있습니다.'}
+            : focused
+              ? '캡처한 이미지가 그대로 올라갑니다. 끌어다 놓아도 됩니다.'
+              : '끌어다 놓거나, 이 칸을 한 번 클릭한 뒤 Ctrl+V 로 붙여넣으세요.'}
         </p>
+
+        {/*
+          파일 선택은 버튼이 맡는다. 드롭존 전체를 누르면 열리게 두면 붙여넣으려고
+          클릭하는 순간 파일 창이 떠서 붙여넣을 수가 없다.
+
+          ⚠️ 버블링을 막는다. 막지 않으면 이 클릭이 드롭존까지 올라가 포커스가
+          옮겨 다니고, 파일 창을 닫은 뒤 Ctrl+V 가 먹지 않는다.
+        */}
+        <button
+          type="button"
+          className={styles.pickButton}
+          disabled={disabled || busy}
+          onClick={(e) => {
+            e.stopPropagation();
+            inputRef.current?.click();
+          }}
+        >
+          파일 선택
+        </button>
+
         <p className={styles.dropMeta}>JPG · PNG · WEBP · GIF / 한 장 10MB 까지</p>
       </div>
 

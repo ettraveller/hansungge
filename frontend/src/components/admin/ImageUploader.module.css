@@ -11,6 +11,8 @@
 /* --- 드롭존 --------------------------------------------------------- */
 
 .drop {
+  /* 커서를 손가락 모양으로 두지 않는다. 눌러도 파일 창이 열리지 않으므로
+     "누르는 곳"으로 보이면 안 된다 — 붙여넣기 자리다. */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -21,7 +23,7 @@
   border-radius: var(--radius);
   background: var(--ink-50);
   text-align: center;
-  cursor: pointer;
+  cursor: default;
   transition:
     border-color var(--dur) var(--ease-out),
     background var(--dur) var(--ease-out);
@@ -34,10 +36,13 @@
 
 /* 클릭해서 포커스를 잡은 상태가 곧 "여기에 붙여넣을 수 있다"는 뜻이다.
    그래서 포커스 링을 지우지 않고 오히려 또렷하게 둔다. */
-.drop:focus-visible {
+.drop:focus,
+.drop:focus-visible,
+.dropFocused {
   outline: 2px solid var(--gold-600);
   outline-offset: 2px;
   border-color: var(--gold-600);
+  border-style: solid;
   background: var(--gold-50);
 }
 
@@ -185,4 +190,30 @@
   height: 220px;
   object-fit: contain;
   background: var(--ink-100);
+}
+
+/* 파일 선택 버튼.
+   드롭존 전체를 누르면 파일 창이 열리게 두면, 붙여넣으려고 클릭하는 순간 창이 떠서
+   정작 Ctrl+V 를 할 수 없다 (2026-10-30). 두 동작을 떼어 놓는다. */
+.pickButton {
+  margin: var(--space-2) 0 var(--space-1);
+  padding: 6px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--dark);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease-out);
+}
+
+.pickButton:hover:not(:disabled) {
+  border-color: var(--gold-600);
+  color: var(--gold-700);
+}
+
+.pickButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
