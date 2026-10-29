@@ -48,7 +48,7 @@
 \set ON_ERROR_STOP on
 
 -- -v 로 넘기지 않았을 때의 기본값. psql 은 없는 변수를 조용히 빈 문자열로
--- 바꿔 버려서, 그대로 두면 `IN ()` 이라는 문법 오류가 난다.
+-- 바꿔 버린다.
 \if :{?products}
 \else
   \set products '1,2,3'
@@ -56,12 +56,25 @@
 
 \echo '지울 상품 id:' :products
 
+-- 목록을 임시 표로 한 번만 푼다.
+--
+-- ⚠️ `IN (:products)` 로 쓰면 안 된다. 빈 값을 넘겼을 때 `IN ()` 이 되어
+-- 문법 오류로 멈춘다 — "상품은 이미 지웠고 시세만 지우고 싶다"가 흔한 상황인데
+-- 그때마다 없는 id(-1)를 지어내 넘겨야 했다 (2026-10-30 실제로 걸렸다).
+--
+-- 문자열로 받아 쪼개면 빈 값은 그냥 0건이 된다. 덤으로 공백과 꼬리 쉼표
+-- ("1, 2," 같은 입력)도 함께 걸러진다.
+CREATE TEMP TABLE target_products AS
+SELECT NULLIF(btrim(x), '')::bigint AS id
+  FROM unnest(string_to_array(:'products', ',')) AS x
+ WHERE NULLIF(btrim(x), '') IS NOT NULL;
+
 -- 무엇을 지우는지 먼저 보여준다. 트랜잭션 밖이라 이 출력은 COMMIT 과
 -- 무관하게 화면에 남는다 — 지운 뒤에 "무엇을 지웠지?" 를 묻지 않게 된다.
-SELECT id, name, status, created_at
-  FROM products
- WHERE id IN (:products)
- ORDER BY id;
+SELECT p.id, p.name, p.status, p.created_at
+  FROM products p
+  JOIN target_products t ON t.id = p.id
+ ORDER BY p.id;
 
 BEGIN;
 
@@ -76,11 +89,11 @@ BEGIN;
 -- cart_items 는 조건 없이 비운다. 실제 고객이 아직 없고, 지울 상품을 담은
 -- 줄만 골라 지우면 "담을 때의 시세"가 지워진 다른 줄이 남아 조회가 깨진다.
 DELETE FROM cart_items;
-DELETE FROM product_price_components WHERE product_id IN (:products);
-DELETE FROM product_images           WHERE product_id IN (:products);
-DELETE FROM product_options          WHERE product_id IN (:products);
-DELETE FROM qnas                     WHERE product_id IN (:products);
-DELETE FROM products                 WHERE id IN (:products);
+DELETE FROM product_price_components WHERE product_id IN (SELECT id FROM target_products);
+DELETE FROM product_images           WHERE product_id IN (SELECT id FROM target_products);
+DELETE FROM product_options          WHERE product_id IN (SELECT id FROM target_products);
+DELETE FROM qnas                     WHERE product_id IN (SELECT id FROM target_products);
+DELETE FROM products                 WHERE id IN (SELECT id FROM target_products);
 
 -- ── 2. 더미 · 테스트 시세 ───────────────────────────────────────────
 --
@@ -89,9 +102,21 @@ DELETE FROM products                 WHERE id IN (:products);
 -- 그 사이에 다른 고시가 끼어들지 못하게 한다.
 ALTER TABLE market_prices_effective DISABLE TRIGGER trg_mpe_guard;
 
-DELETE FROM market_prices_effective
- WHERE created_by = 'dummy-seed'
-    OR (created_by = 'hsgmaster' AND change_reason LIKE '%test%');
+-- ⚠️ 주문이 가리키는 시세는 지우지 않는다 (order_items.effective_price_id).
+--
+-- 그 행은 "이 주문에 어떤 고시가 적용됐는가"의 근거다. 금액을 다투게 되면
+-- 주문서의 숫자가 아니라 이 행을 보고 따진다. 더미 데이터라도 주문이 걸려
+-- 있으면 그 주문의 근거라서 남겨야 한다.
+--
+-- 날짜나 작성자만 보고 지우면 FK 에서 막혀 전체가 롤백된다 — 2026-10-30 에
+-- 실제로 걸렸다 (Key (id)=(21972) is still referenced from table "order_items").
+--
+-- cart_items 도 같은 컬럼을 참조하지만 위에서 이미 비웠다.
+DELETE FROM market_prices_effective e
+ WHERE (e.created_by = 'dummy-seed'
+        OR (e.created_by = 'hsgmaster' AND e.change_reason LIKE '%test%'))
+   AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.effective_price_id = e.id)
+   AND NOT EXISTS (SELECT 1 FROM cart_items ci WHERE ci.effective_price_id_at_add = e.id);
 
 ALTER TABLE market_prices_effective ENABLE TRIGGER trg_mpe_guard;
 
@@ -110,8 +135,12 @@ DELETE FROM market_price_raw r
 --
 -- hsgmaster2 가 남아 있어야 한다. 비어 있으면 적용 중인 시세를 함께 지운
 -- 것이므로 COMMIT 하지 말고 ROLLBACK 할 것.
+-- dummy-seed 가 0 이 아니어도 괜찮다. 주문이 가리키는 행은 남겨 두기 때문이다
+-- (아래 "주문이 붙잡은 시세" 가 그 수다).
 SELECT created_by, count(*) AS 남은_시세, max(effective_from) AS 최근고시
   FROM market_prices_effective GROUP BY created_by ORDER BY created_by;
+SELECT count(DISTINCT effective_price_id) AS 주문이_붙잡은_시세
+  FROM order_items WHERE effective_price_id IS NOT NULL;
 SELECT count(*) AS 남은_수집원본 FROM market_price_raw;
 SELECT count(*) AS 남은_상품 FROM products;
 SELECT count(*) AS 주문_그대로 FROM orders;
