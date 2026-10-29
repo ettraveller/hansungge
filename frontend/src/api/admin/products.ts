@@ -39,12 +39,24 @@ export function listOptions(id: number) {
   return adminApi.get<AdminProductOption[]>(`/api/admin/products/${id}/options`);
 }
 
-export function listImages(id: number) {
-  return adminApi.get<string[]>(`/api/admin/products/${id}/images`);
+/**
+ * 이미지 갈래. 백엔드의 ProductImageKind 와 값이 같아야 한다.
+ *
+ * - `GALLERY` — 상세 상단 대표이미지. **첫 장이 목록·장바구니·주문서에 쓰인다.**
+ * - `DETAIL` — 상품 설명 아래에 전체 폭으로 쌓는 상세페이지 이미지.
+ */
+export type ProductImageKind = 'GALLERY' | 'DETAIL';
+
+export function listImages(id: number, kind: ProductImageKind) {
+  return adminApi.get<string[]>(`/api/admin/products/${id}/images`, { query: { kind } });
 }
 
-export function replaceImages(id: number, objectKeys: string[]) {
-  return adminApi.put<string[]>(`/api/admin/products/${id}/images`, { body: objectKeys });
+/** 그 갈래만 교체한다. 다른 갈래는 손대지 않는다. */
+export function replaceImages(id: number, kind: ProductImageKind, objectKeys: string[]) {
+  return adminApi.put<string[]>(`/api/admin/products/${id}/images`, {
+    query: { kind },
+    body: objectKeys,
+  });
 }
 
 /**
@@ -59,7 +71,9 @@ export interface ProductInput {
   categoryId: number;
   name: string;
   description?: string | null;
-  thumbnailKey?: string | null;
+  // ⚠️ thumbnailKey 는 없다. 대표이미지 목록(PUT /images?kind=GALLERY)의 첫 장이
+  // 그 값이 되고, 서버가 맞춘다. 여기에 두면 상품 정보를 저장할 때마다 폼에 없는
+  // 값이 null 로 덮어써서 목록의 사진이 사라진다.
   metalType?: MetalType | null;
   priceType: ProductPriceType;
   weightG?: string | null;

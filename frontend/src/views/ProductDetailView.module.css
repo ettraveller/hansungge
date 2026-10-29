@@ -359,3 +359,42 @@
   width: 100%;
   height: auto;
 }
+
+/* --- 갤러리 썸네일 줄 ---------------------------------------------- */
+
+.photoStrip {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  /* 모바일에서 손가락으로 밀 때 걸리는 느낌이 없게 한다 */
+  -webkit-overflow-scrolling: touch;
+}
+
+.photoPicker,
+.photoPickerOn {
+  display: block;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  cursor: pointer;
+}
+
+.photoPickerOn {
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 1px var(--gold-600);
+}
+
+.photoPicker img,
+.photoPickerOn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

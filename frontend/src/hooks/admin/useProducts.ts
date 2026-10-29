@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as productsApi from '@/api/admin/products';
+import type { ProductImageKind } from '@/api/admin/products';
 import { adminKeys } from './keys';
 import type { ProductStatus } from '@/types/product';
 
@@ -46,10 +47,12 @@ export function useProductPricePreview(id: number | null) {
   });
 }
 
-export function useProductImages(id: number | null) {
+// 캐시 키에 갈래를 넣는다. 빠뜨리면 대표이미지와 상세 이미지가 같은 칸을 쓰고,
+// 한쪽을 저장하는 순간 다른 쪽 화면이 그 목록으로 바뀐다.
+export function useProductImages(id: number | null, kind: ProductImageKind) {
   return useQuery({
-    queryKey: adminKeys.productImages(id ?? 0),
-    queryFn: () => productsApi.listImages(id as number),
+    queryKey: adminKeys.productImages(id ?? 0, kind),
+    queryFn: () => productsApi.listImages(id as number, kind),
     enabled: id != null,
   });
 }
@@ -129,7 +132,8 @@ export function useAdjustStock() {
 }
 
 export function useReplaceImages() {
-  return useProductMutation(({ id, keys }: { id: number; keys: string[] }) =>
-    productsApi.replaceImages(id, keys),
+  return useProductMutation(
+    ({ id, kind, keys }: { id: number; kind: ProductImageKind; keys: string[] }) =>
+      productsApi.replaceImages(id, kind, keys),
   );
 }

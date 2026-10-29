@@ -99,7 +99,10 @@ export function AdminProductDetailView({ productId }: { productId: number }) {
         priceType={product.priceType}
         canEdit={canEdit}
       />
-      <ProductImagesPanel productId={product.id} canEdit={canEdit} />
+      {/* 대표이미지를 먼저 둔다 — 첫 장이 목록·장바구니에 쓰이므로 비어 있으면
+          상품이 사진 없이 돌아다닌다. 상세 이미지는 그다음이다. */}
+      <ProductImagesPanel productId={product.id} kind="GALLERY" canEdit={canEdit} />
+      <ProductImagesPanel productId={product.id} kind="DETAIL" canEdit={canEdit} />
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
-import { ImageUploader } from '../ImageUploader';
 import { DecimalInput, Field, MoneyInput, SelectInput, TextArea, TextInput } from '../Field';
 import { flattenCategories, useAdminCategories } from '@/hooks/admin/useCategories';
 import type { ProductInput } from '@/api/admin/products';
@@ -112,7 +111,6 @@ export function ProductForm({
   );
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [thumbnailKey, setThumbnailKey] = useState(initial?.thumbnailKey ?? '');
   const [priceType, setPriceType] = useState<ProductPriceType>(
     initial?.priceType ?? 'MARKET_PLUS',
   );
@@ -160,7 +158,6 @@ export function ProductForm({
       categoryId: Number(categoryId),
       name: name.trim(),
       description: description.trim() === '' ? null : description,
-      thumbnailKey: thumbnailKey.trim() === '' ? null : thumbnailKey.trim(),
       // 시세를 보지 않는 방식이면 금속·중량을 보내지 않는다. 남겨 보내면 화면과 실제
       // 계산 근거가 어긋난 채로 저장된다.
       metalType: marketLinked ? (metalType === '' ? null : metalType) : null,
@@ -388,22 +385,13 @@ export function ProductForm({
       </div>
 
       {/*
-        대표이미지는 상세 이미지와 쓰이는 자리가 다르다 — 목록·검색결과·장바구니·
-        주문서·주문내역이 모두 이 한 장을 쓴다. 상세 이미지와 한 칸에 섞여 있으면
-        "첫 번째 장이 대표"라는 암묵적 규칙에 기대야 하고, 순서를 바꾸는 순간
-        목록에 뜨는 사진이 조용히 바뀐다. 그래서 칸을 나눠 둔다.
+        이미지는 이 폼에 없다.
+
+        상품 등록은 상품이 만들어지기 전이라 붙일 상대가 없고, 수정 화면에서는
+        「대표 이미지」·「상세 이미지」 패널이 각각 자기 목록을 관리한다. 여기에
+        대표이미지 칸을 하나 더 두면 소유자가 둘이 되고, 상품 정보를 저장할 때마다
+        폼에 담긴 값이 패널의 목록을 덮어쓴다 — 사진을 지운 적이 없는데 사라진다.
       */}
-      <Field
-        label="대표 이미지"
-        hint="목록 · 장바구니 · 주문서에 쓰이는 한 장이다. 정사각형으로 잘려 보인다."
-      >
-        <ImageUploader
-          value={thumbnailKey === '' ? [] : [thumbnailKey]}
-          onChange={(keys) => setThumbnailKey(keys[0] ?? '')}
-          max={1}
-          emptyLabel="대표 사진을 끌어다 놓거나 클릭해서 선택하세요"
-        />
-      </Field>
 
       <Field
         label="상품 설명"

@@ -542,6 +542,140 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 이미지 — 대표(GALLERY) · 상세(DETAIL)
+    // =================================================================
+
+    @Nested
+    @DisplayName("상품 이미지")
+    class Images {
+
+        @Test
+        @DisplayName("대표이미지를 저장하면 첫 장이 thumbnailKey 가 된다 — 목록·장바구니가 그 값을 읽는다")
+        void galleryFirstBecomesThumbnail() throws Exception {
+            long productId = createGoldBar();
+
+            putImages(productId, "GALLERY", List.of("products/a.jpg", "products/b.jpg"));
+
+            assertThat(thumbnailOf(productId)).isEqualTo("products/a.jpg");
+
+            // 순서를 바꾸면 대표도 함께 바뀐다. 관리자가 두 곳을 따로 관리하지 않는다.
+            putImages(productId, "GALLERY", List.of("products/b.jpg", "products/a.jpg"));
+            assertThat(thumbnailOf(productId)).isEqualTo("products/b.jpg");
+        }
+
+        @Test
+        @DisplayName("대표이미지를 모두 지우면 thumbnailKey 는 null 이다 — 빈 문자열이 아니다")
+        void emptyGalleryClearsThumbnail() throws Exception {
+            long productId = createGoldBar();
+            putImages(productId, "GALLERY", List.of("products/a.jpg"));
+
+            putImages(productId, "GALLERY", List.of());
+
+            // 빈 문자열을 넣으면 화면이 "사진이 있다"로 읽어 깨진 이미지 자리를 그린다.
+            assertThat(thumbnailOf(productId)).isNull();
+        }
+
+        @Test
+        @DisplayName("한 갈래를 바꿔도 다른 갈래는 그대로다 — 대표를 고치다 상세페이지를 잃지 않는다")
+        void kindsAreIndependent() throws Exception {
+            long productId = createGoldBar();
+            putImages(productId, "GALLERY", List.of("products/g1.jpg"));
+            putImages(productId, "DETAIL", List.of("products/d1.jpg", "products/d2.jpg"));
+
+            putImages(productId, "GALLERY", List.of("products/g2.jpg", "products/g3.jpg"));
+
+            assertThat(getImages(productId, "GALLERY"))
+                    .containsExactly("products/g2.jpg", "products/g3.jpg");
+            assertThat(getImages(productId, "DETAIL"))
+                    .containsExactly("products/d1.jpg", "products/d2.jpg");
+        }
+
+        @Test
+        @DisplayName("상세 이미지를 바꿔도 thumbnailKey 는 움직이지 않는다")
+        void detailDoesNotTouchThumbnail() throws Exception {
+            long productId = createGoldBar();
+            putImages(productId, "GALLERY", List.of("products/g1.jpg"));
+
+            putImages(productId, "DETAIL", List.of("products/d1.jpg"));
+
+            assertThat(thumbnailOf(productId)).isEqualTo("products/g1.jpg");
+        }
+
+        @Test
+        @DisplayName("상품 정보를 저장해도 대표이미지가 사라지지 않는다 — 폼이 thumbnailKey 를 보내지 않는다")
+        void updatingProductKeepsThumbnail() throws Exception {
+            long productId = createGoldBar();
+            putImages(productId, "GALLERY", List.of("products/g1.jpg"));
+
+            // 이름만 고친다. 예전에는 폼에 없는 thumbnailKey 가 null 로 덮어써서
+            // 사진을 지운 적이 없는데 목록에서 사라졌다.
+            mockMvc.perform(put("/api/admin/products/" + productId)
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "categoryId", CATEGORY_ID,
+                                    "name", "이름만 바꾼다",
+                                    "metalType", "GOLD_24K",
+                                    "priceType", "MARKET_PLUS",
+                                    "weightG", 3.75,
+                                    "laborCost", 50000))))
+                    .andExpect(status().isOk());
+
+            assertThat(thumbnailOf(productId)).isEqualTo("products/g1.jpg");
+        }
+
+        @Test
+        @DisplayName("공개 상세는 두 갈래를 따로 내려준다")
+        void publicDetailSeparatesKinds() throws Exception {
+            long productId = createGoldBar();
+            putImages(productId, "GALLERY", List.of("products/g1.jpg", "products/g2.jpg"));
+            putImages(productId, "DETAIL", List.of("products/d1.jpg"));
+            mockMvc.perform(patch("/api/admin/products/" + productId + "/status")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("status", "ON_SALE", "active", true,
+                                    "reason", "이미지 확인 완료"))))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get("/api/v1/products/" + productId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.thumbnailKey").value("products/g1.jpg"))
+                    .andExpect(jsonPath("$.galleryKeys.length()").value(2))
+                    .andExpect(jsonPath("$.galleryKeys[0]").value("products/g1.jpg"))
+                    .andExpect(jsonPath("$.detailKeys.length()").value(1))
+                    .andExpect(jsonPath("$.detailKeys[0]").value("products/d1.jpg"));
+        }
+
+        private void putImages(long productId, String kind, List<String> keys) throws Exception {
+            mockMvc.perform(put("/api/admin/products/" + productId + "/images")
+                            .header("Authorization", bearer())
+                            .param("kind", kind)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(keys)))
+                    .andExpect(status().isOk());
+        }
+
+        private List<String> getImages(long productId, String kind) throws Exception {
+            MvcResult result = mockMvc.perform(
+                            get("/api/admin/products/" + productId + "/images")
+                                    .header("Authorization", bearer())
+                                    .param("kind", kind))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            List<String> keys = new java.util.ArrayList<>();
+            objectMapper.readTree(result.getResponse().getContentAsString())
+                    .forEach(node -> keys.add(node.asText()));
+            return keys;
+        }
+
+        private String thumbnailOf(long productId) {
+            return jdbcTemplate.queryForObject(
+                    "SELECT thumbnail_key FROM products WHERE id = ?", String.class, productId);
+        }
+    }
+
+    // =================================================================
     // 도우미
     // =================================================================
 

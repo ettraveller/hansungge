@@ -82,8 +82,12 @@ export interface ProductDetail {
   categoryId: number;
   name: string;
   description?: string | null;
+  /** 목록·장바구니·주문서가 쓰는 한 장. galleryKeys 의 첫 장과 같다 */
   thumbnailKey?: string | null;
-  imageKeys: string[];
+  /** 상세 위쪽에서 눌러 넘겨 보는 상품 사진 */
+  galleryKeys: string[];
+  /** 상품 설명 아래에 전체 폭으로 쌓는 상세페이지 이미지. 세로로 길다 */
+  detailKeys: string[];
   metalType?: MetalType | null;
   weightG?: number | null;
   purity?: number | null;

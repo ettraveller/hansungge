@@ -3,6 +3,7 @@ package com.hanseongge.domain.product.service;
 import com.hanseongge.domain.product.dto.ProductSearchCondition;
 import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductImage;
+import com.hanseongge.domain.product.entity.ProductImageKind;
 import com.hanseongge.domain.product.entity.ProductOption;
 import com.hanseongge.domain.product.entity.ProductPricing;
 import com.hanseongge.domain.product.entity.ProductStatus;
@@ -122,8 +123,8 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductImage> findImages(Long productId) {
-        return imageRepository.findByProductIdOrderBySortAscIdAsc(productId);
+    public List<ProductImage> findImages(Long productId, ProductImageKind kind) {
+        return imageRepository.findByProductIdAndKindOrderBySortAscIdAsc(productId, kind);
     }
 
     // =================================================================
@@ -140,13 +141,15 @@ public class ProductService {
               targetType = AuditActions.TARGET_PRODUCT,
               targetId = "#result.getId()")
     public Product create(Long categoryId, String name, ProductPricing pricing,
-                          String description, String thumbnailKey,
+                          String description,
                           String defaultOptionName, Integer initialStock, String adminLoginId) {
 
         categoryService.find(categoryId);   // 존재 확인
 
+        // 썸네일은 null 로 시작한다. 새 상품에는 아직 대표이미지 목록이 없고,
+        // 그 목록의 첫 장이 들어오는 순간 replaceImages(GALLERY) 가 채운다.
         Product product = productRepository.save(Product.create(
-                categoryId, name, pricing, description, thumbnailKey, adminLoginId));
+                categoryId, name, pricing, description, null, adminLoginId));
 
         // 재고를 담을 곳을 반드시 하나 만든다 (D-7)
         ProductOption defaultOption = optionRepository.save(ProductOption.createDefault(
@@ -167,12 +170,12 @@ public class ProductService {
               targetType = AuditActions.TARGET_PRODUCT,
               targetId = "#id")
     public Product update(Long id, Long categoryId, String name, ProductPricing pricing,
-                          String description, String thumbnailKey, String adminLoginId) {
+                          String description, String adminLoginId) {
         Product product = find(id);
         AuditContext.before(snapshot(product));
 
         categoryService.find(categoryId);
-        product.update(categoryId, name, pricing, description, thumbnailKey, adminLoginId);
+        product.update(categoryId, name, pricing, description, adminLoginId);
 
         // 가격 재료가 바뀌었으므로 캐시된 산출 결과는 더 이상 유효하지 않다.
         evictPriceCache();
@@ -282,29 +285,45 @@ public class ProductService {
     // =================================================================
 
     /**
-     * 이미지 목록 교체.
+     * 한 갈래의 이미지 목록 교체.
      *
      * <p>부분 수정 대신 통째로 갈아끼운다. 순서가 의미를 갖는 목록이라, 개별 추가·삭제를
      * 열어두면 "3번을 지우고 5번을 2번 자리로" 같은 요청이 여러 번에 나뉘어 중간 상태가
      * 화면에 노출된다.
+     *
+     * <p><b>다른 갈래는 건드리지 않는다.</b> 대표이미지를 바꿀 때 상세페이지가 함께
+     * 날아가면 되돌릴 방법이 없다.
+     *
+     * <p>{@link ProductImageKind#GALLERY} 를 교체하면 {@code thumbnail_key} 도 첫 장으로
+     * 맞춘다 — 목록·장바구니·주문서가 그 컬럼을 읽는다. 관리자가 두 곳을 따로 관리하면
+     * 반드시 어긋나고, 어긋나면 목록의 사진과 상세의 첫 사진이 다른 상품이 된다.
      */
     @Transactional
     @AuditLog(action = AuditActions.PRODUCT_IMAGE_CHANGE,
               targetType = AuditActions.TARGET_PRODUCT,
               targetId = "#productId",
-              after = "{'objectKeys': #objectKeys}")
-    public List<ProductImage> replaceImages(Long productId, List<String> objectKeys) {
-        find(productId);
+              after = "{'kind': #kind, 'objectKeys': #objectKeys}")
+    public List<ProductImage> replaceImages(Long productId, ProductImageKind kind,
+                                            List<String> objectKeys) {
+        Product product = find(productId);
 
-        List<ProductImage> existing = imageRepository.findByProductIdOrderBySortAscIdAsc(productId);
-        AuditContext.before(Map.of("objectKeys",
+        List<ProductImage> existing =
+                imageRepository.findByProductIdAndKindOrderBySortAscIdAsc(productId, kind);
+        AuditContext.before(Map.of("kind", kind, "objectKeys",
                 existing.stream().map(ProductImage::getObjectKey).toList()));
         imageRepository.deleteAll(existing);
         imageRepository.flush();   // 삭제를 먼저 내보낸다. 같은 키를 다시 넣는 경우가 흔하다
 
         List<ProductImage> saved = new java.util.ArrayList<>();
         for (int i = 0; i < objectKeys.size(); i++) {
-            saved.add(imageRepository.save(ProductImage.create(productId, objectKeys.get(i), i * 10)));
+            saved.add(imageRepository.save(
+                    ProductImage.create(productId, objectKeys.get(i), i * 10, kind)));
+        }
+
+        if (kind == ProductImageKind.GALLERY) {
+            // 비면 null 이다. 빈 문자열을 넣으면 "사진이 있다"로 읽혀서 화면이
+            // 깨진 이미지 자리를 그린다.
+            product.changeThumbnailKey(objectKeys.isEmpty() ? null : objectKeys.get(0));
         }
         return saved;
     }

@@ -9,6 +9,7 @@ import com.hanseongge.domain.product.dto.ProductSearchCondition;
 import com.hanseongge.domain.product.dto.ProductSummaryResponse;
 import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductImage;
+import com.hanseongge.domain.product.entity.ProductImageKind;
 import com.hanseongge.domain.product.entity.ProductOption;
 import com.hanseongge.global.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
@@ -52,9 +53,8 @@ public class ProductQueryService {
     public ProductDetailResponse detail(Long productId) {
         Product product = productService.findVisible(productId);
 
-        List<String> imageKeys = productService.findImages(productId).stream()
-                .map(ProductImage::getObjectKey)
-                .toList();
+        List<String> galleryKeys = keysOf(productId, ProductImageKind.GALLERY);
+        List<String> detailKeys = keysOf(productId, ProductImageKind.DETAIL);
 
         List<ProductOption> options = productService.findActiveOptions(productId);
 
@@ -65,7 +65,7 @@ public class ProductQueryService {
             prices.add(PublicPriceQuoteResponse.from(quoteSafely(productId, option.getId())));
         }
 
-        return ProductDetailResponse.of(product, imageKeys, optionResponses, prices);
+        return ProductDetailResponse.of(product, galleryKeys, detailKeys, optionResponses, prices);
     }
 
     // =================================================================
@@ -81,6 +81,12 @@ public class ProductQueryService {
                         options.isEmpty() ? null : options.get(0).getId()));
 
         return ProductSummaryResponse.of(product, representative, multipleOptions);
+    }
+
+    private List<String> keysOf(Long productId, ProductImageKind kind) {
+        return productService.findImages(productId, kind).stream()
+                .map(ProductImage::getObjectKey)
+                .toList();
     }
 
     /**

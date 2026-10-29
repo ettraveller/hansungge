@@ -28,7 +28,8 @@ export const adminKeys = {
   productList: (search: ProductSearch) => [...adminKeys.products(), 'list', search] as const,
   product: (id: number) => [...adminKeys.products(), id] as const,
   productOptions: (id: number) => [...adminKeys.products(), id, 'options'] as const,
-  productImages: (id: number) => [...adminKeys.products(), id, 'images'] as const,
+  productImages: (id: number, kind: string) =>
+    [...adminKeys.products(), id, 'images', kind] as const,
   productPreview: (id: number) => [...adminKeys.products(), id, 'preview'] as const,
 
   categories: () => [...adminKeys.all, 'categories'] as const,

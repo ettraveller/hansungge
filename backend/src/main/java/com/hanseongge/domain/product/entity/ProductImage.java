@@ -2,6 +2,8 @@ package com.hanseongge.domain.product.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,6 +18,9 @@ import lombok.NoArgsConstructor;
  * <p><b>URL 이 아니라 Object Storage 키를 저장한다.</b> URL 을 넣으면 스토리지 엔드포인트나
  * CDN 도메인이 바뀌는 날 전 행이 무효가 되고, 그때 일괄 UPDATE 를 돌려야 한다.
  * 키만 두면 URL 조립은 조회 시점의 설정이 결정한다.
+ *
+ * <p>갈래({@link ProductImageKind})에 따라 쓰이는 자리가 다르다 — GALLERY 는 상세 상단
+ * 썸네일, DETAIL 은 설명 아래 전체 폭이다.
  *
  * <p>업로드는 {@code AdminMediaController} 가 받고, 저장 위치는 {@code MediaStorage} 구현이
  * 정한다. 지금은 앱 서버 디스크이고, Object Storage 로 옮겨도 이 테이블은 그대로 둔다 —
@@ -40,14 +45,21 @@ public class ProductImage {
     @Column(name = "sort", nullable = false)
     private int sort;
 
-    private ProductImage(Long productId, String objectKey, int sort) {
+    /** 어느 갈래인가. 기본값을 두지 않는다 — 넣는 코드가 반드시 정해야 한다 (V31). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kind", length = 20, nullable = false)
+    private ProductImageKind kind;
+
+    private ProductImage(Long productId, String objectKey, int sort, ProductImageKind kind) {
         this.productId = productId;
         this.objectKey = objectKey;
         this.sort = sort;
+        this.kind = kind;
     }
 
-    public static ProductImage create(Long productId, String objectKey, int sort) {
-        return new ProductImage(productId, objectKey, sort);
+    public static ProductImage create(Long productId, String objectKey, int sort,
+                                      ProductImageKind kind) {
+        return new ProductImage(productId, objectKey, sort, kind);
     }
 
     public void changeSort(int sort) {

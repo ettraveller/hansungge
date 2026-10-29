@@ -148,14 +148,25 @@ public class Product {
         return new Product(categoryId, name, pricing, description, thumbnailKey, createdBy);
     }
 
+    /**
+     * ⚠️ {@code thumbnailKey} 를 받지 않는다. 그 값의 주인은 대표이미지 목록이고,
+     * {@code ProductService.replaceImages(GALLERY)} 가 첫 장으로 맞춘다 (V31).
+     *
+     * <p>여기서 함께 받으면 상품 정보를 저장할 때마다 폼에 없는 값이 null 로 덮어써서
+     * 목록의 사진이 사라진다 — 사진을 지운 적이 없는데 사라지므로 원인을 찾기 어렵다.
+     */
     public void update(Long categoryId, String name, ProductPricing pricing,
-                       String description, String thumbnailKey, String updatedBy) {
+                       String description, String updatedBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
         this.description = description;
-        this.thumbnailKey = thumbnailKey;
         touch(updatedBy);
+    }
+
+    /** 대표이미지 목록의 첫 장. 비면 null — 빈 문자열은 "사진이 있다"로 읽힌다. */
+    public void changeThumbnailKey(String thumbnailKey) {
+        this.thumbnailKey = thumbnailKey;
     }
 
     /**

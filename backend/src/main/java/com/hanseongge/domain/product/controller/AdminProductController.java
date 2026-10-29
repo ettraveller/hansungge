@@ -8,6 +8,7 @@ import com.hanseongge.domain.product.dto.ProductSearchCondition;
 import com.hanseongge.domain.product.dto.ProductStatusChangeRequest;
 import com.hanseongge.domain.product.dto.StockAdjustRequest;
 import com.hanseongge.domain.product.entity.ProductImage;
+import com.hanseongge.domain.product.entity.ProductImageKind;
 import com.hanseongge.domain.product.service.ProductService;
 import com.hanseongge.global.auth.AdminPrincipal;
 import com.hanseongge.global.dto.PageResponse;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -81,10 +83,14 @@ public class AdminProductController {
                 .toList());
     }
 
-    @Operation(summary = "이미지 목록")
+    @Operation(summary = "이미지 목록",
+            description = "kind=GALLERY 는 상세 상단 대표이미지(첫 장이 목록·장바구니용), "
+                    + "kind=DETAIL 은 설명 아래 상세페이지 이미지다.")
     @GetMapping("/{id}/images")
-    public ResponseEntity<List<String>> images(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.findImages(id).stream()
+    public ResponseEntity<List<String>> images(
+            @PathVariable Long id,
+            @RequestParam(name = "kind", defaultValue = "GALLERY") ProductImageKind kind) {
+        return ResponseEntity.ok(productService.findImages(id, kind).stream()
                 .map(ProductImage::getObjectKey)
                 .toList());
     }
@@ -100,7 +106,7 @@ public class AdminProductController {
                                                   @AuthenticationPrincipal AdminPrincipal actor) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ProductResponse.from(
                 productService.create(request.categoryId(), request.name(), request.toPricing(),
-                        request.description(), request.thumbnailKey(),
+                        request.description(),
                         request.defaultOptionName(), request.initialStock(), actor.loginId())));
     }
 
@@ -113,7 +119,7 @@ public class AdminProductController {
                                                   @AuthenticationPrincipal AdminPrincipal actor) {
         return ResponseEntity.ok(ProductResponse.from(
                 productService.update(id, request.categoryId(), request.name(), request.toPricing(),
-                        request.description(), request.thumbnailKey(), actor.loginId())));
+                        request.description(), actor.loginId())));
     }
 
     @Operation(summary = "판매 상태 변경",
@@ -173,15 +179,18 @@ public class AdminProductController {
 
     // ---------- 이미지 ----------
 
-    @Operation(summary = "상세 이미지 목록 교체",
-            description = "보낸 순서대로 상세 페이지에 나열된다. 파일 업로드는 "
-                    + "POST /api/admin/media 가 받고, 그 응답의 objectKey 를 여기로 보낸다. "
-                    + "대표이미지는 이 목록이 아니라 상품의 thumbnailKey 다.")
+    @Operation(summary = "이미지 목록 교체",
+            description = "보낸 순서대로 나열된다. 그 갈래만 바뀌고 다른 갈래는 그대로다. "
+                    + "파일 업로드는 POST /api/admin/media 가 받고, 그 응답의 objectKey 를 "
+                    + "여기로 보낸다. kind=GALLERY 를 교체하면 첫 장이 상품의 thumbnailKey "
+                    + "로도 들어간다 — 목록·장바구니·주문서가 그 값을 읽는다.")
     @PreAuthorize("hasRole('MANAGER')")
     @PutMapping("/{id}/images")
-    public ResponseEntity<List<String>> replaceImages(@PathVariable Long id,
-                                                      @RequestBody List<String> objectKeys) {
-        return ResponseEntity.ok(productService.replaceImages(id, objectKeys).stream()
+    public ResponseEntity<List<String>> replaceImages(
+            @PathVariable Long id,
+            @RequestParam(name = "kind", defaultValue = "GALLERY") ProductImageKind kind,
+            @RequestBody List<String> objectKeys) {
+        return ResponseEntity.ok(productService.replaceImages(id, kind, objectKeys).stream()
                 .map(ProductImage::getObjectKey)
                 .toList());
     }

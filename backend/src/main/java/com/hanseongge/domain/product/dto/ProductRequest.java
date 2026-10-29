@@ -35,13 +35,13 @@ public record ProductRequest(
         @Size(max = 200)
         String name,
 
-        @Schema(description = "상품 설명 (HTML 허용)")
+        @Schema(description = "상품 설명. 평문으로 표시된다 — 사진은 이미지 목록으로 올린다")
         String description,
 
-        @Schema(description = "대표 이미지 Object Storage 키. URL 이 아니다",
-                example = "products/2026/goldbar-375.jpg")
-        @Size(max = 300)
-        String thumbnailKey,
+        // ⚠️ thumbnailKey 를 받지 않는다. 대표이미지 목록(PUT /images?kind=GALLERY)의
+        // 첫 장이 그 값이 된다 (V31). 여기서 함께 받으면 상품 정보를 저장할 때마다
+        // 폼에 없는 값이 null 로 덮어써서 목록의 사진이 사라진다 — 사진을 지운 적이
+        // 없는데 사라지므로 원인을 찾기 어렵다.
 
         @Schema(description = "연동 금속. 시세 연동 상품이면 필수", example = "GOLD_24K")
         MetalType metalType,

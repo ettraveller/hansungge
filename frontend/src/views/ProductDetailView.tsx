@@ -33,8 +33,18 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   const addToCart = useAddToCart();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
-  /** 위쪽 갤러리에 쓰는 한 장. 목록에서 눌러 들어온 그 사진이다. */
-  const thumbUrl = mediaUrl(product.thumbnailKey);
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  /**
+   * 위쪽 갤러리 사진.
+   *
+   * <p>목록에서 눌러 들어왔으므로 첫 장이 그 사진이어야 한다 — 서버가 대표이미지
+   * 목록 순서대로 주고, 그 첫 장이 {@code thumbnailKey} 다. 아직 아무것도 올리지
+   * 않은 상품은 비어 있고, 그때는 일러스트 자리표시자를 쓴다.
+   */
+  const photos = product.galleryKeys
+    .map((key) => mediaUrl(key))
+    .filter((url): url is string => url != null);
 
   /**
    * 상세 설명 이미지.
@@ -43,11 +53,8 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
    * 상세페이지</b>라서, 정사각형 썸네일에 넣으면 맨 위 한 조각만 보인다. 설명 아래에
    * 올린 순서대로 전체 폭으로 쌓는다 — 국내 쇼핑몰이 상세페이지를 보여주는 방식이고,
    * 관리자가 이미지 하나로 만들어 오는 형태에 맞는다.
-   *
-   * <p>대표이미지와 같은 키가 섞여 있으면 뺀다. 위에서 이미 보여준 그림이다.
    */
-  const detailImages = product.imageKeys
-    .filter((key) => key !== product.thumbnailKey)
+  const detailImages = product.detailKeys
     .map((key) => mediaUrl(key))
     .filter((url): url is string => url != null);
 
@@ -110,17 +117,41 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
         {/* ---------- 이미지 ---------- */}
         <div className={styles.gallery}>
           <WishlistHeart productId={product.id} productName={product.name} />
-          {thumbUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              className={styles.mainPhoto}
-              src={thumbUrl}
-              alt={product.name}
-              // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
-              // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
-              loading="eager"
-              decoding="async"
-            />
+          {photos.length > 0 ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className={styles.mainPhoto}
+                // 목록이 줄어들 수 있으므로(관리자가 사진을 지운 뒤 새로고침 전)
+                // 고른 번호를 그대로 믿지 않는다. 범위를 넘으면 마지막 장을 쓴다.
+                src={photos[Math.min(photoIndex, photos.length - 1)]}
+                alt={product.name}
+                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+                loading="eager"
+                decoding="async"
+              />
+              {photos.length > 1 && (
+                <ul className={styles.photoStrip}>
+                  {photos.map((url, index) => (
+                    <li key={url}>
+                      <button
+                        type="button"
+                        className={
+                          index === photoIndex ? styles.photoPickerOn : styles.photoPicker
+                        }
+                        aria-label={`${index + 1}번째 사진 보기`}
+                        aria-current={index === photoIndex}
+                        onClick={() => setPhotoIndex(index)}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" loading="lazy" decoding="async" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           ) : (
             <div className={styles.mainImage} aria-hidden="true">
               <span className={styles.imageMark}>

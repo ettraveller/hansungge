@@ -37,8 +37,17 @@ public record ProductDetailResponse(
         @Schema(description = "대표 이미지 Object Storage 키")
         String thumbnailKey,
 
-        @Schema(description = "추가 이미지 키 목록")
-        List<String> imageKeys,
+        @Schema(description = "상세 상단 갤러리 이미지 키. 첫 장이 thumbnailKey 와 같다")
+        List<String> galleryKeys,
+
+        /**
+         * 상품 설명 아래에 전체 폭으로 쌓는 이미지.
+         *
+         * <p>갤러리와 나눠 보내는 이유 — 이 자리에 올라오는 것은 860×9531 처럼 세로로 긴
+         * 상세페이지다. 갤러리 썸네일에 넣으면 맨 위 한 조각만 보인다.
+         */
+        @Schema(description = "상품 설명 아래에 전체 폭으로 쌓는 상세페이지 이미지 키")
+        List<String> detailKeys,
 
         @Schema(description = "연동 금속", example = "GOLD_24K")
         MetalType metalType,
@@ -59,7 +68,9 @@ public record ProductDetailResponse(
         List<PublicPriceQuoteResponse> prices
 ) {
 
-    public static ProductDetailResponse of(Product product, List<String> imageKeys,
+    public static ProductDetailResponse of(Product product,
+                                           List<String> galleryKeys,
+                                           List<String> detailKeys,
                                            List<ProductOptionResponse> options,
                                            List<PublicPriceQuoteResponse> prices) {
         return new ProductDetailResponse(
@@ -68,7 +79,8 @@ public record ProductDetailResponse(
                 product.getName(),
                 product.getDescription(),
                 product.getThumbnailKey(),
-                imageKeys,
+                galleryKeys,
+                detailKeys,
                 product.getMetalType(),
                 product.getWeightG(),
                 product.getPurity(),
