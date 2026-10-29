@@ -27,9 +27,15 @@ export function derivations() {
 
 export interface PairPreviewInput {
   metalType: MetalType;
-  /** 입력한 값이 곧 고시가다 (KRW/1g). 금액은 문자열로 보낸다 — 부동소수 오차를 타지 않게. */
-  sellPricePerGram: string;
-  buyPricePerGram: string;
+  /**
+   * 입력한 값이 곧 고시가다. 단위는 <b>KRW / 1돈(3.75g)</b>이다 — 이 업종의 시세가
+   * 돈 단위로 돌아다녀서, g 로 받으면 관리자가 매번 3.75 로 나눠 넣어야 한다.
+   *
+   * 저장은 원/g 이고, 환산은 서버가 한다 (MetalType.perGramFromDon).
+   * 금액은 문자열로 보낸다 — 부동소수 오차를 타지 않게.
+   */
+  sellPricePerDon: string;
+  buyPricePerDon: string;
 }
 
 export interface DeclarePairInput extends PairPreviewInput {

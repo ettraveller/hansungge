@@ -81,7 +81,7 @@ public record PublicPriceResponse(
                 metal, metal.displayName(), side, side.displayName(),
                 true,
                 perGram,
-                perGram.multiply(MetalType.GRAMS_PER_DON),
+                MetalType.perDonFromGram(perGram),
                 perGram.toPlainString(),
                 view.effective().getEffectiveFrom(),
                 PriceChange.of(perGram, previous));

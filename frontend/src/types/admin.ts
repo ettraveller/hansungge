@@ -129,6 +129,8 @@ export interface AdminCurrentPrice {
   available: boolean;
   availability: PriceAvailability;
   pricePerGram?: number | null;
+  /** 관리자 화면이 읽는 값. 고시 입력도 돈 단위라 같은 단위로 비교해야 한다 */
+  pricePerDon?: number | null;
   /** 직전 고시 대비. 처음 고시면 생략된다 */
   change?: PriceChange | null;
   /** 이 값이 나온 방식. 옛 행이면 V19 이전 값(FIXED_ADJ 등)일 수 있다 */
@@ -161,6 +163,9 @@ export interface QuoteLine {
   /** 고시 전 값. 처음 고시면 생략된다 */
   currentPricePerGram?: number | null;
   newPricePerGram: number;
+  /** 미리보기 표가 보여주는 값. 입력 단위와 같아야 방금 친 숫자를 확인할 수 있다 */
+  currentPricePerDon?: number | null;
+  newPricePerDon: number;
   changePercent?: number | null;
   exceedsLimit: boolean;
 }
@@ -188,6 +193,8 @@ export interface PriceHistory {
   metalType: MetalType;
   priceSide: PriceSide;
   pricePerGram: number;
+  /** 1돈(3.75g) 기준. 서버가 계산해서 준다 — 화면에서 3.75 를 곱하지 않는다 (원칙 P1) */
+  pricePerDon: number;
   baseRawId?: number | null;
   policyMode: PricePolicyMode;
   effectiveFrom: string;

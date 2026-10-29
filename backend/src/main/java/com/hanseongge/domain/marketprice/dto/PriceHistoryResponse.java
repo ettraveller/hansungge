@@ -68,7 +68,7 @@ public record PriceHistoryResponse(
                 e.getMetalType(),
                 e.getPriceSide(),
                 e.getPricePerGram(),
-                e.getPricePerGram().multiply(MetalType.GRAMS_PER_DON),
+                MetalType.perDonFromGram(e.getPricePerGram()),
                 e.getBaseRawId(),
                 e.getPolicyMode(),
                 e.getEffectiveFrom(),

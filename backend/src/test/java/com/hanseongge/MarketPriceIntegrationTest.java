@@ -395,7 +395,7 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
-        @DisplayName("1돈 가격을 1g 칸에 넣은 값(3.75배)은 범위 안이어도 거절한다")
+        @DisplayName("3.75 를 두 번 적용한 값은 범위 안이어도 거절한다 — 확인 절차로 넘기지 않는다")
         void unitErrorIsRejected() {
             declare("100000", "90000");
 
@@ -406,6 +406,28 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
 
             assertThat(current(MetalType.GOLD_24K, PriceSide.SELL).getPricePerGram())
                     .isEqualByComparingTo("100000");
+        }
+
+        @Test
+        @DisplayName("1g 가격을 1돈 칸에 넣은 값(1/3.75)도 거절한다 — 고시가 돈 단위라 이쪽이 더 흔한 실수다")
+        void reverseUnitErrorIsRejected() {
+            // 은으로 본다. 금은 범위 검사가 먼저 잡아서 단위 검사까지 오지 않는다 —
+            // 100,000 의 1/3.75 인 26,666 은 24K 하한 50,000 미만이다.
+            //
+            // 은은 하한이 500 이라 1/3.75 로 떨어져도 범위 안이다. 그래서 단위 검사가
+            // 없으면 조용히 통과하고, 은을 1/3.75 가격에 팔게 된다. 14K 도 마찬가지다.
+            declarationService.declareBoth(MetalType.SILVER,
+                    new BigDecimal("10000"), new BigDecimal("9000"), "은 고시", ADMIN, false);
+
+            // confirmLargeChange=true 로 보내도 통과하지 못해야 한다. 큰 변동 확인은
+            // 사람이 눌러 넘길 수 있는 문이고, 단위 실수를 그 문으로 보내면 넘어간다.
+            assertThatThrownBy(() -> declarationService.declareBoth(MetalType.SILVER,
+                    new BigDecimal("2666.67"), new BigDecimal("2400"), "단위 실수", ADMIN, true))
+                    .isInstanceOfSatisfying(BusinessException.class, e ->
+                            assertThat(e.getFieldErrors().get("SILVER/SELL")).contains("1돈"));
+
+            assertThat(current(MetalType.SILVER, PriceSide.SELL).getPricePerGram())
+                    .isEqualByComparingTo("10000");
         }
 
         @Test

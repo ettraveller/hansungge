@@ -5,7 +5,7 @@ import { Panel } from '../Panel';
 import { deltaClass, sideLabel } from './QuoteChangeTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useCurrentPrices } from '@/hooks/admin/usePrices';
-import { formatDateTime, formatDeltaWithPercent, formatPricePerGram } from '@/utils/format';
+import { formatDateTime, formatDeltaWithPercent, formatPricePerDon } from '@/utils/format';
 import { METAL_LABEL, POLICY_MODE_LABEL } from '@/types/price';
 import type { AdminCurrentPrice } from '@/types/admin';
 import { ApiError } from '@/types/api';
@@ -31,7 +31,7 @@ export function CurrentPriceTable() {
   return (
     <Panel
       title="현재 시세"
-      note="쇼핑몰은 이 값으로 상품 가격을 계산한다. 새로 고시할 때까지 이 값이 그대로 쓰인다."
+      note="쇼핑몰은 이 값으로 상품 가격을 계산한다. 새로 고시할 때까지 이 값이 그대로 쓰인다. 금액은 1돈(3.75g) 기준."
       flush
     >
       {error && (
@@ -94,10 +94,10 @@ function PriceRow({ row }: { row: AdminCurrentPrice }) {
       <td data-label="고시가" className={styles.num}>
         {row.available ? (
           <>
-            <span className={styles.strong}>{formatPricePerGram(row.pricePerGram)}</span>
+            <span className={styles.strong}>{formatPricePerDon(row.pricePerDon)}</span>
             {row.change != null && (
-              <span className={deltaClass(row.change.changePerGram)}>
-                {formatDeltaWithPercent(row.change.changePerGram, row.change.changePercent)}
+              <span className={deltaClass(row.change.changePerDon)}>
+                {formatDeltaWithPercent(row.change.changePerDon, row.change.changePercent)}
               </span>
             )}
           </>

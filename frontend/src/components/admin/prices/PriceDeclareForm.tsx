@@ -15,7 +15,7 @@ import {
   useDerivations,
   usePreviewPair,
 } from '@/hooks/admin/usePrices';
-import { formatDateTime, formatPricePerGram } from '@/utils/format';
+import { formatDateTime, formatPricePerDon } from '@/utils/format';
 import { METAL_LABEL, METAL_ORDER, type MetalType, type PriceSide } from '@/types/price';
 import type { QuotePlan, QuotePublishResult } from '@/types/admin';
 import styles from '../admin.module.css';
@@ -93,8 +93,8 @@ export function PriceDeclareForm() {
     declare.mutate(
       {
         metalType,
-        sellPricePerGram: sellPrice,
-        buyPricePerGram: buyPrice,
+        sellPricePerDon: sellPrice,
+        buyPricePerDon: buyPrice,
         changeReason: changeReason.trim(),
         confirmLargeChange,
       },
@@ -115,7 +115,7 @@ export function PriceDeclareForm() {
     if (!canSubmit) return;
     clearFeedback();
     preview.mutate(
-      { metalType, sellPricePerGram: sellPrice, buyPricePerGram: buyPrice },
+      { metalType, sellPricePerDon: sellPrice, buyPricePerDon: buyPrice },
       {
         onSuccess: (plan) => {
           if (plan.needsConfirm) {
@@ -128,15 +128,17 @@ export function PriceDeclareForm() {
     );
   };
 
+  // "지금" 값도 돈 단위로 보여준다. 입력은 돈인데 비교값이 g 면 방금 친 숫자가
+  // 맞게 들어갔는지 확인할 방법이 없다. 돈 값은 서버가 계산해서 내려준다.
   const hintFor = (side: PriceSide, base: string) => {
     const current = currentOf(side);
-    return current ? `${base} 지금 ${formatPricePerGram(current.pricePerGram)}` : base;
+    return current ? `${base} 지금 ${formatPricePerDon(current.pricePerDon)}` : base;
   };
 
   return (
     <Panel
       title="시세 고시"
-      note="살 때와 팔 때를 함께 고시한다. 입력한 값(1g 기준)이 그대로 쇼핑몰 시세가 된다."
+      note="살 때와 팔 때를 함께 고시한다. 입력한 값(1돈 = 3.75g 기준)이 그대로 쇼핑몰 시세가 된다."
     >
       <form className={styles.form} onSubmit={submit}>
         {/* 확인창이 떠 있는 동안에는 오류를 창 안에서 보여준다. 두 곳에 같은 오류가 겹치지 않게. */}
@@ -180,23 +182,23 @@ export function PriceDeclareForm() {
           <>
             <div className={styles.formGrid}>
               <Field
-                label="살 때 (원/1g)"
+                label="살 때 (원/1돈)"
                 htmlFor="declare-sell"
                 required
-                hint={hintFor('SELL', '고객이 사는 가격. 1돈(3.75g) 값이 아니다.')}
+                hint={hintFor('SELL', '고객이 사는 가격. 1돈(3.75g) 기준이다.')}
                 error={sellInvalid ? '숫자만, 소수점 두 자리까지 입력할 수 있습니다.' : null}
               >
                 <MoneyInput
                   id="declare-sell"
                   value={sellPrice}
                   invalid={sellInvalid || spreadInverted}
-                  placeholder="220,800"
+                  placeholder="828,000"
                   onValueChange={setSellPrice}
                 />
               </Field>
 
               <Field
-                label="팔 때 (원/1g)"
+                label="팔 때 (원/1돈)"
                 htmlFor="declare-buy"
                 required
                 hint={hintFor('BUY', '고객이 파는 가격.')}
@@ -206,7 +208,7 @@ export function PriceDeclareForm() {
                   id="declare-buy"
                   value={buyPrice}
                   invalid={buyInvalid || spreadInverted}
-                  placeholder="188,000"
+                  placeholder="705,000"
                   onValueChange={setBuyPrice}
                 />
               </Field>

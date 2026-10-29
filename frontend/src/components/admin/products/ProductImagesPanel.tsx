@@ -39,7 +39,7 @@ export function ProductImagesPanel({
   return (
     <Panel
       title="상세 이미지"
-      note="상세 페이지에 위에서 아래로 보이는 순서다. 올린 뒤 저장을 눌러야 반영된다."
+      note="상품 설명 아래에 올린 순서대로 전체 폭으로 쌓인다. 860px 폭으로 만든 세로로 긴 상세페이지를 그대로 올리면 된다. 저장을 눌러야 반영된다."
     >
       <div className={styles.form}>
         {error && (
@@ -63,7 +63,8 @@ export function ProductImagesPanel({
             onChange={setDraft}
             max={10}
             disabled={!canEdit}
-            emptyLabel="상세 사진을 끌어다 놓거나 클릭해서 선택하세요"
+            emptyLabel="상세페이지 이미지를 끌어다 놓거나 클릭해서 선택하세요"
+            preview="tall"
           />
         )}
 

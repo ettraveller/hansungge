@@ -31,6 +31,7 @@ export function ImageUploader({
   max = 10,
   disabled,
   emptyLabel = '사진을 끌어다 놓거나 클릭해서 선택하세요',
+  preview = 'square',
 }: {
   value: string[];
   onChange: (keys: string[]) => void;
@@ -39,6 +40,14 @@ export function ImageUploader({
   max?: number;
   disabled?: boolean;
   emptyLabel?: string;
+  /**
+   * 미리보기 모양.
+   *
+   * - `square` — 상품 사진. 화면에 정사각형으로 잘려 나가므로 잘림을 그대로 보여준다.
+   * - `tall` — 상세페이지 이미지. 860×9000 처럼 세로로 긴 그림을 정사각형에 넣으면
+   *   맨 위 한 조각만 보여서 어느 장이 어느 것인지 구분할 수 없다. 전체를 담아 보여준다.
+   */
+  preview?: 'square' | 'tall';
 }) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -174,7 +183,11 @@ export function ImageUploader({
                 등록해야 하고, 관리자 미리보기는 최적화가 필요한 자리가 아니다.
               */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className={styles.thumb} src={mediaUrl(key) ?? ''} alt="" />
+              <img
+                className={preview === 'tall' ? styles.thumbTall : styles.thumb}
+                src={mediaUrl(key) ?? ''}
+                alt=""
+              />
               <div className={styles.itemBar}>
                 {!single && (
                   <>

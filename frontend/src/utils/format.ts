@@ -28,6 +28,22 @@ export function formatPricePerGram(price: string | number | null | undefined): s
   return `${KRW.format(n)}원/g`;
 }
 
+/**
+ * 시세 표시: "787,500원/돈"
+ *
+ * 관리자 고시 화면이 쓴다. 이 업종의 시세가 돈 단위로 돌아다녀서, 고시 입력도
+ * 돈으로 받는다 — 그 옆에 놓이는 값들이 같은 단위여야 비교가 된다.
+ *
+ * ⚠️ 값은 <b>서버가 준 돈 값</b>이어야 한다. 화면에서 g 값에 3.75 를 곱하지 않는다
+ * (설계서 원칙 P1 — 가격의 최종 판단은 서버).
+ */
+export function formatPricePerDon(price: string | number | null | undefined): string {
+  if (price == null || price === '') return '-';
+  const n = typeof price === 'string' ? Number(price) : price;
+  if (!Number.isFinite(n)) return '-';
+  return `${KRW.format(n)}원/돈`;
+}
+
 /** 중량 표시: "3.75g" */
 export function formatGram(gram: string | number | null | undefined): string {
   if (gram == null || gram === '') return '-';

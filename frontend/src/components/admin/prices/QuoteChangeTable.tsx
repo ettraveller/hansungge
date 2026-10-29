@@ -1,6 +1,6 @@
 'use client';
 
-import { formatPercent, formatPricePerGram } from '@/utils/format';
+import { formatPercent, formatPricePerDon } from '@/utils/format';
 import { METAL_LABEL, type PriceSide } from '@/types/price';
 import type { QuoteLine } from '@/types/admin';
 import styles from '../admin.module.css';
@@ -21,7 +21,9 @@ export function deltaClass(value: number | null | undefined): string {
  * 확인창과 고시 결과가 같은 표를 쓴다. 두 곳이 따로 그리면 "확인할 때 본 값"과
  * "나간 값"을 서로 다른 말로 보여주게 된다.
  *
- * 값은 서버가 계산한 그대로다. 18K·14K 환산값도 화면에서 곱하지 않는다 (원칙 P1).
+ * 단위는 고시 입력과 같은 원/돈이다. 입력은 돈인데 표가 g 면 방금 친 숫자와 달라서
+ * 맞게 들어갔는지 확인할 수 없다. 돈 값도 서버가 계산해서 준다 — 18K·14K 환산값까지
+ * 화면에서 곱하지 않는다 (원칙 P1).
  */
 export function QuoteChangeTable({ lines }: { lines: QuoteLine[] }) {
   return (
@@ -50,12 +52,12 @@ export function QuoteChangeTable({ lines }: { lines: QuoteLine[] }) {
               </td>
               <td data-label="구분">{sideLabel(line.priceSide)}</td>
               <td data-label="지금" className={`${styles.num} ${styles.muted}`}>
-                {line.currentPricePerGram == null
+                {line.currentPricePerDon == null
                   ? '처음 고시'
-                  : formatPricePerGram(line.currentPricePerGram)}
+                  : formatPricePerDon(line.currentPricePerDon)}
               </td>
               <td data-label="바뀔 값" className={`${styles.num} ${styles.strong}`}>
-                {formatPricePerGram(line.newPricePerGram)}
+                {formatPricePerDon(line.newPricePerDon)}
               </td>
               <td data-label="변동" className={styles.num}>
                 {line.changePercent == null ? (

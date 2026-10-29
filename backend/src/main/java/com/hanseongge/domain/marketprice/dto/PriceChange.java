@@ -67,7 +67,7 @@ public record PriceChange(
         return new PriceChange(
                 prev,
                 diffPerGram,
-                diffPerGram.multiply(MetalType.GRAMS_PER_DON),
+                MetalType.perDonFromGram(diffPerGram),
                 percent);
     }
 }

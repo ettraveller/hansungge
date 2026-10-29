@@ -33,18 +33,21 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   const addToCart = useAddToCart();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
-  const [photoIndex, setPhotoIndex] = useState(0);
+  /** 위쪽 갤러리에 쓰는 한 장. 목록에서 눌러 들어온 그 사진이다. */
+  const thumbUrl = mediaUrl(product.thumbnailKey);
 
   /**
-   * 보여줄 사진들.
+   * 상세 설명 이미지.
    *
-   * <p>대표이미지를 맨 앞에 둔다 — 목록에서 그 사진을 보고 눌러 들어왔으므로, 상세의
-   * 첫 장이 다른 사진이면 같은 상품인지 한 번 더 확인하게 된다. 상세 이미지에 대표와
-   * 같은 키가 또 들어 있으면 중복을 걷어낸다.
+   * <p>갤러리에 섞지 않는다. 이 자리에 올라오는 것은 보통 860×9000 처럼 <b>세로로 긴
+   * 상세페이지</b>라서, 정사각형 썸네일에 넣으면 맨 위 한 조각만 보인다. 설명 아래에
+   * 올린 순서대로 전체 폭으로 쌓는다 — 국내 쇼핑몰이 상세페이지를 보여주는 방식이고,
+   * 관리자가 이미지 하나로 만들어 오는 형태에 맞는다.
+   *
+   * <p>대표이미지와 같은 키가 섞여 있으면 뺀다. 위에서 이미 보여준 그림이다.
    */
-  const photos = [
-    ...new Set([product.thumbnailKey, ...product.imageKeys].filter((key) => key != null)),
-  ]
+  const detailImages = product.imageKeys
+    .filter((key) => key !== product.thumbnailKey)
     .map((key) => mediaUrl(key))
     .filter((url): url is string => url != null);
 
@@ -107,39 +110,17 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
         {/* ---------- 이미지 ---------- */}
         <div className={styles.gallery}>
           <WishlistHeart productId={product.id} productName={product.name} />
-          {photos.length > 0 ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.mainPhoto}
-                src={photos[Math.min(photoIndex, photos.length - 1)]}
-                alt={product.name}
-                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
-                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
-                loading="eager"
-                decoding="async"
-              />
-              {photos.length > 1 && (
-                <ul className={styles.photoStrip}>
-                  {photos.map((url, index) => (
-                    <li key={url}>
-                      <button
-                        type="button"
-                        className={
-                          index === photoIndex ? styles.photoPickerOn : styles.photoPicker
-                        }
-                        aria-label={`${index + 1}번째 사진 보기`}
-                        aria-current={index === photoIndex}
-                        onClick={() => setPhotoIndex(index)}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt="" loading="lazy" decoding="async" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+          {thumbUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              className={styles.mainPhoto}
+              src={thumbUrl}
+              alt={product.name}
+              // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+              // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+              loading="eager"
+              decoding="async"
+            />
           ) : (
             <div className={styles.mainImage} aria-hidden="true">
               <span className={styles.imageMark}>
@@ -275,12 +256,31 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
         </div>
       </div>
 
-      {product.description && (
+      {(product.description || detailImages.length > 0) && (
         <section className={styles.description} aria-labelledby="product-desc">
           <h2 id="product-desc" className={styles.descTitle}>
             상품 설명
           </h2>
-          <p className={styles.descBody}>{product.description}</p>
+          {product.description && <p className={styles.descBody}>{product.description}</p>}
+          {detailImages.length > 0 && (
+            <div className={styles.descImages}>
+              {detailImages.map((url) => (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  key={url}
+                  src={url}
+                  // 그림 안에 글이 박혀 있어 alt 로 옮길 방법이 없다. 빈 alt 로 두면
+                  // 화면 읽어주는 프로그램이 건너뛴다 — "상세 이미지 1" 같은 문구를
+                  // 넣는 것보다 낫다. 대신 글로 된 설명을 함께 적도록 관리자 화면에
+                  // 안내한다. ⚠️ 이미지만 올리면 그 내용은 접근성·검색 양쪽에서 사라진다.
+                  alt=""
+                  // 화면 아래에 있고 한 장이 수 MB 다. 스크롤이 닿을 때 받는다.
+                  loading="lazy"
+                  decoding="async"
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

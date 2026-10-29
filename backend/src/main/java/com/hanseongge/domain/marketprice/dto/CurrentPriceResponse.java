@@ -34,8 +34,18 @@ public record CurrentPriceResponse(
         @Schema(description = "AVAILABLE / NONE", example = "AVAILABLE")
         CurrentPriceView.Availability availability,
 
-        @Schema(description = "고시가 (원/g)", example = "220800.00")
+        @Schema(description = "고시가 (원/g). 저장 단위다", example = "220800.00")
         BigDecimal pricePerGram,
+
+        /**
+         * 관리자 화면이 읽는 값.
+         *
+         * <p>화면이 3.75 를 곱하지 않는다 — 가격의 최종 판단은 항상 서버가 한다
+         * (설계서 원칙 P1). 고시 입력도 돈 단위이므로, 입력칸 옆의 "지금 값"이 같은
+         * 단위여야 관리자가 비교할 수 있다.
+         */
+        @Schema(description = "고시가 (원/돈, 3.75g)", example = "828000.00")
+        BigDecimal pricePerDon,
 
         @Schema(description = "직전 고시 대비 변동폭. 처음 고시면 null")
         PriceChange change,
@@ -57,7 +67,7 @@ public record CurrentPriceResponse(
     public static CurrentPriceResponse none(MetalType metalType, PriceSide priceSide) {
         return new CurrentPriceResponse(metalType, metalType.displayName(), priceSide,
                 false, CurrentPriceView.Availability.NONE,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     /** @param previous 같은 금속·쪽의 직전 행. 없으면 null */
@@ -73,6 +83,7 @@ public record CurrentPriceResponse(
                 view.isSellable(),
                 view.availability(),
                 e.getPricePerGram(),
+                MetalType.perDonFromGram(e.getPricePerGram()),
                 PriceChange.of(e.getPricePerGram(), previous),
                 e.getPolicyMode(),
                 e.getEffectiveFrom(),

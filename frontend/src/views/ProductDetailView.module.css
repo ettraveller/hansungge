@@ -339,39 +339,23 @@
   border-radius: var(--radius-lg);
 }
 
-.photoStrip {
+/* --- 상세 설명 이미지 --------------------------------------------- */
+
+/* 세로로 긴 상세페이지를 올린 순서대로 쌓는다.
+   폭을 860px 로 묶는 이유 — 국내 상세페이지가 대개 860px 로 만들어지고, 그보다
+   넓게 늘리면 글자가 흐려진다. 더 좁은 화면에서는 100% 로 줄어든다.
+   세로는 건드리지 않는다 — 비율을 고정하면 9000px 짜리가 잘린다. */
+.descImages {
   display: flex;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  list-style: none;
-  overflow-x: auto;
-  /* 모바일에서 손가락으로 밀 때 걸리는 느낌이 없게 한다 */
-  -webkit-overflow-scrolling: touch;
+  flex-direction: column;
+  width: min(860px, 100%);
+  margin: var(--space-5) 0 0;
 }
 
-.photoPicker,
-.photoPickerOn {
+/* 이미지 사이에 틈을 두지 않는다. 한 장을 여러 조각으로 잘라 올리는 경우가 많아
+   gap 이 있으면 그림 중간에 흰 줄이 그어진다. */
+.descImages img {
   display: block;
-  width: 64px;
-  height: 64px;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--ink-100);
-  cursor: pointer;
-}
-
-.photoPickerOn {
-  border-color: var(--gold-600);
-  box-shadow: 0 0 0 1px var(--gold-600);
-}
-
-.photoPicker img,
-.photoPickerOn img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  height: auto;
 }

@@ -36,6 +36,18 @@ public record QuoteLineResponse(
         @Schema(description = "새 값 (원/g)", example = "162288.00")
         BigDecimal newPricePerGram,
 
+        /**
+         * 돈 기준 값. 미리보기 표가 이것을 보여준다.
+         *
+         * <p>관리자가 돈 단위로 입력했는데 "바뀔 값"을 g 로 보여주면, 방금 친 숫자와
+         * 표의 숫자가 달라서 맞게 들어갔는지 확인할 수 없다.
+         */
+        @Schema(description = "고시 전 값 (원/돈). 처음 고시면 null", example = "600000.00")
+        BigDecimal currentPricePerDon,
+
+        @Schema(description = "새 값 (원/돈)", example = "608580.00")
+        BigDecimal newPricePerDon,
+
         @Schema(description = "고시 전 대비 변동률(%). 처음 고시면 null", example = "1.43")
         BigDecimal changePercent,
 
@@ -53,6 +65,10 @@ public record QuoteLineResponse(
                 line.basePricePerGram(),
                 line.currentPricePerGram(),
                 line.newPrice().value(),
+                // 처음 고시라 직전 값이 없으면 돈 값도 null 이다 — 0 으로 만들면
+                // "0원이었다"로 읽힌다. perDonFromGram 이 null 을 그대로 통과시킨다.
+                MetalType.perDonFromGram(line.currentPricePerGram()),
+                MetalType.perDonFromGram(line.newPrice().value()),
                 line.changePercent(),
                 line.exceedsLimit());
     }

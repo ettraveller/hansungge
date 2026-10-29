@@ -405,7 +405,11 @@ export function ProductForm({
         />
       </Field>
 
-      <Field label="상품 설명" htmlFor="p-desc" hint="HTML 을 넣을 수 있다.">
+      <Field
+        label="상품 설명"
+        htmlFor="p-desc"
+        hint="글로만 들어간다 — 태그를 적어도 그대로 글자로 보인다. 사진은 아래 「상세 이미지」로 올린다."
+      >
         <TextArea
           id="p-desc"
           value={description}

@@ -7,7 +7,7 @@ import { Pagination } from '../Pagination';
 import { Panel } from '../Panel';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { usePriceHistory } from '@/hooks/admin/usePrices';
-import { formatDateTime, formatPricePerGram } from '@/utils/format';
+import { formatDateTime, formatPricePerDon } from '@/utils/format';
 import {
   METAL_LABEL,
   METAL_ORDER,
@@ -39,7 +39,7 @@ export function PriceHistoryPanel() {
   return (
     <Panel
       title="시세 변경 이력"
-      note="수정도 삭제도 없는 기록이다. 마감 시각이 비어 있는 행이 지금 쓰이는 값이다."
+      note="수정도 삭제도 없는 기록이다. 마감 시각이 비어 있는 행이 지금 쓰이는 값이다. 금액은 1돈(3.75g) 기준."
       actions={
         <>
           <select
@@ -104,7 +104,7 @@ export function PriceHistoryPanel() {
                 <tr key={row.id}>
                   <td data-label="#" className={`${styles.num} ${styles.muted}`}>{row.id}</td>
                   <td data-label="고시가" data-card-title className={`${styles.num} ${styles.strong}`}>
-                    {formatPricePerGram(row.pricePerGram)}
+                    {formatPricePerDon(row.pricePerDon)}
                   </td>
                   <td data-label="방식">{POLICY_MODE_LABEL[row.policyMode] ?? row.policyMode}</td>
                   <td data-label="적용 시작">{formatDateTime(row.effectiveFrom)}</td>
