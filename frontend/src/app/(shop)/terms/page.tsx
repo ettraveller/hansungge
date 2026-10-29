@@ -1,40 +1,25 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
-import { SectionHead } from '@/components/ui/SectionHead';
+import { TermsView } from '@/views/legal/TermsView';
 
 export const metadata: Metadata = {
   title: '이용약관',
-  // 준비 중인 문서를 검색 결과에 올리지 않는다.
-  robots: { index: false, follow: false },
+  description:
+    '한성금거래소 이용약관. 회원가입과 계약 성립, 고시 시세에 따른 판매가격 산정, 대금 지급, 배송, 청약철회와 분쟁 해결에 관한 사항을 정합니다.',
 };
 
 /**
  * 이용약관 (`/terms`).
  *
- * <h2>왜 빈 안내인가</h2>
- * 푸터가 이 주소를 링크하고 있어 <b>운영 사이트에서 404 가 나고 있었다.</b> 깨진 링크를
- * 그대로 두는 것보다는 준비 중임을 밝히는 편이 낫다.
+ * <p>푸터가 이 주소를 링크하고, 전자상거래법 §13 상 표시 의무이며, 소셜 로그인 3사
+ * 검수와 결제대행사 심사가 모두 이 URL 을 확인한다.
  *
- * <p>내용을 지어내지 않는 이유 — 이용약관은 거래 조건·청약철회·반품 규정처럼
- * <b>사업 정책이 먼저 정해져야</b> 쓸 수 있는 문서다. 개인정보처리방침이 "우리가
- * 무엇을 하는지"의 서술이라 코드에서 사실을 뽑아 쓸 수 있었던 것과 다르다.
- * 정해지지 않은 것을 적어 두면 그대로 효력을 갖는 약속이 된다 (TODO A-6).
+ * <p>2026-10-30 까지는 "준비 중" 안내만 있었다. 거래 조건이 정해지지 않은 상태에서
+ * 내용을 지어내면 그대로 효력을 갖는 약속이 되기 때문이었는데, 이제 가격 산정·주문·
+ * 배송·청약철회가 모두 확정되어 사실대로 쓸 수 있다.
+ *
+ * <p>⚠️ robots 를 열었다. 준비 중일 때는 색인을 막아 두었다.
  */
 export default function TermsPage() {
-  return (
-    <div style={{ padding: '32px 0 64px' }}>
-      <div className="wrap">
-        <SectionHead title="이용약관" />
-        <p style={{ maxWidth: '78ch', fontSize: 15, lineHeight: 1.85, color: '#333' }}>
-          이용약관을 준비하고 있습니다. 거래 조건과 청약철회·반품 규정을 확정한 뒤
-          공개할 예정입니다.
-        </p>
-        <p style={{ maxWidth: '78ch', fontSize: 15, lineHeight: 1.85, color: '#333' }}>
-          개인정보의 수집·이용에 관한 사항은{' '}
-          <Link href="/privacy">개인정보처리방침</Link>에서 확인하실 수 있습니다.
-        </p>
-      </div>
-    </div>
-  );
+  return <TermsView />;
 }

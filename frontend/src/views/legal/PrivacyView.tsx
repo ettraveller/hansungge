@@ -1,9 +1,9 @@
 import { SectionHead } from '@/components/ui/SectionHead';
+import { PolicySectionBlock } from './PolicySectionBlock';
 import {
   PRIVACY_EFFECTIVE_DATE,
   PRIVACY_HISTORY,
   PRIVACY_SECTIONS,
-  type PolicySection,
 } from './privacy-content';
 import styles from './PrivacyView.module.css';
 
@@ -43,7 +43,7 @@ export function PrivacyView() {
         </nav>
 
         {PRIVACY_SECTIONS.map((section) => (
-          <Section key={section.title} section={section} />
+          <PolicySectionBlock key={section.title} section={section} id={slug(section.title)} />
         ))}
 
         <section className={styles.section}>
@@ -58,64 +58,6 @@ export function PrivacyView() {
         </section>
       </div>
     </div>
-  );
-}
-
-function Section({ section }: { section: PolicySection }) {
-  return (
-    <section className={styles.section} id={slug(section.title)}>
-      <h2 className={styles.heading}>{section.title}</h2>
-
-      {/* 본문에 <b> 를 쓰는 문장이 있어 그대로 렌더한다. 값은 전부 이 저장소 안의
-          상수라 외부 입력이 섞이지 않는다 — 사용자 입력이었다면 쓰지 않았을 방법이다. */}
-      {section.body?.map((p, i) => (
-        <p key={i} className={styles.para} dangerouslySetInnerHTML={{ __html: p }} />
-      ))}
-
-      {section.list && (
-        <ul className={styles.list}>
-          {section.list.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
-      )}
-
-      {section.table && (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                {section.table.head.map((h) => (
-                  <th key={h} scope="col">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {section.table.rows.map((row, i) => (
-                <tr key={i}>
-                  {row.map((cell, j) => (
-                    <td key={j}>{cell}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* 본문과 같은 방식으로 그린다. 여기만 평문으로 두면 <b> 가 글자 그대로 보인다 —
-          강조를 쓰라고 만든 자리에 강조를 쓰면 깨지는 셈이었다 (2026-10-29). */}
-      {section.callout &&
-        (Array.isArray(section.callout) ? section.callout : [section.callout]).map((text) => (
-          <p
-            key={text}
-            className={styles.callout}
-            dangerouslySetInnerHTML={{ __html: text }}
-          />
-        ))}
-    </section>
   );
 }
 
