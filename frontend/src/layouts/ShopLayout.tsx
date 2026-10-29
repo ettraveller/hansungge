@@ -125,6 +125,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
             <Link href="/terms">이용약관</Link>
             <Link href="/privacy">개인정보처리방침</Link>
             <Link href="/guide">이용안내</Link>
+            <Link href="/refund">교환·반품·환불</Link>
             <Link href="/store">지점안내</Link>
           </div>
         </div>

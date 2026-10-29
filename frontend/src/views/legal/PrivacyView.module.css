@@ -193,3 +193,34 @@
 .table td {
   color: #333;
 }
+
+/* --- 조문 형식 (교환·반품·환불 운영규정) ------------------------------ */
+
+/* 번호 매긴 항. 조문에서 "제8조 2항" 처럼 번호로 가리키므로 번호가 보여야 한다. */
+.numberedList {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+.numberedList li {
+  max-width: 78ch;
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.85;
+  color: #333;
+}
+
+/* 항 아래에 붙는 글머리 목록. 번호를 매기지 않는다 — 매기면 다음 항 번호와
+   헷갈려서 "제8조 3항"이 검수 항목을 가리키는 것으로 읽힌다. */
+.subList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.subList li {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #555;
+}
