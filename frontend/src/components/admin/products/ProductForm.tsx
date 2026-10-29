@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Alert } from '../Alert';
 import { Button } from '../Button';
 import { ImageUploader } from '../ImageUploader';
+import { ProductPreviewModal } from './ProductPreviewModal';
 import { DecimalInput, Field, MoneyInput, SelectInput, TextArea, TextInput } from '../Field';
 import { flattenCategories, useAdminCategories } from '@/hooks/admin/useCategories';
 import type { ProductInput } from '@/api/admin/products';
@@ -143,6 +144,7 @@ export function ProductForm({
   // 붙이는 것만 등록이 끝난 뒤로 미룬다 — 아직 붙일 상대가 없다.
   const [galleryKeys, setGalleryKeys] = useState<string[]>([]);
   const [detailKeys, setDetailKeys] = useState<string[]>([]);
+  const [previewing, setPreviewing] = useState(false);
   const [initialStock, setInitialStock] = useState('0');
 
   const priceMode = MODE_OF[priceType];
@@ -160,6 +162,17 @@ export function ProductForm({
   const multiplierInvalid =
     priceType === 'MARKET_MULTIPLIER' && (!DECIMAL.test(multiplier) || Number(multiplier) <= 0);
   const stockInvalid = mode === 'create' && !/^\d{1,7}$/.test(initialStock);
+
+  /**
+   * 미리보기를 열 수 있는가.
+   *
+   * <p>{@link canSubmit} 보다 느슨하다 — 카테고리·상품명·초기 재고는 가격에 쓰이지
+   * 않는다. 가격을 확인하려는 시점이 보통 그것들을 아직 안 채운 때다.
+   *
+   * <p>대신 가격 방식에 필요한 값은 있어야 한다. 없으면 서버가 400 을 내는데,
+   * 미리보기를 눌렀다가 오류만 보는 것은 도움이 되지 않는다.
+   */
+  const canPreview = !weightInvalid && !fixedInvalid && !laborInvalid && !multiplierInvalid;
 
   const canSubmit =
     categoryId !== '' &&
@@ -499,12 +512,41 @@ export function ProductForm({
         <Button type="submit" variant="gold" disabled={!canSubmit}>
           {pending ? '저장 중…' : mode === 'create' ? '등록' : '저장'}
         </Button>
+        {/*
+          미리보기는 등록 전에 고객 화면을 확인하는 수단이다. 이것이 없으면 가격을
+          확인하려고 "일단 판매중으로 바꿔 보고 되돌리는" 절차를 쓰게 되고, 그 몇 초
+          동안 확인되지 않은 가격이 실제로 주문 가능한 상태가 된다.
+
+          가격 방식에 필요한 값이 아직 없으면 열어도 400 이 난다. 그 전에는 막는다.
+        */}
+        <Button type="button" onClick={() => setPreviewing(true)} disabled={!canPreview}>
+          미리보기
+        </Button>
         {onCancel && (
-          <Button onClick={onCancel} disabled={pending}>
+          <Button type="button" onClick={onCancel} disabled={pending}>
             취소
           </Button>
         )}
       </div>
+
+      <ProductPreviewModal
+        open={previewing}
+        onClose={() => setPreviewing(false)}
+        productId={mode === 'edit' ? (initial?.id ?? null) : null}
+        input={{
+          name,
+          description,
+          galleryKeys,
+          detailKeys,
+          priceType,
+          metalType: marketLinked ? (metalType === '' ? null : metalType) : null,
+          weightG: marketLinked ? weightG : null,
+          purity: purity.trim() === '' ? null : purity.trim(),
+          laborCost: laborCost === '' ? '0' : laborCost,
+          multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',
+          fixedPrice: marketLinked ? null : fixedPrice,
+        }}
+      />
     </form>
   );
 }

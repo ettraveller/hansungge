@@ -1,14 +1,19 @@
 package com.hanseongge.domain.pricing.controller;
 
 import com.hanseongge.domain.pricing.dto.PriceQuoteResponse;
+import com.hanseongge.domain.product.dto.ProductDraftPriceRequest;
+import com.hanseongge.domain.product.service.ProductService;
 import com.hanseongge.domain.pricing.service.PriceCalculationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,6 +36,7 @@ import java.util.List;
 public class AdminProductPriceController {
 
     private final PriceCalculationService priceCalculationService;
+    private final ProductService productService;
 
     @Operation(summary = "가격 미리보기",
             description = "현재 시세·보정·부가세·반올림을 적용한 산출 결과와 구성요소 내역을 돌려준다. "
@@ -50,5 +56,27 @@ public class AdminProductPriceController {
         return ResponseEntity.ok(priceCalculationService.quoteAllOptions(productId).stream()
                 .map(PriceQuoteResponse::from)
                 .toList());
+    }
+
+    /**
+     * 등록 전 가격 미리보기.
+     *
+     * <p>상품 id 가 없다. 등록 폼을 채우는 중이라 아직 상품이 없고, 그래서 위의
+     * {@code /{productId}/price-preview} 를 쓸 수 없다.
+     *
+     * <p><b>POST 지만 아무것도 저장하지 않는다.</b> 입력값을 본문으로 받아야 해서
+     * POST 일 뿐이다 — 가격 재료가 일곱 개라 쿼리스트링에 담으면 읽기 어렵고,
+     * 소수점이 섞인 값이 URL 인코딩을 거치면서 틀어질 여지가 생긴다.
+     */
+    @Operation(summary = "등록 전 가격 미리보기",
+            description = "상품을 만들지 않고 입력값만으로 계산한다. 아무것도 저장하지 않는다. "
+                    + "등록 직후 상품은 HIDDEN 이므로 status 는 NOT_FOR_SALE 로 오고, "
+                    + "금액은 그대로 계산되어 담긴다.")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/price-preview")
+    public ResponseEntity<PriceQuoteResponse> previewDraft(
+            @Valid @RequestBody ProductDraftPriceRequest request) {
+        return ResponseEntity.ok(
+                PriceQuoteResponse.from(productService.previewDraftPrice(request)));
     }
 }

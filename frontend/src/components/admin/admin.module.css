@@ -1193,3 +1193,10 @@ a.hint:hover {
   flex-direction: column;
   gap: 4px;
 }
+
+/* 미리보기용 넓은 창.
+   고객 화면이 2단(사진 | 정보)이고 상세페이지 이미지가 860px 폭이라, 그 둘을
+   제대로 보려면 1000px 가까이 필요하다. 좁은 화면에서는 100% 로 줄어든다. */
+.dialogWide {
+  width: min(1040px, calc(100vw - 32px));
+}

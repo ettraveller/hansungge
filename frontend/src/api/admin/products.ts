@@ -150,3 +150,26 @@ export function previewAllOptions(productId: number) {
     `/api/admin/products/${productId}/price-preview/options`,
   );
 }
+
+/**
+ * 등록 전 가격 미리보기 — 상품을 만들지 않고 입력값만으로 계산한다.
+ *
+ * <p>금액을 화면에서 계산하지 않는다. 시세·보정·부가세·반올림 규칙이 전부 서버에
+ * 있고, 둘이 갈라지는 날 미리보기와 실제 판매가가 달라진다 (설계서 원칙 P1).
+ *
+ * <p>POST 지만 아무것도 저장하지 않는다 — 가격 재료가 일곱 개라 본문으로 받는다.
+ */
+export interface DraftPriceInput {
+  priceType: ProductPriceType;
+  metalType?: MetalType | null;
+  weightG?: string | null;
+  purity?: string | null;
+  laborCost?: string | null;
+  multiplier?: string | null;
+  fixedPrice?: string | null;
+  additionalLaborCost?: string | null;
+}
+
+export function previewDraftPrice(input: DraftPriceInput) {
+  return adminApi.post<AdminPriceQuote>('/api/admin/products/price-preview', { body: input });
+}

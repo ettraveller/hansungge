@@ -542,6 +542,124 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 등록 전 가격 미리보기
+    // =================================================================
+
+    @Nested
+    @DisplayName("등록 전 가격 미리보기")
+    class DraftPricePreview {
+
+        @Test
+        @DisplayName("상품을 만들지 않고 금액을 계산한다 — 폼을 채워 보기만 해도 상품이 생기면 안 된다")
+        void doesNotCreateProduct() throws Exception {
+            declareMarketPrice("200000");
+            int productsBefore = rowCount("products");
+            int optionsBefore = rowCount("product_options");
+
+            mockMvc.perform(post("/api/admin/products/price-preview")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "priceType", "MARKET_PLUS",
+                                    "metalType", "GOLD_24K",
+                                    "weightG", 3.75,
+                                    "laborCost", 50000))))
+                    .andExpect(status().isOk())
+                    // 200,000 × 3.75 + 50,000 = 800,000
+                    .andExpect(jsonPath("$.finalUnitPrice").value(800000))
+                    // 아직 상품이 아니므로 id 가 없다. 0 으로 채우면 1번 상품으로 읽힌다.
+                    .andExpect(jsonPath("$.productId").doesNotExist());
+
+            // 상품도, 기본 옵션도 생기지 않았다. 미리보기는 옵션 하나를 가정해서
+            // 계산하므로 그쪽이 저장되지 않는 것도 함께 본다.
+            assertThat(rowCount("products")).isEqualTo(productsBefore);
+            assertThat(rowCount("product_options")).isEqualTo(optionsBefore);
+        }
+
+        @Test
+        @DisplayName("저장된 상품의 미리보기와 같은 금액이 나온다 — 계산식이 하나다")
+        void matchesSavedProduct() throws Exception {
+            declareMarketPrice("200000");
+            long productId = createGoldBar();   // 같은 재료(3.75g, 공임 50,000)
+
+            MvcResult saved = mockMvc.perform(
+                            get("/api/admin/products/" + productId + "/price-preview")
+                                    .header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            MvcResult draft = mockMvc.perform(post("/api/admin/products/price-preview")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "priceType", "MARKET_PLUS",
+                                    "metalType", "GOLD_24K",
+                                    "weightG", 3.75,
+                                    "laborCost", 50000))))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            // 미리보기용 계산식을 따로 두면 그쪽이 낡는다. 같은 compute() 를 쓰는지 본다.
+            assertThat(amountOf(draft)).isEqualByComparingTo(amountOf(saved));
+        }
+
+        @Test
+        @DisplayName("시세가 없으면 금액 대신 시세문의다 — 0 원을 만들지 않는다")
+        void inquiryWhenNoMarketPrice() throws Exception {
+            mockMvc.perform(post("/api/admin/products/price-preview")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "priceType", "MARKET_PLUS",
+                                    "metalType", "GOLD_24K",
+                                    "weightG", 3.75,
+                                    "laborCost", 50000))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("INQUIRY_ONLY"))
+                    .andExpect(jsonPath("$.finalUnitPrice").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("가격 방식에 필요한 값이 없으면 400 이다 — 등록 때와 같은 규칙으로 걸린다")
+        void rejectsIncompletePricing() throws Exception {
+            // 시세 연동인데 중량이 없다. ProductPricing 생성자가 잡는다.
+            mockMvc.perform(post("/api/admin/products/price-preview")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "priceType", "MARKET_PLUS",
+                                    "metalType", "GOLD_24K",
+                                    "laborCost", 50000))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("OPERATOR 는 미리보기를 쓸 수 없다 — 원본 시세와 보정액이 담긴다")
+        void operatorCannotPreviewDraft() throws Exception {
+            AdminUser operator = AdminTestFixtures.create(
+                    adminUserRepository, passwordEncoder, "prodop", AdminRole.OPERATOR);
+
+            mockMvc.perform(post("/api/admin/products/price-preview")
+                            .header("Authorization", "Bearer " + login(operator.getLoginId()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "priceType", "FIXED",
+                                    "fixedPrice", 250000))))
+                    .andExpect(status().isForbidden());
+        }
+
+        private BigDecimal amountOf(MvcResult result) throws Exception {
+            return objectMapper.readTree(result.getResponse().getContentAsString())
+                    .get("finalUnitPrice").decimalValue();
+        }
+
+        private int rowCount(String table) {
+            Integer n = jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Integer.class);
+            return n == null ? 0 : n;
+        }
+    }
+
+    // =================================================================
     // 이미지 — 대표(GALLERY) · 상세(DETAIL)
     // =================================================================
 

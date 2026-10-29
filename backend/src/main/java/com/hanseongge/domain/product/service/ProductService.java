@@ -3,6 +3,9 @@ package com.hanseongge.domain.product.service;
 import com.hanseongge.domain.product.dto.ProductSearchCondition;
 import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductImage;
+import com.hanseongge.domain.pricing.service.PriceCalculationService;
+import com.hanseongge.domain.pricing.service.PriceQuote;
+import com.hanseongge.domain.product.dto.ProductDraftPriceRequest;
 import com.hanseongge.domain.product.entity.ProductImageKind;
 import com.hanseongge.domain.product.entity.ProductOption;
 import com.hanseongge.domain.product.entity.ProductPricing;
@@ -56,6 +59,8 @@ public class ProductService {
     private final ProductOptionRepository optionRepository;
     private final ProductImageRepository imageRepository;
     private final CategoryService categoryService;
+    /** 등록 전 미리보기에만 쓴다. 저장된 상품의 가격은 각 조회 경로가 직접 부른다. */
+    private final PriceCalculationService priceCalculationService;
     private final CacheManager cacheManager;
 
     // =================================================================
@@ -125,6 +130,37 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductImage> findImages(Long productId, ProductImageKind kind) {
         return imageRepository.findByProductIdAndKindOrderBySortAscIdAsc(productId, kind);
+    }
+
+    /**
+     * 등록 전 가격 미리보기 — 상품을 만들지 않고 입력값만으로 계산한다.
+     *
+     * <p>관리자가 등록 폼을 채우면서 "이 중량·공임이면 얼마가 되는가"를 확인하는 데 쓴다.
+     * 그 금액을 화면에서 계산하면 안 된다 — 시세·보정·부가세·반올림 규칙이 전부 서버에
+     * 있고, 둘이 갈라지는 날 미리보기와 실제 판매가가 달라진다 (설계서 원칙 P1).
+     *
+     * <p>⚠️ 여기서 만드는 {@link Product}·{@link ProductOption} 은 <b>리포지토리에 넘기지
+     * 않는다.</b> 저장하면 폼을 채워 보기만 해도 상품이 생기고, 그 상품은 아무도 지우지
+     * 않는다. 영속화되지 않은 인스턴스라 id 가 null 이고, 돌려주는 산출 결과의 productId 도
+     * null 이다.
+     *
+     * <p>카테고리·상품명은 가격에 쓰이지 않으므로 받지 않는다. 받으면 폼을 반만 채운
+     * 상태에서는 미리보기를 볼 수 없게 된다 — 가격을 확인하려는 시점이 바로 그 상태다.
+     */
+    @Transactional(readOnly = true)
+    public PriceQuote previewDraftPrice(ProductDraftPriceRequest request) {
+        ProductPricing pricing = request.toPricing();   // 방식별 필수 필드를 여기서 검증한다
+
+        Product draft = Product.create(null, "미리보기", pricing, null, null, "preview");
+
+        // 기본 옵션 하나를 가정한다. 등록하면 실제로 그렇게 만들어지고(D-7), 재고를
+        // 1 로 두는 이유는 0 이면 품절로 판정되어 금액 대신 품절 상태가 돌아오기 때문이다.
+        ProductOption draftOption = ProductOption.createDefault(
+                null, resolveDefaultOptionName(null, pricing), pricing.weightG(),
+                request.additionalLaborCost() == null ? BigDecimal.ZERO : request.additionalLaborCost(),
+                1, 0);
+
+        return priceCalculationService.previewDraft(draft, draftOption);
     }
 
     // =================================================================

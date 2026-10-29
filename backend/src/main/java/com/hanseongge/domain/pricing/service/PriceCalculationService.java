@@ -106,6 +106,26 @@ public class PriceCalculationService {
         return compute(product, option, true);
     }
 
+    /**
+     * 등록 전 미리보기 — <b>저장되지 않은</b> 상품으로 계산한다.
+     *
+     * <p>관리자가 상품 등록 폼을 채우는 동안 "이 값으로 등록하면 얼마가 되는가"를 보여주기
+     * 위한 것이다. 그것을 화면에서 계산하면 안 된다 — 시세·부가세·반올림·구성요소 규칙이
+     * 전부 서버에 있고, 둘이 갈라지는 날 미리보기와 실제 판매가가 달라진다 (원칙 P1).
+     *
+     * <p>⚠️ {@code draft} 는 영속화되지 않은 인스턴스다. {@code getId()} 가 null 이고,
+     * 돌려주는 {@link PriceQuote} 의 productId 도 null 이다. 이 메서드는 <b>어떤
+     * 리포지토리에도 넘기지 않는다</b> — 여기서 저장하면 폼을 채워 보기만 해도 상품이 생긴다.
+     *
+     * <p>계산 자체는 {@link #compute}를 그대로 쓴다. 미리보기용 계산식을 따로 두면
+     * 그쪽이 낡는다. {@code compute} 가 상품 id 로 DB 를 다시 읽지 않기 때문에
+     * (구성요소 정규화도 엔티티만 본다) 저장 없이 돌아간다.
+     */
+    @Transactional(readOnly = true)
+    public PriceQuote previewDraft(Product draft, ProductOption draftOption) {
+        return compute(draft, draftOption, true);
+    }
+
     // =================================================================
     // 계산
     // =================================================================

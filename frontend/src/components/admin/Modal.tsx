@@ -15,12 +15,21 @@ export function Modal({
   title,
   onClose,
   footer,
+  width = 'default',
   children,
 }: {
   open: boolean;
   title: React.ReactNode;
   onClose: () => void;
   footer?: React.ReactNode;
+  /**
+   * 창 너비.
+   *
+   * - `default` — 확인·입력용. 560px.
+   * - `wide` — 고객 화면을 그대로 보여주는 미리보기용. 560px 에 2단 레이아웃을 넣으면
+   *   한 칸이 235px 이 되어 실제와 전혀 다르게 보인다.
+   */
+  width?: 'default' | 'wide';
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -35,7 +44,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={styles.dialog}
+      className={width === 'wide' ? `${styles.dialog} ${styles.dialogWide}` : styles.dialog}
       // ESC 로 닫아도 부모의 open 상태가 따라오게 한다. 안 그러면 다시 열리지 않는다.
       onCancel={(e) => {
         e.preventDefault();

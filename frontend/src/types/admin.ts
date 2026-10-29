@@ -247,7 +247,8 @@ export interface AdminProductOption {
 export interface AdminPriceQuote {
   status: 'AVAILABLE' | 'INQUIRY_ONLY' | 'SOLD_OUT' | 'NOT_FOR_SALE';
   orderable: boolean;
-  productId: number;
+  /** 저장된 상품의 미리보기면 상품 id, 등록 전 미리보기면 없다 */
+  productId?: number | null;
   optionId?: number | null;
   appliedMarketPrice?: number | null;
   effectivePriceId?: number | null;
