@@ -74,6 +74,16 @@ export function ProductDetailView({
     .filter((url): url is string => url != null);
 
   /**
+   * 실제로 보여줄 사진 번호.
+   *
+   * <p>{@link photoIndex} 를 그대로 믿지 않는다 — 관리자가 사진을 지운 뒤라면 목록이
+   * 줄어 있어서, 고른 번호가 범위를 넘으면 {@code undefined} 를 src 에 넣게 된다.
+   * 넘으면 마지막 장으로 민다. 범위를 거르는 곳을 하나로 둬야 큰 사진·썸네일 줄·
+   * 좌우 버튼이 같은 장을 가리킨다.
+   */
+  const shown = photos.length === 0 ? 0 : Math.min(photoIndex, photos.length - 1);
+
+  /**
    * "최근 본 상품"에 남긴다.
    *
    * <p>회원일 때만, 이 화면에서 <b>한 번만</b> 부른다. 옵션을 바꿀 때마다 부르면 같은
@@ -135,18 +145,50 @@ export function ProductDetailView({
           {!preview && <WishlistHeart productId={product.id} productName={product.name} />}
           {photos.length > 0 ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.mainPhoto}
-                // 목록이 줄어들 수 있으므로(관리자가 사진을 지운 뒤 새로고침 전)
-                // 고른 번호를 그대로 믿지 않는다. 범위를 넘으면 마지막 장을 쓴다.
-                src={photos[Math.min(photoIndex, photos.length - 1)]}
-                alt={product.name}
-                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
-                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
-                loading="eager"
-                decoding="async"
-              />
+              <div className={styles.mainPhotoWrap}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className={styles.mainPhoto}
+                  src={photos[shown]}
+                  alt={product.name}
+                  // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+                  // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+                  loading="eager"
+                  decoding="async"
+                />
+
+                {/*
+                  좌우 넘김. 아래 썸네일 줄만 있으면 사진이 여러 장이라는 것을
+                  알아채지 못하고 첫 장만 보고 나가는 경우가 많다.
+
+                  끝에서 처음으로 돌아간다. 막아 두면 마지막 장에서 오른쪽 버튼이
+                  회색이 되는데, 그때 "더 없다"가 아니라 "고장났다"로 읽힌다.
+                */}
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className={`${styles.navBtn} ${styles.navPrev}`}
+                      aria-label="이전 사진"
+                      onClick={() => setPhotoIndex((shown - 1 + photos.length) % photos.length)}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.navBtn} ${styles.navNext}`}
+                      aria-label="다음 사진"
+                      onClick={() => setPhotoIndex((shown + 1) % photos.length)}
+                    >
+                      ›
+                    </button>
+                    <span className={styles.photoCount} aria-hidden="true">
+                      {shown + 1} / {photos.length}
+                    </span>
+                  </>
+                )}
+              </div>
+
               {photos.length > 1 && (
                 <ul className={styles.photoStrip}>
                   {photos.map((url, index) => (
@@ -154,10 +196,10 @@ export function ProductDetailView({
                       <button
                         type="button"
                         className={
-                          index === photoIndex ? styles.photoPickerOn : styles.photoPicker
+                          index === shown ? styles.photoPickerOn : styles.photoPicker
                         }
                         aria-label={`${index + 1}번째 사진 보기`}
-                        aria-current={index === photoIndex}
+                        aria-current={index === shown}
                         onClick={() => setPhotoIndex(index)}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
