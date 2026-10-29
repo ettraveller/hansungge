@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
+import { ImageUploader } from '../ImageUploader';
 import { DecimalInput, Field, MoneyInput, SelectInput, TextArea, TextInput } from '../Field';
 import { flattenCategories, useAdminCategories } from '@/hooks/admin/useCategories';
 import type { ProductInput } from '@/api/admin/products';
@@ -80,6 +81,17 @@ function fieldError(error: unknown, field: string): string | null {
 export type ProductFormValues = ProductInput;
 
 /**
+ * 등록 화면에서 미리 올려 둔 이미지 키.
+ *
+ * <p>파일 자체는 선택하는 순간 저장소에 올라간다 — 상품과 무관하게 올릴 수 있다.
+ * 상품에 <b>연결</b>하는 것만 등록이 끝난 뒤로 미룬다. 그 전에는 붙일 상대가 없다.
+ */
+export interface PendingImages {
+  gallery: string[];
+  detail: string[];
+}
+
+/**
  * 상품 등록·수정 폼.
  *
  * <b>판매가 입력란이 없다.</b> 시세 연동 상품의 가격은 시세 × 중량 + 공임으로 서버가
@@ -100,7 +112,11 @@ export function ProductForm({
   mode: 'create' | 'edit';
   pending?: boolean;
   error?: unknown;
-  onSubmit: (values: ProductFormValues) => void;
+  /**
+   * 등록|수정 값. 등록 모드에서는 둘째 인자로 올려 둔 이미지 키가 함께 온다 —
+   * 상품이 만들어진 뒤에야 붙일 수 있어서 호출하는 쪽이 이어서 처리한다.
+   */
+  onSubmit: (values: ProductFormValues, images?: PendingImages) => void;
   onCancel?: () => void;
 }) {
   const { data: categories } = useAdminCategories();
@@ -123,6 +139,10 @@ export function ProductForm({
     initial?.fixedPrice == null ? '' : String(initial.fixedPrice),
   );
   const [defaultOptionName, setDefaultOptionName] = useState('');
+  // 등록 화면에서 미리 올려 두는 이미지. 파일은 저장소에 바로 올라가고, 상품에
+  // 붙이는 것만 등록이 끝난 뒤로 미룬다 — 아직 붙일 상대가 없다.
+  const [galleryKeys, setGalleryKeys] = useState<string[]>([]);
+  const [detailKeys, setDetailKeys] = useState<string[]>([]);
   const [initialStock, setInitialStock] = useState('0');
 
   const priceMode = MODE_OF[priceType];
@@ -173,7 +193,7 @@ export function ProductForm({
             initialStock: Number(initialStock),
           }
         : {}),
-    });
+    }, mode === 'create' ? { gallery: galleryKeys, detail: detailKeys } : undefined);
   };
 
   return (
@@ -385,18 +405,51 @@ export function ProductForm({
       </div>
 
       {/*
-        이미지는 이 폼에 없다.
+        이미지는 <b>등록 화면에만</b> 둔다.
 
-        상품 등록은 상품이 만들어지기 전이라 붙일 상대가 없고, 수정 화면에서는
-        「대표 이미지」·「상세 이미지」 패널이 각각 자기 목록을 관리한다. 여기에
-        대표이미지 칸을 하나 더 두면 소유자가 둘이 되고, 상품 정보를 저장할 때마다
-        폼에 담긴 값이 패널의 목록을 덮어쓴다 — 사진을 지운 적이 없는데 사라진다.
+        수정 화면에서는 「대표 이미지」·「상세 이미지」 패널이 각각 자기 목록을
+        관리한다. 거기에 폼 칸을 하나 더 두면 소유자가 둘이 되고, 상품 정보를 저장할
+        때마다 폼에 담긴 값이 패널의 목록을 덮어쓴다 — 사진을 지운 적이 없는데 사라진다.
+
+        등록 화면에는 그 패널이 없다(상품이 아직 없어서 목록을 부를 수 없다). 그래서
+        여기서 올려 두고, 등록이 끝난 직후에 붙인다. 파일 자체는 고르는 순간 저장소로
+        올라가므로 상품과 무관하게 올릴 수 있다.
       */}
+      {mode === 'create' && (
+        <>
+          <Field
+            label="대표 이미지"
+            hint="상세 위쪽에서 눌러 넘겨 보는 사진이다. 첫 번째 장이 목록 · 장바구니 · 주문서에 쓰인다."
+          >
+            <ImageUploader
+              value={galleryKeys}
+              onChange={setGalleryKeys}
+              max={10}
+              disabled={pending}
+              emptyLabel="상품 사진을 끌어다 놓거나 클릭해서 선택하세요"
+            />
+          </Field>
+
+          <Field
+            label="상세 이미지"
+            hint="상품 설명 아래에 올린 순서대로 전체 폭으로 쌓인다. 860px 폭의 세로로 긴 상세페이지를 그대로 올리면 된다."
+          >
+            <ImageUploader
+              value={detailKeys}
+              onChange={setDetailKeys}
+              max={10}
+              disabled={pending}
+              emptyLabel="상세페이지 이미지를 끌어다 놓거나 클릭해서 선택하세요"
+              preview="tall"
+            />
+          </Field>
+        </>
+      )}
 
       <Field
         label="상품 설명"
         htmlFor="p-desc"
-        hint="글로만 들어간다 — 태그를 적어도 그대로 글자로 보인다. 사진은 아래 「상세 이미지」로 올린다."
+        hint="글로만 들어간다 — 태그를 적어도 그대로 글자로 보인다. 사진은 「상세 이미지」로 올린다."
       >
         <TextArea
           id="p-desc"
