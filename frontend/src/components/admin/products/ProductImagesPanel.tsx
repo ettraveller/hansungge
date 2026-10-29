@@ -96,23 +96,38 @@ export function ProductImagesPanel({
         )}
 
         {canEdit && (
-          <div className={styles.formActions}>
-            <Button
-              variant="primary"
-              // 손대지 않았을 때 눌러도 같은 목록을 다시 쓰는 것뿐이지만, 눌릴 수 있으면
-              // "저장했나?" 를 확인하려고 누르게 된다. 바뀐 게 있을 때만 열어 둔다.
-              disabled={replace.isPending || !touched}
-              onClick={() =>
-                // 저장에 성공하면 편집 상태를 버린다 — 이후에는 서버가 준 값이 그대로 보인다.
-                replace.mutate({ id: productId, kind, keys }, { onSuccess: () => setDraft(null) })
-              }
-            >
-              {replace.isPending ? '저장 중…' : `${spec.title} ${keys.length}장 저장`}
-            </Button>
-            <Button disabled={replace.isPending || !touched} onClick={() => setDraft(null)}>
-              되돌리기
-            </Button>
-          </div>
+          <>
+            {/*
+              저장 버튼이 꺼져 있는 이유를 말해 준다.
+
+              바뀐 게 없을 때 버튼을 끄는 것은 맞다 — 눌릴 수 있으면 "저장했나?" 를
+              확인하려고 누르게 된다. 그런데 사진이 보이는 채로 버튼만 회색이면
+              고장난 것으로 읽힌다. 이미 저장된 상태라는 말을 같이 둔다.
+            */}
+            <p className={touched ? styles.hintWarn : styles.hint}>
+              {touched
+                ? '저장하지 않은 변경이 있습니다. 저장을 눌러야 반영됩니다.'
+                : keys.length === 0
+                  ? '아직 올린 사진이 없습니다.'
+                  : `저장된 상태입니다 (${keys.length}장). 사진을 올리거나 지우면 저장 버튼이 켜집니다.`}
+            </p>
+
+            <div className={styles.formActions}>
+              <Button
+                variant="primary"
+                disabled={replace.isPending || !touched}
+                onClick={() =>
+                  // 저장에 성공하면 편집 상태를 버린다 — 이후에는 서버가 준 값이 그대로 보인다.
+                  replace.mutate({ id: productId, kind, keys }, { onSuccess: () => setDraft(null) })
+                }
+              >
+                {replace.isPending ? '저장 중…' : `${spec.title} ${keys.length}장 저장`}
+              </Button>
+              <Button disabled={replace.isPending || !touched} onClick={() => setDraft(null)}>
+                되돌리기
+              </Button>
+            </div>
+          </>
         )}
       </div>
     </Panel>

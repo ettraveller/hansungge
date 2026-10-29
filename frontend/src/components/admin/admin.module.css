@@ -1210,3 +1210,13 @@ a.hint:hover {
   color: var(--dark);
   font-size: var(--text-base);
 }
+
+/* 저장하지 않은 변경이 있다는 안내.
+   .hint 와 같은 자리에 쓰되 눈에 띄어야 한다 — 사진을 올려 두고 저장을 누르지 않은
+   채 화면을 떠나면 올린 것이 사라진다. */
+.hintWarn {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--warn);
+}

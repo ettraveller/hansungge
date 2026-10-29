@@ -56,6 +56,11 @@ export function ImageUploader({
   // 포커스를 받으면 "이제 Ctrl+V" 로 문구를 바꾼다. 붙여넣기는 눈에 보이지 않는
   // 동작이라, 준비가 됐다는 표시가 없으면 눌러도 되는지 알 수 없다.
   const [focused, setFocused] = useState(false);
+  // 「교체」로 파일 창을 연 경우 그 자리 번호. null 이면 평소처럼 뒤에 덧붙인다.
+  //
+  // state 가 아니라 ref 다 — 파일 창이 열려 있는 동안 화면을 다시 그릴 이유가 없고,
+  // 다시 그리면 그 사이 input 이 새로 만들어져 선택 결과를 놓칠 여지가 생긴다.
+  const replaceIndexRef = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const single = max === 1;
@@ -63,6 +68,11 @@ export function ImageUploader({
 
   async function upload(files: File[]) {
     if (disabled || files.length === 0) return;
+
+    // 「교체」로 들어왔는가. 먼저 읽고 비운다 — 아래에서 중간에 빠져나가도
+    // 다음 업로드가 교체로 잘못 처리되지 않아야 한다.
+    const replaceTarget = replaceIndexRef.current;
+    replaceIndexRef.current = null;
 
     // 이미지가 아닌 파일은 보내기 전에 걸러낸다. 서버도 같은 검사를 하지만(매직 넘버),
     // 폴더를 통째로 끌어다 놓은 경우 10MB 짜리 PDF 를 올려놓고 거절당하는 것보다
@@ -73,9 +83,10 @@ export function ImageUploader({
       return;
     }
 
-    // 상한을 넘는 몫은 보내지 않는다. 보내고 나서 버리면 그 파일들이 서버 디스크에
+    // 교체는 한 자리를 바꾸는 것이므로 여러 장을 골라도 첫 장만 쓴다.
+    // 상한을 넘는 몫은 보내지 않는다 — 보내고 나서 버리면 그 파일들이 서버 디스크에
     // 올라간 뒤 아무 상품에도 연결되지 않은 채 남는다.
-    const room = single ? 1 : max - value.length;
+    const room = replaceTarget != null || single ? 1 : max - value.length;
     const picked = images.slice(0, room);
     const dropped = images.length - picked.length;
 
@@ -84,8 +95,16 @@ export function ImageUploader({
     try {
       const uploaded = await uploadMedia(picked, folder);
       const keys = uploaded.map((it) => it.objectKey);
-      onChange(single ? keys.slice(0, 1) : [...value, ...keys]);
-      if (dropped > 0) {
+
+      if (replaceTarget != null) {
+        // 자리를 지킨다. 지우고 새로 올리면 맨 뒤로 붙어서 순서를 다시 맞춰야 하고,
+        // 첫 장을 바꾸려던 경우에는 그 사이 대표 사진이 다른 것으로 바뀐다.
+        onChange(value.map((old, i) => (i === replaceTarget ? keys[0] : old)));
+      } else {
+        onChange(single ? keys.slice(0, 1) : [...value, ...keys]);
+      }
+
+      if (dropped > 0 && replaceTarget == null) {
         setError(`${max}장까지만 올릴 수 있어 ${dropped}장은 올리지 않았습니다.`);
       }
     } catch (e) {
@@ -96,6 +115,13 @@ export function ImageUploader({
       // change 이벤트가 오지 않고, 실패 후 재시도가 먹지 않는 것처럼 보인다.
       if (inputRef.current) inputRef.current.value = '';
     }
+  }
+
+  /** 그 자리의 사진만 바꾼다. 파일을 고르면 {@link upload} 가 이 번호를 보고 처리한다. */
+  function pickReplacement(index: number) {
+    if (disabled) return;
+    replaceIndexRef.current = index;
+    inputRef.current?.click();
   }
 
   function move(from: number, to: number) {
@@ -239,6 +265,20 @@ export function ImageUploader({
                     </button>
                   </>
                 )}
+                {/*
+                  자리를 지키며 바꾼다. 「삭제 후 다시 업로드」로도 되지만 새 사진이
+                  맨 뒤에 붙어서 순서를 다시 맞춰야 하고, 첫 장을 바꾸려던 경우에는
+                  그 사이 대표 사진이 다른 것으로 바뀐다.
+                */}
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  disabled={disabled || busy}
+                  title="이 자리의 사진만 다른 것으로 바꿉니다"
+                  onClick={() => pickReplacement(index)}
+                >
+                  교체
+                </button>
                 <button
                   type="button"
                   className={styles.remove}
