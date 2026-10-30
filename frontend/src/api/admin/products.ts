@@ -82,6 +82,13 @@ export interface ProductInput {
   laborCost?: string | null;
   multiplier?: string | null;
   fixedPrice?: string | null;
+  /**
+   * 주문을 받아 개별 생산하는 상품인가 (V33).
+   *
+   * <p>상세의 배송기간(영업일 7일 vs 최대 6주)과 청약철회 제한 고지가 이 값으로
+   * 갈린다. 보내지 않으면 서버가 false 로 읽는다 -- 빠뜨렸을 때 안전한 쪽이다.
+   */
+  madeToOrder: boolean;
   /** 등록 시에만 쓰인다 */
   defaultOptionName?: string | null;
   initialStock?: number | null;
@@ -180,6 +187,7 @@ export interface DraftDetailInput {
   description?: string | null;
   galleryKeys: string[];
   detailKeys: string[];
+  madeToOrder: boolean;
   pricing: DraftPriceInput;
 }
 

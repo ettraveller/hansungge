@@ -106,7 +106,7 @@ public class AdminProductController {
                                                   @AuthenticationPrincipal AdminPrincipal actor) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ProductResponse.from(
                 productService.create(request.categoryId(), request.name(), request.toPricing(),
-                        request.description(),
+                        request.description(), request.madeToOrder(),
                         request.defaultOptionName(), request.initialStock(), actor.loginId())));
     }
 
@@ -119,7 +119,7 @@ public class AdminProductController {
                                                   @AuthenticationPrincipal AdminPrincipal actor) {
         return ResponseEntity.ok(ProductResponse.from(
                 productService.update(id, request.categoryId(), request.name(), request.toPricing(),
-                        request.description(), actor.loginId())));
+                        request.description(), request.madeToOrder(), actor.loginId())));
     }
 
     @Operation(summary = "판매 상태 변경",

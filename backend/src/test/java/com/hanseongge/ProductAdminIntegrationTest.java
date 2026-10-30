@@ -148,6 +148,86 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
             assertThat(countAudit(AuditActions.PRODUCT_CREATE)).isEqualTo(1);
         }
 
+        /**
+         * 주문제작 표시 (V33).
+         *
+         * <p>이 값이 화면의 꼬리표가 아니라 <b>고지의 근거</b>라서 고정한다. 전자상거래법
+         * §17②① 단서는 주문제작의 청약철회 제한을 "미리 알린 경우"에만 인정한다 —
+         * 값이 잘못 저장되면 제한이 무효가 되어 제작이 끝난 주문도 환불해야 한다.
+         *
+         * <p>특히 <b>보내지 않았을 때 false</b> 여야 한다. true 로 새면 재고가 있는
+         * 상품까지 철회가 제한된 것으로 고지되어, 고객의 권리를 근거 없이 깎는다.
+         */
+        @Test
+        @DisplayName("주문제작 표시는 보낸 대로 저장되고, 보내지 않으면 재고 보유(false)다")
+        void madeToOrderDefaultsToFalse() throws Exception {
+            long stocked = createGoldBar();   // madeToOrder 를 보내지 않는다
+            mockMvc.perform(get("/api/admin/products/" + stocked).header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.madeToOrder").value(false));
+
+            MvcResult created = mockMvc.perform(post("/api/admin/products")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "categoryId", CATEGORY_ID,
+                                    "name", "test_주문제작 반지",
+                                    "metalType", "GOLD_24K",
+                                    "priceType", "MARKET_PLUS",
+                                    "weightG", 3.75,
+                                    "laborCost", 150000,
+                                    "madeToOrder", true,
+                                    "initialStock", 0))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.madeToOrder").value(true))
+                    .andReturn();
+
+            long custom = objectMapper.readTree(created.getResponse().getContentAsString())
+                    .get("id").asLong();
+
+            // 공개 상세에도 나와야 한다. 고지는 고객이 보는 화면에서 일어난다 —
+            // 관리자 응답에만 있으면 저장은 됐는데 고지는 안 된 상태가 된다.
+            declareMarketPrice("150000");
+            startSelling(custom);
+            mockMvc.perform(get("/api/v1/products/" + custom))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.madeToOrder").value(true));
+        }
+
+        @Test
+        @DisplayName("주문제작 표시는 수정으로 되돌릴 수 있다 — 재고를 들이면 기간이 달라진다")
+        void madeToOrderIsEditable() throws Exception {
+            long id = createGoldBar();
+
+            mockMvc.perform(put("/api/admin/products/" + id)
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "categoryId", CATEGORY_ID,
+                                    "name", "순금 골드바 3.75g (1돈)",
+                                    "metalType", "GOLD_24K",
+                                    "priceType", "MARKET_PLUS",
+                                    "weightG", 3.75,
+                                    "laborCost", 50000,
+                                    "madeToOrder", true))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.madeToOrder").value(true));
+
+            // 다시 재고 보유로. 수정 요청에서 빠지면 false 로 읽히는 쪽이 안전하다.
+            mockMvc.perform(put("/api/admin/products/" + id)
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "categoryId", CATEGORY_ID,
+                                    "name", "순금 골드바 3.75g (1돈)",
+                                    "metalType", "GOLD_24K",
+                                    "priceType", "MARKET_PLUS",
+                                    "weightG", 3.75,
+                                    "laborCost", 50000))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.madeToOrder").value(false));
+        }
+
         @Test
         @DisplayName("시세 연동 상품에 중량이 없으면 400 — DB 제약이 아니라 도메인 오류로 막는다")
         void marketProductRequiresWeight() throws Exception {

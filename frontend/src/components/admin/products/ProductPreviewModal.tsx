@@ -22,6 +22,8 @@ export interface PreviewInput {
   description?: string | null;
   galleryKeys: string[];
   detailKeys: string[];
+  /** 주문제작인가. 미리보기의 배송기간·청약철회 안내가 이 값으로 갈린다 */
+  madeToOrder: boolean;
   pricing: DraftPriceInput;
 }
 
@@ -100,6 +102,7 @@ function PreviewBody({ input, productId }: { input: PreviewInput; productId: num
     description: input.description,
     galleryKeys,
     detailKeys,
+    madeToOrder: input.madeToOrder,
     pricing: input.pricing,
   };
 

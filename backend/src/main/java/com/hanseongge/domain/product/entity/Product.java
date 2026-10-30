@@ -89,6 +89,22 @@ public class Product {
     private boolean active;
 
     /**
+     * 주문을 받아 개별 생산하는 상품인가 (V33).
+     *
+     * <p>두 가지를 함께 결정한다.
+     * <ul>
+     *   <li><b>배송기간</b> — 재고 보유는 영업일 7일, 주문제작은 결제일부터 최대 6주</li>
+     *   <li><b>청약철회</b> — 주문제작은 제작이 시작되면 철회가 제한된다. 그 사실을
+     *       <b>상품을 사기 전에</b> 알려야 제한이 성립한다 (전자상거래법 §17②①)</li>
+     * </ul>
+     *
+     * <p>고지 없이 제한하면 제한이 무효가 되어, 제작이 끝난 주문도 환불해야 한다.
+     * 그래서 이 값은 표시용 꼬리표가 아니라 <b>고지의 근거</b>다.
+     */
+    @Column(name = "made_to_order", nullable = false)
+    private boolean madeToOrder;
+
+    /**
      * 1회 주문 최소 수량 (V8).
      *
      * <p>골드바처럼 낱개 판매가 기본인 상품은 1이지만, 소액 부자재는 묶음으로만 파는
@@ -119,12 +135,14 @@ public class Product {
     private OffsetDateTime updatedAt;
 
     private Product(Long categoryId, String name, ProductPricing pricing,
-                    String description, String thumbnailKey, String createdBy) {
+                    String description, String thumbnailKey, boolean madeToOrder,
+                    String createdBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
         this.description = description;
         this.thumbnailKey = thumbnailKey;
+        this.madeToOrder = madeToOrder;
         this.status = ProductStatus.HIDDEN;   // 등록 직후에는 노출하지 않는다 (아래 설명)
         // DB 기본값과 같은 값을 명시한다. 엔티티로 INSERT 하면 컬럼 DEFAULT 가 쓰이지 않는다.
         this.minQty = 1;
@@ -144,8 +162,10 @@ public class Product {
      * {@link #changeStatus} 로 판매를 시작한다.
      */
     public static Product create(Long categoryId, String name, ProductPricing pricing,
-                                 String description, String thumbnailKey, String createdBy) {
-        return new Product(categoryId, name, pricing, description, thumbnailKey, createdBy);
+                                 String description, String thumbnailKey,
+                                 boolean madeToOrder, String createdBy) {
+        return new Product(categoryId, name, pricing, description, thumbnailKey,
+                madeToOrder, createdBy);
     }
 
     /**
@@ -156,11 +176,12 @@ public class Product {
      * 목록의 사진이 사라진다 — 사진을 지운 적이 없는데 사라지므로 원인을 찾기 어렵다.
      */
     public void update(Long categoryId, String name, ProductPricing pricing,
-                       String description, String updatedBy) {
+                       String description, boolean madeToOrder, String updatedBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
         this.description = description;
+        this.madeToOrder = madeToOrder;
         touch(updatedBy);
     }
 

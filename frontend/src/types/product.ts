@@ -92,6 +92,14 @@ export interface ProductDetail {
   weightG?: number | null;
   purity?: number | null;
   status: ProductStatus;
+  /**
+   * 주문을 받아 개별 생산하는 상품인가 (V33).
+   *
+   * <p>배송기간과 청약철회 안내가 이 값으로 갈린다. 둘은 함께 움직여야 한다 —
+   * 제작 기간만 알리고 철회 제한을 빼면 제한이 성립하지 않고(전자상거래법 §17②①),
+   * 철회 제한만 알리고 기간을 빼면 PG 심사에서 걸린다.
+   */
+  madeToOrder: boolean;
   options: ProductOption[];
   prices: ProductPrice[];
 }

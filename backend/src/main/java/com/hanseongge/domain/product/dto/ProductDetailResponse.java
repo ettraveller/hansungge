@@ -61,6 +61,17 @@ public record ProductDetailResponse(
         @Schema(description = "판매 상태", example = "ON_SALE")
         ProductStatus status,
 
+        /**
+         * 주문을 받아 개별 생산하는 상품인가 (V33).
+         *
+         * <p>화면이 이 값으로 배송기간과 청약철회 안내를 갈라 적는다. 두 안내는 함께
+         * 움직여야 한다 -- 제작 기간만 알리고 철회 제한을 빼면 제한이 성립하지 않고,
+         * 철회 제한만 알리고 기간을 빼면 PG 심사에서 걸린다.
+         */
+        @Schema(description = "주문제작 상품인가. true 면 제작 기간과 청약철회 제한을 함께 고지한다",
+                example = "false")
+        boolean madeToOrder,
+
         @Schema(description = "옵션 목록 (재고 수량은 비공개)")
         List<ProductOptionResponse> options,
 
@@ -85,6 +96,7 @@ public record ProductDetailResponse(
                 product.getWeightG(),
                 product.getPurity(),
                 product.getStatus(),
+                product.isMadeToOrder(),
                 options,
                 prices);
     }

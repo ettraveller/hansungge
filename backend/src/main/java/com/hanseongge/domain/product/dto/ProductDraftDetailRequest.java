@@ -29,6 +29,10 @@ public record ProductDraftDetailRequest(
         @Schema(description = "상세 이미지 키 (순서대로)")
         List<@Size(max = 300) String> detailKeys,
 
+        @Schema(description = "주문제작 상품인가. 상세의 배송기간·청약철회 안내가 달라진다",
+                example = "false")
+        boolean madeToOrder,
+
         @Schema(description = "가격 재료", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "가격 재료를 보내 주세요.")
         @Valid

@@ -63,6 +63,10 @@ public record ProductResponse(
         @Schema(description = "활성 여부", example = "true")
         boolean active,
 
+        @Schema(description = "주문제작 상품인가 (V33). 수정 화면이 체크 상태를 되살리는 데 쓴다",
+                example = "false")
+        boolean madeToOrder,
+
         @Schema(description = "등록자", example = "admin")
         String createdBy,
 
@@ -93,6 +97,7 @@ public record ProductResponse(
                 product.getFixedPrice(),
                 product.getStatus(),
                 product.isActive(),
+                product.isMadeToOrder(),
                 product.getCreatedBy(),
                 product.getCreatedAt(),
                 product.getUpdatedBy(),

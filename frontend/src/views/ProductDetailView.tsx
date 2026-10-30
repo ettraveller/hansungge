@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { PriceTag } from '@/components/ui/PriceTag';
+import { DeliveryTerms } from '@/components/product/DeliveryTerms';
 import { WishlistHeart } from '@/components/product/WishlistHeart';
 import { useAddToCart } from '@/hooks/useCart';
 import { useMarkViewed } from '@/hooks/useInterest';
@@ -346,6 +347,14 @@ export function ProductDetailView({
                 : '현재 시세를 확인할 수 없어 주문이 제한됩니다. 시세문의 후 이용해 주세요.'}
             </p>
           )}
+          {/*
+            배송기간을 상품마다 적는다. 사이트 공통 안내로 한 줄 두면 "이 상품이
+            어느 쪽인지"를 고객이 알 수 없고, 주문제작의 청약철회 제한은 상품별로
+            고지해야 성립한다 (전자상거래법 §17②①). 금액 바로 아래에 둔다 —
+            살지 말지를 정하는 자리에 기간이 함께 있어야 한다.
+          */}
+          <DeliveryTerms madeToOrder={product.madeToOrder} />
+
           <p className={styles.disclaimer}>
             최종 결제 금액은 주문 시점에 서버가 다시 계산합니다. 화면 금액과 결제 금액이 다를 수
             없습니다.

@@ -139,6 +139,12 @@ export function ProductForm({
   const [fixedPrice, setFixedPrice] = useState(
     initial?.fixedPrice == null ? '' : String(initial.fixedPrice),
   );
+  /*
+   * 기본값은 "재고 보유"다. 빠뜨렸을 때 안전한 쪽이 이쪽이다 -- 지킬 수 없는 기간을
+   * 약속하면 고객이 문의하지만, 반대로 재고가 있는 상품을 주문제작으로 두면 고객의
+   * 청약철회권을 근거 없이 깎는다. 조용히 틀리는 쪽이 더 위험하다.
+   */
+  const [madeToOrder, setMadeToOrder] = useState(initial?.madeToOrder ?? false);
   const [defaultOptionName, setDefaultOptionName] = useState('');
   // 등록 화면에서 미리 올려 두는 이미지. 파일은 저장소에 바로 올라가고, 상품에
   // 붙이는 것만 등록이 끝난 뒤로 미룬다 — 아직 붙일 상대가 없다.
@@ -200,6 +206,7 @@ export function ProductForm({
       laborCost: laborCost === '' ? '0' : laborCost,
       multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',
       fixedPrice: marketLinked ? null : fixedPrice,
+      madeToOrder,
       ...(mode === 'create'
         ? {
             defaultOptionName: defaultOptionName.trim() === '' ? null : defaultOptionName.trim(),
@@ -459,6 +466,52 @@ export function ProductForm({
         </>
       )}
 
+      {/*
+        배송기간을 상품마다 정한다. 사이트 공통 안내로 한 줄 두면 "이 상품이 어느
+        쪽인지"를 고객이 알 수 없고, 주문제작의 청약철회 제한은 상품별로 고지해야
+        성립한다 (전자상거래법 §17②①).
+
+        체크박스가 아니라 두 갈래로 고르게 한다. 체크박스는 "안 누르면 무슨 뜻인지"가
+        화면에 없는데, 그 기본값이 고객에게 "영업일 7일"이라는 약속으로 나간다.
+        고르는 자리에 기간을 함께 적어 둬야 무엇을 약속하는지 보고 정한다.
+      */}
+      <Field
+        label="배송 구분"
+        required
+        hint={
+          madeToOrder
+            ? '상세에 「결제일부터 최대 6주」와 청약철회 제한이 함께 표시된다. 제작이 5주까지 가는 건은 배송을 5영업일 안에 끝내야 6주를 지킨다.'
+            : '상세에 「결제 확인 후 영업일 7일 이내」가 표시된다. 재고를 들고 있지 않은 상품을 이쪽으로 두면 지킬 수 없는 기간을 약속하게 된다.'
+        }
+      >
+        <div className={styles.choiceRow}>
+          <label className={madeToOrder ? styles.choice : styles.choiceOn}>
+            <input
+              type="radio"
+              name="p-made-to-order"
+              checked={!madeToOrder}
+              onChange={() => setMadeToOrder(false)}
+            />
+            <span>
+              <b>재고 보유</b>
+              <em>영업일 7일 이내 · 청약철회 가능</em>
+            </span>
+          </label>
+          <label className={madeToOrder ? styles.choiceOn : styles.choice}>
+            <input
+              type="radio"
+              name="p-made-to-order"
+              checked={madeToOrder}
+              onChange={() => setMadeToOrder(true)}
+            />
+            <span>
+              <b>주문제작</b>
+              <em>최대 6주 · 제작 시작 후 철회 제한</em>
+            </span>
+          </label>
+        </div>
+      </Field>
+
       <Field
         label="상품 설명"
         htmlFor="p-desc"
@@ -538,6 +591,7 @@ export function ProductForm({
           description,
           galleryKeys,
           detailKeys,
+          madeToOrder,
           // 가격 재료는 등록할 때 보내는 값과 똑같이 만든다. 여기서 한 줄이라도
           // 달라지면 미리보기 금액과 등록 후 금액이 갈린다.
           pricing: {

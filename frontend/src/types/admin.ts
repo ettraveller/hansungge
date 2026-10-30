@@ -225,6 +225,8 @@ export interface AdminProduct {
   fixedPrice?: number | null;
   status: ProductStatus;
   active: boolean;
+  /** 주문제작 상품인가 (V33). 수정 화면이 체크 상태를 되살리는 데 쓴다 */
+  madeToOrder: boolean;
   createdBy?: string | null;
   createdAt: string;
   updatedBy?: string | null;

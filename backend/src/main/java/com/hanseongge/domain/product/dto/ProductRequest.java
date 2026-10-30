@@ -72,6 +72,15 @@ public record ProductRequest(
         @Digits(integer = 13, fraction = 2)
         BigDecimal fixedPrice,
 
+        /*
+         * 기본값을 false 로 둔다. 이 필드를 보내지 않는 옛 요청이 조용히 "주문제작"으로
+         * 저장되면, 재고가 있는 상품까지 청약철회가 제한된 것으로 고지되어 고객의
+         * 권리를 근거 없이 깎는다. 빠뜨렸을 때 안전한 쪽이 false 다 (V33 참조).
+         */
+        @Schema(description = "주문을 받아 개별 생산하는 상품인가. true 면 상세에 제작 기간과 "
+                + "청약철회 제한을 함께 고지한다 (전자상거래법 §17②①)", example = "false")
+        boolean madeToOrder,
+
         @Schema(description = "기본 옵션 이름. 비우면 중량으로 자동 생성 (등록 시에만 사용)",
                 example = "3.75g (1돈)")
         @Size(max = 100)
