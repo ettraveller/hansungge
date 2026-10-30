@@ -38,6 +38,13 @@ export const adminKeys = {
   productDraftPrice: (input: unknown) =>
     [...adminKeys.products(), 'draft-price', input] as const,
 
+  orders: () => [...adminKeys.all, 'orders'] as const,
+  orderList: (search: unknown) => [...adminKeys.orders(), 'list', search] as const,
+  order: (id: number) => [...adminKeys.orders(), id] as const,
+  orderShipment: (id: number) => [...adminKeys.orders(), id, 'shipment'] as const,
+  /** 발송 대기 건수. 목록 상단에 늘 보인다 */
+  orderAwaitingCount: () => [...adminKeys.orders(), 'awaiting-count'] as const,
+
   categories: () => [...adminKeys.all, 'categories'] as const,
 
   qnas: () => [...adminKeys.all, 'qnas'] as const,

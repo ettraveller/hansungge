@@ -1220,3 +1220,45 @@ a.hint:hover {
   line-height: 1.55;
   color: var(--warn);
 }
+
+/* --- 주문 상태 탭 ---------------------------------------------------
+   누르는 버튼이라 알약 모양으로 둔다 — 같은 화면의 상태 뱃지(6px 모서리)와
+   구분되어야 "이건 누르는 것"이 읽힌다. */
+
+.statusTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.statusTab,
+.statusTabOn {
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-base);
+  /* 손가락으로 고르는 자리다. 좁은 화면에서 높이가 확실해야 한다. */
+  min-height: 36px;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.statusTab {
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink-600);
+  font-weight: 500;
+}
+
+.statusTab:hover {
+  border-color: var(--ink-400);
+  background: var(--ink-50);
+}
+
+.statusTabOn {
+  border: 1px solid var(--ink-900);
+  background: var(--ink-900);
+  color: #fff;
+  font-weight: 600;
+}

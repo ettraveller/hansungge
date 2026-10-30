@@ -21,6 +21,7 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin', label: '대시보드', minRole: 'OPERATOR' },
   { href: '/admin/prices', label: '시세관리', minRole: 'OPERATOR' },
   { href: '/admin/products', label: '상품관리', minRole: 'OPERATOR' },
+  { href: '/admin/orders', label: '주문관리', minRole: 'OPERATOR' },
   { href: '/admin/categories', label: '카테고리', minRole: 'OPERATOR' },
   { href: '/admin/qnas', label: '문의 관리', minRole: 'OPERATOR' },
   { href: '/admin/notices', label: '공지 관리', minRole: 'OPERATOR' },
@@ -31,8 +32,14 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin/account', label: '내 계정', minRole: 'OPERATOR' },
 ];
 
-/** 아직 백엔드가 없는 영역. 링크로 만들지 않는다 — 눌러도 404 인 메뉴는 신뢰를 깎는다. */
-const PLANNED = ['주문관리', '배송관리', '결제관리', '쿠폰'];
+/**
+ * 아직 백엔드가 없는 영역. 링크로 만들지 않는다 — 눌러도 404 인 메뉴는 신뢰를 깎는다.
+ *
+ * <p>2026-10-30: 「주문관리」와 「배송관리」를 뺐다. 주문 목록·상세와 송장 입력이 생겨
+ * 위 MENU 로 올라갔다. 배송은 주문 상세 안의 패널이라 메뉴를 따로 두지 않는다 —
+ * 나누면 "어느 쪽에서 송장을 넣는가"를 매번 고르게 된다.
+ */
+const PLANNED = ['결제관리', '쿠폰'];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/admin') return pathname === '/admin';
