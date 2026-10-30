@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { ShipmentInfo } from '@/components/order/ShipmentInfo';
 import { useCancelOrder, useOrder } from '@/hooks/useOrder';
 import { ApiError } from '@/types/api';
 import type { OrderStatus } from '@/types/order';
@@ -51,6 +52,10 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
 
   return (
     <div style={{ marginBottom: 60 }}>
+      {/* 주문 상세 위에 둔다. 발송된 주문을 열어 보는 이유는 대개 "어디까지 왔나"
+          하나라서, 상품 목록을 지나 내려가야 나오면 매번 한 동작씩 길어진다. */}
+      <ShipmentInfo orderNo={order.orderNo} orderStatus={order.status} />
+
       <article className={styles.form}>
         <div className={styles.orderHead}>
           <span className={styles.orderNo}>{order.orderNo}</span>

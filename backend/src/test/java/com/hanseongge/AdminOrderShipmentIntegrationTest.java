@@ -5,6 +5,7 @@ import com.hanseongge.domain.admin.entity.AdminRole;
 import com.hanseongge.domain.admin.entity.AdminUser;
 import com.hanseongge.domain.admin.repository.AdminUserRepository;
 import com.hanseongge.global.audit.AuditActions;
+import com.hanseongge.global.auth.UserJwtProvider;
 import com.hanseongge.support.AdminTestFixtures;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import org.junit.jupiter.api.AfterEach;
@@ -58,6 +59,7 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired AdminUserRepository adminUserRepository;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired UserJwtProvider userJwtProvider;
 
     private String managerToken;
     private long userId;
@@ -319,6 +321,71 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 고객 조회
+    // =================================================================
+
+    /**
+     * 고객이 자기 주문의 배송을 보는 길.
+     *
+     * <p>여기서 가장 중요한 것은 <b>남의 주문번호가 404 라는 것</b>이다. 주문번호는
+     * HS+날짜+순번이라 규칙이 단순해서, 소유자 검사가 없으면 숫자를 바꿔 가며 남의
+     * 송장번호를 긁어 갈 수 있다.
+     */
+    @Nested
+    @DisplayName("고객의 배송 조회")
+    class CustomerView {
+
+        @Test
+        @DisplayName("발송 전에는 상태만 「발송 대기」로 온다 — 배송 행이 없는 것과 구분하지 않는다")
+        void pendingBeforeShipping() throws Exception {
+            insertOrder("HS-CUST1", "PAID", "김대기");
+
+            mockMvc.perform(get("/api/v1/orders/HS-CUST1/shipment")
+                            .header("Authorization", userBearer(userId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(jsonPath("$.trackingNo").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("발송하면 송장번호와 택배사 조회 주소가 보인다")
+        void showsTrackingAfterShipping() throws Exception {
+            long id = insertOrder("HS-CUST2", "PAID", "김조회");
+            ship(id, "6012345678901");
+
+            mockMvc.perform(get("/api/v1/orders/HS-CUST2/shipment")
+                            .header("Authorization", userBearer(userId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("SHIPPED"))
+                    .andExpect(jsonPath("$.trackingNo").value("6012345678901"))
+                    .andExpect(jsonPath("$.carrierName").value("우체국택배"))
+                    .andExpect(jsonPath("$.trackingUrl").exists());
+        }
+
+        @Test
+        @DisplayName("남의 주문번호는 404 다 — 403 은 그 번호의 주문이 있다는 것을 알려준다")
+        void othersOrderIsNotFound() throws Exception {
+            long id = insertOrder("HS-CUST3", "PAID", "김남의");
+            ship(id, "6012345678901");
+
+            long stranger = insertUser(900002L);
+
+            mockMvc.perform(get("/api/v1/orders/HS-CUST3/shipment")
+                            .header("Authorization", userBearer(stranger)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("로그인하지 않으면 배송을 볼 수 없다")
+        void requiresLogin() throws Exception {
+            insertOrder("HS-CUST4", "PAID", "김비로그인");
+
+            mockMvc.perform(get("/api/v1/orders/HS-CUST4/shipment"))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    // =================================================================
     // 권한
     // =================================================================
 
@@ -376,11 +443,25 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     private long insertUser() {
-        Long id = jdbcTemplate.queryForObject(
-                "INSERT INTO users (id, status) VALUES (900001, 'ACTIVE') "
+        return insertUser(900001L);
+    }
+
+    private long insertUser(long id) {
+        Long created = jdbcTemplate.queryForObject(
+                "INSERT INTO users (id, status) VALUES (?, 'ACTIVE') "
                         + "ON CONFLICT (id) DO UPDATE SET status = 'ACTIVE' RETURNING id",
-                Long.class);
-        return id == null ? 900001L : id;
+                Long.class, id);
+        return created == null ? id : created;
+    }
+
+    /**
+     * 회원 토큰을 가입 흐름 없이 직접 발급한다.
+     *
+     * <p>이 테스트가 보는 것은 배송이다. 본인확인·약관까지 통과하는 진짜 가입을 끼우면
+     * 목 공급자 설정이 따라붙고, 배송 로직이 깨졌을 때 가입 쪽 실패와 구분하기 어려워진다.
+     */
+    private String userBearer(long id) {
+        return "Bearer " + userJwtProvider.issueAccessToken(id);
     }
 
     private long insertOrder(String orderNo, String status, String receiver) {

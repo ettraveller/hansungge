@@ -3,6 +3,8 @@ package com.hanseongge.domain.order.controller;
 import com.hanseongge.domain.order.dto.OrderCreateRequest;
 import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.service.OrderService;
+import com.hanseongge.domain.shipment.dto.ShipmentResponse;
+import com.hanseongge.domain.shipment.service.ShipmentService;
 import com.hanseongge.global.auth.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +37,7 @@ public class OrderController {
     private static final int MAX_SIZE = 50;
 
     private final OrderService orderService;
+    private final ShipmentService shipmentService;
 
     @Operation(summary = "주문서 작성",
             description = "장바구니 전체를 주문으로 만든다. 금액과 상품은 받지 않는다 — "
@@ -63,6 +66,17 @@ public class OrderController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable String orderNo) {
         return ResponseEntity.ok(orderService.getMine(principal.id(), orderNo));
+    }
+
+    @Operation(summary = "내 주문의 배송 정보",
+            description = "송장번호와 택배사 조회 페이지 주소를 준다. 발송 전이면 상태만 "
+                    + "「발송 대기」로 돌려준다 — 배송 행이 아직 없는 것과 구분하지 않는다. "
+                    + "남의 주문번호는 404 다.")
+    @GetMapping("/{orderNo}/shipment")
+    public ResponseEntity<ShipmentResponse> shipment(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable String orderNo) {
+        return ResponseEntity.ok(shipmentService.mine(principal.id(), orderNo));
     }
 
     @Operation(summary = "주문 취소",

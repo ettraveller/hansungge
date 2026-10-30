@@ -17,6 +17,7 @@ export const orderKeys = {
   all: ['orders'] as const,
   list: (page: number) => [...orderKeys.all, 'list', page] as const,
   detail: (orderNo: string) => [...orderKeys.all, 'detail', orderNo] as const,
+  shipment: (orderNo: string) => [...orderKeys.all, 'shipment', orderNo] as const,
   paymentConfig: ['payment-config'] as const,
 };
 
@@ -32,6 +33,24 @@ export function useOrder(orderNo: string | null) {
     queryKey: orderKeys.detail(orderNo ?? ''),
     queryFn: () => orderApi.fetchOrder(orderNo as string),
     enabled: !!orderNo,
+  });
+}
+
+/**
+ * 배송 정보.
+ *
+ * <p>캐시에 묶어 두지 않는다. 관리자가 송장을 넣은 직후 고객이 새로고침하면 바로
+ * 보여야 한다 — "발송했다는 문자는 받았는데 화면에는 없다"가 문의로 돌아온다.
+ *
+ * <p>결제 전 주문에는 부르지 않는다({@code enabled}). 아직 보낼 것이 없는 주문에
+ * 배송칸을 띄우면 "준비 중"이 아니라 "뭔가 빠진 화면"으로 읽힌다.
+ */
+export function useShipment(orderNo: string | null, enabled = true) {
+  return useQuery({
+    queryKey: orderKeys.shipment(orderNo ?? ''),
+    queryFn: () => orderApi.fetchShipment(orderNo as string),
+    enabled: !!orderNo && enabled,
+    staleTime: 0,
   });
 }
 

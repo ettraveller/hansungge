@@ -65,6 +65,38 @@ export interface Order {
   cancellable: boolean;
 }
 
+/** 배송 상태. 백엔드 ShipmentStatus 와 값이 같아야 한다. */
+export type ShipmentStatus = 'PENDING' | 'SHIPPED' | 'IN_TRANSIT' | 'DELIVERED';
+
+/** 택배사. 지금은 우체국택배 하나뿐이다. */
+export type Carrier = 'KOREA_POST';
+
+/**
+ * 배송 정보. <b>관리자와 고객이 같은 모양으로 받는다.</b>
+ *
+ * <p>아직 발송 전이면 서버가 {@code status: 'PENDING'} 으로 채워 보낸다 — 화면이
+ * 매번 널 검사를 하지 않도록.
+ *
+ * <p>{@link trackingUrl} 에 송장번호가 붙어 있지 않다. 우체국이 번호를 GET 으로 받는
+ * 공개 주소를 보장하지 않아서, 붙인 링크는 어느 날 조용히 빈 화면이 된다. 조회
+ * 페이지로 보내고 번호는 화면에서 복사하게 한다.
+ */
+export interface Shipment {
+  status: ShipmentStatus;
+  statusLabel: string;
+  carrier?: Carrier | null;
+  carrierName?: string | null;
+  trackingUrl?: string | null;
+  trackingNo?: string | null;
+  shippedAt?: string | null;
+  deliveredAt?: string | null;
+  /** null 이면 배송조회가 꺼져 있거나 아직 부른 적 없다 */
+  trackingSyncedAt?: string | null;
+  trackingStatus?: string | null;
+  /** 진행 단계(JSON 문자열). 조회가 꺼져 있으면 null */
+  trackingDetail?: string | null;
+}
+
 export interface OrderPage {
   content: Order[];
   totalElements: number;

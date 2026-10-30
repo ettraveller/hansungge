@@ -2,6 +2,7 @@ package com.hanseongge.domain.shipment.service;
 
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.repository.OrderRepository;
+import com.hanseongge.domain.shipment.dto.ShipmentResponse;
 import com.hanseongge.domain.shipment.entity.Carrier;
 import com.hanseongge.domain.shipment.entity.Shipment;
 import com.hanseongge.domain.shipment.repository.ShipmentRepository;
@@ -42,6 +43,26 @@ public class ShipmentService {
     @Transactional(readOnly = true)
     public Optional<Shipment> find(Long orderId) {
         return shipmentRepository.findByOrderId(orderId);
+    }
+
+    /**
+     * 고객이 자기 주문의 배송을 본다.
+     *
+     * <p>소유자 검사를 <b>이 메서드 안에서</b> 한다. 주문번호만 알면 조회되게 두면
+     * 번호 규칙(HS+날짜+순번)이 단순해서 숫자를 바꿔 가며 남의 송장을 긁어 갈 수 있다.
+     * 없는 주문과 남의 주문을 똑같이 404 로 답한다 ({@code Order#requireOwnedBy}).
+     *
+     * <p>배송 행이 없으면 "발송 대기"를 채워 준다 — 화면이 널 검사를 하지 않게.
+     */
+    @Transactional(readOnly = true)
+    public ShipmentResponse mine(Long userId, String orderNo) {
+        Order order = orderRepository.findByOrderNo(orderNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        order.requireOwnedBy(userId);
+
+        return shipmentRepository.findByOrderId(order.getId())
+                .map(ShipmentResponse::from)
+                .orElseGet(ShipmentResponse::pending);
     }
 
     /** 주문 목록 화면이 여러 건의 배송을 한 번에 읽는다. N+1 을 피하려고 묶어서 준다. */

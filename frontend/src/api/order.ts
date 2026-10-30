@@ -1,6 +1,6 @@
 import { authed } from '@/api/authedClient';
 import { request } from '@/api/client';
-import type { Order, OrderCreateInput, OrderPage, PaymentConfig } from '@/types/order';
+import type { Order, OrderCreateInput, OrderPage, PaymentConfig, Shipment } from '@/types/order';
 
 /**
  * 주문·결제 API.
@@ -21,6 +21,16 @@ export function fetchOrders(page = 0, size = 10) {
 
 export function fetchOrder(orderNo: string) {
   return authed<Order>(`/api/v1/orders/${encodeURIComponent(orderNo)}`);
+}
+
+/**
+ * 내 주문의 배송 정보.
+ *
+ * <p>주문 상세와 따로 부른다. 목록에서도 쓸 수 있게 묶지 않은 것이고, 발송 뒤에는
+ * 이것만 다시 물어 송장번호를 갱신할 수 있다.
+ */
+export function fetchShipment(orderNo: string) {
+  return authed<Shipment>(`/api/v1/orders/${encodeURIComponent(orderNo)}/shipment`);
 }
 
 export function cancelOrder(orderNo: string) {
