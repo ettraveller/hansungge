@@ -24,8 +24,13 @@
 }
 
 
-/* 이미지 업로드(STEP 10) 전까지의 자리 */
+/*
+  상품 대표이미지 자리. 사진이 없으면 "상품 사진"이라는 글자가 들어간다.
+
+  (2026-10-30: 이미지 업로드가 생기기 전까지는 항상 글자였다.)
+*/
 .thumb {
+  overflow: hidden;
   width: 84px;
   height: 84px;
   flex-shrink: 0;
@@ -38,6 +43,14 @@
   text-align: center;
   color: var(--ink-400);
   text-decoration: none;
+}
+
+/* 목록에서는 cover — contain 은 좌우에 빈 띠를 만들어 줄마다 사진 크기가 달라 보인다. */
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .info {

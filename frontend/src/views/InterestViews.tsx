@@ -15,6 +15,7 @@ import {
 import { useAddToCart } from '@/hooks/useCart';
 import { ApiError } from '@/types/api';
 import type { ProductSummary } from '@/types/product';
+import { mediaUrl } from '@/utils/media';
 import { formatKrw } from '@/utils/format';
 import styles from '@/views/InterestViews.module.css';
 
@@ -172,15 +173,26 @@ function ProductRow({
   const toggle = useToggleWishlist();
   const addToCart = useAddToCart();
 
+  const thumbUrl = mediaUrl(product.thumbnailKey);
+
   // 주문 가능 여부는 서버가 이미 판단해서 내려준다. 화면에서 다시 따지지 않는다 (원칙 P1).
   const orderable = product.orderable;
 
   return (
     <article className={styles.row}>
       <Link href={`/shop/product/${product.id}`} className={styles.thumb} aria-hidden="true" tabIndex={-1}>
-        상품
-        <br />
-        사진
+        {/* 사진이 없는 상품에는 전처럼 "상품 사진"이라고 적어 둔다 — 빈 네모는
+            "안 뜬다"로 읽히고, 칸을 빼면 줄 높이가 달라져 목록이 들쭉날쭉해진다. */}
+        {thumbUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className={styles.photo} src={thumbUrl} alt="" loading="lazy" />
+        ) : (
+          <>
+            상품
+            <br />
+            사진
+          </>
+        )}
       </Link>
 
       <div className={styles.info}>

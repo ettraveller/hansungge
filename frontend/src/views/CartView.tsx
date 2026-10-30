@@ -13,6 +13,7 @@ import {
 } from '@/hooks/useCart';
 import { useUserSession } from '@/hooks/useUserSession';
 import { formatGram, formatKrw } from '@/utils/format';
+import { mediaUrl } from '@/utils/media';
 import { METAL_LABEL } from '@/types/price';
 import { ApiError } from '@/types/api';
 import type { CartItem } from '@/types/cart';
@@ -112,13 +113,31 @@ function CartRow({ item }: { item: CartItem }) {
     changeQuantity.mutate({ itemId: item.id, quantity: next });
   };
 
+  const thumbUrl = mediaUrl(item.thumbnailKey);
   const error = changeQuantity.error ?? remove.error;
 
   return (
     <article className={item.orderable ? styles.row : styles.rowBlocked}>
-      <div className={styles.thumb} aria-hidden="true">
-        <span className={styles.bar} />
-      </div>
+      {/*
+        상품 대표이미지. 장바구니는 "내가 뭘 담았더라"를 확인하는 자리라, 글만 있으면
+        비슷한 이름의 상품을 구분하기 어렵다.
+
+        사진이 없는 상품을 위해 금괴 그림은 남긴다 — 빈 네모를 두면 "사진이 안 뜬다"로
+        읽히고, 칸을 아예 빼면 줄 높이가 달라져 목록이 들쭉날쭉해진다.
+      */}
+      <Link
+        href={`/shop/product/${item.productId}`}
+        className={styles.thumb}
+        aria-hidden="true"
+        tabIndex={-1}
+      >
+        {thumbUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className={styles.photo} src={thumbUrl} alt="" loading="lazy" />
+        ) : (
+          <span className={styles.bar} />
+        )}
+      </Link>
 
       <div className={styles.info}>
         <Link href={`/shop/product/${item.productId}`} className={styles.name}>
