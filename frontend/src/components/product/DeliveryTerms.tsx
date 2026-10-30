@@ -56,8 +56,6 @@ export function DeliveryTerms({ madeToOrder }: { madeToOrder: boolean }) {
       {/* 주문제작만. 재고 상품에 붙이면 있지도 않은 제한을 알리는 것이 되고,
           그것은 고객의 청약철회권을 근거 없이 깎는 안내다. */}
       {madeToOrder && <p className={styles.withdrawal}>{MADE_TO_ORDER_WITHDRAWAL}</p>}
-
-      <p className={styles.note}>{DELIVERY_COMMON.note}</p>
     </section>
   );
 }

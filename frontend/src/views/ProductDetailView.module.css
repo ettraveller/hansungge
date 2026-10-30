@@ -268,13 +268,6 @@
   color: var(--gold-deep);
 }
 
-.disclaimer {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--gray);
-  line-height: 1.6;
-}
-
 /* ---------- 설명 ---------- */
 
 .description {

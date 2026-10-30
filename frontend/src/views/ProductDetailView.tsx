@@ -335,10 +335,14 @@ export function ProductDetailView({
           */}
           <DeliveryTerms madeToOrder={product.madeToOrder} />
 
-          <p className={styles.disclaimer}>
-            최종 결제 금액은 주문 시점에 서버가 다시 계산합니다. 화면 금액과 결제 금액이 다를 수
-            없습니다.
-          </p>
+          {/*
+            "최종 결제 금액은 주문 시점에 서버가 다시 계산합니다"를 뺐다.
+
+            고객에게는 당연한 일이고(어디서 사든 그렇다), 굳이 적으면 "금액이 달라질
+            수도 있다는 말인가" 하고 되읽게 된다. 안심시키려던 문장이 반대로 읽혔다.
+
+            그 성질 자체는 그대로다 — 금액은 서버가 정한다 (원칙 P1).
+          */}
         </div>
       </div>
 

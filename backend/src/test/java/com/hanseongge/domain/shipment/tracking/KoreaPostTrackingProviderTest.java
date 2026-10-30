@@ -63,39 +63,90 @@ class KoreaPostTrackingProviderTest {
     @DisplayName("응답 해석")
     class Parsing {
 
+        /**
+         * 규격서(2026-10-30 수령)의 샘플 응답을 그대로 옮겼다.
+         *
+         * <p>여기서 고정하는 것이 세 가지다.
+         * <ul>
+         *   <li>행 이름은 {@code longitudinalDomesticList} 다</li>
+         *   <li><b>날짜 구분자가 하이픈이다</b> — 규격서 표는 {@code yyyy.mm.dd} 라고
+         *       적어 놓고 샘플은 {@code 2017-09-12} 를 준다. 한쪽만 맞추면 시각이
+         *       전부 null 이 되어 "언제 일인지 모르는 목록"이 된다</li>
+         *   <li>{@code <detailDc/>} 가 대부분 비어 있다 — 그것으로 행을 찾으면 안 된다</li>
+         * </ul>
+         */
         @Test
-        @DisplayName("단계를 시간순으로 읽고, 마지막 단계로 배달완료를 판정한다")
-        void readsStepsInOrder() {
+        @DisplayName("규격서 샘플을 그대로 읽는다 — 하이픈 날짜, 빈 detailDc, 최상위 배달상태")
+        void readsOfficialSample() {
             given("""
-                    <response><body><items>
-                      <item>
-                        <dlvyDate>2026.10.30</dlvyDate><dlvyTime>09:12</dlvyTime>
-                        <nowLc>서울종로</nowLc><processSttus>접수</processSttus>
-                        <detailDc>우체국 접수</detailDc>
-                      </item>
-                      <item>
-                        <dlvyDate>2026.10.31</dlvyDate><dlvyTime>14:30</dlvyTime>
-                        <nowLc>서울강남</nowLc><processSttus>배달완료</processSttus>
-                        <detailDc>수령인 본인</detailDc>
-                      </item>
-                    </items></body></response>
+                    <LongitudinalDomesticListResponse>
+                      <cmmMsgHeader><successYN>Y</successYN><returnCode>00</returnCode><errMsg/></cmmMsgHeader>
+                      <addrseNm>수취인</addrseNm><applcntNm>발송인</applcntNm>
+                      <dlvyDe>2017-09-13 16:26</dlvyDe>
+                      <dlvySttus>배달완료</dlvySttus>
+                      <longitudinalDomesticList>
+                        <dlvyDate>2017-09-12</dlvyDate><dlvyTime>19:28</dlvyTime>
+                        <nowLc>동서울우편집중국</nowLc><processSttus>접수</processSttus><detailDc/>
+                      </longitudinalDomesticList>
+                      <longitudinalDomesticList>
+                        <dlvyDate>2017-09-13</dlvyDate><dlvyTime>08:48</dlvyTime>
+                        <nowLc>시흥우체국</nowLc><processSttus>배달준비</processSttus><detailDc/>
+                      </longitudinalDomesticList>
+                      <longitudinalDomesticList>
+                        <dlvyDate>2017-09-13</dlvyDate><dlvyTime>16:26</dlvyTime>
+                        <nowLc>시흥우체국</nowLc><processSttus>배달완료</processSttus>
+                        <detailDc>배달(수령인: 홍*동 - 회사동료)</detailDc>
+                      </longitudinalDomesticList>
+                      <pstmtrKnd>통상</pstmtrKnd><rgist>4092007735160</rgist>
+                    </LongitudinalDomesticListResponse>
                     """);
 
             TrackingResult result = provider.track(Carrier.KOREA_POST, "6012345678901");
 
-            assertThat(result.steps()).hasSize(2);
+            // detailDc 가 빈 행도 빠지지 않는다
+            assertThat(result.steps()).hasSize(3);
             assertThat(result.steps().get(0).what()).isEqualTo("접수");
-            assertThat(result.steps().get(0).where()).isEqualTo("서울종로");
+            assertThat(result.steps().get(0).where()).isEqualTo("동서울우편집중국");
+
+            // 하이픈 날짜를 읽는다
             assertThat(result.steps().get(0).at())
                     .isNotNull()
                     .satisfies(at -> {
-                        assertThat(at.atZoneSameInstant(KST).getHour()).isEqualTo(9);
-                        assertThat(at.atZoneSameInstant(KST).getMinute()).isEqualTo(12);
+                        assertThat(at.atZoneSameInstant(KST).toLocalDate().toString())
+                                .isEqualTo("2017-09-12");
+                        assertThat(at.atZoneSameInstant(KST).getHour()).isEqualTo(19);
+                        assertThat(at.atZoneSameInstant(KST).getMinute()).isEqualTo(28);
                     });
 
+            // 수령인 정보를 버리지 않는다 — 분실·수령거부를 다툴 때 근거다
+            assertThat(result.steps().get(2).what())
+                    .isEqualTo("배달완료 · 배달(수령인: 홍*동 - 회사동료)");
+
+            // 전체 상태는 최상위 dlvySttus 가 정한다
+            assertThat(result.externalStatus()).isEqualTo("배달완료");
             assertThat(result.delivered()).isTrue();
             assertThat(result.inTransit()).isFalse();
-            assertThat(result.externalStatus()).isEqualTo("배달완료");
+        }
+
+        @Test
+        @DisplayName("점으로 구분된 날짜도 읽는다 — 규격서 표가 그렇게 적혀 있다")
+        void readsDottedDate() {
+            given("""
+                    <LongitudinalDomesticListResponse>
+                      <longitudinalDomesticList>
+                        <dlvyDate>2026.10.30</dlvyDate><dlvyTime>09:12</dlvyTime>
+                        <nowLc>서울종로</nowLc><processSttus>접수</processSttus><detailDc/>
+                      </longitudinalDomesticList>
+                    </LongitudinalDomesticListResponse>
+                    """);
+
+            TrackingResult result = provider.track(Carrier.KOREA_POST, "6012345678901");
+
+            assertThat(result.steps().get(0).at())
+                    .isNotNull()
+                    .satisfies(at -> assertThat(
+                            at.atZoneSameInstant(KST).toLocalDate().toString())
+                            .isEqualTo("2026-10-30"));
         }
 
         /**
@@ -105,13 +156,13 @@ class KoreaPostTrackingProviderTest {
          * 그때 돌아오는 것은 오류가 아니라 단계 0개라서 "집화 전"과 구분되지 않는다.
          */
         @Test
-        @DisplayName("바깥 래퍼가 달라도 단계를 찾는다 — 경로가 아니라 태그 이름으로 긁는다")
+        @DisplayName("행 래퍼 이름이 바뀌어도 날짜를 가진 행을 찾는다")
         void survivesWrapperChange() {
             given("""
                     <OpenAPI><newWrapper><rows><row>
-                      <dlvyDate>2026.10.30</dlvyDate><dlvyTime>09:12</dlvyTime>
+                      <dlvyDate>2026-10-30</dlvyDate><dlvyTime>09:12</dlvyTime>
                       <nowLc>서울종로</nowLc><processSttus>집화완료</processSttus>
-                      <detailDc>집화</detailDc>
+                      <detailDc/>
                     </row></rows></newWrapper></OpenAPI>
                     """);
 
@@ -137,7 +188,7 @@ class KoreaPostTrackingProviderTest {
 
             assertThat(result.steps()).hasSize(1);
             assertThat(result.steps().get(0).at()).isNull();
-            assertThat(result.steps().get(0).what()).isEqualTo("배송출발");
+            assertThat(result.steps().get(0).what()).isEqualTo("배송출발 · 배송 중");
         }
 
         @Test
@@ -175,14 +226,14 @@ class KoreaPostTrackingProviderTest {
         }
 
         /**
-         * 중간에 "배달완료"라는 말이 있어도 마지막이 아니면 끝난 것이 아니다.
+         * 최상위 {@code dlvySttus} 가 없을 때의 대비책.
          *
-         * <p>재배달·반송 같은 흐름에서 그 말이 중간에 나올 수 있다. 끝났다고 판정하면
-         * 관리자 화면이 수령 처리를 재촉하고, 아직 고객 손에 없는 물건을 받았다고
-         * 기록하게 된다.
+         * <p>재배달·반송 흐름에서는 "배달완료"가 중간에 나온다. 그것을 보고 끝났다고
+         * 판정하면 관리자 화면이 수령 처리를 재촉하고, 아직 고객 손에 없는 물건을
+         * 받았다고 기록하게 된다.
          */
         @Test
-        @DisplayName("배달완료가 중간에 있으면 끝난 것이 아니다 — 마지막 단계만 본다")
+        @DisplayName("최상위 배달상태가 없으면 마지막 단계로 판정한다 — 중간의 배달완료는 아니다")
         void onlyLastStepDecides() {
             given("""
                     <response><items>
@@ -197,7 +248,153 @@ class KoreaPostTrackingProviderTest {
 
             assertThat(result.delivered()).isFalse();
             assertThat(result.inTransit()).isTrue();
-            assertThat(result.externalStatus()).isEqualTo("반송");
+            assertThat(result.externalStatus()).isEqualTo("반송 · 수취인 부재");
+        }
+
+        /**
+         * 최상위 상태가 단계보다 우선이다.
+         *
+         * <p>어느 쪽이 맞는지는 우체국이 정한다. 마지막 줄이 "배달완료"로 보여도
+         * 반송 처리 중일 수 있고, 그 반대도 있다.
+         */
+        @Test
+        @DisplayName("최상위 배달상태가 마지막 단계보다 우선한다")
+        void overallStatusWins() {
+            given("""
+                    <LongitudinalDomesticListResponse>
+                      <dlvySttus>미배달</dlvySttus>
+                      <longitudinalDomesticList>
+                        <dlvyDate>2026-10-30</dlvyDate><dlvyTime>09:00</dlvyTime>
+                        <processSttus>배달완료</processSttus><detailDc/>
+                      </longitudinalDomesticList>
+                    </LongitudinalDomesticListResponse>
+                    """);
+
+            TrackingResult result = provider.track(Carrier.KOREA_POST, "6012345678901");
+
+            assertThat(result.externalStatus()).isEqualTo("미배달");
+            assertThat(result.delivered()).isFalse();
+        }
+    }
+
+    /**
+     * 우체국은 실패를 HTTP 상태가 아니라 <b>본문</b>으로 알린다 — 키가 틀려도,
+     * 한도를 넘겨도 200 이 온다. 그것을 보지 않으면 단계 0개가 돌아오는데, 그 모습이
+     * "아직 집화 전"과 똑같아서 조회가 몇 달째 아무것도 못 가져와도 아무도 모른다.
+     */
+    @Nested
+    @DisplayName("오류 봉투")
+    class ErrorEnvelope {
+
+        /** 2026-10-30 실제 응답을 그대로 옮겼다. */
+        @Test
+        @DisplayName("「조회결과가 없습니다」(03)는 실패가 아니다 — 집화 전과 구분할 수 없다")
+        void noResultIsNotFailure() {
+            given("""
+                    <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+                    <LongitudinalDomesticListResponse><cmmMsgHeader>
+                      <responseTime>20261030:18324051</responseTime>
+                      <successYN>N</successYN><returnCode>03</returnCode>
+                      <errMsg>조회결과가 없습니다.</errMsg>
+                    </cmmMsgHeader></LongitudinalDomesticListResponse>
+                    """);
+
+            TrackingResult result = provider.track(Carrier.KOREA_POST, "6012345678901");
+
+            assertThat(result.steps()).isEmpty();
+            assertThat(result.delivered()).isFalse();
+        }
+
+        @Test
+        @DisplayName("키 오류는 던진다 — 조용히 빈 결과로 두면 고장난 줄 모른다")
+        void keyErrorThrows() {
+            given("""
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <LongitudinalDomesticListResponse><cmmMsgHeader>
+                      <successYN>N</successYN><returnCode>30</returnCode>
+                      <errMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</errMsg>
+                    </cmmMsgHeader></LongitudinalDomesticListResponse>
+                    """);
+
+            assertThatThrownBy(() -> provider.track(Carrier.KOREA_POST, "6012345678901"))
+                    .isInstanceOf(DeliveryTrackingException.class)
+                    .hasMessageContaining("SERVICE_KEY_IS_NOT_REGISTERED_ERROR");
+        }
+
+        @Test
+        @DisplayName("한도 초과도 던진다")
+        void quotaExceededThrows() {
+            given("""
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <LongitudinalDomesticListResponse><cmmMsgHeader>
+                      <successYN>N</successYN><returnCode>22</returnCode>
+                      <errMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</errMsg>
+                    </cmmMsgHeader></LongitudinalDomesticListResponse>
+                    """);
+
+            assertThatThrownBy(() -> provider.track(Carrier.KOREA_POST, "6012345678901"))
+                    .isInstanceOf(DeliveryTrackingException.class);
+        }
+    }
+
+    /**
+     * 인증키 형태.
+     *
+     * <p>포털은 같은 키를 Encoding 과 Decoding 두 가지로 보여주고, <b>위에 있는
+     * Encoding 쪽을 복사하게 된다.</b> 실제로 그렇게 들어왔다 (2026-10-30).
+     */
+    @Nested
+    @DisplayName("인증키")
+    class ServiceKey {
+
+        /**
+         * 어느 형태를 넣든 <b>우체국이 받는 값이 같아야</b> 한다.
+         *
+         * <p>이중 인코딩({@code %25})이 가장 위험하다. 그렇게 나가면 우체국은 "키가
+         * 틀렸다"가 아니라 빈 결과를 돌려주고, 그 모습은 "아직 집화 전"과 똑같다 —
+         * 조회가 몇 달째 아무것도 못 가져와도 오류 하나 없이 조용하다.
+         */
+        @Test
+        @DisplayName("Encoding 키를 넣어도 우체국이 받는 값은 같다 — 이중 인코딩되지 않는다")
+        void acceptsEncodedKey() {
+            assertThat(keyAsSentWith("t%2FFPSiYsiOrM%3D%3D"))
+                    .isEqualTo("t/FPSiYsiOrM==");
+        }
+
+        @Test
+        @DisplayName("Decoding 키도 같은 값으로 나간다")
+        void acceptsDecodedKey() {
+            assertThat(keyAsSentWith("t/FPSiYsiOrM=="))
+                    .isEqualTo("t/FPSiYsiOrM==");
+        }
+
+        /** 설정에 넣은 키가 실제 요청에서 우체국에 어떤 값으로 도착하는가. */
+        private String keyAsSentWith(String configured) {
+            RestClient.Builder builder = RestClient.builder();
+            MockRestServiceServer mock = MockRestServiceServer.bindTo(builder).build();
+            var provider = new KoreaPostTrackingProvider(propsWithKey(configured), builder);
+
+            var sent = new java.util.concurrent.atomic.AtomicReference<String>();
+            mock.expect(request -> sent.set(queryValue(request.getURI(), "serviceKey")))
+                    .andRespond(withSuccess("<r/>", APPLICATION_XML));
+
+            provider.track(Carrier.KOREA_POST, "6012345678901");
+
+            // 질의문자열에 %25 가 보이면 이중 인코딩이다.
+            assertThat(sent.get()).doesNotContain("%25");
+            return sent.get();
+        }
+
+        /** 서버가 읽는 그대로 — 한 번 디코딩한 값. */
+        private static String queryValue(java.net.URI uri, String name) {
+            for (String pair : uri.getRawQuery().split("&")) {
+                int eq = pair.indexOf('=');
+                if (eq > 0 && pair.substring(0, eq).equals(name)) {
+                    return java.net.URLDecoder.decode(
+                            pair.substring(eq + 1), java.nio.charset.StandardCharsets.UTF_8);
+                }
+            }
+            return null;
         }
     }
 
