@@ -166,8 +166,15 @@ export interface ProductPrice {
   /** 최종 판매 단가(원). 표시 불가면 null */
   price?: number | null;
   displayText: string;
-  components: PriceComponent[];
-  marketPricePerGram?: number | null;
+  /*
+   * components 와 marketPricePerGram 이 없다 (2026-10-30).
+   *
+   * 공개 응답에서 뺐기 때문이다 — 가격 내역이 공임을 그대로 드러내고, 공임은 상품마다
+   * 다르게 매기는 값이라 내걸면 상품끼리 비교당하고 경쟁사가 마진을 읽는다.
+   * 화면에서 지우는 것만으로는 개발자도구를 열면 보여서, 응답에서 아예 뺐다.
+   *
+   * 가격이 어떻게 계산됐는지는 관리자 화면에서 본다 ({@link AdminPriceQuote}).
+   */
   priceQuotedAt?: string | null;
   notice?: string | null;
 }

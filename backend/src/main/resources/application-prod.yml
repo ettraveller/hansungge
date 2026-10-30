@@ -96,6 +96,20 @@ app:
   order:
     stale-minutes: ${ORDER_STALE_MINUTES:30}
     sweep-interval-ms: ${ORDER_SWEEP_INTERVAL_MS:300000}
+
+  # 배송조회 (우체국 국내우편물 종적 조회, 공공데이터포털).
+  #
+  # ⚠️ 여기는 기본값을 둔다. 메일·소셜 클라이언트와 같은 판단이다 — 비어 있으면
+  # 기동은 되되 조회만 죽고, 기동 로그에 무엇이 없는지가 남는다. 배송조회가 없다고
+  # 주문 화면까지 멈추는 것이 더 나쁘다. 송장번호와 우체국 조회 링크는 그대로 동작한다.
+  #
+  # ⚠️ TRACKING_SERVICE_KEY 는 포털의 **Decoding** 키다. Encoding 키를 넣으면 빈 결과만
+  #    돌아오고 오류는 나지 않아서, 왜 조회가 안 되는지 알 수 없다.
+  tracking:
+    service-key: ${TRACKING_SERVICE_KEY:}
+    sync-interval-ms: ${TRACKING_SYNC_INTERVAL_MS:900000}
+    sync-interval-minutes: ${TRACKING_SYNC_INTERVAL_MINUTES:30}
+    batch-size: ${TRACKING_BATCH_SIZE:50}
   # 결제 (토스페이먼츠, TODO A-3).
   #
   # ⚠️ secret-key 가 새면 승인·취소를 남이 부를 수 있다. 저장소에 두지 않고 api.env 에만 둔다.

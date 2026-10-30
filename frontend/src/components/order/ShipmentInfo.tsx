@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useShipment } from '@/hooks/useOrder';
 import type { OrderStatus, Shipment } from '@/types/order';
 import { formatDateTime } from '@/utils/format';
+import { TrackingSteps, parseTrackingSteps } from './TrackingSteps';
 import styles from './ShipmentInfo.module.css';
 
 /**
@@ -78,6 +79,7 @@ export function ShipmentInfo({ orderNo, orderStatus }: {
 
 function Tracking({ shipment }: { shipment: Shipment }) {
   const [copied, setCopied] = useState(false);
+  const steps = parseTrackingSteps(shipment.trackingDetail);
 
   const copy = async () => {
     if (!shipment.trackingNo) return;
@@ -119,6 +121,10 @@ function Tracking({ shipment }: { shipment: Shipment }) {
         )}
       </dl>
 
+      {/* 우체국이 준 진행 단계. 조회가 꺼져 있거나 아직 집화 전이면 비어서 안 그린다 —
+          빈 상자를 띄워 두면 "조회가 안 되는 건가" 하고 기다리게 된다. */}
+      <TrackingSteps steps={steps} syncedAt={shipment.trackingSyncedAt} />
+
       {shipment.trackingUrl && (
         <a
           className={styles.trackLink}
@@ -129,8 +135,15 @@ function Tracking({ shipment }: { shipment: Shipment }) {
           우체국에서 배송 조회 ↗
         </a>
       )}
+      {/*
+        진행 단계가 이미 있으면 "붙여 넣으세요"라고 하지 않는다. 화면에 다 나와
+        있는데 할 일을 하나 더 시키는 안내가 되고, 그러면 조회 링크가 "여기서는
+        안 보이니 저기 가서 보라"는 말로 읽힌다.
+      */}
       <p className={styles.note}>
-        조회 화면에서 위 송장번호를 붙여 넣으면 진행 상황이 나옵니다.
+        {steps.length > 0
+          ? '우체국에서 직접 확인하시려면 위 송장번호를 복사해 조회 화면에 붙여 넣으세요.'
+          : '조회 화면에서 위 송장번호를 붙여 넣으면 진행 상황이 나옵니다.'}
       </p>
     </>
   );

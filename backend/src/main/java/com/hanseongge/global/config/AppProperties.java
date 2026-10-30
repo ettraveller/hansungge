@@ -23,8 +23,45 @@ public record AppProperties(
         @DefaultValue Identity identity,
         @DefaultValue Sms sms,
         @DefaultValue Payment payment,
-        @DefaultValue Media media
+        @DefaultValue Media media,
+        @DefaultValue Tracking tracking
 ) {
+
+    /**
+     * 배송조회 (우체국 국내우편물 종적 조회, 공공데이터포털).
+     *
+     * <p>비어 있으면 조회가 꺼진 채로 돌아간다. 이 기능은 <b>있으면 좋은 것</b>이지
+     * 배송의 전제가 아니다 — 키가 없으면 고객은 송장번호와 우체국 조회 링크로 확인하고,
+     * 관리자는 발송·수령을 손으로 기록한다. 그래서 기동을 막지 않는다.
+     */
+    public record Tracking(
+            /**
+             * 공공데이터포털에서 받은 인증키.
+             *
+             * <p>⚠️ <b>「Decoding」 키를 넣는다.</b> 포털은 같은 키를 Encoding/Decoding 두
+             * 가지로 보여주는데, Encoding 쪽(`%2B`·`%3D` 가 섞인 값)을 넣으면 우리 쪽
+             * URI 빌더가 `%` 를 다시 인코딩해 `%252B` 가 되고, 서버는 키를 못 알아본다.
+             * 그런데 돌아오는 것은 "키가 틀렸다"가 아니라 빈 결과라서 원인을 찾기 어렵다.
+             */
+            @DefaultValue("") String serviceKey,
+
+            /**
+             * 조회 주기(분). 이보다 오래된 건을 다시 묻는다.
+             *
+             * <p>개발계정 하루 10,000 건이다. 30분이면 배송 중인 주문 한 건당 하루 48번이라
+             * 200건까지 여유가 있다. 택배 상태는 하루에 몇 번 바뀌지 않으므로 더 자주 물어도
+             * 같은 답을 받는다.
+             */
+            @DefaultValue("30") int syncIntervalMinutes,
+
+            /** 한 번에 조회할 최대 건수. 하나가 느려도 전체가 밀리지 않게 끊는다. */
+            @DefaultValue("50") int batchSize
+    ) {
+
+        public boolean configured() {
+            return serviceKey != null && !serviceKey.isBlank();
+        }
+    }
 
     /**
      * 업로드 이미지 저장 (상품 사진·이벤트 배너).

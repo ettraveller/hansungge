@@ -93,8 +93,24 @@ export interface Shipment {
   /** null 이면 배송조회가 꺼져 있거나 아직 부른 적 없다 */
   trackingSyncedAt?: string | null;
   trackingStatus?: string | null;
-  /** 진행 단계(JSON 문자열). 조회가 꺼져 있으면 null */
+  /**
+   * 진행 단계. <b>JSON 문자열로 온다</b> — 객체가 아니다.
+   *
+   * <p>DB 에 JSONB 한 칸으로 넣고 그대로 꺼내 보내기 때문이다. 택배사마다 모양이
+   * 다른 데이터라 컬럼으로 펼치면 택배사가 늘 때마다 마이그레이션이 필요하다.
+   * 화면은 {@code parseTrackingSteps} 로 푼다.
+   */
   trackingDetail?: string | null;
+}
+
+/** 배송 진행 한 단계. 우체국이 준 표현을 그대로 담는다 — 우리가 해석하지 않는다. */
+export interface TrackingStep {
+  /** 그 일이 일어난 시각. 택배사가 날짜를 못 읽히게 주면 null */
+  at?: string | null;
+  /** 어디서. 택배사가 주지 않으면 null */
+  where?: string | null;
+  /** 무슨 일이. "집화완료", "배송출발" 같은 택배사의 표현 */
+  what?: string | null;
 }
 
 export interface OrderPage {

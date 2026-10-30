@@ -511,7 +511,22 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(jsonPath("$.options[0].stock").doesNotExist())
                     .andExpect(jsonPath("$.options[0].inStock").value(true))
                     .andExpect(jsonPath("$.prices[0].price").value(800000.00))
-                    .andExpect(jsonPath("$.prices[0].components[0].label").value("순금 24K 시세"));
+                    /*
+                     * 가격 내역과 적용 시세는 공개 응답에 없다 (2026-10-30).
+                     *
+                     * 내역이 공임을 그대로 드러낸다 — 여기서는 800,000 중 50,000 이
+                     * 공임이라는 사실이 한 줄로 나왔다. 공임은 상품마다 다르게 매기는
+                     * 값이라 공개하면 상품끼리 비교당하고 경쟁사가 마진을 읽는다.
+                     *
+                     * 화면에서 지우는 것만으로는 부족해서 응답에서 뺐다. 이 단언이
+                     * 그 구멍을 다시 열지 못하게 막는다 — 누군가 "상세에 내역을
+                     * 보여주자"며 DTO 에 필드를 되살리면 여기서 깨진다.
+                     */
+                    .andExpect(jsonPath("$.prices[0].components").doesNotExist())
+                    .andExpect(jsonPath("$.prices[0].marketPricePerGram").doesNotExist())
+                    // 기준 시각은 남긴다. 시세 상품에서 "언제 기준인가"는 고객이 알아야
+                    // 하는 정보이고, 그 자체로는 마진을 드러내지 않는다.
+                    .andExpect(jsonPath("$.prices[0].priceQuotedAt").exists());
         }
 
         @Test

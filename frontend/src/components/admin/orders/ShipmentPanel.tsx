@@ -9,6 +9,7 @@ import { Panel } from '../Panel';
 import { useMarkDelivered, useShip, useShipment } from '@/hooks/admin/useOrders';
 import { ApiError } from '@/types/api';
 import type { Shipment } from '@/types/order-admin';
+import { TrackingSteps, parseTrackingSteps } from '@/components/order/TrackingSteps';
 import { formatDateTime } from '@/utils/format';
 import styles from '../admin.module.css';
 
@@ -137,11 +138,20 @@ export function ShipmentPanel({ orderId, canEdit }: { orderId: number; canEdit: 
         )}
 
         {/*
-          배송조회 결과 자리. 스마트택배 키가 들어오면 여기가 채워진다.
-          키가 없는 동안에는 이 칸 자체를 띄우지 않는다 — 빈 상자가 있으면
+          우체국이 준 진행 단계. 고객 화면과 같은 것을 보여준다 — 다른 것을 보면
+          "고객에게는 뭐가 보이나"를 묻는 전화를 받고도 답할 수 없다.
+
+          키가 없거나 아직 집화 전이면 비어서 안 그린다. 빈 상자를 띄워 두면
           "조회가 안 되는 건가" 하고 기다리게 된다.
         */}
-        {data.trackingSyncedAt && data.trackingStatus && (
+        <TrackingSteps
+          steps={parseTrackingSteps(data.trackingDetail)}
+          syncedAt={data.trackingSyncedAt}
+        />
+
+        {/* 단계가 없는데 조회는 돌았을 때. 마지막 상태만이라도 알린다. */}
+        {parseTrackingSteps(data.trackingDetail).length === 0
+          && data.trackingSyncedAt && data.trackingStatus && (
           <p className={styles.hint}>
             택배사 상태 <strong>{data.trackingStatus}</strong> ·{' '}
             {formatDateTime(data.trackingSyncedAt)} 기준

@@ -12,7 +12,7 @@ import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
 import { METAL_LABEL } from '@/types/price';
 import type { ProductDetail } from '@/types/product';
-import { formatGram, formatKrw, formatPricePerGram } from '@/utils/format';
+import { formatGram, formatKrw } from '@/utils/format';
 import { mediaUrl } from '@/utils/media';
 import styles from './ProductDetailView.module.css';
 
@@ -232,13 +232,18 @@ export function ProductDetailView({
 
           <h1 className={styles.name}>{product.name}</h1>
 
+          {/*
+            적용 시세와 가격 구성(시세×중량 + 공임)을 화면에서 뺐다.
+
+            금액이 어떻게 나왔는지를 보여주면 신뢰가 오른다고 보고 넣었던 것인데,
+            같은 화면이 <b>공임을 그대로 공개한다.</b> 공임은 상품마다 다르게 매기는
+            값이라 그대로 내걸면 상품끼리 비교당하고, 경쟁사가 마진을 그대로 읽는다.
+
+            ⚠️ 화면에서만 뺀 것이다. 공개 API 는 여전히 components 와 시세를 돌려주므로
+            개발자도구를 열면 보인다. 값 자체를 가리려면 백엔드 응답에서 빼야 한다.
+          */}
           <div className={styles.priceBox}>
             <PriceTag price={price?.price ?? null} size="lg" />
-            {price?.marketPricePerGram != null && (
-              <p className={styles.basis}>
-                적용 시세 {formatPricePerGram(price.marketPricePerGram)}
-              </p>
-            )}
             {price?.notice && <p className={styles.notice}>{price.notice}</p>}
           </div>
 
@@ -274,31 +279,6 @@ export function ProductDetailView({
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {/* ---------- 가격 내역 ---------- */}
-          {price && price.components.length > 0 && (
-            <div className={styles.breakdown}>
-              <p className={styles.breakdownTitle}>가격 구성</p>
-              <dl className={styles.breakdownList}>
-                {price.components.map((c) => (
-                  <div key={`${c.sort}-${c.label}`}>
-                    <dt>
-                      {c.label}
-                      {c.unitPricePerGram != null && c.weightG != null && (
-                        <span className={styles.formula}>
-                          {formatPricePerGram(c.unitPricePerGram)} × {formatGram(c.weightG)}
-                        </span>
-                      )}
-                    </dt>
-                    <dd className="tabular">{formatKrw(c.amount)}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className={styles.breakdownNote}>
-                구성 금액의 합계가 판매가입니다. 반올림은 최종 합계에 한 번만 적용됩니다.
-              </p>
             </div>
           )}
 

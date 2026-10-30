@@ -179,6 +179,22 @@ app:
   order:
     stale-minutes: ${ORDER_STALE_MINUTES:30}
     sweep-interval-ms: ${ORDER_SWEEP_INTERVAL_MS:300000}
+  # 배송조회 (우체국 국내우편물 종적 조회, 공공데이터포털).
+  #
+  # 비우면 조회만 꺼지고 나머지는 그대로 돈다 — 고객은 송장번호와 우체국 조회 링크로
+  # 확인하고, 관리자는 발송·수령을 손으로 기록한다. 기동을 막지 않는다.
+  #
+  # ⚠️ 포털이 보여주는 두 가지 키 중 **Decoding** 키를 넣는다. Encoding 키(`%2B` 가 섞인
+  #    값)를 넣으면 우리 쪽에서 `%` 를 다시 인코딩해 `%252B` 가 되는데, 서버는 "키가
+  #    틀렸다"가 아니라 **빈 결과**를 돌려줘서 원인을 찾기 어렵다.
+  #
+  # 개발계정 하루 10,000 건. sync-interval-ms(이 주기로 훑는다)와 sync-interval-minutes
+  # (이보다 오래된 건만 다시 묻는다)는 다른 값이다 — 앞이 깨어나는 주기, 뒤가 재조회 기준.
+  tracking:
+    service-key: ${TRACKING_SERVICE_KEY:}
+    sync-interval-ms: ${TRACKING_SYNC_INTERVAL_MS:900000}
+    sync-interval-minutes: ${TRACKING_SYNC_INTERVAL_MINUTES:30}
+    batch-size: ${TRACKING_BATCH_SIZE:50}
   # 결제 (토스페이먼츠, TODO A-3). 비우면 결제만 닫히고 나머지는 그대로 돈다.
   #
   # 계약 전에도 토스가 공개한 테스트 키로 끝까지 돌려볼 수 있다. 실제 카드번호를 넣어도
