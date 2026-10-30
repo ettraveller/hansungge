@@ -293,6 +293,63 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(stockOf(optionId)).isEqualTo(9);
     }
 
+    /**
+     * 결제창에서 「취소」를 누르면 기다리지 않고 바로 풀린다 (2026-10-30).
+     *
+     * <p>전에는 주문을 살려 뒀다. "다른 카드로 다시 내려 할 때 처음부터 담아야 한다"는
+     * 이유였는데 그 전제가 틀렸다 — 장바구니는 결제가 성공해야 비워지므로, 취소한
+     * 고객의 장바구니에는 상품이 그대로 있다.
+     *
+     * <p>대가는 컸다. 재고가 1개인 상품은 누가 결제창까지 갔다 돌아오기만 해도
+     * 그동안 다른 사람에게 품절로 보였다.
+     */
+    @Test
+    @DisplayName("결제창에서 취소하면 주문을 접고 재고를 바로 돌려준다 — 장바구니는 그대로다")
+    void paymentCancelRestoresStockAtOnce() throws Exception {
+        addToCart(optionId, 2);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        assertThat(stockOf(optionId)).isEqualTo(8);
+
+        assertThat(mockMvc.perform(post("/api/v1/payments/" + orderNo + "/fail")
+                        .param("reason", "USER_CANCEL")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andReturn().getResponse().getStatus()).isEqualTo(204);
+
+        assertThat(statusOf(orderNo)).isEqualTo("CANCELLED");
+        assertThat(stockOf(optionId))
+                .as("방치 주문 정리(10분)를 기다리지 않고 바로 돌아와야 한다")
+                .isEqualTo(10);
+
+        // 장바구니가 남아 있어야 두 번만 눌러 다시 주문할 수 있다.
+        assertThat(count("cart_items")).isEqualTo(1);
+    }
+
+    /**
+     * 창은 닫았는데 승인이 먼저 들어온 경우.
+     *
+     * <p>그때 주문을 접으면 <b>받은 돈의 주문을 지우는 것</b>이 된다. 고객은 결제됐는데
+     * 주문이 없고, 재고는 돌아가 다른 사람에게 팔린다.
+     */
+    @Test
+    @DisplayName("이미 결제된 주문에는 결제 중단 통지가 와도 접지 않는다")
+    void paidOrderSurvivesLateFailNotice() throws Exception {
+        addToCart(optionId, 1);
+        String orderNo = read(createOrder()).get("orderNo").asText();
+        givenTossApproves(orderNo, "100000");
+        confirm(orderNo, "pk_late");
+        assertThat(statusOf(orderNo)).isEqualTo("PAID");
+
+        assertThat(mockMvc.perform(post("/api/v1/payments/" + orderNo + "/fail")
+                        .param("reason", "LATE")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andReturn().getResponse().getStatus()).isEqualTo(204);
+
+        assertThat(statusOf(orderNo)).isEqualTo("PAID");
+        assertThat(stockOf(optionId))
+                .as("결제된 주문의 재고를 돌려주면 한 물건을 두 사람에게 팔게 된다")
+                .isEqualTo(9);
+    }
+
     @Test
     @DisplayName("이미 결제된 주문에는 결제창을 다시 띄우지 않는다")
     void paidOrderCannotBePaidAgain() throws Exception {

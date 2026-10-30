@@ -93,9 +93,10 @@ app:
   # ⚠️ 너무 짧게 잡지 않는다. 뒤늦게 도착한 승인은 갈 곳이 없다 — 돈은 빠져나갔는데
   #    주문은 취소된 상태가 되고, 사람이 환불해야 한다.
   #
-  # 15분인 이유는 application.yml 주석 참조. 토스 결제창 유효시간 10분 + 마진 3분.
+  # 10분인 이유는 application.yml 주석 참조. 토스 결제창 유효시간과 같은 값이라
+  # 마진이 없다 -- 대신 결제창에서 「취소」를 누르면 기다리지 않고 바로 풀린다.
   order:
-    stale-minutes: ${ORDER_STALE_MINUTES:15}
+    stale-minutes: ${ORDER_STALE_MINUTES:10}
     sweep-interval-ms: ${ORDER_SWEEP_INTERVAL_MS:300000}
 
   # 배송조회 (우체국 국내우편물 종적 조회, 공공데이터포털).

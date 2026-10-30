@@ -231,10 +231,23 @@ public class PaymentService {
     }
 
     /**
-     * 결제창에서 고객이 취소하거나 실패했을 때. 주문은 살려 둔다.
+     * 결제창에서 고객이 취소하거나 실패했을 때. <b>주문을 접고 재고를 돌려준다.</b>
      *
-     * <p>주문까지 취소하면 고객이 다른 카드로 다시 내려 할 때 처음부터 담아야 한다.
-     * 재고도 계속 들고 있게 되므로, 주문을 접는 것은 고객이 직접 취소할 때만이다.
+     * <h2>왜 바꿨나 (2026-10-30)</h2>
+     * 전에는 주문을 살려 뒀다. "다른 카드로 다시 내려 할 때 처음부터 담아야 한다"는
+     * 이유였는데, <b>그 전제가 틀렸다.</b> 장바구니는 결제가 성공해야 비워진다
+     * ({@code clearOrdered} 는 {@link #settle} 에서만 불린다) — 결제를 취소한 고객의
+     * 장바구니에는 상품이 그대로 있고, 배송지도 저장돼 있어 다시 주문하는 데 두 번만
+     * 누르면 된다.
+     *
+     * <p>대신 치르던 대가가 컸다. 재고는 주문서를 만들 때 가져가므로, 결제창을 닫고
+     * 나간 주문이 그 재고를 계속 물고 있었다. 재고가 1개인 상품은 누가 결제창까지
+     * 갔다 돌아오기만 해도 그동안 다른 사람에게 <b>품절로 보인다.</b>
+     *
+     * <h2>재고만 돌려주고 주문은 남기지 않는다</h2>
+     * 그렇게 하면 같은 주문으로 다시 결제할 때 재고를 다시 가져가지 않는다 — 그 사이
+     * 남이 마지막 하나를 사 갔어도 결제가 통과해, 한 물건을 두 사람에게 판 셈이 된다.
+     * 주문을 통째로 접어야 다음 주문이 재고를 정상으로 다시 집는다.
      */
     @Transactional
     public void markFailed(Long userId, String orderNo, String reason) {
@@ -244,7 +257,22 @@ public class PaymentService {
             record(payment, "APPROVE", Map.of("reason", reason == null ? "" : reason),
                     null, false, null);
         });
-        log.info("[PAY] 결제 중단 orderNo={} reason={}", orderNo, reason);
+
+        /*
+         * 이미 결제된 주문에 뒤늦게 실패 통지가 도착할 수 있다 (창은 닫았는데 승인이
+         * 먼저 들어온 경우). 그때 접으면 받은 돈의 주문을 지우는 것이라, 접을 수 있는
+         * 상태인지 먼저 본다.
+         */
+        if (!order.getStatus().isCancellableByCustomer()) {
+            log.info("[PAY] 결제 중단 통지가 왔지만 접을 수 없는 상태다. 그대로 둔다 "
+                    + "orderNo={} status={}", orderNo, order.getStatus());
+            return;
+        }
+
+        order.cancel();
+        orderService.restoreStock(orderService.itemsOf(order.getId()));
+        log.info("[PAY] 결제 중단 — 주문을 접고 재고를 돌려주었습니다 orderNo={} reason={}",
+                orderNo, reason);
     }
 
     // =================================================================
