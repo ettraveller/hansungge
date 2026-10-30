@@ -113,8 +113,21 @@ public class KoreaPostTrackingProvider implements DeliveryTrackingProvider {
         this.restClient = builder.build();
         this.serviceKey = decodeIfEncoded(config.serviceKey());
 
-        if (!config.configured()) {
-            log.info("[TRACKING] 우체국 배송조회 키가 없어 조회를 켜지 않는다. "
+        /*
+         * 켜졌든 꺼졌든 한 줄 남긴다.
+         *
+         * 전에는 키가 없을 때만 적었다. 그래서 키를 넣은 뒤 로그가 비면 "잘 되는 중"인지
+         * "작업이 아예 안 도는지" 구분할 수 없었다 — 조용한 것이 두 가지 뜻을 가지면
+         * 로그가 아무 말도 하지 않는 것과 같다.
+         *
+         * 키는 앞 네 글자만 남긴다. 어느 키가 들어갔는지 알아보기에는 충분하고,
+         * 로그를 보는 사람에게 키를 넘겨주지는 않는다.
+         */
+        if (config.configured()) {
+            log.info("[TRACKING] 우체국 배송조회 켜짐 (key={}…, {}자)",
+                    serviceKey.substring(0, Math.min(4, serviceKey.length())), serviceKey.length());
+        } else {
+            log.info("[TRACKING] 우체국 배송조회 꺼짐 — 키가 없다. "
                     + "송장번호와 우체국 조회 링크는 그대로 동작한다 "
                     + "(공공데이터포털 「국내우편물 종적 조회 서비스」 활용신청 필요)");
         }

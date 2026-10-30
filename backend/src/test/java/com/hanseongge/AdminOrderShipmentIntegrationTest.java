@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanseongge.domain.admin.entity.AdminRole;
 import com.hanseongge.domain.admin.entity.AdminUser;
 import com.hanseongge.domain.admin.repository.AdminUserRepository;
+import com.hanseongge.domain.shipment.entity.Carrier;
 import com.hanseongge.global.audit.AuditActions;
 import com.hanseongge.global.auth.UserJwtProvider;
 import com.hanseongge.support.AdminTestFixtures;
@@ -23,6 +24,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +62,7 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
     @Autowired AdminUserRepository adminUserRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired UserJwtProvider userJwtProvider;
+    @Autowired com.hanseongge.domain.shipment.service.ShipmentService shipmentService;
 
     private String managerToken;
     private long userId;
@@ -317,6 +320,104 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
                             .content(json(Map.of("trackingNo", "6099999999999"))))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("SHIPMENT_ALREADY_DELIVERED"));
+        }
+    }
+
+    // =================================================================
+    // 배송조회 대상 고르기
+    // =================================================================
+
+    /**
+     * 어떤 건을 우체국에 물어볼 것인가.
+     *
+     * <p>이 질의에 테스트가 없어서 <b>운영에서 조회가 한 건도 안 돌았다</b> (2026-10-30).
+     * 키를 넣고도 아무 일이 일어나지 않았는데, 그때 로그는 "조회할 게 없다"와
+     * "작업이 안 돈다"를 구분해 주지 않았다.
+     *
+     * <p>고르는 규칙은 둘이다 — <b>아직 가는 중</b>이고(수령 끝난 건을 계속 물으면 호출
+     * 수만 늘고 답은 안 바뀐다), <b>최근에 안 물어봤다</b>(한 번도 안 물어본 건 포함).
+     */
+    @Nested
+    @DisplayName("배송조회 대상")
+    class TrackingTargets {
+
+        @Test
+        @DisplayName("발송했는데 한 번도 조회 안 한 건을 고른다 — 이것이 가장 흔한 경우다")
+        void picksNeverSynced() {
+            long id = insertOrder("HS-SYNC1", "PAID", "김발송");
+            shipDirectly(id, "6012345678901");
+
+            var due = shipmentService.findDueForTracking(
+                    OffsetDateTime.now().minusMinutes(30), 50);
+
+            assertThat(due)
+                    .as("발송됐고 tracking_synced_at 이 비어 있으면 조회 대상이다")
+                    .extracting(s -> s.getTrackingNo())
+                    .contains("6012345678901");
+        }
+
+        @Test
+        @DisplayName("방금 조회한 건은 다시 묻지 않는다 — 하루 호출 한도가 있다")
+        void skipsFreshlySynced() {
+            long id = insertOrder("HS-SYNC2", "PAID", "김방금");
+            shipDirectly(id, "6012345678902");
+            markSynced(id, "now()");
+
+            var due = shipmentService.findDueForTracking(
+                    OffsetDateTime.now().minusMinutes(30), 50);
+
+            assertThat(due).extracting(s -> s.getTrackingNo()).doesNotContain("6012345678902");
+        }
+
+        @Test
+        @DisplayName("오래전에 조회한 건은 다시 묻는다")
+        void picksStale() {
+            long id = insertOrder("HS-SYNC3", "PAID", "김오래");
+            shipDirectly(id, "6012345678903");
+            markSynced(id, "now() - interval '2 hours'");
+
+            var due = shipmentService.findDueForTracking(
+                    OffsetDateTime.now().minusMinutes(30), 50);
+
+            assertThat(due).extracting(s -> s.getTrackingNo()).contains("6012345678903");
+        }
+
+        @Test
+        @DisplayName("수령이 끝난 건은 묻지 않는다 — 답이 바뀌지 않는다")
+        void skipsDelivered() {
+            long id = insertOrder("HS-SYNC4", "PAID", "김수령");
+            shipDirectly(id, "6012345678904");
+            jdbcTemplate.update(
+                    "UPDATE shipments SET status = 'DELIVERED' WHERE order_id = ?", id);
+
+            var due = shipmentService.findDueForTracking(
+                    OffsetDateTime.now().minusMinutes(30), 50);
+
+            assertThat(due).extracting(s -> s.getTrackingNo()).doesNotContain("6012345678904");
+        }
+
+        @Test
+        @DisplayName("송장을 아직 안 넣은 건은 묻지 않는다 — 물어볼 번호가 없다")
+        void skipsPending() {
+            long id = insertOrder("HS-SYNC5", "PAID", "김대기");
+            jdbcTemplate.update(
+                    "INSERT INTO shipments (order_id, status, carrier) "
+                            + "VALUES (?, 'PENDING', 'KOREA_POST')", id);
+
+            var due = shipmentService.findDueForTracking(
+                    OffsetDateTime.now().minusMinutes(30), 50);
+
+            assertThat(due).extracting(s -> s.getOrderId()).doesNotContain(id);
+        }
+
+        private void shipDirectly(long orderId, String trackingNo) {
+            shipmentService.ship(orderId, Carrier.KOREA_POST, trackingNo, "test");
+        }
+
+        private void markSynced(long orderId, String sqlExpr) {
+            jdbcTemplate.update(
+                    "UPDATE shipments SET tracking_synced_at = " + sqlExpr + " WHERE order_id = ?",
+                    orderId);
         }
     }
 

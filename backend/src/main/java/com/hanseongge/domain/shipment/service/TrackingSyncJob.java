@@ -49,6 +49,15 @@ public class TrackingSyncJob {
      * <p>{@code initialDelay} 를 두는 이유 — 기동 직후에는 Flyway 와 캐시 예열이 겹친다.
      * 급할 것 없는 작업이라 비켜 준다.
      */
+    /**
+     * 첫 실행인가.
+     *
+     * <p>첫 번째만 결과와 상관없이 INFO 로 남긴다. 그러지 않으면 조회할 건이 없는 동안
+     * 로그가 비는데, 그 모습이 <b>"작업이 아예 안 돈다"와 똑같다.</b> 한 줄이라도 찍혀야
+     * 스케줄러가 살아 있다는 것을 확인할 수 있다.
+     */
+    private boolean firstRun = true;
+
     @Scheduled(fixedDelayString = "${app.tracking.sync-interval-ms:900000}", initialDelay = 120_000)
     public void sync() {
         if (!provider.isConfigured()) {
@@ -61,8 +70,14 @@ public class TrackingSyncJob {
 
         List<Shipment> due = shipmentService.findDueForTracking(staleBefore, config.batchSize());
         if (due.isEmpty()) {
+            if (firstRun) {
+                firstRun = false;
+                log.info("[TRACKING] 동기화 작업 시작 — 지금 조회할 건이 없다 "
+                        + "(발송됨 + {}분 넘게 조회 안 한 건이 대상)", config.syncIntervalMinutes());
+            }
             return;
         }
+        firstRun = false;
 
         int ok = 0;
         int failed = 0;
