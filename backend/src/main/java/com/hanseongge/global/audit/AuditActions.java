@@ -60,6 +60,14 @@ public final class AuditActions {
     public static final String PRODUCT_STOCK_ADJUST = "PRODUCT_STOCK_ADJUST";
     public static final String PRODUCT_IMAGE_CHANGE = "PRODUCT_IMAGE_CHANGE";
 
+    // --- 주문 · 배송 ---
+    //
+    // 고가 귀금속이라 "누가 언제 보냈다고 했는가"가 분쟁의 근거가 된다. 송장번호를
+    // 고친 이력도 남는다 — 번호를 바꿔 끼우는 것을 나중에 가릴 수 있어야 한다.
+    public static final String ORDER_PREPARE = "ORDER_PREPARE";
+    public static final String ORDER_SHIP = "ORDER_SHIP";
+    public static final String ORDER_DELIVER = "ORDER_DELIVER";
+
     // --- 게시판 (STEP 15~16) ---
     public static final String NOTICE_CREATE = "NOTICE_CREATE";
     public static final String NOTICE_UPDATE = "NOTICE_UPDATE";
@@ -96,6 +104,7 @@ public final class AuditActions {
     public static final String TARGET_CATEGORY = "CATEGORY";
     public static final String TARGET_PRODUCT = "PRODUCT";
     public static final String TARGET_PRODUCT_OPTION = "PRODUCT_OPTION";
+    public static final String TARGET_ORDER = "ORDER";
     /** 시세 대상 식별자는 {@code GOLD_24K/SELL} 형태의 metal×side 조합이다. */
     public static final String TARGET_MARKET_PRICE = "MARKET_PRICE";
     /** 존재 여부가 확인되지 않은, 사용자가 입력한 아이디. */

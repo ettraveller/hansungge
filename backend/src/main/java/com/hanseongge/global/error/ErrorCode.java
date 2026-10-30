@@ -209,7 +209,22 @@ public enum ErrorCode {
     MEDIA_TOO_LARGE(HttpStatus.BAD_REQUEST, "이미지 한 장은 10MB 까지 올릴 수 있습니다."),
     MEDIA_TOO_MANY(HttpStatus.BAD_REQUEST, "한 번에 최대 10장까지 올릴 수 있습니다."),
     /** 디스크·권한 문제다. 올린 사람이 할 수 있는 일이 없으므로 재시도만 안내한다. */
-    MEDIA_STORE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    MEDIA_STORE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+
+    // --- 배송 ---
+    SHIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "배송 정보를 찾을 수 없습니다."),
+    /**
+     * 자릿수만 본다. 체크디지트까지 검사하면 택배사가 규칙을 바꾸는 날 정상 번호가
+     * 거부되고, 그때 관리자는 발송을 못 한다 — 틀린 번호를 받는 것보다 그쪽이 더 나쁘다.
+     */
+    SHIPMENT_TRACKING_NO_INVALID(HttpStatus.BAD_REQUEST, "송장번호 자릿수가 맞지 않습니다. 우체국택배는 13자리입니다."),
+    /** 같은 송장번호를 두 주문에 넣으면 한쪽 고객이 남의 배송을 조회하게 된다. */
+    SHIPMENT_TRACKING_NO_DUPLICATED(HttpStatus.CONFLICT, "이미 다른 주문에 쓰인 송장번호입니다."),
+    SHIPMENT_NOT_SHIPPED(HttpStatus.CONFLICT, "아직 발송하지 않은 주문입니다. 송장번호를 먼저 넣어 주세요."),
+    SHIPMENT_ALREADY_DELIVERED(HttpStatus.CONFLICT, "이미 배송이 완료된 주문입니다."),
+    /** 조회 API 키가 없거나 택배사가 응답하지 않는다. 송장번호 자체는 멀쩡하다. */
+    SHIPMENT_TRACKING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+            "배송 조회를 할 수 없습니다. 택배사 홈페이지에서 송장번호로 확인해 주세요.");
 
     private final HttpStatus status;
     private final String message;

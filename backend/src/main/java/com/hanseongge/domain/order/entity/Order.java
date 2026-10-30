@@ -160,4 +160,57 @@ public class Order {
         this.status = OrderStatus.CANCELLED;
         this.updatedAt = OffsetDateTime.now();
     }
+
+    // =================================================================
+    // 배송 — 관리자가 움직인다
+    // =================================================================
+
+    /**
+     * 상품 준비 중으로 넘긴다.
+     *
+     * <p>결제가 끝난 주문에만 쓴다. 되돌리는 경로는 두지 않는다 — 준비를 시작했다가
+     * 멈추는 일은 취소나 환불로 처리할 일이지, 상태를 되감을 일이 아니다.
+     */
+    public void markPreparing() {
+        if (status != OrderStatus.PAID) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID,
+                    "결제 완료 주문만 준비 중으로 바꿀 수 있다. 현재=" + status);
+        }
+        this.status = OrderStatus.PREPARING;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    /**
+     * 발송 처리.
+     *
+     * <p>{@code PAID} 에서 바로 올 수 있다. 재고를 들고 있는 상품은 결제 확인 후 곧장
+     * 보내는 경우가 많아, 준비 중을 반드시 거치게 하면 실제 일하는 순서와 어긋난다.
+     *
+     * <p>이미 배송 중이어도 거부하지 않는다 — 송장번호를 잘못 넣어 고치는 일이 생기고,
+     * 그때 상태를 되감게 하면 더 위험하다. 바뀌는 것은 송장번호뿐이다.
+     */
+    public void markShipped() {
+        if (status != OrderStatus.PAID && status != OrderStatus.PREPARING
+                && status != OrderStatus.SHIPPED) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID,
+                    "발송할 수 없는 상태다. 현재=" + status);
+        }
+        this.status = OrderStatus.SHIPPED;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    /**
+     * 배송 완료.
+     *
+     * <p>고가 귀금속이라 수령 기록을 남긴다 — 분실·수령거부를 다툴 때 근거가 된다
+     * (이용약관 제10조). 배송 중인 주문에만 쓴다.
+     */
+    public void markDelivered() {
+        if (status != OrderStatus.SHIPPED) {
+            throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID,
+                    "배송 중인 주문만 완료로 바꿀 수 있다. 현재=" + status);
+        }
+        this.status = OrderStatus.DELIVERED;
+        this.updatedAt = OffsetDateTime.now();
+    }
 }
