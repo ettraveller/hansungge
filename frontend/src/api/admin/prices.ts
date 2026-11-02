@@ -66,14 +66,16 @@ export function declarePair(input: DeclarePairInput) {
 
 export interface DerivationPreviewInput {
   metalType: MetalType;
-  ratio: string;
+  sellRatio: string;
+  buyRatio: string;
 }
 
 export interface DerivationUpdateInput {
   metalType: MetalType;
   mode: Extract<PricePolicyMode, 'DIRECT' | 'DERIVED'>;
   /** DERIVED 일 때만 */
-  ratio?: string | null;
+  sellRatio?: string | null;
+  buyRatio?: string | null;
   changeReason: string;
   confirmLargeChange?: boolean;
 }

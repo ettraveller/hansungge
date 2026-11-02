@@ -46,7 +46,7 @@ export function DerivationPanel({ canEdit }: { canEdit: boolean }) {
   return (
     <Panel
       title="18K·14K 환산 설정"
-      note="24K 고시가에 비율을 곱해 18K·14K 를 낸다. 비율을 바꾸면 지금 24K 기준으로 바로 다시 고시된다. 직접 입력으로 돌리면 마지막 값이 그대로 남는다."
+      note="24K 고시가에 비율을 곱해 18K·14K 를 낸다. 살 때와 팔 때 비율이 다르다 — 팔 때(매입)에 판매 비율을 쓰면 그만큼 비싸게 사들이게 된다. 비율을 바꾸면 지금 24K 기준으로 바로 다시 고시된다. 직접 입력으로 돌리면 마지막 값이 그대로 남는다."
       flush
     >
       {error && (
@@ -68,7 +68,8 @@ export function DerivationPanel({ canEdit }: { canEdit: boolean }) {
               <tr>
                 <th>금속</th>
                 <th>고시 방식</th>
-                <th className={styles.num}>환산 비율</th>
+                <th className={styles.num}>살 때 비율</th>
+                <th className={styles.num}>팔 때 비율</th>
                 <th>변경자</th>
                 <th>변경 시각</th>
                 {canEdit && <th aria-label="비율 변경" />}
@@ -96,9 +97,14 @@ export function DerivationPanel({ canEdit }: { canEdit: boolean }) {
                       }}
                     />
                   </td>
-                  <td data-label="환산 비율" className={styles.num}>
-                    {derivation.mode === 'DERIVED' && derivation.ratio != null
-                      ? `24K × ${derivation.ratio}`
+                  <td data-label="살 때 비율" className={styles.num}>
+                    {derivation.mode === 'DERIVED' && derivation.sellRatio != null
+                      ? `24K 살 때 × ${derivation.sellRatio}`
+                      : '-'}
+                  </td>
+                  <td data-label="팔 때 비율" className={styles.num}>
+                    {derivation.mode === 'DERIVED' && derivation.buyRatio != null
+                      ? `24K 팔 때 × ${derivation.buyRatio}`
                       : '-'}
                   </td>
                   <td data-label="변경자" className={styles.muted}>
@@ -232,23 +238,29 @@ function DerivationDialog({
   const preview = usePreviewDerivation();
   const update = useUpdateDerivation();
 
-  const [ratio, setRatio] = useState(derivation.ratio == null ? '' : String(derivation.ratio));
+  const [sellRatio, setSellRatio] = useState(
+    derivation.sellRatio == null ? '' : String(derivation.sellRatio),
+  );
+  const [buyRatio, setBuyRatio] = useState(
+    derivation.buyRatio == null ? '' : String(derivation.buyRatio),
+  );
   const [reason, setReason] = useState('');
-  const [plan, setPlan] = useState<{ ratio: string; result: QuotePlan } | null>(null);
+  const [plan, setPlan] = useState<{ sell: string; buy: string; result: QuotePlan } | null>(null);
 
   const label = METAL_LABEL[derivation.metalType];
-  const ratioInvalid = ratio !== '' && !ratioIsValid(ratio);
-  // 본 결과가 지금 입력한 비율의 것일 때만 적용할 수 있다.
-  const seen = plan != null && plan.ratio === ratio ? plan.result : null;
-  const canPreview = ratioIsValid(ratio) && !preview.isPending;
+  const sellInvalid = sellRatio !== '' && !ratioIsValid(sellRatio);
+  const buyInvalid = buyRatio !== '' && !ratioIsValid(buyRatio);
+  // 본 결과가 지금 입력한 두 비율의 것일 때만 적용할 수 있다.
+  const seen = plan != null && plan.sell === sellRatio && plan.buy === buyRatio ? plan.result : null;
+  const canPreview = ratioIsValid(sellRatio) && ratioIsValid(buyRatio) && !preview.isPending;
   const canApply = seen != null && reason.trim().length > 0 && !update.isPending;
 
   const runPreview = () => {
     if (!canPreview) return;
     update.reset();
     preview.mutate(
-      { metalType: derivation.metalType, ratio },
-      { onSuccess: (result) => setPlan({ ratio, result }) },
+      { metalType: derivation.metalType, sellRatio, buyRatio },
+      { onSuccess: (result) => setPlan({ sell: sellRatio, buy: buyRatio, result }) },
     );
   };
 
@@ -258,7 +270,8 @@ function DerivationDialog({
       {
         metalType: derivation.metalType,
         mode: 'DERIVED',
-        ratio,
+        sellRatio,
+        buyRatio,
         changeReason: reason.trim(),
         // 기준을 넘는 값이 표에 짚여 있는 상태에서 누르는 것이 곧 확인이다.
         confirmLargeChange: seen.needsConfirm,
@@ -290,27 +303,51 @@ function DerivationDialog({
       <div className={styles.form}>
         <PriceErrorAlert error={preview.error ?? update.error} fallback="적용하지 못했습니다." />
 
-        <Field
-          label="환산 비율"
-          htmlFor="derive-ratio"
-          required
-          hint="24K 고시가에 곱할 값. 0보다 크고 1 이하, 소수 넷째 자리까지. 예: 18K 0.735, 14K 0.57"
-          error={ratioInvalid ? '0보다 크고 1 이하인 숫자를 소수 넷째 자리까지 입력해 주세요.' : null}
-        >
-          <DecimalInput
-            id="derive-ratio"
-            value={ratio}
-            invalid={ratioInvalid}
-            placeholder="0.735"
-            onChange={(e) => setRatio(e.target.value.trim())}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                runPreview();
-              }
-            }}
-          />
-        </Field>
+        <div className={styles.formGrid}>
+          <Field
+            label="살 때 비율 (손님이 사는 값)"
+            htmlFor="derive-sell-ratio"
+            required
+            hint={`24K 살 때 시세에 곱한다. 예: 18K 0.825, 14K 0.6435`}
+            error={sellInvalid ? '0보다 크고 1 이하인 숫자를 소수 넷째 자리까지 입력해 주세요.' : null}
+          >
+            <DecimalInput
+              id="derive-sell-ratio"
+              value={sellRatio}
+              invalid={sellInvalid}
+              placeholder="0.825"
+              onChange={(e) => setSellRatio(e.target.value.trim())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runPreview();
+                }
+              }}
+            />
+          </Field>
+
+          <Field
+            label="팔 때 비율 (손님이 파는 값)"
+            htmlFor="derive-buy-ratio"
+            required
+            hint={`24K 팔 때 시세에 곱한다. 예: 18K 0.73, 14K 0.565`}
+            error={buyInvalid ? '0보다 크고 1 이하인 숫자를 소수 넷째 자리까지 입력해 주세요.' : null}
+          >
+            <DecimalInput
+              id="derive-buy-ratio"
+              value={buyRatio}
+              invalid={buyInvalid}
+              placeholder="0.73"
+              onChange={(e) => setBuyRatio(e.target.value.trim())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runPreview();
+                }
+              }}
+            />
+          </Field>
+        </div>
 
         <div className={styles.formActions}>
           <Button small onClick={runPreview} disabled={!canPreview}>

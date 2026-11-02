@@ -17,7 +17,7 @@ public record DerivationUpdateResponse(
 
     public static DerivationUpdateResponse from(DerivationUpdate update) {
         return new DerivationUpdateResponse(
-                DerivationResponse.from(update.policy()),
+                DerivationResponse.from(update.sell(), update.buy()),
                 update.published() == null ? null : QuotePublishResponse.from(update.published()));
     }
 }

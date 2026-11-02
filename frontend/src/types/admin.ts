@@ -146,8 +146,10 @@ export interface PriceDerivation {
   metalName: string;
   mode: PricePolicyMode;
   modeName: string;
-  /** 환산 비율. 직접 입력이어도 직전 비율이 남아 있을 수 있다 */
-  ratio?: number | null;
+  /** 살 때(판매) 환산 비율. 직접 입력이어도 직전 비율이 남아 있을 수 있다 */
+  sellRatio?: number | null;
+  /** 팔 때(매입) 환산 비율. 판매와 다르다 — 영업 공식이 양쪽 따로다 */
+  buyRatio?: number | null;
   updatedBy?: string | null;
   updatedAt: string;
 }

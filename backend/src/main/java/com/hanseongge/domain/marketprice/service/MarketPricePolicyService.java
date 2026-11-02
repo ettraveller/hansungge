@@ -49,18 +49,23 @@ public class MarketPricePolicyService {
     private final MarketPriceService marketPriceService;
     private final AuditLogService auditLogService;
 
-    /** 18K·14K 의 지금 설정. 살 때 행을 대표로 읽는다 — 두 행은 늘 함께 바뀐다. */
+    /**
+     * 18K·14K 의 지금 설정. 금속마다 살 때·팔 때를 짝으로 읽는다.
+     *
+     * <p>한 행만 읽지 않는다 — 비율이 양쪽 다르다(판매 0.825 / 매입 0.73).
+     */
     @Transactional(readOnly = true)
-    public List<MarketPricePolicy> findDerivations() {
+    public List<DerivationUpdate> findDerivations() {
         return MarketPriceService.DERIVABLE.stream()
-                .map(metal -> find(metal, PriceSide.SELL))
+                .map(metal -> new DerivationUpdate(
+                        find(metal, PriceSide.SELL), find(metal, PriceSide.BUY), null))
                 .toList();
     }
 
     /** 이 비율로 바꾸면 18K·14K 가 얼마가 되는지. 아무것도 쓰지 않는다. */
     @Transactional(readOnly = true)
-    public QuotePlan previewDerivation(MetalType metalType, BigDecimal ratio) {
-        return marketPriceService.planDerivation(metalType, ratio);
+    public QuotePlan previewDerivation(MetalType metalType, BigDecimal sellRatio, BigDecimal buyRatio) {
+        return marketPriceService.planDerivation(metalType, sellRatio, buyRatio);
     }
 
     /**
@@ -71,7 +76,8 @@ public class MarketPricePolicyService {
      * @throws BusinessException 확인이 필요한데 받지 않았으면. 설정도 시세도 바뀌지 않는다
      */
     @Transactional
-    public DerivationUpdate updateDerivation(MetalType metalType, PolicyMode mode, BigDecimal ratio,
+    public DerivationUpdate updateDerivation(MetalType metalType, PolicyMode mode,
+                                             BigDecimal sellRatio, BigDecimal buyRatio,
                                              String changeReason, String adminLoginId,
                                              boolean confirmLargeChange) {
         if (changeReason == null || changeReason.isBlank()) {
@@ -90,22 +96,23 @@ public class MarketPricePolicyService {
 
         MarketPricePolicy sell = find(metalType, PriceSide.SELL);
         MarketPricePolicy buy = find(metalType, PriceSide.BUY);
-        Map<String, Object> before = snapshot(sell);
+        Map<String, Object> before = snapshot(sell, buy);
 
         QuotePlan plan = null;
         if (mode == PolicyMode.DERIVED) {
-            plan = marketPriceService.planDerivation(metalType, ratio);
+            plan = marketPriceService.planDerivation(metalType, sellRatio, buyRatio);
             marketPriceService.requireConfirmed(plan, confirmLargeChange);
 
-            BigDecimal normalized = MarketPriceService.normalizeRatio(ratio);
-            sell.useDerived(MarketPriceService.DERIVE_BASE, normalized, adminLoginId);
-            buy.useDerived(MarketPriceService.DERIVE_BASE, normalized, adminLoginId);
+            sell.useDerived(MarketPriceService.DERIVE_BASE,
+                    MarketPriceService.normalizeRatio(sellRatio), adminLoginId);
+            buy.useDerived(MarketPriceService.DERIVE_BASE,
+                    MarketPriceService.normalizeRatio(buyRatio), adminLoginId);
         } else {
             sell.useDirect(adminLoginId);
             buy.useDirect(adminLoginId);
         }
 
-        Map<String, Object> after = snapshot(sell);
+        Map<String, Object> after = snapshot(sell, buy);
         after.put("reason", changeReason);
         auditLogService.record(AuditRecord.builder(AuditActions.PRICE_DERIVATION_UPDATE)
                 .actor(ActorType.ADMIN, adminLoginId)
@@ -118,16 +125,17 @@ public class MarketPricePolicyService {
         // 비율이 그대로라 값도 그대로면 다시 발행하지 않는다. 같은 값의 행이 이력에 쌓이면
         // 실제로 값이 바뀐 시점을 찾기 어려워진다.
         if (plan != null && !plan.isEmpty() && !plan.allUnchanged()) {
-            String ratioText = MarketPriceService.normalizeRatio(ratio).stripTrailingZeros().toPlainString();
             published = marketPriceService.publish(plan, baseRawIds(),
-                    "24K 환산 비율 %s 적용 — %s".formatted(ratioText, changeReason),
+                    "24K 환산 비율 판매 %s · 매입 %s 적용 — %s".formatted(
+                            ratioText(sellRatio), ratioText(buyRatio), changeReason),
                     adminLoginId, OffsetDateTime.now());
         }
 
         log.info("[MARKET-PRICE] 고시 방식 변경 {} → {}{} 재발행={} by={} 사유={}",
-                metalType, mode, mode == PolicyMode.DERIVED ? " ×" + ratio : "",
+                metalType, mode,
+                mode == PolicyMode.DERIVED ? " 판매×" + sellRatio + " 매입×" + buyRatio : "",
                 published != null, adminLoginId, changeReason);
-        return new DerivationUpdate(sell, published);
+        return new DerivationUpdate(sell, buy, published);
     }
 
     private MarketPricePolicy find(MetalType metalType, PriceSide priceSide) {
@@ -147,11 +155,20 @@ public class MarketPricePolicyService {
         return ids;
     }
 
-    private static Map<String, Object> snapshot(MarketPricePolicy policy) {
+    private static String ratioText(BigDecimal ratio) {
+        return MarketPriceService.normalizeRatio(ratio).stripTrailingZeros().toPlainString();
+    }
+
+    private static Map<String, Object> snapshot(MarketPricePolicy sell, MarketPricePolicy buy) {
         Map<String, Object> values = new LinkedHashMap<>();
-        values.put("mode", policy.getMode().name());
-        values.put("deriveFrom", policy.getDeriveFrom() == null ? null : policy.getDeriveFrom().name());
-        values.put("deriveRatio", policy.getDeriveRatio() == null ? null : policy.getDeriveRatio().toPlainString());
+        values.put("mode", sell.getMode().name());
+        values.put("deriveFrom", sell.getDeriveFrom() == null ? null : sell.getDeriveFrom().name());
+        values.put("sellRatio", text(sell.getDeriveRatio()));
+        values.put("buyRatio", text(buy.getDeriveRatio()));
         return values;
+    }
+
+    private static String text(BigDecimal ratio) {
+        return ratio == null ? null : ratio.toPlainString();
     }
 }

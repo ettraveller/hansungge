@@ -121,9 +121,13 @@ public class MarketPriceService {
 
         if (metalType == DERIVE_BASE) {
             for (MetalType target : DERIVABLE) {
-                MarketPricePolicy policy = findPolicy(target, PriceSide.SELL);
-                if (policy.isDerived()) {
-                    lines.addAll(derivedPair(target, policy.getDeriveRatio(), sell, buy, limit));
+                // 살 때와 팔 때의 비율이 다르다. 한쪽 정책의 비율로 양쪽을 환산하면
+                // 매입가가 판매 비율로 나가 그만큼 비싸게 사들이게 된다.
+                MarketPricePolicy sellPolicy = findPolicy(target, PriceSide.SELL);
+                MarketPricePolicy buyPolicy = findPolicy(target, PriceSide.BUY);
+                if (sellPolicy.isDerived() && buyPolicy.isDerived()) {
+                    lines.addAll(derivedPair(target, sellPolicy.getDeriveRatio(),
+                            buyPolicy.getDeriveRatio(), sell, buy, limit));
                 }
             }
         }
@@ -136,9 +140,10 @@ public class MarketPriceService {
      * <p>24K 가 아직 고시되지 않았으면 빈 계획이다. 곱할 값이 없으니 설정만 저장되고,
      * 24K 를 처음 고시하는 순간 함께 나간다.
      */
-    public QuotePlan planDerivation(MetalType target, BigDecimal ratio) {
+    public QuotePlan planDerivation(MetalType target, BigDecimal sellRatio, BigDecimal buyRatio) {
         requireDerivable(target);
-        requireRatio(ratio);
+        requireRatio(sellRatio, "sellRatio", "판매");
+        requireRatio(buyRatio, "buyRatio", "매입");
 
         BigDecimal limit = limitPercent();
         Optional<MarketPriceEffective> baseSell = current(DERIVE_BASE, PriceSide.SELL);
@@ -147,7 +152,8 @@ public class MarketPriceService {
             return new QuotePlan(List.of(), limit);
         }
         return new QuotePlan(
-                derivedPair(target, ratio, baseSell.get().price(), baseBuy.get().price(), limit),
+                derivedPair(target, sellRatio, buyRatio,
+                        baseSell.get().price(), baseBuy.get().price(), limit),
                 limit);
     }
 
@@ -389,18 +395,18 @@ public class MarketPriceService {
      * <p>1 을 넘으면 18K 가 순금보다 비싸진다 — 오타(7.35) 말고는 그런 값이 들어올 이유가
      * 없다. 반대로 너무 작은 오타(0.0735)는 여기서 못 잡고, 환산값이 금속 하한에 걸려 막힌다.
      */
-    public static void requireRatio(BigDecimal ratio) {
+    public static void requireRatio(BigDecimal ratio, String field, String label) {
         String problem = null;
         if (ratio == null) {
-            problem = "환산 비율을 입력해 주세요. 예: 0.735";
+            problem = "%s 환산 비율을 입력해 주세요. 예: 0.825".formatted(label);
         } else if (ratio.signum() <= 0 || ratio.compareTo(BigDecimal.ONE) > 0) {
-            problem = "환산 비율은 0보다 크고 1 이하여야 합니다. 예: 0.735";
+            problem = "%s 환산 비율은 0보다 크고 1 이하여야 합니다. 예: 0.825".formatted(label);
         } else if (ratio.stripTrailingZeros().scale() > RATIO_SCALE) {
-            problem = "환산 비율은 소수 넷째 자리까지 입력할 수 있습니다.";
+            problem = "%s 환산 비율은 소수 넷째 자리까지 입력할 수 있습니다.".formatted(label);
         }
         if (problem != null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, problem + " 요청=" + ratio,
-                    Map.of("ratio", problem));
+                    Map.of(field, problem));
         }
     }
 
@@ -427,17 +433,17 @@ public class MarketPriceService {
         return line(metal, side, price, current, limit, PolicyMode.DIRECT, null, null);
     }
 
-    private List<QuoteLine> derivedPair(MetalType target, BigDecimal ratio,
+    private List<QuoteLine> derivedPair(MetalType target, BigDecimal sellRatio, BigDecimal buyRatio,
                                         PricePerGram baseSell, PricePerGram baseBuy, BigDecimal limit) {
-        PricePerGram sell = derive(target, PriceSide.SELL, baseSell, ratio);
-        PricePerGram buy = derive(target, PriceSide.BUY, baseBuy, ratio);
+        PricePerGram sell = derive(target, PriceSide.SELL, baseSell, sellRatio);
+        PricePerGram buy = derive(target, PriceSide.BUY, baseBuy, buyRatio);
         requireSpread(target, sell, buy);
 
         return List.of(
                 line(target, PriceSide.SELL, sell, current(target, PriceSide.SELL).orElse(null),
-                        limit, PolicyMode.DERIVED, ratio, baseSell.value()),
+                        limit, PolicyMode.DERIVED, sellRatio, baseSell.value()),
                 line(target, PriceSide.BUY, buy, current(target, PriceSide.BUY).orElse(null),
-                        limit, PolicyMode.DERIVED, ratio, baseBuy.value()));
+                        limit, PolicyMode.DERIVED, buyRatio, baseBuy.value()));
     }
 
     /**

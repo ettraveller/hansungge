@@ -100,7 +100,7 @@ public class AdminMarketPriceController {
     @GetMapping("/derivations")
     public ResponseEntity<List<DerivationResponse>> derivations() {
         return ResponseEntity.ok(policyService.findDerivations().stream()
-                .map(DerivationResponse::from)
+                .map(pair -> DerivationResponse.from(pair.sell(), pair.buy()))
                 .toList());
     }
 
@@ -142,8 +142,8 @@ public class AdminMarketPriceController {
     public ResponseEntity<QuotePlanResponse> previewDerivation(
             @Valid @RequestBody DerivationPreviewRequest request) {
 
-        return ResponseEntity.ok(QuotePlanResponse.from(
-                policyService.previewDerivation(request.metalType(), request.ratio())));
+        return ResponseEntity.ok(QuotePlanResponse.from(policyService.previewDerivation(
+                request.metalType(), request.sellRatio(), request.buyRatio())));
     }
 
     @Operation(summary = "18K·14K 고시 방식 변경",
@@ -158,7 +158,7 @@ public class AdminMarketPriceController {
             @AuthenticationPrincipal AdminPrincipal actor) {
 
         return ResponseEntity.ok(DerivationUpdateResponse.from(policyService.updateDerivation(
-                request.metalType(), request.mode(), request.ratio(),
+                request.metalType(), request.mode(), request.sellRatio(), request.buyRatio(),
                 request.changeReason(), actor.loginId(),
                 Boolean.TRUE.equals(request.confirmLargeChange()))));
     }

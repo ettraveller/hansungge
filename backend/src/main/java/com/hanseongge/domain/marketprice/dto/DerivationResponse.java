@@ -24,8 +24,12 @@ public record DerivationResponse(
         @Schema(description = "방식 표시명", example = "24K 환산")
         String modeName,
 
-        @Schema(description = "환산 비율. 직접 입력이어도 직전 비율이 남아 있을 수 있다", example = "0.7350")
-        BigDecimal ratio,
+        @Schema(description = "살 때(판매) 환산 비율. 직접 입력이어도 직전 비율이 남아 있을 수 있다",
+                example = "0.8250")
+        BigDecimal sellRatio,
+
+        @Schema(description = "팔 때(매입) 환산 비율", example = "0.7300")
+        BigDecimal buyRatio,
 
         @Schema(description = "마지막 변경자", example = "admin")
         String updatedBy,
@@ -34,14 +38,16 @@ public record DerivationResponse(
         OffsetDateTime updatedAt
 ) {
 
-    public static DerivationResponse from(MarketPricePolicy policy) {
+    /** 살 때·팔 때 두 행에서 만든다. 방식·변경자는 늘 함께 바뀌므로 살 때 행을 쓴다. */
+    public static DerivationResponse from(MarketPricePolicy sell, MarketPricePolicy buy) {
         return new DerivationResponse(
-                policy.getMetalType(),
-                policy.getMetalType().displayName(),
-                policy.getMode(),
-                policy.getMode().displayName(),
-                policy.getDeriveRatio(),
-                policy.getUpdatedBy(),
-                policy.getUpdatedAt());
+                sell.getMetalType(),
+                sell.getMetalType().displayName(),
+                sell.getMode(),
+                sell.getMode().displayName(),
+                sell.getDeriveRatio(),
+                buy.getDeriveRatio(),
+                sell.getUpdatedBy(),
+                sell.getUpdatedAt());
     }
 }

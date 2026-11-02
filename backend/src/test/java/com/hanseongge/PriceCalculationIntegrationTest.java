@@ -190,7 +190,7 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
         @DisplayName("24K 를 고시하면 환산으로 설정된 18K 상품 가격도 함께 바뀐다")
         void derivedMetalProductFollows24K() {
             policyService.updateDerivation(MetalType.GOLD_18K, PolicyMode.DERIVED,
-                    new BigDecimal("0.75"), "환산 설정", ADMIN, true);
+                    new BigDecimal("0.75"), new BigDecimal("0.75"), "환산 설정", ADMIN, true);
             Product product = saveProduct(ProductTestFixtures.marketProduct(
                     CATEGORY_ID, "18K 반지", MetalType.GOLD_18K,
                     PriceType.MARKET_LINKED, "3.75", "0", "1"));

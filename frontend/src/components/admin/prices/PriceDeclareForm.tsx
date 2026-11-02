@@ -225,7 +225,10 @@ export function PriceDeclareForm() {
               <p className={styles.hint}>
                 함께 고시되는 금속:{' '}
                 {followers
-                  .map((d) => `${METAL_LABEL[d.metalType]} (24K × ${d.ratio ?? '-'})`)
+                  .map(
+                    (d) =>
+                      `${METAL_LABEL[d.metalType]} (살 때 ×${d.sellRatio ?? '-'} · 팔 때 ×${d.buyRatio ?? '-'})`,
+                  )
                   .join(', ')}
               </p>
             )}

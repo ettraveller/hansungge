@@ -639,7 +639,8 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
             declare("220800", "188000");   // 18K 162,288 / 138,180
 
             DerivationUpdate update = policyService.updateDerivation(MetalType.GOLD_18K,
-                    PolicyMode.DERIVED, new BigDecimal("0.75"), "비율 조정", ADMIN, false);   // +2.04%
+                    PolicyMode.DERIVED, new BigDecimal("0.75"), new BigDecimal("0.75"),
+                    "비율 조정", ADMIN, false);   // +2.04%
 
             assertThat(update.published()).isNotNull();
             assertThat(current(MetalType.GOLD_18K, PriceSide.SELL).getPricePerGram()).isEqualByComparingTo("165600");
@@ -650,13 +651,48 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
+        @DisplayName("살 때와 팔 때에 다른 비율이 적용된다 — 영업 공식(판매 0.825 / 매입 0.73)")
+        void sellAndBuyUseTheirOwnRatio() {
+            derive(MetalType.GOLD_18K, "0.825", "0.73");
+            declare("176600", "166080");
+
+            // 판매 176,600 × 0.825 = 145,695 / 매입 166,080 × 0.73 = 121,238.4 → 내림
+            assertThat(current(MetalType.GOLD_18K, PriceSide.SELL).getPricePerGram())
+                    .isEqualByComparingTo("145695");
+            assertThat(current(MetalType.GOLD_18K, PriceSide.BUY).getPricePerGram())
+                    .as("매입에 판매 비율이 적용되면 그만큼 비싸게 사들인다")
+                    .isEqualByComparingTo("121238");
+
+            assertThat(policy(MetalType.GOLD_18K, PriceSide.SELL).getDeriveRatio())
+                    .isEqualByComparingTo("0.825");
+            assertThat(policy(MetalType.GOLD_18K, PriceSide.BUY).getDeriveRatio())
+                    .isEqualByComparingTo("0.73");
+        }
+
+        @Test
+        @DisplayName("매입 비율만 고쳐도 매입만 다시 나가고 판매는 그대로다")
+        void changingOnlyBuyRatioMovesOnlyBuy() {
+            derive(MetalType.GOLD_18K, "0.825", "0.825");
+            declare("176600", "166080");
+            BigDecimal sellBefore = current(MetalType.GOLD_18K, PriceSide.SELL).getPricePerGram();
+
+            derive(MetalType.GOLD_18K, "0.825", "0.73");
+
+            assertThat(current(MetalType.GOLD_18K, PriceSide.SELL).getPricePerGram())
+                    .isEqualByComparingTo(sellBefore);
+            assertThat(current(MetalType.GOLD_18K, PriceSide.BUY).getPricePerGram())
+                    .isEqualByComparingTo("121238");
+        }
+
+        @Test
         @DisplayName("비율 변경이 크게 바꾸면 확인 없이는 설정도 시세도 그대로다")
         void largeRatioChangeNeedsConfirm() {
             derive(MetalType.GOLD_18K, "0.735");
             declare("220800", "188000");
 
             assertThatThrownBy(() -> policyService.updateDerivation(MetalType.GOLD_18K,
-                    PolicyMode.DERIVED, new BigDecimal("0.57"), "오타", ADMIN, false))
+                    PolicyMode.DERIVED, new BigDecimal("0.57"), new BigDecimal("0.57"),
+                    "오타", ADMIN, false))
                     .isInstanceOfSatisfying(BusinessException.class, e ->
                             assertThat(e.getErrorCode()).isEqualTo(ErrorCode.PRICE_CHANGE_NEEDS_CONFIRM));
 
@@ -695,7 +731,7 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
             declare("220800", "188000");
 
             DerivationUpdate update = policyService.updateDerivation(MetalType.GOLD_18K,
-                    PolicyMode.DIRECT, null, "18K 따로 고시", ADMIN, false);
+                    PolicyMode.DIRECT, null, null, "18K 따로 고시", ADMIN, false);
 
             assertThat(update.published()).isNull();
             assertThat(marketPriceService.describeCurrent(MetalType.GOLD_18K, PriceSide.SELL).isSellable())
@@ -715,10 +751,10 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
                 assertThatThrownBy(() -> derive(MetalType.GOLD_18K, ratio))
                         .as("비율 " + ratio)
                         .isInstanceOfSatisfying(BusinessException.class, e ->
-                                assertThat(e.getFieldErrors()).containsKey("ratio"));
+                                assertThat(e.getFieldErrors()).containsKey("sellRatio"));
             }
             assertThatThrownBy(() -> policyService.updateDerivation(MetalType.GOLD_18K,
-                    PolicyMode.DERIVED, null, "비율 없음", ADMIN, true))
+                    PolicyMode.DERIVED, null, null, "비율 없음", ADMIN, true))
                     .isInstanceOf(BusinessException.class);
             assertThatThrownBy(() -> derive(MetalType.SILVER, "0.5"))
                     .isInstanceOfSatisfying(BusinessException.class, e ->
@@ -797,9 +833,14 @@ class MarketPriceIntegrationTest extends EmbeddedPostgresSupport {
                 new BigDecimal(sell), new BigDecimal(buy), "테스트 고시", ADMIN, false);
     }
 
+    /** 살 때·팔 때에 같은 비율. 비율 자체를 보는 시험에서 쓴다. */
     private DerivationUpdate derive(MetalType metal, String ratio) {
-        return policyService.updateDerivation(metal, PolicyMode.DERIVED, new BigDecimal(ratio),
-                "환산 설정", ADMIN, true);
+        return derive(metal, ratio, ratio);
+    }
+
+    private DerivationUpdate derive(MetalType metal, String sellRatio, String buyRatio) {
+        return policyService.updateDerivation(metal, PolicyMode.DERIVED,
+                new BigDecimal(sellRatio), new BigDecimal(buyRatio), "환산 설정", ADMIN, true);
     }
 
     private MarketPriceEffective current(MetalType metal, PriceSide side) {

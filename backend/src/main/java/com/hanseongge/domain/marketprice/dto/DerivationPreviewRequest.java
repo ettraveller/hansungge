@@ -15,9 +15,14 @@ public record DerivationPreviewRequest(
         @NotNull(message = "금속을 선택해 주세요.")
         MetalType metalType,
 
-        @Schema(description = "환산 비율. 0 초과 1 이하, 소수 넷째 자리까지", example = "0.735",
+        @Schema(description = "살 때(판매) 환산 비율. 0 초과 1 이하, 소수 넷째 자리까지",
+                example = "0.825", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotNull(message = "판매 환산 비율을 입력해 주세요.")
+        BigDecimal sellRatio,
+
+        @Schema(description = "팔 때(매입) 환산 비율", example = "0.73",
                 requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "환산 비율을 입력해 주세요.")
-        BigDecimal ratio
+        @NotNull(message = "매입 환산 비율을 입력해 주세요.")
+        BigDecimal buyRatio
 ) {
 }

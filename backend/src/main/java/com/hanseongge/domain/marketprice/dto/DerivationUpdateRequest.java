@@ -28,8 +28,11 @@ public record DerivationUpdateRequest(
         @NotNull(message = "고시 방식을 선택해 주세요.")
         PolicyMode mode,
 
-        @Schema(description = "환산 비율. DERIVED 일 때 필수", example = "0.735")
-        BigDecimal ratio,
+        @Schema(description = "살 때(판매) 환산 비율. DERIVED 일 때 필수", example = "0.825")
+        BigDecimal sellRatio,
+
+        @Schema(description = "팔 때(매입) 환산 비율. DERIVED 일 때 필수", example = "0.73")
+        BigDecimal buyRatio,
 
         @Schema(description = "변경 사유", example = "환산 비율 확정", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "변경 사유를 입력해 주세요.")
