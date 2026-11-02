@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 가리켜야 하므로, 개정은 쌓기만 하고 쌓인 판은 DB 차원에서 고칠 수 없어야 한다.
  *
  * <h2>시드 데이터를 공유한다</h2>
- * V31 이 심은 1판은 지우지 않는다 — 임베디드 PostgreSQL 을 다른 테스트와 공유하고,
+ * V34 이 심은 1판은 지우지 않는다 — 임베디드 PostgreSQL 을 다른 테스트와 공유하고,
  * "운영에서 환불규정은 비어 있을 수 없다"가 전제라서다. 테스트가 발행한 판도 지울 수
  * 없으므로(append-only), 검증은 절대 판수가 아니라 상대 변화로 한다.
  */
@@ -79,7 +79,7 @@ class RefundPolicyIntegrationTest extends EmbeddedPostgresSupport {
     class PublicRead {
 
         @Test
-        @DisplayName("누구나 현재 판을 본다 — V31 시드가 있어 비어 있을 수 없다")
+        @DisplayName("누구나 현재 판을 본다 — V34 시드가 있어 비어 있을 수 없다")
         void anyoneReadsCurrentVersion() throws Exception {
             mockMvc.perform(get(PUBLIC_URL))
                     .andExpect(status().isOk())
@@ -182,7 +182,7 @@ class RefundPolicyIntegrationTest extends EmbeddedPostgresSupport {
 
     private long currentId() {
         Long id = jdbcTemplate.queryForObject("SELECT max(id) FROM refund_policies", Long.class);
-        assertThat(id).as("V31 시드가 1판을 만들어야 한다").isNotNull();
+        assertThat(id).as("V34 시드가 1판을 만들어야 한다").isNotNull();
         return id;
     }
 

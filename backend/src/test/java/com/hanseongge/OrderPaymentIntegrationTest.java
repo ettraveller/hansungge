@@ -584,7 +584,7 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     /** 환불규정 현재 판. 주문 요청은 "이 판에 동의했다" 를 함께 보낸다. */
     private long currentRefundPolicyId() {
         Long id = jdbc.queryForObject("SELECT max(id) FROM refund_policies", Long.class);
-        assertThat(id).as("V31 시드가 있어야 한다").isNotNull();
+        assertThat(id).as("V34 시드가 있어야 한다").isNotNull();
         return id;
     }
 

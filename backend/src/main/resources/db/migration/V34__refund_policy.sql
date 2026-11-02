@@ -1,5 +1,5 @@
 -- =====================================================================
--- V31 — 환불규정 (교환·반품·환불 규정)
+-- V34 — 환불규정 (교환·반품·환불 규정)
 --
 -- 결제 직전에 고객이 읽고 동의하는 문서다. 지금까지는 공지사항 글로만 있었는데,
 -- 공지는 고치면 옛 내용이 사라진다. 동의는 "그때 그 고객이 본 바로 그 판"을
@@ -37,7 +37,7 @@ CREATE TRIGGER trg_refund_policy_guard
 ALTER TABLE orders
     ADD COLUMN refund_policy_id BIGINT REFERENCES refund_policies (id);
 
-COMMENT ON COLUMN orders.refund_policy_id IS '주문 때 동의한 환불규정 판. NULL 이면 V31 이전 주문';
+COMMENT ON COLUMN orders.refund_policy_id IS '주문 때 동의한 환불규정 판. NULL 이면 V34 이전 주문';
 
 -- 첫 판 — 운영 공지사항 「[필독] 교환·반품·환불 규정 안내」 본문 그대로.
 -- 글이 그 뒤 또 고쳐졌다면 관리자 화면에서 새 판으로 저장하면 된다.

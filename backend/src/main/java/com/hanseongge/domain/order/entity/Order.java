@@ -86,7 +86,7 @@ public class Order {
     private OffsetDateTime withdrawalConsentAt;
 
     /**
-     * 동의한 환불규정 판 (V31). NULL 이면 그 전의 주문이다.
+     * 동의한 환불규정 판 (V34). NULL 이면 그 전의 주문이다.
      *
      * <p>이 값이 있어야 "그때 그 고객이 읽고 동의한 바로 그 내용"을 댈 수 있다.
      * 규정이 개정되어도 지난 판은 지워지지 않으므로({@code refund_policies} append-only)

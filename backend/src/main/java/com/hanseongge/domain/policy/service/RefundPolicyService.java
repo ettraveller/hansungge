@@ -79,8 +79,8 @@ public class RefundPolicyService {
     }
 
     private RefundPolicy requireCurrent() {
-        // V31 시드가 1판을 만들므로 비어 있다는 것은 마이그레이션이 깨졌다는 뜻이다.
+        // V34 시드가 1판을 만들므로 비어 있다는 것은 마이그레이션이 깨졌다는 뜻이다.
         return refundPolicyRepository.findTopByOrderByIdDesc()
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "환불규정이 한 판도 없다 (V31 시드 확인)"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "환불규정이 한 판도 없다 (V34 시드 확인)"));
     }
 }

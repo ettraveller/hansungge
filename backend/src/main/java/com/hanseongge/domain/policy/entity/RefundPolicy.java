@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
 
 /**
- * 환불규정의 한 판 ({@code refund_policies}, V31).
+ * 환불규정의 한 판 ({@code refund_policies}, V34).
  *
  * <p>결제 직전에 고객이 읽고 동의하는 문서다. <b>수정 메서드가 없다</b> — 개정은
  * 새 판을 쌓는 것이고, 이미 쌓인 판은 어느 주문의 "동의한 그 내용"일 수 있어
