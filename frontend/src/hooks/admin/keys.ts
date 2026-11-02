@@ -37,6 +37,10 @@ export const adminKeys = {
   qnaList: (search: AdminQnaSearch) => [...adminKeys.qnas(), 'list', search] as const,
   qnaUnansweredCount: () => [...adminKeys.qnas(), 'unanswered-count'] as const,
 
+  policies: () => [...adminKeys.all, 'policies'] as const,
+  refundPolicy: () => [...adminKeys.policies(), 'refund'] as const,
+  refundPolicyHistory: (page: number) => [...adminKeys.policies(), 'refund', 'history', page] as const,
+
   notices: () => [...adminKeys.all, 'notices'] as const,
   noticeList: (search: AdminNoticeSearch) => [...adminKeys.notices(), 'list', search] as const,
 

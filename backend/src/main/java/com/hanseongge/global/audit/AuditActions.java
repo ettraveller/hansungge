@@ -73,6 +73,10 @@ public final class AuditActions {
     /** 관리자가 문의글을 내림 (욕설·개인정보 노출 등) */
     public static final String QNA_HIDE = "QNA_HIDE";
 
+    // --- 정책 문서 ---
+    /** 환불규정 새 판 발행. 지난 판은 고칠 수 없으므로 UPDATE 가 아니다 */
+    public static final String REFUND_POLICY_PUBLISH = "REFUND_POLICY_PUBLISH";
+
     // --- 회원 관리 (관리자) ---
     /**
      * 관리자가 회원 상세를 열었다.
@@ -98,6 +102,8 @@ public final class AuditActions {
     public static final String TARGET_PRODUCT_OPTION = "PRODUCT_OPTION";
     /** 시세 대상 식별자는 {@code GOLD_24K/SELL} 형태의 metal×side 조합이다. */
     public static final String TARGET_MARKET_PRICE = "MARKET_PRICE";
+    /** 환불규정. 대상 식별자는 판 번호다 */
+    public static final String TARGET_REFUND_POLICY = "REFUND_POLICY";
     /** 존재 여부가 확인되지 않은, 사용자가 입력한 아이디. */
     public static final String TARGET_LOGIN_ID = "LOGIN_ID";
 

@@ -58,6 +58,8 @@ public enum ErrorCode {
     PAYMENT_DUPLICATE(HttpStatus.CONFLICT, "이미 처리된 결제입니다."),
     /** 장바구니가 비었거나, 담긴 줄이 전부 주문할 수 없는 상태다. */
     ORDER_NOTHING_TO_ORDER(HttpStatus.CONFLICT, "주문할 수 있는 상품이 없습니다. 장바구니를 확인해 주세요."),
+    /** 읽고 동의한 판이 주문 사이에 개정됨. 화면은 새 규정을 다시 보여주고 다시 동의받는다. */
+    REFUND_POLICY_CHANGED(HttpStatus.CONFLICT, "환불규정이 개정되었습니다. 바뀐 규정을 확인하고 다시 동의해 주세요."),
     /** 주문서를 만드는 사이 품절되거나 판매가 중지됐다. */
     ORDER_ITEM_UNAVAILABLE(HttpStatus.CONFLICT, "주문할 수 없는 상품이 있습니다. 장바구니를 다시 확인해 주세요."),
     /** PG 가 승인을 거절했다. 사유는 로그에만 남긴다 — 응답에 담으면 가맹점 정보가 섞여 나간다. */

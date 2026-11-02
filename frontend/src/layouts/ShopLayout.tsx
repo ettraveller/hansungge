@@ -150,7 +150,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
               <p>상호 : 주식회사 금한성 &nbsp;|&nbsp; 대표자 : 강성구</p>
               <p>사업자등록번호 : 702-86-03859</p>
               <p>본사 : 서울 종로구 돈화문로6나길 45, 보석백화점 3층 302호</p>
-              <p>이메일 : hsggold999@naver.com</p>
+              <p>이메일 : hanseongge@gmail.com</p>
               <p className={styles.footNote}>
                 정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.
               </p>

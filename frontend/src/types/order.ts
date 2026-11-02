@@ -77,6 +77,8 @@ export interface OrderPage {
 export interface OrderCreateInput {
   /** 청약철회 제한 안내 동의. 서버가 false 면 거절한다 */
   withdrawalConsent: boolean;
+  /** 동의한 환불규정 판 번호. 읽는 사이 개정됐으면 서버가 409(REFUND_POLICY_CHANGED)를 준다 */
+  refundPolicyId: number;
   receiverName: string;
   receiverPhone: string;
   zipcode: string;

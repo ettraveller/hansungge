@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Notice } from '@/components/auth/Notice';
 import {
@@ -12,7 +13,9 @@ import {
   type AddressForm,
 } from '@/components/checkout/DeliveryAddressSection';
 import { DeliveryMemoSelect } from '@/components/checkout/DeliveryMemoSelect';
+import { RefundPolicyConsent } from '@/components/checkout/RefundPolicyConsent';
 import { useCart } from '@/hooks/useCart';
+import { policyKeys, useRefundPolicy } from '@/hooks/usePolicy';
 import { useAddresses, useCreateAddress } from '@/hooks/useAddresses';
 import { useCreateOrder } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
@@ -39,6 +42,8 @@ export function CheckoutView() {
   const { data: cart, isLoading } = useCart();
   const createOrder = useCreateOrder();
   const createAddress = useCreateAddress();
+  const queryClient = useQueryClient();
+  const refundPolicy = useRefundPolicy();
   const { data: addresses, isLoading: addressesLoading } = useAddresses();
 
   // 직접 입력 중일 때의 값. 저장해 둔 것을 고른 동안에는 쓰이지 않는다.
@@ -47,12 +52,13 @@ export function CheckoutView() {
   const [choice, setChoice] = useState<number | 'new' | null>(null);
   const [saveForNext, setSaveForNext] = useState(true);
   /**
-   * 청약철회 제한 동의.
+   * 환불규정(청약철회 제한) 동의 — "어느 판에 동의했는가" 로 든다.
    *
-   * <p>기본값은 꺼짐이다. 미리 켜 두면 "읽고 눌렀다" 가 아니라 "그냥 지나쳤다" 가 되어,
-   * 분쟁에서 동의로 인정받기 어렵다. 받는 이유 자체가 그 증거를 남기는 것이다.
+   * <p>불리언으로 들면 읽는 사이 규정이 개정됐을 때 "옛 판을 읽고 새 판에 동의한"
+   * 상태가 남는다. 판 번호로 들면 새 판이 오는 순간 저절로 무효가 된다. 기본값은
+   * 비동의이고, 전문을 끝까지 스크롤해야 켤 수 있다 ({@link RefundPolicyConsent}).
    */
-  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const [agreedPolicyId, setAgreedPolicyId] = useState<number | null>(null);
   const [orderMemo, setOrderMemo] = useState('');
 
   // 회원 정보를 기본값으로 넣어 둔다. 대부분 자기 이름·번호로 받는다.
@@ -86,6 +92,9 @@ export function CheckoutView() {
 
   const orderableItems = cart?.items.filter((item) => item.orderable) ?? [];
 
+  const withdrawalConsent =
+    refundPolicy.data != null && agreedPolicyId === refundPolicy.data.id;
+
   const canSubmit =
     orderableItems.length > 0 &&
     address.receiverName.trim() !== '' &&
@@ -111,9 +120,10 @@ export function CheckoutView() {
   }
 
   const submit = () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !refundPolicy.data) return;
     createOrder.mutate(
       {
+        refundPolicyId: refundPolicy.data.id,
         receiverName: address.receiverName.trim(),
         receiverPhone: address.receiverPhone.trim(),
         zipcode: address.zipcode.trim(),
@@ -137,6 +147,13 @@ export function CheckoutView() {
             });
           }
           router.push(`/checkout/${order.orderNo}`);
+        },
+        onError: (error) => {
+          // 읽는 사이 규정이 개정됐다. 새 판을 받아오면 동의 구역이 스스로
+          // 읽음·체크를 되돌린다 — 옛 판을 읽고 새 판에 동의할 수는 없다.
+          if (error instanceof ApiError && error.code === 'REFUND_POLICY_CHANGED') {
+            void queryClient.invalidateQueries({ queryKey: policyKeys.refund() });
+          }
         },
       },
     );
@@ -218,31 +235,24 @@ export function CheckoutView() {
 
           {/* 안내만으로는 청약철회 제한이 성립하지 않는다. 전자상거래법 제17조 제2항
               단서가 "소비자가 쉽게 알 수 있는 곳에 명기" 를 요구하고, 분쟁에서는
-              "이 주문에서 동의했다" 를 보여야 한다. 그래서 결제 직전에 받고 기록한다. */}
+              "이 주문에서 어느 내용에 동의했다" 를 보여야 한다. 그래서 결제 직전에
+              규정 전문을 끝까지 읽게 하고, 동의한 판 번호까지 주문에 남긴다. */}
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>청약철회 안내</h2>
+            <h2 className={styles.cardTitle}>교환·반품·환불 규정</h2>
             <p className={styles.consentBody}>
-              금·은 현물은 <strong>국제 시세에 따라 값이 계속 바뀌는 상품</strong>이고, 주문하신
-              규격으로 따로 준비해 드리는 상품입니다. 그래서 전자상거래법 제17조 제2항
-              제3호·제5호에 따라 <strong>단순 변심에 의한 청약철회가 제한</strong>됩니다.
-            </p>
-            <p className={styles.consentBody}>
-              다만 <strong>상품에 하자가 있거나 주문과 다른 물건이 온 경우</strong>에는 제한되지
-              않습니다. 받으신 날부터 3개월 이내, 그 사실을 안 날부터 30일 이내에 교환·반품하실
-              수 있습니다. 자세한 내용은 <Link href="/guide">이용안내</Link>에 있습니다.
+              금·은 현물은 <strong>국제 시세에 따라 값이 계속 바뀌는 상품</strong>이라
+              <strong> 단순 변심에 의한 청약철회가 제한</strong>됩니다. 아래 규정을 끝까지
+              읽으신 뒤 동의해 주세요.
             </p>
 
-            <label className={styles.consentCheck}>
-              <input
-                type="checkbox"
-                checked={withdrawalConsent}
-                onChange={(e) => setWithdrawalConsent(e.target.checked)}
-              />
-              <span>
-                위 내용을 확인했으며 <strong>청약철회가 제한되는 상품</strong>임에 동의합니다.
-                <span className={styles.consentRequired}>(필수)</span>
-              </span>
-            </label>
+            <RefundPolicyConsent
+              policy={refundPolicy.data}
+              isLoading={refundPolicy.isLoading}
+              checked={withdrawalConsent}
+              onChange={(checked) =>
+                setAgreedPolicyId(checked && refundPolicy.data ? refundPolicy.data.id : null)
+              }
+            />
           </section>
         </div>
 
