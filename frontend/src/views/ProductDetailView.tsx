@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PriceTag } from '@/components/ui/PriceTag';
 import { DeliveryTerms } from '@/components/product/DeliveryTerms';
 import { WishlistHeart } from '@/components/product/WishlistHeart';
-import { useAddToCart } from '@/hooks/useCart';
+import { useAddToCart, useCart } from '@/hooks/useCart';
 import { useMarkViewed } from '@/hooks/useInterest';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
@@ -47,6 +47,8 @@ export function ProductDetailView({
   const router = useRouter();
   const { restored, isAuthenticated } = useUserSession();
   const addToCart = useAddToCart();
+  // 미리보기에서는 부르지 않는다 -- 관리자 화면이고, 담을 대상도 없다.
+  const cart = useCart();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -123,14 +125,43 @@ export function ProductDetailView({
   };
 
   /**
+   * 이 옵션이 이미 장바구니에 있는가.
+   *
+   * <p>「바로 구매」가 또 담지 않게 하려고 본다. 담기는 <b>기존 수량에 더하는</b>
+   * 동작이라({@code CartService.add}), 재고가 1개인 상품을 담아 둔 채로 바로 구매를
+   * 누르면 2개가 되어 "재고가 부족합니다"가 뜬다 — 재고는 멀쩡한데 못 사게 된다.
+   */
+  const inCart = cart.data?.items.some(
+    (line) => line.productId === product.id && line.optionId === (option?.id ?? null),
+  );
+
+  /**
    * 바로 구매 — 담고 주문서로 보낸다.
    *
    * <p>⚠️ 주문서는 <b>장바구니 전체</b>를 주문으로 만든다. 그래서 장바구니에 다른
    * 상품이 남아 있으면 그것도 함께 주문된다. 이 상품 하나만 사는 흐름은 서버에
    * 별도 경로가 필요하다(지금 주문 API 는 금액·상품을 받지 않고 장바구니를 읽는다).
    * 그때까지는 "담고 바로 주문서로" 다.
+   *
+   * <p><b>이미 담겨 있으면 또 담지 않는다.</b> 담기는 기존 수량에 더하는 동작이라,
+   * 재고가 1개인 상품을 담아 둔 채로 누르면 2개가 되어 "재고가 부족합니다"로 막힌다.
+   * 재고는 멀쩡한데 못 사게 되는 것이라, 고객 입장에서는 품절과 구분되지 않는다.
+   *
+   * <p>수량을 더 사고 싶으면 장바구니에서 늘린다. 「바로 구매」는 "이거 사러 가자"는
+   * 뜻이지 "하나 더"가 아니다.
    */
-  const handleBuyNow = () => handleAddToCart(() => router.push('/checkout'));
+  const handleBuyNow = () => {
+    if (restored && !isAuthenticated) {
+      const next = encodeURIComponent(`/shop/product/${product.id}`);
+      router.push(`/login?reason=required&next=${next}`);
+      return;
+    }
+    if (inCart) {
+      router.push('/checkout');
+      return;
+    }
+    handleAddToCart(() => router.push('/checkout'));
+  };
 
   return (
     <div className="wrap">

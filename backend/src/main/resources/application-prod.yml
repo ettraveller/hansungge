@@ -97,7 +97,7 @@ app:
   # 마진이 없다 -- 대신 결제창에서 「취소」를 누르면 기다리지 않고 바로 풀린다.
   order:
     stale-minutes: ${ORDER_STALE_MINUTES:10}
-    sweep-interval-ms: ${ORDER_SWEEP_INTERVAL_MS:300000}
+    sweep-interval-ms: ${ORDER_SWEEP_INTERVAL_MS:60000}
 
   # 배송조회 (우체국 국내우편물 종적 조회, 공공데이터포털).
   #
