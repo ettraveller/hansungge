@@ -187,6 +187,35 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         Integer consented = jdbc.queryForObject(
                 "SELECT count(*) FROM orders WHERE withdrawal_consent_at IS NOT NULL", Integer.class);
         assertThat(consented).isEqualTo(1);
+
+        // 어느 내용에 동의했는지까지 남는다 — 환불규정 현재 판의 번호다.
+        Long agreedPolicy = jdbc.queryForObject(
+                "SELECT refund_policy_id FROM orders LIMIT 1", Long.class);
+        assertThat(agreedPolicy).isEqualTo(currentRefundPolicyId());
+    }
+
+    @Test
+    @DisplayName("읽은 환불규정이 그 사이 개정됐으면 409 — 새 규정으로 다시 동의받는다")
+    void staleRefundPolicyIsRejected() throws Exception {
+        addToCart(optionId, 1);
+
+        MvcResult result = mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "receiverName", "홍길동",
+                                "receiverPhone", "010-1234-5678",
+                                "zipcode", "03187",
+                                "address1", "서울특별시 종로구 돈화문로 00",
+                                "withdrawalConsent", true,
+                                // 지금 판보다 하나 전 판 — 개정 직전에 읽은 화면이 보내는 값이다
+                                "refundPolicyId", currentRefundPolicyId() - 1))))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+        assertThat(result.getResponse().getContentAsString()).contains("REFUND_POLICY_CHANGED");
+        assertThat(count("orders")).isZero();
+        assertThat(stockOf(optionId)).isEqualTo(10);
     }
 
     @Test
@@ -552,6 +581,13 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         return createOrderRaw(true);
     }
 
+    /** 환불규정 현재 판. 주문 요청은 "이 판에 동의했다" 를 함께 보낸다. */
+    private long currentRefundPolicyId() {
+        Long id = jdbc.queryForObject("SELECT max(id) FROM refund_policies", Long.class);
+        assertThat(id).as("V31 시드가 있어야 한다").isNotNull();
+        return id;
+    }
+
     /** 청약철회 제한 동의 여부를 지정해 주문한다. */
     private MvcResult createOrderRaw(boolean withdrawalConsent) throws Exception {
         return mockMvc.perform(post("/api/v1/orders")
@@ -562,7 +598,8 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
                                 "receiverPhone", "010-1234-5678",
                                 "zipcode", "03187",
                                 "address1", "서울특별시 종로구 돈화문로 00",
-                                "withdrawalConsent", withdrawalConsent))))
+                                "withdrawalConsent", withdrawalConsent,
+                                "refundPolicyId", currentRefundPolicyId()))))
                 .andReturn();
     }
 

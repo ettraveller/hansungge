@@ -155,7 +155,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
                   표시하라는 것은 사업장 소재지이고, 그 값은 사업자등록증과 같아야 한다.
                   ⚠️ 개인정보처리방침 §13 의 주소와 한 쌍이다 — 한쪽만 고치면 안 된다. */}
               <p>본사 : 서울특별시 종로구 돈화문로6나길 37, 2층 202-1호 (봉익동, 엄지귀금속상가)</p>
-              <p>이메일 : hsggold999@naver.com</p>
+              <p>이메일 : hanseongge@gmail.com</p>
               <p className={styles.footNote}>
                 정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.
               </p>

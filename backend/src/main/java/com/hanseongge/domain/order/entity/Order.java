@@ -85,6 +85,16 @@ public class Order {
     @Column(name = "withdrawal_consent_at")
     private OffsetDateTime withdrawalConsentAt;
 
+    /**
+     * 동의한 환불규정 판 (V31). NULL 이면 그 전의 주문이다.
+     *
+     * <p>이 값이 있어야 "그때 그 고객이 읽고 동의한 바로 그 내용"을 댈 수 있다.
+     * 규정이 개정되어도 지난 판은 지워지지 않으므로({@code refund_policies} append-only)
+     * 이 참조는 영원히 유효하다.
+     */
+    @Column(name = "refund_policy_id")
+    private Long refundPolicyId;
+
     @Column(name = "ordered_at", nullable = false)
     private OffsetDateTime orderedAt;
 
@@ -95,7 +105,7 @@ public class Order {
                                BigDecimal itemsTotal, BigDecimal shippingFee,
                                String receiverName, String receiverPhone,
                                String zipcode, String address1, String address2, String memo,
-                               boolean withdrawalConsent) {
+                               boolean withdrawalConsent, Long refundPolicyId) {
         Order order = new Order();
         order.orderNo = orderNo;
         order.userId = userId;
@@ -111,6 +121,7 @@ public class Order {
         order.orderMemo = memo;
         order.orderedAt = OffsetDateTime.now();
         order.withdrawalConsentAt = withdrawalConsent ? order.orderedAt : null;
+        order.refundPolicyId = refundPolicyId;
         order.updatedAt = order.orderedAt;
         return order;
     }
