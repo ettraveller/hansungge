@@ -3,7 +3,6 @@ package com.hanseongge.domain.order.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -54,16 +53,6 @@ public record OrderCreateRequest(
          */
         @Schema(description = "청약철회 제한 안내 동의", requiredMode = Schema.RequiredMode.REQUIRED)
         @AssertTrue(message = "청약철회 제한 안내에 동의해야 주문할 수 있습니다.")
-        boolean withdrawalConsent,
-
-        /**
-         * 동의한 환불규정 판 번호 ({@code GET /api/v1/policies/refund} 의 id).
-         *
-         * <p>"동의했다" 만으로는 부족하다 — 분쟁에서는 <b>어느 내용에</b> 동의했는지를
-         * 보여야 한다. 읽는 사이 규정이 개정됐으면 서버가 409 로 거절하고 다시 읽게 한다.
-         */
-        @Schema(description = "동의한 환불규정 판 번호", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "환불규정 동의 정보가 없습니다.")
-        Long refundPolicyId
+        boolean withdrawalConsent
 ) {
 }

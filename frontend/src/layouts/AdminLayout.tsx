@@ -24,7 +24,6 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin/categories', label: '카테고리', minRole: 'OPERATOR' },
   { href: '/admin/qnas', label: '문의 관리', minRole: 'OPERATOR' },
   { href: '/admin/notices', label: '공지 관리', minRole: 'OPERATOR' },
-  { href: '/admin/policies', label: '환불규정', minRole: 'ADMIN' },
   { href: '/admin/events', label: '이벤트 관리', minRole: 'OPERATOR' },
   { href: '/admin/members', label: '회원관리', minRole: 'OPERATOR' },
   { href: '/admin/audit-logs', label: '감사로그', minRole: 'ADMIN' },

@@ -12,7 +12,6 @@ import com.hanseongge.domain.order.entity.OrderItemComponent;
 import com.hanseongge.domain.order.repository.OrderItemComponentRepository;
 import com.hanseongge.domain.order.repository.OrderItemRepository;
 import com.hanseongge.domain.order.repository.OrderRepository;
-import com.hanseongge.domain.policy.service.RefundPolicyService;
 import com.hanseongge.domain.pricing.service.PriceCalculationService;
 import com.hanseongge.domain.pricing.service.PriceQuote;
 import com.hanseongge.domain.product.entity.Product;
@@ -69,7 +68,6 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductOptionRepository optionRepository;
     private final PriceCalculationService priceCalculationService;
-    private final RefundPolicyService refundPolicyService;
     private final SystemSettingService settingService;
 
     // =================================================================
@@ -85,15 +83,6 @@ public class OrderService {
      */
     @Transactional
     public OrderResponse createFromCart(Long userId, OrderCreateRequest request) {
-        // 동의한 판이 지금 판인가. 읽는 사이 규정이 개정됐으면 새 규정으로 다시 동의받는다 —
-        // "개정 전 내용에 동의한 주문"을 개정 후에 만들면 어느 쪽 규정도 댈 수 없게 된다.
-        long currentPolicyId = refundPolicyService.currentId();
-        if (!request.refundPolicyId().equals(currentPolicyId)) {
-            throw new BusinessException(ErrorCode.REFUND_POLICY_CHANGED,
-                    "개정 전 환불규정으로 주문 시도: agreed=" + request.refundPolicyId()
-                            + " current=" + currentPolicyId);
-        }
-
         List<CartItem> cartItems = cartItemsOf(userId);
         if (cartItems.isEmpty()) {
             throw new BusinessException(ErrorCode.ORDER_NOTHING_TO_ORDER);
@@ -304,7 +293,7 @@ public class OrderService {
                         request.receiverName().trim(), request.receiverPhone().trim(),
                         request.zipcode().trim(), request.address1().trim(),
                         blankToNull(request.address2()), blankToNull(request.orderMemo()),
-                        request.withdrawalConsent(), request.refundPolicyId()));
+                        request.withdrawalConsent()));
             } catch (DataIntegrityViolationException e) {
                 last = e;
                 log.warn("[ORDER] 주문번호 충돌 {}. 다시 채번한다 ({}회차)", orderNo, attempt + 1);

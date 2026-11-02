@@ -121,8 +121,6 @@ public class SecurityConfig {
                                 "/api/v1/faqs/**",
                                 "/api/v1/events/**",
                                 "/api/v1/stores/**",
-                                // 환불규정 등 정책 문서. 주문서의 동의 구역이 읽는다.
-                                "/api/v1/policies/**",
                                 // 문의는 목록·상세만 공개다. 쓰기(POST/PUT/DELETE)는 아래
                                 // 포괄 규칙에 걸려 인증이 필요하다 — GET 만 여기 두는 이유다.
                                 //

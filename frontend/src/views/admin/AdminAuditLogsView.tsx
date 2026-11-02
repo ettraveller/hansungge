@@ -72,10 +72,6 @@ const ACTION_GROUPS: { label: string; actions: [string, string][] }[] = [
       ['CATEGORY_DELETE', '카테고리 삭제'],
     ],
   },
-  {
-    label: '정책 문서',
-    actions: [['REFUND_POLICY_PUBLISH', '환불규정 새 판 발행']],
-  },
 ];
 
 /** 실패·차단 계열은 눈에 띄어야 한다. 정상 로그 사이에 섞이면 놓친다. */
