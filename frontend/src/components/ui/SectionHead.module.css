@@ -16,10 +16,96 @@
   text-wrap: pretty;
 }
 
+/* ---------------------------------------------------------------------
+   제목 위의 금색 한 획 — 섹션마다 붙는 상호 표시
+
+   이 화면에서 금색은 히어로에만 있었다. 그 아래 세 섹션은 완전히 무채색이라
+   <b>어느 회사 화면인지</b>가 첫 화면을 지나는 순간 사라졌다. 금은 이 가게의
+   정체성 색이고, 섹션마다 한 번씩 짚어 주면 스크롤 내내 그 색이 따라온다.
+
+   ⚠️ 면으로 칠하지 않는다. 토큰 주석의 원칙 그대로다 — 파는 물건 자체가
+   금색이라 화면을 금색으로 채우면 상품 사진과 싸우고 그 자체로 값싸 보인다.
+   2px × 28px 한 획이면 충분하다.
+
+   ⚠️ 따로 요소를 두지 않고 .title 의 가상요소로 그린다. flex 항목으로 두면
+   줄을 바꾸기 위해 flex-basis:100% 를 줘야 하는데, 그 순간 width:28px 가
+   무시되어 <b>선이 화면 끝까지 늘어난다.</b> 한 번 그렇게 만들었다가 되돌렸다.
+   --------------------------------------------------------------------- */
+.title {
+  /* 넓이를 변수로 든다. 등장 규칙이 「0 → 제자리」로만 적히면 되고, 좁은
+     화면 값을 두 군데(기본·등장)에 따로 적지 않아도 된다 */
+  --rule-w: 28px;
+}
+
+.title::before {
+  content: '';
+  display: block;
+  width: var(--rule-w);
+  height: 2px;
+  background: var(--gold-500);
+  margin-bottom: 14px;
+}
+
 .desc {
   font-size: 13px;
   color: var(--gray);
   padding-bottom: 3px;
+}
+
+/* ---------------------------------------------------------------------
+   스크롤 등장
+
+   ⚠️ 기본은 보이는 상태다. 숨기는 규칙은 @media 안에만 둔다 — JS 가 막힌
+   날 섹션 제목이 통째로 사라지면 안 된다 (Reveal.module.css 와 같은 원칙).
+
+   제목·설명·더보기에 올라오는 거리를 달리 준다. 지연시간을 주지 않아도
+   먼 것이 늦게 도착해 저절로 시차가 생긴다 — 세 줄이 한 덩어리로 툭
+   나타나는 것과 전혀 다르게 읽힌다.
+   --------------------------------------------------------------------- */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  /* 획은 왼쪽에서 그어진다. 제목이 떠오르는 동안 폭이 벌어지므로, 올라오는
+     동작과 긋는 동작이 겹쳐 한 번에 끝난다. 제목보다 조금 빨리 닿게 둬서
+     글자가 도착할 자리를 먼저 표시해 준다. */
+  .title::before {
+    width: 0;
+    transition: width 640ms var(--ease-out);
+  }
+
+  .on .title::before {
+    width: var(--rule-w);
+  }
+
+  .title,
+  .desc,
+  .more {
+    opacity: 0;
+    transition:
+      opacity var(--dur-reveal) var(--ease-out),
+      transform var(--dur-reveal) var(--ease-out);
+  }
+
+  .title {
+    transform: translate3d(0, var(--rise), 0);
+  }
+
+  /* 설명과 더보기는 더 멀리서 온다 */
+  .desc,
+  .more {
+    transform: translate3d(0, var(--rise-lg), 0);
+  }
+
+  .on .title,
+  .on .desc,
+  .on .more {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* 더보기는 맨 끝에 닿는다. 눈이 제목 → 설명으로 흐른 뒤에 도착해야
+     "거기도 길이 있다"로 읽힌다 */
+  .on .more {
+    transition-delay: 90ms;
+  }
 }
 
 .more {
@@ -45,7 +131,13 @@
     margin-bottom: 16px;
   }
 
+  /* 좁은 화면에서는 획을 조금 줄이고 제목에 더 붙인다 — 여백이 귀하다 */
+  .title::before {
+    margin-bottom: 9px;
+  }
+
   .title {
+    --rule-w: 22px;
     font-size: 19px;
   }
 

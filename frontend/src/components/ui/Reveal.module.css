@@ -1,0 +1,41 @@
+/* =====================================================================
+   스크롤 등장
+
+   ⚠️ 기본 상태는 <b>보이는 것</b>이다. 숨기는 규칙은 아래 @media 안에만 있다.
+
+   이 순서가 중요하다. 반대로 두면 — 기본을 opacity:0 으로 두고 JS 가 보이게
+   하면 — 자바스크립트가 막히거나 스크립트 하나가 터진 날 <b>본문 전체가
+   사라진다.</b> 화면에 아무것도 없는 것보다 애니메이션이 없는 편이 낫다.
+
+   그래서 숨기는 조건을 두 가지로 묶는다.
+     scripting: enabled          — JS 가 돌 때만 숨긴다
+     prefers-reduced-motion: no-preference
+                                 — 움직임을 꺼 둔 사람에게는 처음부터 보인다
+   ===================================================================== */
+
+.reveal {
+  /* 비어 있다. 기본은 아무것도 하지 않는다 — 위 주석 참조. */
+}
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    /* 거리를 변수로 받는다. 한 섹션 안에서 제목과 설명에 다른 값을 주면
+       지연시간 없이도 설명이 제목을 뒤따라 오는 것처럼 보인다. */
+    transform: translate3d(0, var(--reveal-rise, var(--rise)), 0);
+    transition:
+      opacity var(--dur-reveal) var(--ease-out),
+      transform var(--dur-reveal) var(--ease-out);
+    transition-delay: var(--reveal-delay, 0ms);
+    /* 올라오는 동안 글자 가장자리가 흐려지지 않게 */
+    will-change: opacity, transform;
+  }
+
+  .on {
+    opacity: 1;
+    transform: none;
+    /* 다 올라왔으면 레이어를 놓아준다. 페이지에 열 개가 떠 있으면
+       스크롤이 무거워진다. */
+    will-change: auto;
+  }
+}

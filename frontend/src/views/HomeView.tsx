@@ -5,6 +5,7 @@ import { ProductTabs, type CategoryProducts } from '@/components/home/ProductTab
 import { StoreLocator } from '@/components/home/StoreLocator';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
 import { toMetalRows } from '@/components/price/metalRows';
+import { Reveal } from '@/components/ui/Reveal';
 import { SectionHead } from '@/components/ui/SectionHead';
 import { REGIONS } from '@/data/branches';
 import type { PageResponse } from '@/types/api';
@@ -54,7 +55,16 @@ export function HomeView({ prices, histories, groups, notices }: Props) {
     <>
       <HeroSlider slides={HERO_SLIDES} />
 
-      {/* ---------- 오늘의 고시 시세 ---------- */}
+      {/*
+        ---------- 오늘의 고시 시세 ----------
+
+        ⚠️ 여기에는 등장 효과를 걸지 않는다.
+
+        이 화면의 주인공이고, 히어로 바로 아래라 대부분 스크롤하기 전에 이미
+        보인다. 그리고 <b>금액이 떠오르며 나타나면 값이 방금 바뀐 것처럼</b>
+        읽힌다 — 시세를 보러 온 사람에게 그 한 순간의 착각이 제일 나쁘다.
+        돈이 적힌 자리는 처음부터 거기 있어야 한다.
+      */}
       <div className={styles.priceSection} id="quote">
         {prices.data ? (
           <MarketPriceBoard rows={rows} quotedAt={quotedAt} />
@@ -74,6 +84,8 @@ export function HomeView({ prices, histories, groups, notices }: Props) {
             moreHref="/shop"
             moreLabel="전체 보기"
           />
+          {/* 여기는 Reveal 로 싸지 않는다 — 카드가 저마다 차례로 올라온다
+              (ProductTabs). 겹쳐 싸면 같은 움직임이 두 번 돈다. */}
           <ProductTabs groups={groups} />
         </div>
       </section>
@@ -87,19 +99,23 @@ export function HomeView({ prices, histories, groups, notices }: Props) {
             moreHref="/store"
             moreLabel="전체 지점 보기"
           />
-          <StoreLocator regions={REGIONS} />
+          <Reveal rise="lg" delay={120}>
+            <StoreLocator regions={REGIONS} />
+          </Reveal>
         </div>
       </section>
 
       {/* ---------- 공지사항 ---------- */}
       <section className={styles.section}>
         <div className={`wrap ${styles.boards}`}>
-          <BoardList
-            title="공지사항"
-            moreHref="/notice"
-            basePath="/notice"
-            posts={toBoardPosts(notices.data?.content)}
-          />
+          <Reveal>
+            <BoardList
+              title="공지사항"
+              moreHref="/notice"
+              basePath="/notice"
+              posts={toBoardPosts(notices.data?.content)}
+            />
+          </Reveal>
         </div>
       </section>
     </>

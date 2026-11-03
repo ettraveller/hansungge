@@ -125,13 +125,23 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
           <div className={`wrap ${styles.copyWrap}`}>
             <div className={styles.copy}>
               <small>{slide.eyebrow}</small>
+              {/*
+                제목을 줄마다 가림상자로 싼다. 안쪽 글자가 아래에서 올라오면서
+                상자 밖에 있던 동안은 보이지 않는다 — 투명도만 바꾸는 것과 달리
+                "어딘가에서 올라온다"는 느낌이 생긴다.
+
+                ⚠️ 글자를 한 자씩 쪼개지 않는다. 한글을 쪼개면 읽어 주는 도구가
+                자모를 끊어 읽고, 복사했을 때 글자 사이에 공백이 낀다. 줄 단위로도
+                같은 인상이 나고 본문은 그대로 성한다.
+              */}
               <h2>
-                {slide.title}
+                <span className={styles.line}>
+                  <span>{slide.title}</span>
+                </span>
                 {slide.highlight && (
-                  <>
-                    <br />
+                  <span className={styles.line}>
                     <em>{slide.highlight}</em>
-                  </>
+                  </span>
                 )}
               </h2>
               <p>{slide.desc}</p>

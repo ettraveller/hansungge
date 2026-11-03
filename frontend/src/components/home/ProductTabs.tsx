@@ -3,8 +3,17 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ProductCard } from '@/components/product/ProductCard';
+import { Reveal } from '@/components/ui/Reveal';
 import type { ProductSummary } from '@/types/product';
 import styles from './ProductTabs.module.css';
+
+/**
+ * 넓은 화면의 한 줄 카드 수. 등장 지연을 여기까지만 쌓는다.
+ *
+ * <p>격자가 좁은 화면에서 2~3열로 줄어도 그대로 둔다 — 차례가 조금 어긋날 뿐
+ * 어색하지 않고, 화면 폭을 읽어 지연을 다시 계산하면 그 계산이 리사이즈마다 돈다.
+ */
+const CARDS_PER_ROW = 4;
 
 export interface CategoryProducts {
   categoryId: number;
@@ -56,13 +65,21 @@ export function ProductTabs({ groups }: { groups: CategoryProducts[] }) {
           aria-label={group.name}
           hidden={group.categoryId !== activeId}
         >
+          {/*
+            카드가 하나씩 차례로 올라온다.
+
+            지연을 한 줄(4장)까지만 쌓는다. 끝까지 쌓으면 12번째 카드가
+            0.7초 뒤에 도착해 "느리게 뜨는 사이트"가 된다 — 기다리게 하려고
+            넣는 움직임이 아니다. 한 줄만 어긋나도 차례가 충분히 읽힌다.
+          */}
           <div className={styles.grid}>
             {group.products.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                flag={index < 2 ? 'new' : index < 4 ? 'best' : undefined}
-              />
+              <Reveal key={product.id} rise="sm" delay={(index % CARDS_PER_ROW) * 70}>
+                <ProductCard
+                  product={product}
+                  flag={index < 2 ? 'new' : index < 4 ? 'best' : undefined}
+                />
+              </Reveal>
             ))}
           </div>
 

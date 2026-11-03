@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useReveal } from './useReveal';
 import styles from './SectionHead.module.css';
 
 interface Props {
@@ -21,12 +24,20 @@ interface Props {
  *
  * <p>영문 라벨(TODAY'S PRICE, PRODUCTS)도 뺐다. 한국어 사이트에서 그 줄은 읽히지 않고
  * 자리만 차지한다 — 같은 뜻이 바로 아래 한글 제목에 다시 나온다.
+ *
+ * <h2>화면에 들어올 때 떠오른다</h2>
+ * 제목·설명·더보기가 <b>서로 다른 거리</b>에서 올라온다(20px / 30px). 지연시간을
+ * 주지 않아도 먼 것이 늦게 도착해 저절로 시차가 생긴다 — 세 줄이 한 덩어리로 툭
+ * 나타나는 것과 전혀 다르게 읽힌다. 움직임을 꺼 둔 사람과 JS 가 막힌 경우에는
+ * 처음부터 보인다 (SectionHead.module.css).
  */
 export function SectionHead({ title, desc, moreHref, moreLabel, as = 'h2' }: Props) {
   const Heading = as;
+  const ref = useReveal<HTMLDivElement>(styles.on);
 
   return (
-    <div className={styles.head}>
+    <div ref={ref} className={styles.head}>
+      {/* 제목 위의 금색 한 획은 .title 의 가상요소다 — DOM 을 늘리지 않는다 */}
       <Heading className={styles.title}>{title}</Heading>
       {desc && <p className={styles.desc}>{desc}</p>}
       {moreHref && moreLabel && (

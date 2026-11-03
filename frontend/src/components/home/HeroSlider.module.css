@@ -125,7 +125,6 @@
   font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  animation: heroIn 0.5s var(--ease-out) both;
 }
 
 .copy h2 {
@@ -138,7 +137,30 @@
   /* 사진의 밝은 부분과 겹쳐도 글자 가장자리가 살아 있게. 그림자를 넓고
      옅게 깔면 테두리처럼 보이지 않으면서 대비만 올라간다. */
   text-shadow: 0 2px 18px rgba(8, 10, 12, 0.62);
-  animation: heroIn 0.5s var(--ease-out) 80ms both;
+}
+
+/* ---------------------------------------------------------------------
+   제목 줄 — 가려진 아래에서 떠오른다
+
+   한 줄씩 {@code overflow: hidden} 으로 싸고 안쪽 글자를 아래에서 끌어올린다.
+   투명도만 바꾸는 것과 다르다 — 글자가 <b>어딘가에서 올라온다</b>는 느낌이
+   생기고, 그 한 끗이 인쇄물 같은 격을 만든다.
+
+   ⚠️ 글자를 쪼개지 않는다. 한 글자씩 span 으로 나누는 연출이 흔하지만,
+   한글은 그렇게 쪼개면 읽어 주는 도구가 자모를 하나씩 끊어 읽고 복사하면
+   글자 사이에 공백이 낀다. 줄 단위면 그런 대가 없이 같은 인상이 난다.
+   --------------------------------------------------------------------- */
+.line {
+  display: block;
+  overflow: hidden;
+  /* 명조·고딕의 아랫꼬리(ㅇ, g, y)가 잘리지 않게 숨기는 상자를 조금 키운다 */
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+
+/* 자식이 span 일 수도 em(강조어) 일 수도 있다 */
+.line > * {
+  display: block;
 }
 
 /* 강조어는 단색 금색 한 톤이다.
@@ -156,13 +178,58 @@
   margin-bottom: var(--space-6);
   max-width: 42ch;
   text-wrap: pretty;
-  animation: heroIn 0.5s var(--ease-out) 160ms both;
 }
 
-@keyframes heroIn {
+/* =====================================================================
+   진입 애니메이션 — <b>슬라이드가 켜질 때마다</b> 다시 돈다
+
+   전에는 .copy 의 글자들이 무조건 애니메이션을 달고 있었다. 슬라이드를
+   전부 DOM 에 두는 구조라(SEO), 2·3번 배너의 글자도 <b>보이지 않는 채로</b>
+   페이지 로드 시점에 애니메이션을 끝내 버렸다. 그래서 배너를 넘기면 글이
+   그냥 바뀌어 있었다 — 움직임이 첫 화면에서 한 번 보이고 끝이었다.
+
+   이제 .slideOn 에만 건다. 클래스가 붙는 순간 애니메이션이 처음부터 돈다.
+
+   순서 — 머리말 → 제목 1행 → 제목 2행 → 설명 → 버튼.
+   위에서 아래로, 읽는 순서 그대로 도착한다.
+   ===================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  .slideOn .copy small {
+    animation: heroFade 0.62s var(--ease-out) both;
+  }
+
+  /* 가려진 아래에서 끌어올린다. 110% 는 글자 높이보다 조금 더 — 100% 면
+     아랫꼬리가 상자 가장자리에 걸친 채로 시작한다. */
+  .slideOn .line:nth-of-type(1) > * {
+    animation: heroRise 0.92s var(--ease-out) 90ms both;
+  }
+
+  .slideOn .line:nth-of-type(2) > * {
+    animation: heroRise 0.92s var(--ease-out) 190ms both;
+  }
+
+  .slideOn .copy p {
+    animation: heroFade 0.62s var(--ease-out) 330ms both;
+  }
+
+  .slideOn .cta {
+    animation: heroFade 0.62s var(--ease-out) 430ms both;
+  }
+}
+
+@keyframes heroRise {
+  from {
+    transform: translate3d(0, 110%, 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes heroFade {
   from {
     opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    transform: translate3d(0, 12px, 0);
   }
   to {
     opacity: 1;
@@ -186,7 +253,7 @@
   font-size: var(--text-md);
   font-weight: 700;
   letter-spacing: var(--tracking-snug);
-  animation: heroIn 0.5s var(--ease-out) 240ms both;
+  /* 진입 애니메이션은 위 .slideOn 묶음에 있다 — 슬라이드가 켜질 때마다 돈다 */
   transition:
     background var(--dur) var(--ease-out),
     transform var(--dur-fast) var(--ease-out);

@@ -36,6 +36,9 @@
   justify-content: center;
   background: var(--ink-100);
   position: relative;
+  /* 호버 때 사진이 1.03 배로 커진다. 여기서 자르지 않으면 커진 만큼이
+     카드 밖으로 비어져 나와 옆 카드를 덮는다. */
+  overflow: hidden;
 }
 
 .bar {
@@ -213,4 +216,28 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* ---------------------------------------------------------------------
+   사진이 아주 천천히 다가온다
+
+   카드는 여전히 떠오르지 않는다(위 .prod:hover 주석). 움직이는 것은 사진
+   한 장뿐이고, 1.03 배는 눈에 "커졌다"로 잡히지 않는 크기다 — 물건 쪽으로
+   한 걸음 다가선 느낌만 남는다.
+
+   700ms 로 길게 끈다. 호버 반응치고 느리지만 이것은 반응이 아니라 <b>시선을
+   머물게 하는 장치</b>다. 빠르게 튀면 소비재 쇼핑몰이 되고, 수백만 원짜리
+   금을 파는 화면에서 그 인상은 손해다.
+
+   잘려 나가지 않도록 .thumb 이 넘침을 자른다.
+   --------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .photo {
+    transition: transform 700ms var(--ease-out);
+  }
+
+  .prod:hover .photo,
+  .prod:focus-visible .photo {
+    transform: scale(1.03);
+  }
 }
