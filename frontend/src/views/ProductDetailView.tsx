@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { PriceTag } from '@/components/ui/PriceTag';
+import { Reveal } from '@/components/ui/Reveal';
 import { DeliveryTerms } from '@/components/product/DeliveryTerms';
 import { ProductTabs } from '@/components/product/ProductTabs';
 import { WishlistHeart } from '@/components/product/WishlistHeart';
@@ -510,13 +511,23 @@ export function ProductDetailView({
         가장 자주 찾는 것이 그 문의다. 관리자 미리보기에서는 바깥 데이터가 없어
         설명 탭만 의미가 있다 — 그래도 같은 모양으로 보여 준다.
       */}
-      <ProductTabs
-        product={product}
-        qnas={qnas}
-        qnaTotal={qnaTotal}
-        related={related}
-        refundPolicy={refundPolicy}
-      />
+      {/*
+        여기부터 접힌 화면 아래다. 올라오며 들어온다.
+
+        ⚠️ 위쪽(사진·상품명·판매가·수량)에는 걸지 않는다. 들어오자마자 보이는
+        자리라 드러낼 것이 없고, 무엇보다 <b>판매가가 떠오르며 나타나면 값이
+        방금 바뀐 것처럼</b> 읽힌다. 시세에 연동된 금을 파는 화면에서 그 한
+        순간의 착각이 제일 나쁘다 — 메인 시세표를 가만히 둔 것과 같은 이유다.
+      */}
+      <Reveal>
+        <ProductTabs
+          product={product}
+          qnas={qnas}
+          qnaTotal={qnaTotal}
+          related={related}
+          refundPolicy={refundPolicy}
+        />
+      </Reveal>
 
     </div>
   );

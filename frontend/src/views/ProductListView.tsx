@@ -1,10 +1,14 @@
 import Link from 'next/link';
 import type { Loaded } from '@/api/server';
 import { ProductCard } from '@/components/product/ProductCard';
+import { Reveal } from '@/components/ui/Reveal';
 import { SectionHead } from '@/components/ui/SectionHead';
 import type { PageResponse } from '@/types/api';
 import type { Category, ProductSummary } from '@/types/product';
 import styles from './ProductListView.module.css';
+
+/** 넓은 화면의 한 줄 카드 수 — {@code .prodGrid} 의 열 수와 같아야 한다. */
+const CARDS_PER_ROW = 4;
 
 interface Props {
   categories: Loaded<Category[]>;
@@ -67,9 +71,15 @@ export function ProductListView({ categories, products, selectedCategoryId }: Pr
             <p className={styles.count}>
               총 <strong className="tabular">{page.totalElements}</strong>개
             </p>
+            {/* 카드가 한 줄씩 차례로 올라온다. 지연을 한 줄까지만 쌓는 이유는
+                메인과 같다 — 끝까지 쌓으면 뒤쪽 카드가 한참 뒤에 도착해
+                "느리게 뜨는 사이트"가 된다. 목록은 메인보다 카드가 훨씬 많아
+                그 차이가 더 크게 난다. */}
             <div className={styles.prodGrid}>
-              {items.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {items.map((product, index) => (
+                <Reveal key={product.id} rise="sm" delay={(index % CARDS_PER_ROW) * 70}>
+                  <ProductCard product={product} />
+                </Reveal>
               ))}
             </div>
             {page.totalPages > 1 && (
