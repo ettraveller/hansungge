@@ -91,6 +91,9 @@ export function CheckoutView() {
   const address: AddressForm = chosen ? toAddressForm(chosen) : form;
 
   const orderableItems = cart?.items.filter((item) => item.orderable) ?? [];
+  // 수량 합. 장바구니의 totalQuantity 를 쓰지 않는다 — 그 값은 지금 주문할 수 없는
+  // 줄까지 세므로, 아래 목록에 보이지 않는 개수가 요약에 섞인다.
+  const orderQuantity = orderableItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const withdrawalConsent =
     refundPolicy.data != null && agreedPolicyId === refundPolicy.data.id;
@@ -216,7 +219,9 @@ export function CheckoutView() {
           </section>
 
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>주문 상품</h2>
+            <h2 className={styles.cardTitle}>
+              주문 상품 <span className={styles.titleCount}>{orderableItems.length}건</span>
+            </h2>
             <ul className={styles.items}>
               {orderableItems.map((item) => (
                 <li key={item.id} className={styles.item}>
@@ -225,7 +230,11 @@ export function CheckoutView() {
                     {item.optionName && <span className={styles.itemOption}> · {item.optionName}</span>}
                   </div>
                   <div className={styles.itemMeta}>
-                    <span>{item.quantity}개</span>
+                    <span>
+                      {item.quantity}개
+                      {/* 「개당」은 2개 이상일 때만 뜻이 있다 — 1개면 줄 합계와 같은 값이다 */}
+                      {item.quantity > 1 && item.unitPrice != null && ` · 개당 ${formatKrw(item.unitPrice)}`}
+                    </span>
                     <strong>{formatKrw(item.lineAmount)}</strong>
                   </div>
                 </li>
@@ -259,8 +268,20 @@ export function CheckoutView() {
         <aside className={styles.summary} aria-label="결제 금액">
           <h2 className={styles.summaryTitle}>결제 금액</h2>
 
+          <ul className={styles.rows}>
+            <li>
+              <span>주문 상품</span>
+              <strong>
+                {orderableItems.length}종 · {orderQuantity}개
+              </strong>
+            </li>
+          </ul>
+
+          {/* 배송비 줄을 두지 않는다. 지금 이 화면에는 배송비를 알 방법이 없고
+              (서버 설정값이라 장바구니 응답에 없다), 「무료」라고 적으면 그 줄이
+              곧 약속이 된다. 확정 금액은 다음 화면에서 서버가 보여 준다. */}
           <div className={styles.total}>
-            <span>예상 금액</span>
+            <span>결제 예정 금액</span>
             <strong>{formatKrw(cart?.subtotal)}</strong>
           </div>
 
@@ -277,31 +298,60 @@ export function CheckoutView() {
       <div className={styles.payBar}>
         <div className={styles.payBarInner}>
           <p className={styles.agree}>약관 및 주문 내용을 확인하였으며, 정보 제공 등에 동의합니다.</p>
-          {/* type="submit" 이 아니다 — 폼의 암묵적 제출 경로를 아예 없앤다.
-              Enter 든, 레이어가 닫히며 밑으로 떨어진 클릭이든, 이 버튼을 직접 누른
-              것이 아니면 주문서가 만들어지지 않는다. 주문은 되돌리기 어렵다. */}
-          <button type="button" className={styles.submit} disabled={!canSubmit} onClick={submit}>
-            {/* "주문서 작성" 이 아니라 "결제하기" 다. 누르는 사람이 하려는 일은 결제이고,
-                주문서는 그 과정에서 서버가 만드는 것이라 굳이 이름 붙일 필요가 없다. */}
-            {createOrder.isPending ? '결제 화면으로 넘어가는 중…' : `${formatKrw(cart?.subtotal)} 결제하기`}
-          </button>
+
+          {/* 금액을 버튼 글자에서 꺼내 옆에 세운다. 버튼 안에 넣어 두면 금액이
+              「누르는 곳」의 일부로 읽혀, 얼마를 내는지 확인하는 눈이 그 위를 그냥
+              지나간다. 결제 직전에 가장 먼저 읽혀야 하는 숫자다. */}
+          <div className={styles.payBarRight}>
+            <p className={styles.payBarTotal}>
+              <span>결제 예정</span>
+              <strong>{formatKrw(cart?.subtotal)}</strong>
+            </p>
+            {/* type="submit" 이 아니다 — 폼의 암묵적 제출 경로를 아예 없앤다.
+                Enter 든, 레이어가 닫히며 밑으로 떨어진 클릭이든, 이 버튼을 직접 누른
+                것이 아니면 주문서가 만들어지지 않는다. 주문은 되돌리기 어렵다. */}
+            <button type="button" className={styles.submit} disabled={!canSubmit} onClick={submit}>
+              {/* "주문서 작성" 이 아니라 "결제하기" 다. 누르는 사람이 하려는 일은 결제이고,
+                  주문서는 그 과정에서 서버가 만드는 것이라 굳이 이름 붙일 필요가 없다. */}
+              {createOrder.isPending ? '결제 화면으로 넘어가는 중…' : '결제하기'}
+            </button>
+          </div>
         </div>
       </div>
     </form>
   );
 }
 
-/** 장바구니 → 주문/결제 → 완료. 지금 어디쯤인지 보여 준다. */
+/**
+ * 장바구니 → 주문/결제 → 주문완료. 지금 어디쯤인지 보여 준다.
+ *
+ * <p>번호를 붙여 가운데에 세운다. 오른쪽 구석의 작은 「장바구니 › 주문/결제 › 완료」
+ * 는 글자 크기도 위치도 안내문과 같아서, 단계 표시로 읽히지 않고 그냥 지나간다.
+ * 결제 직전 화면에서 "앞으로 한 단계 더 남았다"는 것은 이탈을 줄이는 정보다.
+ *
+ * <p>번호는 {@code ol} 이 이미 매기고 있으므로 동그라미 안의 숫자는 장식이다 —
+ * 스크린리더에 두 번 읽히지 않게 가린다.
+ */
 function Steps() {
+  const steps = ['장바구니', '주문/결제', '주문완료'];
   return (
     <ol className={styles.steps} aria-label="주문 단계">
-      <li>
-        <Link href="/cart">장바구니</Link>
-      </li>
-      <li aria-current="step" className={styles.stepOn}>
-        주문/결제
-      </li>
-      <li>완료</li>
+      {steps.map((label, index) => {
+        const current = index === 1;
+        return (
+          <li
+            key={label}
+            className={current ? `${styles.step} ${styles.stepOn}` : styles.step}
+            aria-current={current ? 'step' : undefined}
+          >
+            <span className={styles.stepNo} aria-hidden="true">
+              {index + 1}
+            </span>
+            {/* 지나온 단계만 돌아갈 수 있다. 아직 안 만든 주문의 완료 화면은 주소가 없다 */}
+            {index === 0 ? <Link href="/cart">{label}</Link> : label}
+          </li>
+        );
+      })}
     </ol>
   );
 }
