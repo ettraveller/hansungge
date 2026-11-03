@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { PriceTag } from '@/components/ui/PriceTag';
 import { DeliveryTerms } from '@/components/product/DeliveryTerms';
+import { ProductTabs } from '@/components/product/ProductTabs';
 import { WishlistHeart } from '@/components/product/WishlistHeart';
 import { useAddToCart, useCart } from '@/hooks/useCart';
 import { useMarkViewed } from '@/hooks/useInterest';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
 import { METAL_LABEL } from '@/types/price';
-import type { ProductDetail } from '@/types/product';
+import type { RefundPolicy } from '@/api/policies';
+import type { QnaSummary } from '@/types/board';
+import type { ProductDetail, ProductSummary } from '@/types/product';
 import { formatGram, formatKrw } from '@/utils/format';
 import { mediaUrl } from '@/utils/media';
 import styles from './ProductDetailView.module.css';
@@ -30,9 +33,20 @@ import styles from './ProductDetailView.module.css';
  */
 export function ProductDetailView({
   product,
+  qnas = [],
+  qnaTotal = 0,
+  related = [],
+  refundPolicy = null,
   preview = false,
 }: {
   product: ProductDetail;
+  /** 이 상품의 문의 앞쪽 몇 건. 서버가 채워서 넘긴다 */
+  qnas?: QnaSummary[];
+  qnaTotal?: number;
+  /** 같은 분류의 다른 상품 */
+  related?: ProductSummary[];
+  /** 구매정보 탭에 그대로 싣는 환불규정 현재 판 */
+  refundPolicy?: RefundPolicy | null;
   /**
    * 관리자 미리보기로 그리는 중인가.
    *
@@ -61,18 +75,6 @@ export function ProductDetailView({
    * 않은 상품은 비어 있고, 그때는 일러스트 자리표시자를 쓴다.
    */
   const photos = product.galleryKeys
-    .map((key) => mediaUrl(key))
-    .filter((url): url is string => url != null);
-
-  /**
-   * 상세 설명 이미지.
-   *
-   * <p>갤러리에 섞지 않는다. 이 자리에 올라오는 것은 보통 860×9000 처럼 <b>세로로 긴
-   * 상세페이지</b>라서, 정사각형 썸네일에 넣으면 맨 위 한 조각만 보인다. 설명 아래에
-   * 올린 순서대로 전체 폭으로 쌓는다 — 국내 쇼핑몰이 상세페이지를 보여주는 방식이고,
-   * 관리자가 이미지 하나로 만들어 오는 형태에 맞는다.
-   */
-  const detailImages = product.detailKeys
     .map((key) => mediaUrl(key))
     .filter((url): url is string => url != null);
 
@@ -377,33 +379,19 @@ export function ProductDetailView({
         </div>
       </div>
 
-      {(product.description || detailImages.length > 0) && (
-        <section className={styles.description} aria-labelledby="product-desc">
-          <h2 id="product-desc" className={styles.descTitle}>
-            상품 설명
-          </h2>
-          {product.description && <p className={styles.descBody}>{product.description}</p>}
-          {detailImages.length > 0 && (
-            <div className={styles.descImages}>
-              {detailImages.map((url) => (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  key={url}
-                  src={url}
-                  // 그림 안에 글이 박혀 있어 alt 로 옮길 방법이 없다. 빈 alt 로 두면
-                  // 화면 읽어주는 프로그램이 건너뛴다 — "상세 이미지 1" 같은 문구를
-                  // 넣는 것보다 낫다. 대신 글로 된 설명을 함께 적도록 관리자 화면에
-                  // 안내한다. ⚠️ 이미지만 올리면 그 내용은 접근성·검색 양쪽에서 사라진다.
-                  alt=""
-                  // 화면 아래에 있고 한 장이 수 MB 다. 스크롤이 닿을 때 받는다.
-                  loading="lazy"
-                  decoding="async"
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+      {/*
+        상품 설명·구매 안내·문의·관련상품을 탭으로 나눈다. 세로로 이어 붙이면
+        상세 이미지가 긴 상품에서 문의가 화면 다섯 장 아래로 밀리는데, 사기 전에
+        가장 자주 찾는 것이 그 문의다. 관리자 미리보기에서는 바깥 데이터가 없어
+        설명 탭만 의미가 있다 — 그래도 같은 모양으로 보여 준다.
+      */}
+      <ProductTabs
+        product={product}
+        qnas={qnas}
+        qnaTotal={qnaTotal}
+        related={related}
+        refundPolicy={refundPolicy}
+      />
 
       {option && (
         <p className={styles.specNote}>

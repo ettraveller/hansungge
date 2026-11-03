@@ -1,0 +1,270 @@
+.root {
+  margin-top: 56px;
+}
+
+/* 탭 줄. 좁은 화면에서는 가로로 밀어서 본다 — 줄바꿈하면 높이가 들쭉날쭉해진다 */
+.tabs {
+  display: flex;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 1 0 auto;
+  min-width: 112px;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 15px;
+  color: var(--gray);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--dark);
+}
+
+.tabOn {
+  color: var(--dark);
+  font-weight: 700;
+  border-bottom-color: var(--dark);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--dark);
+  outline-offset: -2px;
+}
+
+/* 개수. 0 이면 흐리게 — 눌러도 빈 것을 미리 알린다 */
+.count {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.panel {
+  padding: 32px 0 8px;
+}
+
+.panelTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 14px;
+}
+
+.body {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--text, #333);
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+.images {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.images img {
+  width: 100%;
+  max-width: 860px;
+  height: auto;
+  display: block;
+}
+
+.empty {
+  padding: 40px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray);
+}
+
+/* ---------- 구매정보 ---------- */
+
+.infoList {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.infoItem {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .infoItem {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.infoLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.infoBody {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--gray);
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+/* 환불규정 전문. 길어서 상자에 담고 안에서 굴린다 */
+.policyBox {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafaf8;
+}
+
+/* ---------- 문의 ---------- */
+
+.qnaList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.qnaRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--dark);
+  text-decoration: none;
+}
+
+.qnaRow:hover .qnaTitle {
+  text-decoration: underline;
+}
+
+.qnaTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qnaMeta {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--gray);
+}
+
+.badge {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: #f0efea;
+  color: var(--gray);
+}
+
+.badgeDone {
+  background: #e8f1ea;
+  color: #2f6b45;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.action {
+  min-height: 42px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: var(--dark);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.action:hover {
+  border-color: var(--dark);
+}
+
+/* ---------- 관련상품 ---------- */
+
+.related {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .related {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .related {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+.card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #f4f3ef;
+}
+
+.cardName {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--dark);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardPrice {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark);
+}

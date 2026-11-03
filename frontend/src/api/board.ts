@@ -55,9 +55,11 @@ export const noticeApi = {
 // ---------------------------------------------------------------------
 
 export const qnaApi = {
-  list: (boardType: QnaBoardType, query: BoardListQuery = {}) =>
+  list: (boardType: QnaBoardType, query: BoardListQuery & { productId?: number } = {}) =>
     api.get<PageResponse<QnaSummary>>('/api/v1/qnas', {
-      query: { boardType, page: query.page, size: query.size },
+      // productId 를 주면 그 상품의 문의만 온다 (상품 상세의 「상품문의」 탭).
+      // 게시판 전체를 받아 화면에서 걸러내면 개수가 틀리고, 2페이지 뒤의 문의는 사라진다.
+      query: { boardType, productId: query.productId, page: query.page, size: query.size },
       // 문의는 새 글이 바로 보여야 한다. 방금 쓴 글이 목록에 없으면 실패로 읽힌다
       cache: 'no-store',
     }),

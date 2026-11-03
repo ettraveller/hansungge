@@ -56,6 +56,14 @@ public class QnaService {
         return qnaRepository.findPublicPage(boardType, pageable);
     }
 
+    /** 한 상품의 문의만. {@code productId} 가 null 이면 게시판 전체와 같다. */
+    @Transactional(readOnly = true)
+    public Page<Qna> findPublicPage(QnaBoardType boardType, Long productId, Pageable pageable) {
+        return productId == null
+                ? qnaRepository.findPublicPage(boardType, pageable)
+                : qnaRepository.findPublicPageByProduct(boardType, productId, pageable);
+    }
+
     @Transactional(readOnly = true)
     public Page<Qna> findMinePage(Long userId, Pageable pageable) {
         return qnaRepository.findMinePage(userId, pageable);

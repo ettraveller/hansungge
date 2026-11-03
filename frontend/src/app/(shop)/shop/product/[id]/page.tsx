@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, unstable_rethrow } from 'next/navigation';
+import { qnaApi } from '@/api/board';
+import { fetchRefundPolicy } from '@/api/policies';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { ApiError } from '@/types/api';
@@ -42,7 +44,33 @@ export default async function ProductDetailPage({ params }: PageProps) {
     throw new Error(`상품 정보를 불러올 수 없습니다: ${product.error}`);
   }
 
-  return <ProductDetailView product={product.data} />;
+  const detail = product.data;
+
+  // 탭 내용은 서버에서 함께 받아 초기 HTML 에 싣는다 — 문답과 설명이 검색에 걸려야
+  // 하고, 탭을 눌렀을 때 기다림이 없어야 한다. 셋 다 실패해도 상품은 보여야 하므로
+  // load() 로 감싸 오류를 삼킨다.
+  const [qnas, related, refundPolicy] = await Promise.all([
+    load(
+      () => qnaApi.list('PRODUCT', { productId: detail.id, size: 5 }),
+      `상품 ${detail.id} 문의`,
+    ),
+    load(
+      () => productApi.list({ categoryId: detail.categoryId, size: 5 }),
+      `상품 ${detail.id} 관련상품`,
+    ),
+    load(fetchRefundPolicy, '환불규정'),
+  ]);
+
+  return (
+    <ProductDetailView
+      product={detail}
+      qnas={qnas.data?.content ?? []}
+      qnaTotal={qnas.data?.totalElements ?? 0}
+      // 보고 있는 상품은 뺀다. 그래서 한 건 더 받아 4건까지만 보여 준다.
+      related={(related.data?.content ?? []).filter((item) => item.id !== detail.id).slice(0, 4)}
+      refundPolicy={refundPolicy.data ?? null}
+    />
+  );
 }
 
 /** 검색엔진·SNS 공유용 메타데이터. 상품명이 title 에 들어가야 검색 결과에 뜬다. */

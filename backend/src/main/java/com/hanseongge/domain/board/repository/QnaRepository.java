@@ -28,6 +28,21 @@ public interface QnaRepository extends JpaRepository<Qna, Long> {
             """)
     Page<Qna> findPublicPage(@Param("boardType") QnaBoardType boardType, Pageable pageable);
 
+    /**
+     * 한 상품의 문의만. 상품 상세의 「상품문의」 탭이 쓴다.
+     *
+     * <p>게시판 전체를 받아 화면에서 걸러내면, 그 상품 문의가 2페이지 뒤에 있을 때
+     * 탭이 비어 보인다. 개수도 틀리게 나온다.
+     */
+    @Query("""
+            SELECT q FROM Qna q
+            WHERE q.boardType = :boardType AND q.productId = :productId AND q.active = true
+            ORDER BY q.id DESC
+            """)
+    Page<Qna> findPublicPageByProduct(@Param("boardType") QnaBoardType boardType,
+                                      @Param("productId") Long productId,
+                                      Pageable pageable);
+
     /** 내가 쓴 문의 — 게시판 구분 없이 전부. 마이페이지와 게시판 상단이 함께 쓴다. */
     @Query("""
             SELECT q FROM Qna q

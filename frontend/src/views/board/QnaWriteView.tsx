@@ -15,6 +15,12 @@ import form from '@/components/auth/auth.module.css';
 
 interface Props {
   boardType: QnaBoardType;
+  /**
+   * 어느 상품에 대한 문의인가. 상품 상세의 「상품문의」 탭에서 넘어올 때 채워진다.
+   *
+   * <p>이 값이 없으면 상품에 묶이지 않아, 쓴 사람은 그 상품 탭에서 자기 글을 찾지 못한다.
+   */
+  productId?: number;
 }
 
 /**
@@ -29,7 +35,7 @@ interface Props {
  * {@code restored} 전에는 비로그인으로 판단하지 않는다 — 새로고침 직후 잠깐 토큰이 없는
  * 구간이 있고, 그때를 로그아웃으로 읽으면 로그인한 사람이 로그인 화면으로 튕긴다.
  */
-export function QnaWriteView({ boardType }: Props) {
+export function QnaWriteView({ boardType, productId }: Props) {
   const router = useRouter();
   const { isAuthenticated, restored } = useUserSession();
 
@@ -41,7 +47,7 @@ export function QnaWriteView({ boardType }: Props) {
   const basePath = QNA_BOARD_PATH[boardType];
 
   const write = useMutation({
-    mutationFn: () => qnaApi.write({ boardType, title, question, secret }),
+    mutationFn: () => qnaApi.write({ boardType, title, question, secret, productId }),
     onSuccess: (created) => router.replace(`${basePath}/${created.id}`),
     onError: (e) => setFieldErrors(e instanceof ApiError ? (e.fieldErrors ?? {}) : {}),
   });

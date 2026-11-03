@@ -56,13 +56,15 @@ public class PublicQnaController {
     private final QnaService qnaService;
 
     @Operation(summary = "문의 목록",
-               description = "게시판별 목록. 비밀글도 제목은 보이되 본문은 상세에서 막힌다.")
+               description = "게시판별 목록. 비밀글도 제목은 보이되 본문은 상세에서 막힌다. "
+                       + "productId 를 주면 그 상품의 문의만 나온다 (상품 상세의 문의 탭).")
     @GetMapping("/qnas")
     public ResponseEntity<PageResponse<QnaSummaryResponse>> list(
             @RequestParam QnaBoardType boardType,
+            @RequestParam(required = false) Long productId,
             @PageableDefault(size = 15) Pageable pageable) {
 
-        Page<Qna> page = qnaService.findPublicPage(boardType, pageable);
+        Page<Qna> page = qnaService.findPublicPage(boardType, productId, pageable);
         return ResponseEntity.ok(toSummaryPage(page));
     }
 
