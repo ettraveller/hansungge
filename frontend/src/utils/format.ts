@@ -52,6 +52,22 @@ export function formatGram(gram: string | number | null | undefined): string {
   return `${DECIMAL.format(n)}g`;
 }
 
+/**
+ * 순도 표시: 0.9999 → "99.99%", 0.585 → "58.5%"
+ *
+ * 저장값은 소수(0.9999)인데 고객이 아는 표기는 백분율이다. 「순도 0.9999」로 내걸면
+ * 소수점을 세어 봐야 한다.
+ *
+ * 금액이 아니므로 여기서 100 을 곱해도 된다 — 원칙 P1 이 막는 것은 <b>금액</b>을
+ * 화면에서 만드는 일이다. 순도는 주문 금액에 들어가지 않는 표시 전용 값이다.
+ */
+export function formatPurity(purity: string | number | null | undefined): string {
+  if (purity == null || purity === '') return '-';
+  const n = typeof purity === 'string' ? Number(purity) : purity;
+  if (!Number.isFinite(n)) return '-';
+  return `${DECIMAL.format(Number((n * 100).toFixed(2)))}%`;
+}
+
 /** 보정액 표시: "+10,000원" / "-7,000원" */
 export function formatAdjustment(amount: string | number | null | undefined): string {
   if (amount == null || amount === '') return '-';

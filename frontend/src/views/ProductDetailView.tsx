@@ -15,9 +15,19 @@ import { METAL_LABEL } from '@/types/price';
 import type { RefundPolicy } from '@/api/policies';
 import type { QnaSummary } from '@/types/board';
 import type { ProductDetail, ProductSummary } from '@/types/product';
-import { formatGram, formatKrw } from '@/utils/format';
+import { formatGram, formatKrw, formatPurity } from '@/utils/format';
 import { mediaUrl } from '@/utils/media';
 import styles from './ProductDetailView.module.css';
+
+/**
+ * 한 번에 담을 수 있는 최대 개수.
+ *
+ * <p>백엔드 {@code CartItem.MAX_QUANTITY} 와 같은 값이다. 상품별로 더 낮은 상한
+ * ({@code products.max_qty})이 걸려 있을 수 있는데 그 값은 공개 응답에 없다 — 넘으면
+ * 서버가 "이 상품은 최대 N개까지 담을 수 있습니다"로 막고, 그 문구를 아래 오류 자리에
+ * 그대로 띄운다.
+ */
+const MAX_QTY = 99;
 
 /**
  * 상품 상세 (설계서 §9 — {@code /shop/product/{id}}).
@@ -66,6 +76,7 @@ export function ProductDetailView({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [qty, setQty] = useState(1);
 
   /**
    * 위쪽 갤러리 사진.
@@ -107,6 +118,9 @@ export function ProductDetailView({
   const price = product.prices[selectedIndex];
   const orderable = price?.orderable ?? false;
 
+  // 옵션마다 중량이 다르다(3.75g / 7.5g). 고른 옵션 쪽을 먼저 보여 준다.
+  const weightG = option?.weightG ?? product.weightG;
+
   /**
    * 장바구니 담기.
    *
@@ -121,7 +135,7 @@ export function ProductDetailView({
     }
     setAdded(false);
     addToCart.mutate(
-      { productId: product.id, optionId: option?.id ?? null, quantity: 1 },
+      { productId: product.id, optionId: option?.id ?? null, quantity: qty },
       { onSuccess: () => (then ? then() : setAdded(true)) },
     );
   };
@@ -133,9 +147,10 @@ export function ProductDetailView({
    * 동작이라({@code CartService.add}), 재고가 1개인 상품을 담아 둔 채로 바로 구매를
    * 누르면 2개가 되어 "재고가 부족합니다"가 뜬다 — 재고는 멀쩡한데 못 사게 된다.
    */
-  const inCart = cart.data?.items.some(
+  const cartLine = cart.data?.items.find(
     (line) => line.productId === product.id && line.optionId === (option?.id ?? null),
   );
+  const inCart = cartLine != null;
 
   /**
    * 바로 구매 — 담고 주문서로 보낸다.
@@ -258,11 +273,6 @@ export function ProductDetailView({
 
         {/* ---------- 정보 ---------- */}
         <div className={styles.info}>
-          <p className={styles.meta}>
-            {product.metalType && <span>{METAL_LABEL[product.metalType]}</span>}
-            {product.purity != null && <span>순도 {product.purity}</span>}
-          </p>
-
           <h1 className={styles.name}>{product.name}</h1>
 
           {/*
@@ -276,12 +286,58 @@ export function ProductDetailView({
             개발자도구를 열면 보인다. 값 자체를 가리려면 백엔드 응답에서 빼야 한다.
           */}
           <div className={styles.priceBox}>
-            <PriceTag price={price?.price ?? null} size="lg" />
+            <div className={styles.priceLine}>
+              <span className={styles.priceLabel}>판매가</span>
+              <PriceTag price={price?.price ?? null} size="lg" />
+              {/* 아래에서 개수를 고를 수 있으니, 이 값이 한 개 값이라는 것을 적어 둔다 */}
+              {price?.price != null && <span className={styles.priceUnit}>1개</span>}
+            </div>
             {price?.notice && <p className={styles.notice}>{price.notice}</p>}
           </div>
 
+          {/*
+            사양을 표로 세운다. 금종·순도·중량이 작은 회색 한 줄이었는데, 금을 살 때
+            고객이 금액 다음으로 확인하는 것이 이 세 가지다. 중량은 고른 옵션의 것을
+            보여 준다 — 3.75g 과 7.5g 중 어느 쪽을 고른 상태인지가 금액의 근거다.
+
+            값이 없는 줄은 그리지 않는다. "중량 -" 은 중량을 모른다는 뜻으로 읽히는데,
+            실제로는 중량으로 팔지 않는 상품(반지 등)일 뿐이다.
+          */}
+          {/* 세 줄 다 없는 상품이면 표 자체를 그리지 않는다 — 안 그리면 테두리 두 줄만
+              남아서 뭔가 빠진 자리처럼 보인다 */}
+          {(product.metalType != null || product.purity != null || weightG != null) && (
+          <dl className={styles.specs}>
+            {product.metalType && (
+              <div>
+                <dt>금종</dt>
+                <dd>{METAL_LABEL[product.metalType]}</dd>
+              </div>
+            )}
+            {product.purity != null && (
+              <div>
+                <dt>순도</dt>
+                <dd>{formatPurity(product.purity)}</dd>
+              </div>
+            )}
+            {weightG != null && (
+              <div>
+                <dt>중량</dt>
+                <dd>{formatGram(weightG)}</dd>
+              </div>
+            )}
+          </dl>
+          )}
+
           {/* ---------- 옵션 ---------- */}
-          {product.options.length > 0 && (
+          {/*
+            고를 것이 있을 때만 그린다. 상품을 등록하면 서버가 기본 옵션을 하나
+            자동으로 만들어서, 옵션이 없는 상품도 「옵션 선택 — 상품명 · 1,587,400원」
+            이라는 줄이 하나 떴다. 상품명과 금액을 바로 위에서 이미 읽은 사람에게
+            같은 두 값을 다시 보여 주면서 고르라고 하는 꼴이다.
+
+            고른 옵션(index 0)은 그대로다 — 숨긴 것은 화면뿐이다.
+          */}
+          {product.options.length > 1 && (
             <div className={styles.options}>
               <p className={styles.optionLabel}>옵션 선택</p>
               <div className={styles.optionList} role="radiogroup" aria-label="옵션 선택">
@@ -298,6 +354,9 @@ export function ProductDetailView({
                       onClick={() => {
                         setSelectedIndex(index);
                         setAdded(false);
+                        // 옵션마다 재고와 상한이 다르다. 3.75g 를 열 개 고른 상태로
+                        // 37.5g 로 옮기면 사려던 양이 아니다.
+                        setQty(1);
                       }}
                       className={selected ? styles.optionOn : styles.option}
                     >
@@ -313,6 +372,50 @@ export function ProductDetailView({
                 })}
               </div>
             </div>
+          )}
+
+          {/* ---------- 수량 ---------- */}
+          {/*
+            개수를 고를 수 있게 한다. 1개씩만 담기던 동안 1g 골드바 열 개를 사려면
+            담기를 열 번 눌러야 했다.
+
+            ⚠️ <b>여기서 합계를 그리지 않는다.</b> 단가 × 수량을 화면에서 곱하면 금액을
+            정하는 곳이 둘이 되고, 둘은 반드시 어긋난다 (원칙 P1). 합계는 담은 뒤
+            장바구니·주문서가 서버가 계산한 값으로 보여 준다.
+          */}
+          <div className={styles.qtyRow}>
+            <span className={styles.qtyLabel}>수량</span>
+            <div className={styles.qty}>
+              <button
+                type="button"
+                aria-label="수량 줄이기"
+                disabled={preview || qty <= 1}
+                onClick={() => setQty((n) => Math.max(1, n - 1))}
+              >
+                −
+              </button>
+              <span aria-live="polite">{qty}</span>
+              <button
+                type="button"
+                aria-label="수량 늘리기"
+                disabled={preview || qty >= MAX_QTY}
+                onClick={() => setQty((n) => Math.min(MAX_QTY, n + 1))}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/*
+            이미 담겨 있다는 사실을 알린다. 「바로 구매」가 이때 <b>다시 담지 않고</b>
+            주문서로 넘어가기 때문이다 — 그 이유를 적어 두지 않으면 수량을 3으로 맞춰
+            눌렀는데 주문서에 1개가 떠 있는 것으로 보인다.
+          */}
+          {!preview && cartLine && (
+            <p className={styles.inCart}>
+              이미 장바구니에 {cartLine.quantity}개 담겨 있습니다. 개수는{' '}
+              <Link href="/cart">장바구니</Link>에서 바꿉니다.
+            </p>
           )}
 
           {/* ---------- 구매 ---------- */}
@@ -356,7 +459,11 @@ export function ProductDetailView({
           {!orderable && (
             <p className={styles.blocked}>
               {price?.status === 'SOLD_OUT'
-                ? '선택하신 옵션은 품절입니다.'
+                ? // 옵션 줄을 감춘 상품에 "선택하신 옵션"이라고 적으면 고르지도 않은
+                  // 것을 가리키게 된다
+                  product.options.length > 1
+                  ? '선택하신 옵션은 품절입니다.'
+                  : '품절된 상품입니다.'
                 : '현재 시세를 확인할 수 없어 주문이 제한됩니다. 시세문의 후 이용해 주세요.'}
             </p>
           )}
@@ -393,12 +500,6 @@ export function ProductDetailView({
         refundPolicy={refundPolicy}
       />
 
-      {option && (
-        <p className={styles.specNote}>
-          선택 옵션 {option.name}
-          {option.weightG != null && ` · ${formatGram(option.weightG)}`}
-        </p>
-      )}
     </div>
   );
 }
