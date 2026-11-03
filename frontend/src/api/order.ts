@@ -1,6 +1,13 @@
 import { authed } from '@/api/authedClient';
 import { request } from '@/api/client';
-import type { Order, OrderCreateInput, OrderPage, PaymentConfig, Shipment } from '@/types/order';
+import type {
+  Order,
+  OrderCreateInput,
+  OrderListQuery,
+  OrderPage,
+  PaymentConfig,
+  Shipment,
+} from '@/types/order';
 
 /**
  * 주문·결제 API.
@@ -15,8 +22,21 @@ export function createOrder(input: OrderCreateInput) {
   return authed<Order>('/api/v1/orders', { method: 'POST', body: input });
 }
 
-export function fetchOrders(page = 0, size = 10) {
-  return authed<OrderPage>(`/api/v1/orders?page=${page}&size=${size}`);
+/**
+ * 내 주문 목록.
+ *
+ * <p>거르기는 서버가 한다. 한 장만 받아 화면에서 거르면 탭에 적힌 개수(서버 총계)와
+ * 목록이 어긋난다 — "결제 대기 3" 인데 목록이 비는 식이다.
+ */
+export function fetchOrders(query: OrderListQuery = {}) {
+  const params = new URLSearchParams();
+  params.set('page', String(query.page ?? 0));
+  params.set('size', String(query.size ?? 10));
+  if (query.group && query.group !== 'ALL') params.set('group', query.group);
+  if (query.from) params.set('from', query.from);
+  if (query.to) params.set('to', query.to);
+
+  return authed<OrderPage>(`/api/v1/orders?${params.toString()}`);
 }
 
 export function fetchOrder(orderNo: string) {

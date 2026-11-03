@@ -113,6 +113,24 @@ export interface TrackingStep {
   what?: string | null;
 }
 
+/** 주문 상태 묶음. 백엔드 OrderStatusGroup 과 값이 같아야 한다 */
+export type OrderStatusGroup =
+  | 'ALL'
+  | 'AWAITING_PAYMENT'
+  | 'PREPARING'
+  | 'SHIPPING'
+  | 'CANCELLED';
+
+export interface OrderListQuery {
+  page?: number;
+  size?: number;
+  group?: OrderStatusGroup;
+  /** ISO 시각. 이 시각부터 */
+  from?: string;
+  /** ISO 시각. 이 시각 직전까지 */
+  to?: string;
+}
+
 export interface OrderPage {
   content: Order[];
   totalElements: number;

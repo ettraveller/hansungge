@@ -5,6 +5,7 @@ import com.hanseongge.domain.cart.entity.CartItem;
 import com.hanseongge.domain.cart.repository.CartItemRepository;
 import com.hanseongge.domain.cart.repository.CartRepository;
 import com.hanseongge.domain.order.dto.OrderCreateRequest;
+import com.hanseongge.domain.order.dto.OrderStatusGroup;
 import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderItem;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -182,9 +184,21 @@ public class OrderService {
     // 조회
     // =================================================================
 
+    /**
+     * 내 주문 목록 — 상태 묶음과 기간으로 거른다.
+     *
+     * <p>거르기를 서버가 한다. 화면이 한 장만 받아 거르면 탭에 적힌 개수(서버 총계)와
+     * 목록이 어긋난다 — "결제 대기 3" 을 눌렀는데 비어 있는 식이다.
+     *
+     * @param group 상태 묶음. null 이면 전체
+     * @param from  이 시각부터 (null 이면 처음부터)
+     * @param to    이 시각까지 (null 이면 지금까지)
+     */
     @Transactional(readOnly = true)
-    public Page<OrderResponse> listMine(Long userId, Pageable pageable) {
-        Page<Order> orders = orderRepository.findByUserIdOrderByOrderedAtDescIdDesc(userId, pageable);
+    public Page<OrderResponse> listMine(Long userId, OrderStatusGroup group,
+                                        OffsetDateTime from, OffsetDateTime to, Pageable pageable) {
+        Page<Order> orders = orderRepository.searchMine(userId,
+                group == null ? List.of() : group.statuses(), from, to, pageable);
         if (orders.isEmpty()) {
             return orders.map(order -> OrderResponse.of(order, List.of()));
         }

@@ -2,6 +2,7 @@ package com.hanseongge.domain.order.controller;
 
 import com.hanseongge.domain.order.dto.OrderCreateRequest;
 import com.hanseongge.domain.order.dto.OrderResponse;
+import com.hanseongge.domain.order.dto.OrderStatusGroup;
 import com.hanseongge.domain.order.service.OrderService;
 import com.hanseongge.domain.shipment.dto.ShipmentResponse;
 import com.hanseongge.domain.shipment.service.ShipmentService;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.OffsetDateTime;
 
 /**
  * 주문 API. 전 구간 로그인 필요.
@@ -49,15 +53,20 @@ public class OrderController {
         return ResponseEntity.ok(orderService.createFromCart(principal.id(), request));
     }
 
-    @Operation(summary = "내 주문 목록")
+    @Operation(summary = "내 주문 목록",
+            description = "상태 묶음(group)과 기간(from·to)으로 거를 수 있다. 전부 선택이며, "
+                    + "없으면 전체를 최신순으로 준다. 기간은 [from, to) 로 해석한다.")
     @GetMapping
     public ResponseEntity<Page<OrderResponse>> list(
             @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) OrderStatusGroup group,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         int capped = Math.min(Math.max(size, 1), MAX_SIZE);
-        return ResponseEntity.ok(
-                orderService.listMine(principal.id(), PageRequest.of(Math.max(page, 0), capped)));
+        return ResponseEntity.ok(orderService.listMine(principal.id(), group, from, to,
+                PageRequest.of(Math.max(page, 0), capped)));
     }
 
     @Operation(summary = "주문 상세", description = "남의 주문번호는 404 다.")

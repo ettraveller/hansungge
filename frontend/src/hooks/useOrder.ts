@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as orderApi from '@/api/order';
 import { cartKeys } from '@/hooks/useCart';
-import type { OrderCreateInput } from '@/types/order';
+import type { OrderCreateInput, OrderListQuery } from '@/types/order';
 
 /**
  * 주문·결제 훅.
@@ -15,16 +15,16 @@ import type { OrderCreateInput } from '@/types/order';
 
 export const orderKeys = {
   all: ['orders'] as const,
-  list: (page: number) => [...orderKeys.all, 'list', page] as const,
+  list: (query: OrderListQuery) => [...orderKeys.all, 'list', query] as const,
   detail: (orderNo: string) => [...orderKeys.all, 'detail', orderNo] as const,
   shipment: (orderNo: string) => [...orderKeys.all, 'shipment', orderNo] as const,
   paymentConfig: ['payment-config'] as const,
 };
 
-export function useOrders(page = 0, size = 10) {
+export function useOrders(query: OrderListQuery = {}) {
   return useQuery({
-    queryKey: orderKeys.list(page),
-    queryFn: () => orderApi.fetchOrders(page, size),
+    queryKey: orderKeys.list(query),
+    queryFn: () => orderApi.fetchOrders(query),
   });
 }
 

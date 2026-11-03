@@ -20,6 +20,31 @@ public interface OrderRepository extends JpaRepository<Order, Long>, OrderReposi
 
     Page<Order> findByUserIdOrderByOrderedAtDescIdDesc(Long userId, Pageable pageable);
 
+    /**
+     * 내 주문 — 상태 묶음과 기간으로 거른다.
+     *
+     * <p>화면에서 거르지 않는다. 한 장(20건)만 받아 거르면 "결제 대기 3건" 이라고
+     * 적힌 탭을 눌렀는데 목록이 비는 일이 생긴다 — 그 3건이 다음 장에 있기 때문이다.
+     * 개수는 서버가 센 총계를 쓰면서 목록만 화면에서 거르면 반드시 어긋난다.
+     *
+     * @param statuses 비우면 전체. 묶음(결제 대기·준비 중·배송·취소)을 펼쳐서 넘긴다
+     * @param from     이 시각부터. null 이면 처음부터
+     * @param to       이 시각까지. null 이면 지금까지
+     */
+    @Query("""
+            SELECT o FROM Order o
+            WHERE o.userId = :userId
+              AND (:#{#statuses == null || #statuses.isEmpty()} = true OR o.status IN :statuses)
+              AND (CAST(:from AS timestamp) IS NULL OR o.orderedAt >= :from)
+              AND (CAST(:to   AS timestamp) IS NULL OR o.orderedAt <  :to)
+            ORDER BY o.orderedAt DESC, o.id DESC
+            """)
+    Page<Order> searchMine(@Param("userId") Long userId,
+                           @Param("statuses") Collection<OrderStatus> statuses,
+                           @Param("from") OffsetDateTime from,
+                           @Param("to") OffsetDateTime to,
+                           Pageable pageable);
+
     long countByUserId(Long userId);
 
     long countByUserIdAndStatusIn(Long userId, Collection<OrderStatus> statuses);
