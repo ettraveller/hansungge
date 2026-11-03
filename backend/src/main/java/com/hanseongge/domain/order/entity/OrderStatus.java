@@ -38,6 +38,22 @@ public enum OrderStatus {
         return this == ORDER_CREATED || this == PAYMENT_PENDING;
     }
 
+    /**
+     * 결제수단에 맞춘 상태 문구.
+     *
+     * <p>결제 전 두 상태는 수단에 따라 뜻이 다르다. 카드는 결제창에 다녀오는 몇 초지만,
+     * 무통장은 고객이 은행 앱을 열어 돈을 부치기를 기다리는 시간이다. 거기에
+     * 「결제 진행 중」이라고 적으면 이미 낸 것처럼 읽히고, 입금하지 않은 채 기다린다.
+     *
+     * @param bankTransfer 무통장입금 주문인가
+     */
+    public String label(boolean bankTransfer) {
+        if (bankTransfer && (this == ORDER_CREATED || this == PAYMENT_PENDING)) {
+            return "입금 대기";
+        }
+        return label();
+    }
+
     public String label() {
         return switch (this) {
             case ORDER_CREATED -> "결제 대기";

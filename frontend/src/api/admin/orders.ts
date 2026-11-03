@@ -36,6 +36,17 @@ export function markPreparing(id: number) {
 }
 
 /**
+ * 무통장 입금 확인 — 통장을 보고 누른다.
+ *
+ * <p>금액을 보내지 않는다. 화면이 보낸 금액을 주문 금액과 맞춰 봐야 자기 자신과
+ * 비교하는 꼴이다. 실제 입금액 대조는 통장에서 사람이 하고, 이 호출은 "주문
+ * 금액대로 들어왔다"는 선언이다.
+ */
+export function confirmDeposit(id: number) {
+  return adminApi.post<Order>(`/api/admin/orders/${id}/confirm-deposit`);
+}
+
+/**
  * 송장번호를 넣고 발송 처리.
  *
  * <p>하이픈·공백이 섞여도 된다 — 서버가 숫자만 남긴다. 이미 발송된 주문에 다시

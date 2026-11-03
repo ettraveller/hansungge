@@ -4,11 +4,13 @@ import com.hanseongge.domain.marketprice.entity.MetalType;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderItem;
 import com.hanseongge.domain.order.entity.OrderStatus;
+import com.hanseongge.domain.order.entity.PaymentMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 주문 상세·목록 공용 응답.
@@ -40,7 +42,12 @@ public record OrderResponse(
 
         @Schema(description = "주문 일시") OffsetDateTime orderedAt,
         @Schema(description = "지금 결제할 수 있는가") boolean payable,
-        @Schema(description = "지금 취소할 수 있는가") boolean cancellable
+        @Schema(description = "지금 취소할 수 있는가") boolean cancellable,
+
+        @Schema(description = "EASY_PAY(카드·간편결제) / BANK_TRANSFER(무통장입금)")
+        PaymentMethod paymentMethod,
+        @Schema(description = "입금자명. 무통장입금 주문에만 있다") String depositorName,
+        @Schema(description = "입금 안내 기한. 지나도 자동취소하지 않는다") OffsetDateTime depositDueAt
 ) {
 
     @Schema(name = "OrderItemResponse", description = "주문 항목 (주문 시점 스냅샷)")
@@ -55,17 +62,38 @@ public record OrderResponse(
             @Schema(description = "적용 시세(원/g). 시세 미연동이면 null") BigDecimal marketPrice,
             BigDecimal finalUnitPrice,
             int quantity,
-            BigDecimal finalAmount
+            BigDecimal finalAmount,
+            @Schema(description = "대표이미지 키. 스냅샷이 아니라 지금 상품의 사진이다. "
+                    + "상품이 지워졌거나 사진이 없으면 null")
+            String thumbnailKey
     ) {
-        static Item of(OrderItem item) {
+        static Item of(OrderItem item, Map<Long, String> thumbnails) {
             return new Item(item.getProductId(), item.getOptionId(),
                     item.getProductName(), item.getOptionName(),
                     item.getMetalType(), item.getWeightG(), item.getMarketPrice(),
-                    item.getFinalUnitPrice(), item.getQuantity(), item.getFinalAmount());
+                    item.getFinalUnitPrice(), item.getQuantity(), item.getFinalAmount(),
+                    thumbnails.get(item.getProductId()));
         }
     }
 
+    /**
+     * 사진 없이. 결제 쪽처럼 화면에 그림을 쓰지 않는 자리가 쓴다.
+     *
+     * <p>사진을 채우려면 상품을 한 번 더 읽어야 하는데, 결제 승인 응답에는 쓸 데가 없다.
+     */
     public static OrderResponse of(Order order, List<OrderItem> items) {
+        return of(order, items, Map.of());
+    }
+
+    /**
+     * 사진까지.
+     *
+     * <p>{@code thumbnails} 는 상품 id → 대표이미지 키다. <b>스냅샷이 아니다</b> — 금액·상품명과
+     * 달리 사진은 지금 상품의 것을 보여 준다. 사진이 주문 당시와 달라졌다고 분쟁이 되지는
+     * 않고, 주문 항목에 사진을 복사해 두면 상품 사진을 고칠 때마다 지나간 주문이 옛 사진에
+     * 묶인다. 상품이 지워졌으면 비어 있고, 화면은 사진 없는 자리로 그린다.
+     */
+    public static OrderResponse of(Order order, List<OrderItem> items, Map<Long, String> thumbnails) {
         BigDecimal itemsAmount = items.stream()
                 .map(OrderItem::getFinalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -73,13 +101,14 @@ public record OrderResponse(
         return new OrderResponse(
                 order.getOrderNo(),
                 order.getStatus(),
-                order.getStatus().label(),
+                // 무통장은 결제 전 상태의 뜻이 다르다 — 「결제 진행 중」이 아니라 「입금 대기」다
+                order.getStatus().label(order.isBankTransfer()),
                 itemsAmount,
                 order.getShippingFee(),
                 order.getDiscountAmount(),
                 order.getTotalAmount(),
                 orderNameOf(items),
-                items.stream().map(Item::of).toList(),
+                items.stream().map(item -> Item.of(item, thumbnails)).toList(),
                 order.getReceiverName(),
                 order.getReceiverPhone(),
                 order.getZipcode(),
@@ -88,7 +117,10 @@ public record OrderResponse(
                 order.getOrderMemo(),
                 order.getOrderedAt(),
                 order.getStatus().isPayable(),
-                order.getStatus().isCancellableByCustomer());
+                order.getStatus().isCancellableByCustomer(),
+                order.getPaymentMethod(),
+                order.getDepositorName(),
+                order.getDepositDueAt());
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.hanseongge.domain.order.dto;
 
+import com.hanseongge.domain.order.entity.PaymentMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -64,6 +65,30 @@ public record OrderCreateRequest(
          */
         @Schema(description = "동의한 환불규정 판 번호", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "환불규정 동의 정보가 없습니다.")
-        Long refundPolicyId
+        Long refundPolicyId,
+
+        /**
+         * 결제수단.
+         *
+         * <p>화면이 고르지만 <b>허용 여부는 서버가 정한다.</b> 장바구니에 카드로 팔 수
+         * 없는 상품(순금·순은·골드바·24K·시세 연동)이 하나라도 있으면 {@code EASY_PAY}
+         * 요청을 거절한다 — 받아 주면 심사 위반 거래가 PG 로 나간다.
+         *
+         * <p>비워 두면 {@code EASY_PAY} 로 본다. 이 칸이 생기기 전의 화면이 아직
+         * 떠 있을 수 있어서다. 그 경우에도 위 검사가 그대로 걸린다.
+         */
+        @Schema(description = "EASY_PAY(카드·간편결제) / BANK_TRANSFER(무통장입금)",
+                example = "EASY_PAY")
+        PaymentMethod paymentMethod,
+
+        /**
+         * 입금자명. 무통장일 때만 쓴다.
+         *
+         * <p>주문자 이름과 다를 수 있다 — 남편·자녀 이름으로 부치는 일이 흔하다.
+         * 이 값이 없으면 들어온 돈이 어느 주문의 것인지 사람이 찾아야 한다.
+         */
+        @Schema(description = "입금자명 (무통장입금일 때 필수)", example = "홍길동")
+        @Size(max = 60, message = "입금자명은 60자까지 입력할 수 있습니다.")
+        String depositorName
 ) {
 }

@@ -54,11 +54,20 @@ public class PaymentService {
     private final OrderRepository orderRepository;
     private final ObjectMapper objectMapper;
 
-    /** 화면이 결제창을 띄우기 위해 필요한 것. clientKey 는 공개해도 되는 값이다. */
+    /**
+     * 화면이 결제를 안내하기 위해 필요한 것. clientKey 는 공개해도 되는 값이다.
+     *
+     * <p>무통장 계좌도 함께 준다. 결제창을 띄우는 길과 계좌로 받는 길이 둘 다 「결제 설정」
+     * 이고, 주문서가 두 수단을 한 화면에서 보여주려면 둘을 한 번에 알아야 한다.
+     */
     @Transactional(readOnly = true)
     public PaymentConfigResponse config() {
+        PaymentConfigResponse.BankAccount account = orderService.bankAccount()
+                .map(a -> new PaymentConfigResponse.BankAccount(a.bank(), a.number(), a.holder()))
+                .orElse(null);
         return new PaymentConfigResponse(
-                tossClient.isConfigured(), tossClient.clientKey(), tossClient.isTestMode());
+                tossClient.isConfigured(), tossClient.clientKey(), tossClient.isTestMode(),
+                account, orderService.depositDueHours());
     }
 
     /**

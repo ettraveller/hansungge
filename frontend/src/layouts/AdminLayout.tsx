@@ -26,6 +26,8 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin/qnas', label: '문의 관리', minRole: 'OPERATOR' },
   { href: '/admin/notices', label: '공지 관리', minRole: 'OPERATOR' },
   { href: '/admin/policies', label: '환불규정', minRole: 'ADMIN' },
+  // 카드로 팔 수 없는 상품(순금·골드바·24K·시세 연동)이 전부 이 계좌로 들어온다.
+  { href: '/admin/settings/bank-account', label: '입금계좌', minRole: 'ADMIN' },
   { href: '/admin/events', label: '이벤트 관리', minRole: 'OPERATOR' },
   { href: '/admin/members', label: '회원관리', minRole: 'OPERATOR' },
   { href: '/admin/audit-logs', label: '감사로그', minRole: 'ADMIN' },

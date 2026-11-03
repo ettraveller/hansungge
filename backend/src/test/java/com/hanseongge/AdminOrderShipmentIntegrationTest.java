@@ -89,6 +89,10 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
             jdbcTemplate.update("DELETE FROM shipments");
             jdbcTemplate.update("DELETE FROM order_item_price_components");
             jdbcTemplate.update("DELETE FROM order_items");
+            // 결제 행이 주문을 참조한다. 먼저 지우지 않으면 앞선 시험이 남긴 결제 하나에
+            // 걸려 이 파일 전체가 무너진다 — 정리 실패는 시험 실패로 보이지 않아 찾기 어렵다.
+            jdbcTemplate.update("DELETE FROM payment_transactions");
+            jdbcTemplate.update("DELETE FROM payments");
             jdbcTemplate.update("DELETE FROM orders");
             jdbcTemplate.update("DELETE FROM audit_logs");
             jdbcTemplate.update("DELETE FROM users WHERE id >= 900000");

@@ -115,6 +115,112 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(order.get("orderNo").asText()).startsWith("HS");
     }
 
+    // =================================================================
+    // 결제수단 — 토스 입점 심사(2026-11-03)가 카드에서 제외한 품목
+    //
+    // 여기가 깨지면 심사 위반 거래가 PG 로 나간다. 상품을 잘못 등록해서가 아니라
+    // <b>규칙 자체가 사라져서</b> 그렇게 되는 경우를 막는 자리다.
+    // =================================================================
+
+    @Test
+    @DisplayName("순금(24K)은 카드로 주문할 수 없다 — 카드사가 온라인 거래를 제한하는 품목이다")
+    void pureGoldCannotBePaidByCard() throws Exception {
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 1);
+
+        MvcResult result = createOrderRaw("EASY_PAY", null);
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+        assertThat(result.getResponse().getContentAsString()).contains("무통장입금");
+    }
+
+    @Test
+    @DisplayName("은도 카드로 주문할 수 없다")
+    void silverCannotBePaidByCard() throws Exception {
+        long silver = seedProduct("SILVER", "FIXED", "50000");
+        onlyInCart(silver, 1);
+
+        assertThat(createOrderRaw("EASY_PAY", null).getResponse().getStatus()).isEqualTo(409);
+    }
+
+    @Test
+    @DisplayName("18K 라도 시세에 연동되면 카드로 주문할 수 없다 — 고정금액이 아니면 입점 불가다")
+    void marketLinkedCannotBePaidByCard() throws Exception {
+        long linked = seedProduct("GOLD_18K", "MARKET_LINKED", null);
+        onlyInCart(linked, 1);
+
+        assertThat(createOrderRaw("EASY_PAY", null).getResponse().getStatus()).isEqualTo(409);
+    }
+
+    @Test
+    @DisplayName("카드 가능 상품에 골드바가 한 줄 섞이면 주문 전체가 카드 불가가 된다")
+    void oneForbiddenLineBlocksTheWholeOrder() throws Exception {
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(optionId, 1);     // 18K 고정가 — 혼자면 카드로 된다
+        addToCart(gold24k, 1);
+
+        assertThat(createOrderRaw("EASY_PAY", null).getResponse().getStatus()).isEqualTo(409);
+    }
+
+    @Test
+    @DisplayName("무통장이면 금종·가격방식과 무관하게 주문된다 — 입금자명과 기한이 함께 남는다")
+    void bankTransferAcceptsAnything() throws Exception {
+        seedBankAccount();
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 2);
+
+        MvcResult result = createOrderRaw("BANK_TRANSFER", "김영희");
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+
+        JsonNode order = read(result);
+        assertThat(order.get("paymentMethod").asText()).isEqualTo("BANK_TRANSFER");
+        assertThat(order.get("depositorName").asText()).isEqualTo("김영희");
+        assertThat(order.get("depositDueAt").asText()).isNotBlank();
+        // 결제 전 상태의 문구가 다르다 — 「결제 진행 중」이면 이미 낸 것처럼 읽힌다
+        assertThat(order.get("statusLabel").asText()).isEqualTo("입금 대기");
+    }
+
+    @Test
+    @DisplayName("무통장인데 입금자명이 없으면 주문되지 않는다 — 들어온 돈을 어느 주문에 붙일지 알 수 없다")
+    void bankTransferNeedsDepositorName() throws Exception {
+        seedBankAccount();
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 1);
+
+        assertThat(createOrderRaw("BANK_TRANSFER", "   ").getResponse().getStatus()).isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("입금받을 계좌가 설정되지 않았으면 무통장 주문을 받지 않는다 — 입금할 곳 없는 주문을 만들지 않는다")
+    void bankTransferNeedsAccountConfigured() throws Exception {
+        jdbc.update("UPDATE system_settings SET value = '' WHERE key = 'BANK_ACCOUNT_NUMBER'");
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 1);
+
+        assertThat(createOrderRaw("BANK_TRANSFER", "김영희").getResponse().getStatus()).isEqualTo(503);
+    }
+
+    @Test
+    @DisplayName("카드 가능 상품도 무통장으로 받을 수 있다 — 막는 것은 반대 방향뿐이다")
+    void cardPayableCanAlsoUseBankTransfer() throws Exception {
+        seedBankAccount();
+        onlyInCart(optionId, 1);
+
+        MvcResult result = createOrderRaw("BANK_TRANSFER", "홍길동");
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(read(result).get("paymentMethod").asText()).isEqualTo("BANK_TRANSFER");
+    }
+
+    @Test
+    @DisplayName("장바구니가 알려 준다 — 카드로 결제할 수 있는 장바구니인가")
+    void cartTellsWhetherCardIsPossible() throws Exception {
+        onlyInCart(optionId, 1);
+        assertThat(readCart().get("cardPayable").asBoolean()).isTrue();
+
+        addToCart(seedProduct("GOLD_24K", "FIXED", "500000"), 1);
+        assertThat(readCart().get("cardPayable").asBoolean()).isFalse();
+    }
+
     @Test
     @DisplayName("주문서를 만들면 재고가 준다 — 장바구니는 아직 그대로다")
     void orderTakesStockButKeepsCart() throws Exception {
@@ -581,6 +687,62 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         return createOrderRaw(true);
     }
 
+    /** 결제수단과 입금자명을 지정해 주문한다. 무통장 경로를 확인할 때 쓴다. */
+    private MvcResult createOrderRaw(String paymentMethod, String depositorName) throws Exception {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of(
+                "receiverName", "홍길동",
+                "receiverPhone", "010-1234-5678",
+                "zipcode", "03187",
+                "address1", "서울특별시 종로구 돈화문로 00",
+                "withdrawalConsent", true,
+                "refundPolicyId", currentRefundPolicyId(),
+                "paymentMethod", paymentMethod));
+        if (depositorName != null) {
+            body.put("depositorName", depositorName);
+        }
+        return mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andReturn();
+    }
+
+    /** 장바구니를 비우고 주어진 상품 하나만 담는다. */
+    private void onlyInCart(long optionId, int quantity) throws Exception {
+        jdbc.update("DELETE FROM cart_items");
+        addToCart(optionId, quantity);
+    }
+
+    /** 금종과 가격방식을 지정해 상품을 세운다 — 결제수단 판정이 이 둘에서 나온다. */
+    private long seedProduct(String metalType, String priceType, String unitPrice) {
+        Long categoryId = jdbc.queryForObject(
+                "SELECT id FROM categories ORDER BY id LIMIT 1", Long.class);
+        jdbc.update("""
+                INSERT INTO products (category_id, name, metal_type, price_type, fixed_price,
+                                      labor_cost, weight_g, status, pricing_model)
+                VALUES (?, ?, ?::text, ?, ?::numeric, 0, 3.75, 'ON_SALE', 'SIMPLE')
+                """, categoryId, metalType + " " + priceType, metalType, priceType, unitPrice);
+        Long productId = jdbc.queryForObject(
+                "SELECT id FROM products ORDER BY id DESC LIMIT 1", Long.class);
+        jdbc.update("""
+                INSERT INTO product_options (product_id, name, stock, sort, active, is_default)
+                VALUES (?, '기본', 10, 0, TRUE, TRUE)
+                """, productId);
+        return jdbc.queryForObject("SELECT id FROM product_options ORDER BY id DESC LIMIT 1", Long.class);
+    }
+
+    private JsonNode readCart() throws Exception {
+        return read(mockMvc.perform(get("/api/v1/cart")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andReturn());
+    }
+
+    private void seedBankAccount() {
+        jdbc.update("UPDATE system_settings SET value = ? WHERE key = 'BANK_ACCOUNT_BANK'", "국민은행");
+        jdbc.update("UPDATE system_settings SET value = ? WHERE key = 'BANK_ACCOUNT_NUMBER'", "123456-78-901234");
+        jdbc.update("UPDATE system_settings SET value = ? WHERE key = 'BANK_ACCOUNT_HOLDER'", "주식회사 금한성");
+    }
+
     /** 환불규정 현재 판. 주문 요청은 "이 판에 동의했다" 를 함께 보낸다. */
     private long currentRefundPolicyId() {
         Long id = jdbc.queryForObject("SELECT max(id) FROM refund_policies", Long.class);
@@ -620,13 +782,21 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
                 .andReturn();
     }
 
-    /** 시세에 기대지 않도록 고정가 상품으로 세운다 — 주문 금액 단언이 시세 변동에 흔들리면 안 된다. */
+    /**
+     * 시세에 기대지 않도록 고정가 상품으로 세운다 — 주문 금액 단언이 시세 변동에 흔들리면 안 된다.
+     *
+     * <p><b>18K 고정가</b>로 둔다. 이 파일의 시험은 카드 결제 흐름이고, 카드로 팔 수 있는
+     * 상품은 18K·14K 고정가뿐이다 ({@code Product#isCardPayable}). 금종을 비워 두면
+     * 무통장 전용으로 떨어져 주문 생성부터 409 가 된다 — 시험이 막히는 것이 아니라
+     * 규칙이 제대로 걸리는 것이다.
+     */
     private long seedProduct(String unitPrice) {
         Long categoryId = jdbc.queryForObject(
                 "SELECT id FROM categories ORDER BY id LIMIT 1", Long.class);
         jdbc.update("""
-                INSERT INTO products (category_id, name, price_type, fixed_price, status, pricing_model)
-                VALUES (?, '테스트 골드바', 'FIXED', ?::numeric, 'ON_SALE', 'SIMPLE')
+                INSERT INTO products (category_id, name, metal_type, price_type, fixed_price,
+                                      status, pricing_model)
+                VALUES (?, '테스트 18K 팔찌', 'GOLD_18K', 'FIXED', ?::numeric, 'ON_SALE', 'SIMPLE')
                 """, categoryId, unitPrice);
         Long productId = jdbc.queryForObject(
                 "SELECT id FROM products ORDER BY id DESC LIMIT 1", Long.class);

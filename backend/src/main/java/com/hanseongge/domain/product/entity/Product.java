@@ -207,6 +207,37 @@ public class Product {
         touch(updatedBy);
     }
 
+    /**
+     * 카드·간편결제로 팔 수 있는 상품인가. <b>아니면 무통장입금 전용이다.</b>
+     *
+     * <h2>컬럼이 아니라 파생값인 이유</h2>
+     * 토스페이먼츠 입점 심사(2026-11-03 회신)가 아래를 카드 결제에서 제외했다.
+     * 카드사가 온라인 거래를 제한하는 품목이라 심사 자체가 통과되지 않는다.
+     *
+     * <ul>
+     *   <li>순금(24K)·순은·골드바 등 가공되지 않은 '바' 형태 — 금종으로 걸러진다</li>
+     *   <li>24K 상품 전부</li>
+     *   <li>시세에 연동되어 판매가가 변동하는 상품 — 고정금액이 아니면 입점 불가</li>
+     * </ul>
+     *
+     * <p>이것을 상품마다 고르는 칸으로 두면, 골드바 하나를 「카드 가능」으로 잘못
+     * 등록하는 순간 심사 위반이 된다. 그래서 금종과 가격방식에서 <b>파생</b>시킨다 —
+     * 운영자가 만질 수 있는 자리가 없다. 토스에 약속한 내용이 바로 그것이다.
+     *
+     * <p>{@code metalType} 이 없는 상품(금속을 적지 않은 기타 상품)은 무통장 전용으로
+     * 떨어진다. 모르는 것을 허용 쪽으로 기울이지 않는다 — 틀렸을 때 잃는 것이
+     * 입점 자격이다.
+     *
+     * <p>백금은 허용하지 않는다. 토스가 열어 준 범위는 「금·은을 가공한 주얼리,
+     * 14K·18K 까지」이고 백금은 그 안에 없다.
+     */
+    public boolean isCardPayable() {
+        if (metalType != MetalType.GOLD_18K && metalType != MetalType.GOLD_14K) {
+            return false;
+        }
+        return !priceType.isMarketLinked();
+    }
+
     private void applyPricing(ProductPricing pricing) {
         this.metalType = pricing.metalType();
         this.priceType = pricing.priceType();

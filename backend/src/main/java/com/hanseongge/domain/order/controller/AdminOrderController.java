@@ -89,6 +89,20 @@ public class AdminOrderController {
                 .orElseGet(ShipmentResponse::pending));
     }
 
+    // ---------- 입금 확인 (MANAGER 이상) ----------
+
+    @Operation(summary = "무통장 입금 확인",
+            description = "사람이 통장을 보고 누른다. 주문이 「결제 완료」로 넘어가고 "
+                    + "장바구니에서 그 상품들이 지워진다. 금액을 받지 않는다 — 실제 입금액 대조는 "
+                    + "통장에서 사람이 하고, 이 버튼은 「주문 금액대로 들어왔다」는 선언이다. "
+                    + "카드 주문에 호출하면 409.")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PostMapping("/{id}/confirm-deposit")
+    public ResponseEntity<OrderResponse> confirmDeposit(@PathVariable Long id,
+                                                        @AuthenticationPrincipal AdminPrincipal actor) {
+        return ResponseEntity.ok(adminOrderService.confirmDeposit(id, actor.loginId()));
+    }
+
     // ---------- 배송 처리 (MANAGER 이상) ----------
 
     @Operation(summary = "상품 준비 중으로",

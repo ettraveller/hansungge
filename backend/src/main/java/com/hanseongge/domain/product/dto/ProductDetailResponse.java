@@ -72,6 +72,18 @@ public record ProductDetailResponse(
                 example = "false")
         boolean madeToOrder,
 
+        /**
+         * 카드·간편결제로 살 수 있는 상품인가. false 면 <b>무통장입금 전용</b>이다.
+         *
+         * <p>장바구니에 담기 <b>전에</b> 알려야 한다. 주문서까지 가서야 "이 상품은
+         * 계좌로만 됩니다"를 보면, 카드로 사려던 사람은 거기서 멈추고 돌아간다.
+         *
+         * <p>판정은 상품이 스스로 한다 — 금종과 가격 방식에서 파생되고 운영자가 만질
+         * 수 없다 ({@link com.hanseongge.domain.product.entity.Product#isCardPayable()}).
+         */
+        @Schema(description = "카드·간편결제 가능. false 면 무통장입금 전용", example = "true")
+        boolean cardPayable,
+
         @Schema(description = "옵션 목록 (재고 수량은 비공개)")
         List<ProductOptionResponse> options,
 
@@ -97,6 +109,7 @@ public record ProductDetailResponse(
                 product.getPurity(),
                 product.getStatus(),
                 product.isMadeToOrder(),
+                product.isCardPayable(),
                 options,
                 prices);
     }

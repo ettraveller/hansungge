@@ -28,6 +28,19 @@ public enum OrderStatusGroup {
     /** 배송 — 떠났거나 도착했다 */
     SHIPPING(Set.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED)),
 
+    /**
+     * 배송 중 — 떠났고 아직 안 받았다.
+     *
+     * <p>{@link #SHIPPING} 안쪽을 둘로 가른 것이다. 마이페이지 요약은 「배송 중」과
+     * 「배송 완료」를 따로 세어 보여주는데, 그 숫자를 누르면 묶음이 {@code SHIPPING}
+     * 하나뿐이어서 둘을 합친 목록이 나왔다 — 「배송 중 1」을 눌렀는데 세 건이 뜬다.
+     * 세는 단위와 거르는 단위가 같아야 한다.
+     */
+    SHIPPED(Set.of(OrderStatus.SHIPPED)),
+
+    /** 배송 완료 — 받았다 */
+    DELIVERED(Set.of(OrderStatus.DELIVERED)),
+
     /** 취소·환불 */
     CANCELLED(Set.of(OrderStatus.CANCEL_REQUESTED, OrderStatus.CANCELLED,
             OrderStatus.REFUND_PENDING, OrderStatus.REFUNDED));

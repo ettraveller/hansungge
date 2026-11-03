@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
+import { DepositGuide } from '@/components/order/DepositGuide';
 import { ShipmentInfo } from '@/components/order/ShipmentInfo';
 import { useCancelOrder, useOrder } from '@/hooks/useOrder';
 import { ApiError } from '@/types/api';
@@ -34,6 +36,9 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
   const { data: order, isLoading, error } = useOrder(orderNo);
   const cancel = useCancelOrder();
   const [confirming, setConfirming] = useState(false);
+  // 주문서에서 막 넘어왔는가 (무통장). 제목을 「주문이 접수되었습니다」로 바꾼다 —
+  // 결제창을 거치지 않아 완료됐다는 느낌이 없으면 다시 주문하려 든다.
+  const justPlaced = useSearchParams().get('placed') === '1';
 
   if (isLoading) {
     return <p className={styles.loading}>불러오는 중…</p>;
@@ -50,8 +55,17 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
     );
   }
 
+  // 무통장 주문이 아직 입금 전인가. 입금이 확인되면(PAID) 안내가 사라지고
+  // 그 자리를 배송칸이 이어받는다 — 둘이 같이 뜰 일은 없다.
+  const awaitingDeposit =
+    order.paymentMethod === 'BANK_TRANSFER' &&
+    (order.status === 'ORDER_CREATED' || order.status === 'PAYMENT_PENDING');
+
   return (
     <div style={{ marginBottom: 60 }}>
+      {/* 무통장 주문자가 이 화면에 오는 이유는 계좌번호 하나다. 맨 위에 둔다. */}
+      {awaitingDeposit && <DepositGuide order={order} justPlaced={justPlaced} />}
+
       {/* 주문 상세 위에 둔다. 발송된 주문을 열어 보는 이유는 대개 "어디까지 왔나"
           하나라서, 상품 목록을 지나 내려가야 나오면 매번 한 동작씩 길어진다. */}
       <ShipmentInfo orderNo={order.orderNo} orderStatus={order.status} />

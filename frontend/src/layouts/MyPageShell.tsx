@@ -7,6 +7,8 @@ import type { ReactNode } from 'react';
 import { RequireMember } from '@/components/auth/RequireMember';
 import { useMyPageSummary } from '@/hooks/useInterest';
 import { useUserSession } from '@/hooks/useUserSession';
+import type { MyPageSummary } from '@/types/interest';
+import type { OrderStatusGroup } from '@/types/order';
 import { formatPhone } from '@/utils/format';
 import styles from '@/layouts/MyPageShell.module.css';
 
@@ -108,6 +110,29 @@ function SideNav() {
   );
 }
 
+/**
+ * 주문처리 현황.
+ *
+ * <p>주문이 거치는 순서 그대로 늘어놓는다. 전에는 「총 주문 · 결제 대기 · 준비·배송 중 ·
+ * 찜한 상품」 넷을 한 줄에 같은 크기로 놓았는데, 두 가지가 어긋났다 —
+ *
+ * <ul>
+ *   <li>「준비·배송 중」이 두 단계를 합쳐, 정작 묻고 싶은 <b>"떠났나"</b>에 답하지 못했다.
+ *   <li>찜한 상품이 주문 상태 사이에 끼어, 넷이 서로 관계없는 숫자 넷으로 읽혔다.
+ * </ul>
+ *
+ * <p>숫자는 {@code ?group=} 을 달고 주문 목록으로 간다. 그 묶음은 서버가 세는 단위와
+ * 같다 — 「배송 중 1」을 눌렀는데 세 건이 뜨면 숫자를 믿지 않게 된다.
+ */
+const FLOW: { name: string; group: OrderStatusGroup; of: (s: MyPageSummary) => number }[] = [
+  { name: '결제 대기', group: 'AWAITING_PAYMENT', of: (s) => s.awaitingPayment },
+  // 「배송 준비」가 아니라 「상품 준비」다 — 주문 줄에 찍히는 상태가 "상품 준비 중"이다.
+  // 숫자와 그 숫자를 눌러 들어간 목록이 서로 다른 말을 쓰면 같은 것인지 알 수 없다.
+  { name: '상품 준비', group: 'PREPARING', of: (s) => s.preparing },
+  { name: '배송 중', group: 'SHIPPED', of: (s) => s.shipping },
+  { name: '배송 완료', group: 'DELIVERED', of: (s) => s.delivered },
+];
+
 function SummaryBar() {
   const { data } = useMyPageSummary();
   // 이름·번호는 이미 세션에 있다. 요약 응답에 또 담으면 두 값이 갈라진다.
@@ -116,33 +141,49 @@ function SummaryBar() {
     return null;
   }
 
-  const stats: { name: string; value: number; href?: string }[] = [
-    { name: '총 주문', value: data.orderCount, href: '/mypage/orders' },
-    { name: '결제 대기', value: data.awaitingPayment, href: '/mypage/orders' },
-    { name: '준비·배송 중', value: data.preparing + data.shipping, href: '/mypage/orders' },
-    { name: '찜한 상품', value: data.wishlistCount, href: '/mypage/wishlist' },
-  ];
-
   return (
     <div className={styles.summary}>
       <div className={styles.who}>
-        <div className={styles.whoName}>{user?.name ?? data.name} 님</div>
-        <div className={styles.whoSub}>{formatPhone(user?.phone) || ''}</div>
+        <span className={styles.whoName}>{user?.name ?? data.name} 님</span>
+        <span className={styles.whoSub}>{formatPhone(user?.phone) || ''}</span>
+        {/* 총계는 단계가 아니다 — 흐름 안에 「전체 14」를 끼우면 결제 대기 앞 단계로
+            읽힌다. 찜한 상품은 주문 상태와 아무 관계가 없다. 둘 다 작게 옆에 둔다. */}
+        <span className={styles.whoLinks}>
+          <Link href="/mypage/orders" className={styles.whoLink}>
+            주문 {data.orderCount}
+          </Link>
+          <Link href="/mypage/wishlist" className={styles.whoLink}>
+            찜한 상품 {data.wishlistCount}
+          </Link>
+        </span>
       </div>
 
-      {stats.map((stat) =>
-        stat.href ? (
-          <Link key={stat.name} href={stat.href} className={`${styles.stat} ${styles.statLink}`}>
-            <div className={styles.statName}>{stat.name}</div>
-            <div className={styles.statValue}>{stat.value}</div>
+      <div className={styles.flow}>
+        <ol className={styles.steps} aria-label="주문처리 현황">
+          {FLOW.map((step, index) => (
+            <li key={step.group} className={styles.step}>
+              {index > 0 && (
+                <span className={styles.arrow} aria-hidden="true">
+                  →
+                </span>
+              )}
+              <Link href={`/mypage/orders?group=${step.group}`} className={styles.stat}>
+                <span className={styles.statName}>{step.name}</span>
+                <span className={styles.statValue}>{step.of(data)}</span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+
+        {/* 취소·환불은 단계가 아니라 흐름에서 빠져나간 주문이다. 화살표 뒤가 아니라
+            선 바깥에 둔다 — 안에 두면 배송 완료 다음 단계로 읽힌다. */}
+        <div className={styles.aside}>
+          <Link href="/mypage/orders?group=CANCELLED" className={styles.stat}>
+            <span className={styles.statName}>취소·환불</span>
+            <span className={styles.statValue}>{data.cancelled}</span>
           </Link>
-        ) : (
-          <div key={stat.name} className={styles.stat}>
-            <div className={styles.statName}>{stat.name}</div>
-            <div className={styles.statValue}>{stat.value}</div>
-          </div>
-        ),
-      )}
+        </div>
+      </div>
     </div>
   );
 }

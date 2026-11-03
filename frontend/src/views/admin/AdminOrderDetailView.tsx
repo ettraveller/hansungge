@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
@@ -8,7 +9,7 @@ import { Panel } from '@/components/admin/Panel';
 import { ShipmentPanel } from '@/components/admin/orders/ShipmentPanel';
 import { StatusBadge, type StatusTone } from '@/components/ui/StatusBadge';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
-import { useAdminOrder, useMarkPreparing } from '@/hooks/admin/useOrders';
+import { useAdminOrder, useConfirmDeposit, useMarkPreparing } from '@/hooks/admin/useOrders';
 import { ApiError } from '@/types/api';
 import type { OrderStatus } from '@/types/order';
 import { formatDateTime, formatGram, formatKrw } from '@/utils/format';
@@ -30,6 +31,22 @@ export function AdminOrderDetailView({ orderId }: { orderId: number }) {
   const canEdit = can('MANAGER');
   const { data: order, isLoading, error } = useAdminOrder(orderId);
   const prepare = useMarkPreparing();
+  const confirmDeposit = useConfirmDeposit();
+
+  // 무통장 주문이 아직 입금 전인가.
+  const awaitingDeposit =
+    order?.paymentMethod === 'BANK_TRANSFER' &&
+    (order.status === 'ORDER_CREATED' || order.status === 'PAYMENT_PENDING');
+  /**
+   * 안내한 기한이 지났는가. 지나도 아무 일도 일어나지 않는다 — 사람이 보라고 적는다.
+   *
+   * <p>「지금」을 화면을 연 순간으로 한 번만 붙잡는다. 그릴 때마다 {@code Date.now()}
+   * 를 부르면 같은 입력에 다른 결과가 나오고, 리렌더 시점에 따라 딱지가 깜빡인다.
+   * 기한은 몇 시간 단위라 열어 둔 사이에 넘어가는 순간을 실시간으로 잡을 이유가 없다.
+   */
+  const [openedAt] = useState(() => Date.now());
+  const depositOverdue =
+    order?.depositDueAt != null && new Date(order.depositDueAt).getTime() < openedAt;
 
   if (isLoading) {
     return (
@@ -77,6 +94,56 @@ export function AdminOrderDetailView({ orderId }: { orderId: number }) {
             ? prepare.error.message
             : '상태를 바꾸지 못했습니다.'}
         </Alert>
+      )}
+
+      {confirmDeposit.error && (
+        <Alert tone="danger">
+          {confirmDeposit.error instanceof ApiError
+            ? confirmDeposit.error.message
+            : '입금을 확인하지 못했습니다.'}
+        </Alert>
+      )}
+
+      {/* 무통장 주문이 아직 입금 전이다.
+
+          확인 버튼을 누르기 전에 <b>대조할 것</b>을 같은 화면에 모아 둔다 —
+          입금자명과 금액. 통장을 보면서 이 둘을 맞춰 보는 것이 이 화면에서 하는
+          일의 전부인데, 값이 아래 품목표에 흩어져 있으면 스크롤하며 외워야 한다. */}
+      {canEdit && awaitingDeposit && (
+        <Panel
+          title="입금 확인"
+          note="통장에 들어온 금액과 입금자명을 대조한 뒤 누른다. 누르면 결제 완료가 되고 고객 화면에서 입금 안내가 사라진다."
+        >
+          <dl className={styles.depositRows}>
+            <div>
+              <dt>입금자명</dt>
+              <dd className={styles.strong}>{order.depositorName ?? '-'}</dd>
+            </div>
+            <div>
+              <dt>입금 금액</dt>
+              <dd className={`${styles.strong} ${styles.num}`}>{formatKrw(order.totalAmount)}</dd>
+            </div>
+            <div>
+              <dt>안내한 기한</dt>
+              <dd>
+                {formatDateTime(order.depositDueAt)}
+                {/* 기한이 지나도 주문은 그대로다. 자동취소를 두지 않았다 —
+                    입금하려는 사이에 취소되면 보낸 돈이 갈 곳을 잃는다. */}
+                {depositOverdue && <span className={styles.overdue}>기한 지남</span>}
+              </dd>
+            </div>
+          </dl>
+
+          <div className={styles.formActions}>
+            <Button
+              variant="primary"
+              disabled={confirmDeposit.isPending}
+              onClick={() => confirmDeposit.mutate(orderId)}
+            >
+              {confirmDeposit.isPending ? '처리 중…' : '입금 확인'}
+            </Button>
+          </div>
+        </Panel>
       )}
 
       {/* 결제가 끝났는데 아직 준비 전이면, 준비 중으로 넘기는 길을 둔다.

@@ -100,6 +100,17 @@ export interface ProductDetail {
    * 철회 제한만 알리고 기간을 빼면 PG 심사에서 걸린다.
    */
   madeToOrder: boolean;
+  /**
+   * 카드·간편결제로 살 수 있는 상품인가. false 면 <b>무통장입금 전용</b>이다.
+   *
+   * <p>순금·순은·골드바·24K·시세 연동 상품은 카드사가 온라인 거래를 제한해 PG 심사를
+   * 통과하지 못한다 (2026-11-03 토스페이먼츠 회신). 판정은 서버가 금종과 가격방식에서
+   * 내린다 — 화면에서 다시 따지지 않는다.
+   *
+   * <p>담기 <b>전에</b> 알려야 한다. 주문서까지 가서야 알면 카드로 사려던 사람은
+   * 거기서 멈추고 돌아간다.
+   */
+  cardPayable: boolean;
   options: ProductOption[];
   prices: ProductPrice[];
 }

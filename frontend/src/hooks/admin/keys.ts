@@ -47,6 +47,9 @@ export const adminKeys = {
 
   categories: () => [...adminKeys.all, 'categories'] as const,
 
+  settings: () => [...adminKeys.all, 'settings'] as const,
+  bankAccount: () => [...adminKeys.settings(), 'bank-account'] as const,
+
   qnas: () => [...adminKeys.all, 'qnas'] as const,
   qnaList: (search: AdminQnaSearch) => [...adminKeys.qnas(), 'list', search] as const,
   qnaUnansweredCount: () => [...adminKeys.qnas(), 'unanswered-count'] as const,

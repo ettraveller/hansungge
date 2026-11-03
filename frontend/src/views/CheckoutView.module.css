@@ -495,6 +495,114 @@
   margin-top: 14px;
 }
 
+/* ---------- 결제수단 ---------- */
+
+/* 고를 것이 없을 때 그 이유. 없으면 「카드가 안 뜬다」가 고장으로 읽힌다 */
+.methodWhy {
+  margin: -4px 0 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--gray);
+}
+
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.method {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* 손가락 목표 크기. 라디오 칸은 글자만 누르려다 빗나가기 쉽다 */
+  min-height: 52px;
+  padding: 0 14px;
+  font-size: 14px;
+  color: var(--dark);
+  cursor: pointer;
+}
+
+.method + .method {
+  border-top: 1px solid var(--line);
+}
+
+.method:has(input:checked) {
+  background: var(--light-gray);
+}
+
+.method:has(input:disabled) {
+  color: var(--ink-400);
+  cursor: not-allowed;
+}
+
+.methodName {
+  font-weight: 600;
+}
+
+.methodNote {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--ink-400);
+  text-align: right;
+}
+
+/* ---------- 무통장 입금 안내 ---------- */
+
+.deposit {
+  margin-top: 16px;
+}
+
+.depositAccount {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--light-gray);
+  border-radius: var(--radius-sm);
+}
+
+.depositAccount > div {
+  display: flex;
+  gap: 12px;
+}
+
+.depositAccount > div + div {
+  margin-top: 7px;
+}
+
+.depositAccount dt {
+  flex: none;
+  width: 64px;
+  font-size: 13px;
+  color: var(--gray);
+}
+
+.depositAccount dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dark);
+  /* 계좌번호는 눈으로 받아 적는 값이다 — 자릿수가 흔들리면 안 된다 */
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--gray);
+}
+
+.depositNote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--gray);
+}
+
 /* ---------- 아래 고정 결제바 ---------- */
 
 .payBar {

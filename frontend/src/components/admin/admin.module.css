@@ -286,6 +286,44 @@
   align-items: center;
 }
 
+/* ---------- 입금 확인 ----------
+   통장과 대조할 값(입금자명·금액)을 버튼 바로 위에 모은다. 아래 품목표에
+   흩어져 있으면 스크롤하며 외워야 하고, 외우다 틀리면 돈이 걸린다. */
+.depositRows {
+  margin: 0 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+}
+
+.depositRows > div {
+  min-width: 0;
+}
+
+.depositRows dt {
+  font-size: 12px;
+  color: var(--gray);
+  margin-bottom: 3px;
+}
+
+.depositRows dd {
+  margin: 0;
+  font-size: 15px;
+  color: var(--dark);
+}
+
+/* 기한이 지났다는 표시일 뿐, 아무 일도 일어나지 않는다 — 자동취소가 없다.
+   사람이 보고 연락하거나 취소하라고 적는다. */
+.overdue {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--light-gray);
+  font-size: 11.5px;
+  color: var(--gray);
+  vertical-align: 2px;
+}
+
 /* ---------- 버튼 ---------- */
 .btn {
   display: inline-flex;

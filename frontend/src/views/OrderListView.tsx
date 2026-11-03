@@ -1,17 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
 import { Toast } from '@/components/ui/Toast';
 import { MyPageShell, myPageStyles as shell } from '@/layouts/MyPageShell';
 import { useReorder } from '@/hooks/useCart';
-import { useMyPageSummary } from '@/hooks/useInterest';
 import { useOrders } from '@/hooks/useOrder';
 import { ApiError } from '@/types/api';
 import type { Order, OrderStatusGroup } from '@/types/order';
 import { formatDateTime, formatKrw } from '@/utils/format';
+import { mediaUrl } from '@/utils/media';
 import styles from '@/views/OrderListView.module.css';
 
 /**
@@ -24,17 +25,34 @@ import styles from '@/views/OrderListView.module.css';
 /**
  * 상태 묶음. 고객은 'PREPARING' 과 'PAID' 를 구분해 생각하지 않는다.
  *
- * <p>거르기는 <b>서버</b>가 한다. 예전에는 받은 한 장(20건)을 화면에서 걸렀는데, 탭의
- * 숫자는 서버가 센 총계라 둘이 어긋났다 — "결제 대기 3" 을 눌렀는데 목록이 비는 일이
- * 생긴다(그 3건이 다음 장에 있을 때). 값은 백엔드 OrderStatusGroup 과 같아야 한다.
+ * <p>거르기는 <b>서버</b>가 한다. 예전에는 받은 한 장(20건)을 화면에서 걸렀는데, 위
+ * 요약 줄의 숫자는 서버가 센 총계라 둘이 어긋났다 — "결제 대기 3" 을 눌렀는데 목록이
+ * 비는 일이 생긴다(그 3건이 다음 장에 있을 때). 값은 백엔드 OrderStatusGroup 과 같아야 한다.
+ *
+ * <p>배송을 「배송 중」과 「배송 완료」로 갈라 둔다. 요약 줄이 둘을 따로 세는데 탭이
+ * 하나면, 「배송 중 3」을 눌러 들어온 목록에 배송 완료까지 섞여 숫자가 틀려 보인다.
+ *
+ * <p>탭에는 숫자를 적지 않는다 — 바로 위 요약 줄이 같은 여섯 개를 같은 숫자로 이미
+ * 보여 준다. 같은 표가 두 번 있으면 상태 여섯 개가 열둘로 보인다.
  */
 const FILTERS: { key: OrderStatusGroup; name: string }[] = [
   { key: 'ALL', name: '전체' },
   { key: 'AWAITING_PAYMENT', name: '결제 대기' },
-  { key: 'PREPARING', name: '준비 중' },
-  { key: 'SHIPPING', name: '배송' },
+  { key: 'PREPARING', name: '상품 준비' },
+  { key: 'SHIPPED', name: '배송 중' },
+  { key: 'DELIVERED', name: '배송 완료' },
   { key: 'CANCELLED', name: '취소·환불' },
 ];
+
+/**
+ * 주소의 {@code ?group=} → 탭.
+ *
+ * <p>요약 줄의 숫자가 이 주소로 들어온다. 모르는 값이면 전체로 떨어뜨린다 — 주소를 손으로
+ * 고친 사람에게 빈 화면을 보여줄 이유가 없다.
+ */
+function parseGroup(value: string | null): OrderStatusGroup {
+  return FILTERS.some((f) => f.key === value) ? (value as OrderStatusGroup) : 'ALL';
+}
 
 /**
  * 기간 버튼. 삼성금거래소·네이버 등 국내 쇼핑몰이 쓰는 묶음과 같게 둔다.
@@ -102,8 +120,33 @@ export function OrderListView() {
 }
 
 function OrderList() {
-  const [page, setPage] = useState(0);
-  const [filter, setFilter] = useState<OrderStatusGroup>('ALL');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  /**
+   * 상태 탭은 <b>주소</b>가 쥐고 있다 — 화면 안의 state 가 아니다.
+   *
+   * <p>요약 줄(「배송 중 1」)이 이 화면 <b>위에</b> 있다. 그래서 주문 목록을 보는 중에도
+   * 눌린다. state 로 들고 있으면 주소만 바뀌고 컴포넌트는 그대로 살아 있어 탭이
+   * 움직이지 않는다 — 눌렀는데 아무 일도 일어나지 않는다.
+   *
+   * <p>덤으로 주소를 그대로 보내 줄 수 있고, 요약 줄에서 눌러 들어왔으면 뒤로가기가
+   * 원래 보던 곳으로 돌려 준다.
+   */
+  const filter = parseGroup(searchParams.get('group'));
+
+  /**
+   * 지금 보고 있는 장 — <b>어느 탭의</b> 몇 번째 장인지까지 함께 들고 있다.
+   *
+   * <p>탭은 주소가 쥐고 있어서 이 화면이 살아 있는 동안에도 바뀐다(요약 줄). 장 번호만
+   * 따로 두면 3페이지를 보다 다른 탭으로 들어왔을 때 그 탭의 3페이지로 떨어져, 결과가
+   * 한 장뿐이면 빈 화면이 된다. 탭이 달라진 순간 첫 장으로 <b>읽는다</b> —
+   * effect 로 뒤늦게 되돌리지 않는다. 그러면 빈 화면이 한 번 스쳐 지나간다.
+   */
+  const [paging, setPaging] = useState({ group: filter, page: 0 });
+  const page = paging.group === filter ? paging.page : 0;
+  const goPage = (next: number) => setPaging({ group: filter, page: Math.max(next, 0) });
+
   const [period, setPeriod] = useState('all');
   // 직접 고른 날짜. 버튼을 누르면 여기도 같이 채워 달력과 버튼이 어긋나지 않게 한다.
   const [from, setFrom] = useState('');
@@ -122,13 +165,18 @@ function OrderList() {
     from: rangeInvalid ? undefined : startOfDay(from || undefined),
     to: rangeInvalid ? undefined : endOfDay(to || undefined),
   });
-  const { data: summary } = useMyPageSummary();
 
   // 조건을 바꾸면 첫 장으로. 3페이지를 보다 거르면 결과가 한 장뿐이라 빈 화면이 된다.
   const change = (next: () => void) => {
     next();
-    setPage(0);
+    goPage(0);
   };
+
+  const pickFilter = (key: OrderStatusGroup) =>
+    // replace 다 — 탭을 다섯 번 누른 사람이 뒤로가기를 다섯 번 눌러야 나가는 일이 없게.
+    router.replace(key === 'ALL' ? '/mypage/orders' : `/mypage/orders?group=${key}`, {
+      scroll: false,
+    });
 
   const pickPeriod = (key: string, days: number | null) =>
     change(() => {
@@ -158,16 +206,6 @@ function OrderList() {
 
   const shown = data?.content ?? [];
 
-  // 탭의 숫자는 서버가 센 총계다. 기간을 걸어도 이 숫자는 바뀌지 않는다 —
-  // "전체 기간에 이만큼 있다"는 안내이고, 목록은 고른 기간만 보여 준다.
-  const counts: Record<OrderStatusGroup, number | undefined> = {
-    ALL: summary?.orderCount,
-    AWAITING_PAYMENT: summary?.awaitingPayment,
-    PREPARING: summary?.preparing,
-    SHIPPING: summary ? summary.shipping + summary.delivered : undefined,
-    CANCELLED: summary?.cancelled,
-  };
-
   return (
     <>
       <div className={shell.tabs} role="tablist" aria-label="주문 상태">
@@ -178,10 +216,12 @@ function OrderList() {
             role="tab"
             aria-selected={f.key === filter}
             className={f.key === filter ? `${shell.tab} ${shell.tabOn}` : shell.tab}
-            onClick={() => change(() => setFilter(f.key))}
+            onClick={() => pickFilter(f.key)}
           >
+            {/* 숫자를 붙이지 않는다. 바로 위 「주문처리 현황」이 같은 다섯 개를 같은 숫자로
+                이미 보여 준다 — 40px 떨어진 곳에 같은 표가 두 번 있으면 둘 중 어느 것을
+                봐야 하는지 생각하게 되고, 그 사이 상태 다섯 개가 열 개로 보인다. */}
             {f.name}
-            {counts[f.key] != null && <span className={shell.tabCount}>{counts[f.key]}</span>}
           </button>
         ))}
       </div>
@@ -267,7 +307,7 @@ function OrderList() {
             type="button"
             className={shell.pill}
             disabled={data.first}
-            onClick={() => setPage((p) => Math.max(p - 1, 0))}
+            onClick={() => goPage(page - 1)}
           >
             이전
           </button>
@@ -278,7 +318,7 @@ function OrderList() {
             type="button"
             className={shell.pill}
             disabled={data.last}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => goPage(page + 1)}
           >
             다음
           </button>
@@ -297,6 +337,8 @@ function OrderRow({
 }) {
   const item = order.items[0];
   const reorder = useReorder();
+  // 여러 건이면 첫 상품의 사진이다 — 이름도 "첫 상품 외 N건" 으로 같은 기준을 쓴다.
+  const thumbUrl = mediaUrl(item?.thumbnailKey);
 
   /**
    * 같은 상품을 다시 담는다.
@@ -339,13 +381,25 @@ function OrderRow({
       </div>
 
       <div className={styles.body}>
-        {/* 상품 사진 자리. 주문 항목은 주문 당시를 복사한 스냅샷이라 이미지 키를 들고
-                있지 않다 — 넣으려면 스냅샷에 키를 추가하는 마이그레이션이 먼저다 */}
-        <div className={styles.thumb} aria-hidden="true">
-          상품
-          <br />
-          사진
-        </div>
+        {/* 사진은 지금 상품의 것이다(스냅샷 아님). 사진이 없는 상품에는 글씨를 적어 둔다 —
+            빈 네모는 "안 뜬다"로 읽히고, 칸을 빼면 줄 높이가 달라져 목록이 들쭉날쭉해진다. */}
+        <Link
+          href={`/mypage/orders/${order.orderNo}`}
+          className={styles.thumb}
+          aria-hidden="true"
+          tabIndex={-1}
+        >
+          {thumbUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className={styles.photo} src={thumbUrl} alt="" loading="lazy" />
+          ) : (
+            <>
+              상품
+              <br />
+              사진
+            </>
+          )}
+        </Link>
 
         <div className={styles.info}>
           <div className={styles.name}>{order.orderName}</div>

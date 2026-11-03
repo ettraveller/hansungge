@@ -60,6 +60,10 @@ export function useMarkPreparing() {
   return useOrderMutation((id: number) => ordersApi.markPreparing(id));
 }
 
+export function useConfirmDeposit() {
+  return useOrderMutation((id: number) => ordersApi.confirmDeposit(id));
+}
+
 export function useShip() {
   return useOrderMutation(
     ({ id, trackingNo, carrier }: { id: number; trackingNo: string; carrier?: Carrier }) =>

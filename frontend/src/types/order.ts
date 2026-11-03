@@ -37,6 +37,13 @@ export interface OrderItem {
   finalUnitPrice: number;
   quantity: number;
   finalAmount: number;
+  /**
+   * 대표이미지 키. 금액·상품명과 달리 <b>스냅샷이 아니다</b> — 지금 상품의 사진이다.
+   *
+   * 사진까지 굳혀 두면 상품 사진을 바꿀 때마다 지나간 주문이 옛 사진에 묶인다.
+   * 상품이 지워졌거나 사진이 없으면 없다.
+   */
+  thumbnailKey?: string | null;
 }
 
 export interface Order {
@@ -63,7 +70,28 @@ export interface Order {
   orderedAt: string;
   payable: boolean;
   cancellable: boolean;
+
+  /** 고객이 고른 결제수단 */
+  paymentMethod: PaymentMethod;
+  /** 통장에 찍히는 입금자명. 무통장 주문에만 있다 — 주문자와 다를 수 있다 */
+  depositorName?: string | null;
+  /** 입금 안내 기한. <b>지나도 자동취소하지 않는다</b> — 안내용이다 */
+  depositDueAt?: string | null;
 }
+
+/**
+ * 결제수단. 백엔드 PaymentMethod 와 값이 같아야 한다.
+ *
+ * <p>무엇을 고를 수 있는지는 <b>서버가 정한다</b> ({@link Cart.cardPayable}).
+ * 순금·순은·골드바·24K·시세 연동 상품은 카드사가 온라인 거래를 제한해 PG 심사를
+ * 통과하지 못한다 (2026-11-03 토스페이먼츠 회신).
+ */
+export type PaymentMethod = 'EASY_PAY' | 'BANK_TRANSFER';
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  EASY_PAY: '간편결제',
+  BANK_TRANSFER: '무통장입금',
+};
 
 /** 배송 상태. 백엔드 ShipmentStatus 와 값이 같아야 한다. */
 export type ShipmentStatus = 'PENDING' | 'SHIPPED' | 'IN_TRANSIT' | 'DELIVERED';
@@ -113,12 +141,19 @@ export interface TrackingStep {
   what?: string | null;
 }
 
-/** 주문 상태 묶음. 백엔드 OrderStatusGroup 과 값이 같아야 한다 */
+/**
+ * 주문 상태 묶음. 백엔드 OrderStatusGroup 과 값이 같아야 한다.
+ *
+ * `SHIPPING` 은 `SHIPPED` + `DELIVERED` 다. 마이페이지 요약이 배송 중과 배송 완료를
+ * 따로 세므로 거르는 쪽에도 둘이 따로 있어야 한다 — 숫자와 목록이 어긋나지 않게.
+ */
 export type OrderStatusGroup =
   | 'ALL'
   | 'AWAITING_PAYMENT'
   | 'PREPARING'
   | 'SHIPPING'
+  | 'SHIPPED'
+  | 'DELIVERED'
   | 'CANCELLED';
 
 export interface OrderListQuery {
@@ -140,6 +175,13 @@ export interface OrderPage {
   last: boolean;
 }
 
+/** 무통장입금 받을 계좌. 설정 전이면 서버가 null 로 준다 */
+export interface BankAccount {
+  bank: string;
+  number: string;
+  holder: string;
+}
+
 export interface OrderCreateInput {
   /** 청약철회 제한 안내 동의. 서버가 false 면 거절한다 */
   withdrawalConsent: boolean;
@@ -151,6 +193,10 @@ export interface OrderCreateInput {
   address1: string;
   address2?: string;
   orderMemo?: string;
+  /** 결제수단. 허용 여부는 서버가 다시 따진다 — 안 되는 조합이면 409 */
+  paymentMethod: PaymentMethod;
+  /** 입금자명. 무통장일 때 필수 */
+  depositorName?: string;
 }
 
 /**
@@ -163,6 +209,14 @@ export interface PaymentConfig {
   clientKey: string;
   /** 테스트 키인가 — 화면에 "실제 결제가 아닙니다" 안내를 띄운다 */
   testMode: boolean;
+  /**
+   * 무통장입금 받을 계좌. 설정 전이면 null 이고, 그때는 무통장 주문을 받지 않는다.
+   *
+   * <p>주문마다 들고 다니지 않는다 — 가게의 계좌는 주문의 속성이 아니라 설정이다.
+   */
+  bankAccount?: BankAccount | null;
+  /** 입금 안내 기한(시간). 지나도 자동취소하지 않는다 */
+  depositDueHours: number;
 }
 
 /**

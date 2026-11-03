@@ -67,6 +67,24 @@ public enum ErrorCode {
     /** 결제 키가 비어 있다. 운영에서 이 코드가 보이면 환경변수를 빠뜨린 것이다. */
     PAYMENT_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 결제를 진행할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
+    // --- 무통장입금 (2026-11-03, 토스 입점 심사로 카드 제외된 품목) ---
+    /**
+     * 카드로 팔 수 없는 상품을 카드로 주문하려 했다.
+     *
+     * <p>화면이 결제수단을 고르지만 <b>허용 여부는 서버가 정한다.</b> 순금·순은·
+     * 골드바·24K·시세 연동 상품은 카드사가 온라인 거래를 제한하는 품목이라,
+     * 요청을 그대로 받으면 심사 위반 거래가 PG 로 나간다.
+     */
+    ORDER_CARD_NOT_ALLOWED(HttpStatus.CONFLICT,
+            "장바구니에 무통장입금으로만 구매할 수 있는 상품이 있습니다. 결제수단을 무통장입금으로 선택해 주세요."),
+    /** 무통장 주문인데 입금자명이 없다. 없으면 들어온 돈을 어느 주문에 붙일지 알 수 없다. */
+    ORDER_DEPOSITOR_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "입금자명을 입력해 주세요."),
+    /** 카드 주문에 「입금 확인」을 눌렀다. 관리자 화면이 잘못 부른 것이다. */
+    ORDER_NOT_BANK_TRANSFER(HttpStatus.CONFLICT, "무통장입금 주문이 아닙니다."),
+    /** 입금받을 계좌가 설정되어 있지 않다. 운영에서 보이면 관리자 설정에 계좌를 넣어야 한다. */
+    BANK_ACCOUNT_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE,
+            "지금은 무통장입금으로 주문할 수 없습니다. 고객센터로 문의해 주세요."),
+
     // --- 인증 (STEP 4~5) ---
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다. 다시 로그인해 주세요."),
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."),

@@ -17,9 +17,10 @@ import { RefundPolicyConsent } from '@/components/checkout/RefundPolicyConsent';
 import { useCart } from '@/hooks/useCart';
 import { policyKeys, useRefundPolicy } from '@/hooks/usePolicy';
 import { useAddresses, useCreateAddress } from '@/hooks/useAddresses';
-import { useCreateOrder } from '@/hooks/useOrder';
+import { useCreateOrder, usePaymentConfig } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
+import type { PaymentMethod } from '@/types/order';
 import { formatKrw, formatPhoneInput } from '@/utils/format';
 import styles from '@/views/CheckoutView.module.css';
 
@@ -45,6 +46,7 @@ export function CheckoutView() {
   const queryClient = useQueryClient();
   const refundPolicy = useRefundPolicy();
   const { data: addresses, isLoading: addressesLoading } = useAddresses();
+  const paymentConfig = usePaymentConfig();
 
   // 직접 입력 중일 때의 값. 저장해 둔 것을 고른 동안에는 쓰이지 않는다.
   const [form, setForm] = useState<AddressForm>(EMPTY_ADDRESS);
@@ -60,6 +62,16 @@ export function CheckoutView() {
    */
   const [agreedPolicyId, setAgreedPolicyId] = useState<number | null>(null);
   const [orderMemo, setOrderMemo] = useState('');
+
+  /**
+   * 고른 결제수단. null = 아직 고르지 않았다 → 고를 수 있는 쪽으로 떨어진다.
+   *
+   * <p>상태를 effect 로 맞추지 않는다. 장바구니가 다시 불려올 때마다 덮어쓰면,
+   * 무통장을 고른 사람이 카드로 되돌아간다 — 결제 직전 화면에서 그것은 알아차리기
+   * 어려운 종류의 오류다. 고르지 않았을 때만 기본값으로 읽는다.
+   */
+  const [methodChoice, setMethodChoice] = useState<PaymentMethod | null>(null);
+  const [depositorName, setDepositorName] = useState('');
 
   // 회원 정보를 기본값으로 넣어 둔다. 대부분 자기 이름·번호로 받는다.
   const [prefilled, setPrefilled] = useState(false);
@@ -98,6 +110,23 @@ export function CheckoutView() {
   const withdrawalConsent =
     refundPolicy.data != null && agreedPolicyId === refundPolicy.data.id;
 
+  /**
+   * 카드로 결제할 수 있는 장바구니인가. <b>서버가 판정한 값을 그대로 쓴다.</b>
+   *
+   * <p>순금·순은·골드바·24K·시세 연동 상품은 카드사가 온라인 거래를 제한해 PG 심사를
+   * 통과하지 못한다(2026-11-03 토스 회신). 화면에서 금종을 보고 다시 따지면 두 판정이
+   * 갈라지고, 갈라진 쪽이 화면이면 고객은 되지도 않는 버튼을 누르게 된다.
+   *
+   * <p>장바구니를 아직 못 받았으면 카드 불가로 둔다 — 모르는 것을 허용 쪽으로
+   * 기울이지 않는다.
+   */
+  const cardPayable = cart?.cardPayable === true;
+  // 계좌가 설정되지 않았으면 무통장을 내걸 수 없다. 눌러야만 실패를 아는 칸을 만들지 않는다.
+  const bankAccount = paymentConfig.data?.bankAccount ?? null;
+  const paymentMethod: PaymentMethod =
+    methodChoice ?? (cardPayable ? 'EASY_PAY' : 'BANK_TRANSFER');
+  const isBankTransfer = paymentMethod === 'BANK_TRANSFER';
+
   const canSubmit =
     orderableItems.length > 0 &&
     address.receiverName.trim() !== '' &&
@@ -105,6 +134,7 @@ export function CheckoutView() {
     address.zipcode.trim() !== '' &&
     address.address1.trim() !== '' &&
     withdrawalConsent &&
+    (!isBankTransfer || (bankAccount != null && depositorName.trim() !== '')) &&
     !createOrder.isPending;
 
   if (isLoading) {
@@ -134,6 +164,8 @@ export function CheckoutView() {
         address2: address.address2.trim() || undefined,
         orderMemo: orderMemo.trim() || undefined,
         withdrawalConsent,
+        paymentMethod,
+        depositorName: isBankTransfer ? depositorName.trim() : undefined,
       },
       {
         onSuccess: (order) => {
@@ -149,7 +181,14 @@ export function CheckoutView() {
               setDefault: false,
             });
           }
-          router.push(`/checkout/${order.orderNo}`);
+          // 무통장은 결제창이 없다. 주문 상세로 보낸다 — 거기에 계좌 안내가 있고,
+          // 고객은 입금하러 갔다가 계좌번호를 다시 보러 돌아온다. 전용 완료 화면을
+          // 따로 만들면 같은 안내가 두 곳에 생기고, 돌아올 길은 결국 주문 상세다.
+          router.push(
+            isBankTransfer
+              ? `/mypage/orders/${order.orderNo}?placed=1`
+              : `/checkout/${order.orderNo}`,
+          );
         },
         onError: (error) => {
           // 읽는 사이 규정이 개정됐다. 새 판을 받아오면 동의 구역이 스스로
@@ -242,6 +281,98 @@ export function CheckoutView() {
             </ul>
           </section>
 
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>결제수단</h2>
+
+            {/* 왜 하나뿐인지를 먼저 적는다. 고를 것이 없는 화면에서 이유가 없으면
+                「카드가 안 뜬다」가 고장으로 읽히고, 그대로 문의가 된다. */}
+            {!cardPayable && (
+              <p className={styles.methodWhy}>
+                순금·순은·골드바와 시세에 연동되는 상품은 카드사의 온라인 거래 제한으로
+                카드·간편결제를 이용할 수 없습니다. 무통장입금으로 주문해 주세요.
+              </p>
+            )}
+
+            <div className={styles.methods} role="radiogroup" aria-label="결제수단">
+              {cardPayable && (
+                <label className={styles.method}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={!isBankTransfer}
+                    onChange={() => setMethodChoice('EASY_PAY')}
+                  />
+                  <span className={styles.methodName}>간편결제</span>
+                  <span className={styles.methodNote}>카드 · 계좌이체 · 휴대폰</span>
+                </label>
+              )}
+
+              <label className={styles.method}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  checked={isBankTransfer}
+                  disabled={bankAccount == null}
+                  onChange={() => {
+                    setMethodChoice('BANK_TRANSFER');
+                    // 대부분 자기 이름으로 부친다. 틀리면 고치면 된다.
+                    if (depositorName === '') setDepositorName(user?.name ?? '');
+                  }}
+                />
+                <span className={styles.methodName}>무통장입금</span>
+                <span className={styles.methodNote}>
+                  {bankAccount == null ? '지금은 이용할 수 없습니다' : '계좌로 직접 입금'}
+                </span>
+              </label>
+            </div>
+
+            {isBankTransfer && bankAccount && (
+              <div className={styles.deposit}>
+                <dl className={styles.depositAccount}>
+                  <div>
+                    <dt>입금 계좌</dt>
+                    <dd>
+                      {bankAccount.bank} {bankAccount.number}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>예금주</dt>
+                    <dd>{bankAccount.holder}</dd>
+                  </div>
+                </dl>
+
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="depositor-name">
+                    입금자명
+                  </label>
+                  <input
+                    id="depositor-name"
+                    className={styles.input}
+                    value={depositorName}
+                    onChange={(e) => setDepositorName(e.target.value)}
+                    maxLength={60}
+                    placeholder="통장에 찍히는 이름"
+                    aria-describedby="depositor-hint"
+                  />
+                  {/* 이 안내가 이 칸의 존재 이유다 — 다른 이름으로 부치는 사람이
+                      적지 않고, 그때 입금 확인이 사람 손으로 넘어간다. */}
+                  <span id="depositor-hint" className={styles.hint}>
+                    주문자와 다른 이름으로 입금하실 경우 그 이름을 적어 주세요.
+                  </span>
+                </div>
+
+                {/* 기한은 안내다. 지나도 주문이 사라지지 않는다 — 입금하려고 계좌를
+                    열어 둔 사이에 취소되면 보낸 돈이 갈 곳을 잃는다. 그래서
+                    「취소됩니다」라고 적지 않는다. 적으면 지키지 않는 약속이 된다. */}
+                <p className={styles.depositNote}>
+                  주문 후 {paymentConfig.data?.depositDueHours ?? 3}시간 이내에 입금해 주세요.
+                  금 시세가 계속 움직이므로, 늦어지면 주문을 다시 확인해 드려야 할 수
+                  있습니다. 입금이 확인되면 상품 준비를 시작합니다.
+                </p>
+              </div>
+            )}
+          </section>
+
           {/* 안내만으로는 청약철회 제한이 성립하지 않는다. 전자상거래법 제17조 제2항
               단서가 "소비자가 쉽게 알 수 있는 곳에 명기" 를 요구하고, 분쟁에서는
               "이 주문에서 어느 내용에 동의했다" 를 보여야 한다. 그래서 결제 직전에
@@ -304,7 +435,7 @@ export function CheckoutView() {
               지나간다. 결제 직전에 가장 먼저 읽혀야 하는 숫자다. */}
           <div className={styles.payBarRight}>
             <p className={styles.payBarTotal}>
-              <span>결제 예정</span>
+              <span>{isBankTransfer ? '입금 예정' : '결제 예정'}</span>
               <strong>{formatKrw(cart?.subtotal)}</strong>
             </p>
             {/* type="submit" 이 아니다 — 폼의 암묵적 제출 경로를 아예 없앤다.
@@ -312,8 +443,17 @@ export function CheckoutView() {
                 것이 아니면 주문서가 만들어지지 않는다. 주문은 되돌리기 어렵다. */}
             <button type="button" className={styles.submit} disabled={!canSubmit} onClick={submit}>
               {/* "주문서 작성" 이 아니라 "결제하기" 다. 누르는 사람이 하려는 일은 결제이고,
-                  주문서는 그 과정에서 서버가 만드는 것이라 굳이 이름 붙일 필요가 없다. */}
-              {createOrder.isPending ? '결제 화면으로 넘어가는 중…' : '결제하기'}
+                  주문서는 그 과정에서 서버가 만드는 것이라 굳이 이름 붙일 필요가 없다.
+
+                  무통장은 「결제하기」가 아니다 — 눌러도 돈이 나가지 않고 결제창도 뜨지
+                  않는다. 「결제하기」라고 적으면 누르고 나서 낸 줄 알고 기다린다. */}
+              {isBankTransfer
+                ? createOrder.isPending
+                  ? '주문하는 중…'
+                  : '주문하기'
+                : createOrder.isPending
+                  ? '결제 화면으로 넘어가는 중…'
+                  : '결제하기'}
             </button>
           </div>
         </div>

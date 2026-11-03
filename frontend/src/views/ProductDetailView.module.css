@@ -385,6 +385,25 @@
   color: var(--gold-deep);
 }
 
+/* 무통장 전용 안내.
+
+   경고색을 쓰지 않는다 — 이 상품이 잘못된 것이 아니라 결제하는 방법이 하나라는
+   사실일 뿐이다. 붉게 칠하면 「살 수 없는 상품」으로 읽힌다. 배송 안내와 같은
+   무게로, 선과 바탕으로만 구분한다. */
+.bankOnly {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: var(--light-gray);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gray);
+}
+
+.bankOnly strong {
+  color: var(--dark);
+}
+
 /* ---------- 설명 ---------- */
 
 .description {

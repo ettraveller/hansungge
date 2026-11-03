@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 import { RequireMember } from '@/components/auth/RequireMember';
 import { PageHead } from '@/components/ui/PageHead';
@@ -15,7 +16,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ or
   return (
     <div className="wrap">
       <PageHead title="주문 상세" />
-      <RequireMember><OrderDetailView orderNo={decodeURIComponent(orderNo)} /></RequireMember>
+      {/* useSearchParams(placed=1 — 무통장 주문 직후)를 쓰므로 Suspense 로 감싼다 (Next.js 16). */}
+      <Suspense fallback={null}>
+        <RequireMember><OrderDetailView orderNo={decodeURIComponent(orderNo)} /></RequireMember>
+      </Suspense>
     </div>
   );
 }

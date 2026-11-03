@@ -44,7 +44,14 @@ public record CartItemResponse(
         @Schema(description = "지금 주문할 수 있는가", example = "true") boolean orderable,
         @Schema(description = "주문할 수 없는 이유. 가능하면 null") String unavailableReason,
         @Schema(description = "재고가 담은 수량보다 적은가", example = "false") boolean stockShortage,
-        @Schema(description = "남은 재고. 재고 부족일 때만 채워진다") Integer availableStock
+        @Schema(description = "남은 재고. 재고 부족일 때만 채워진다") Integer availableStock,
+
+        /**
+         * 카드·간편결제로 살 수 있는 줄인가. false 면 이 줄 때문에 주문 전체가
+         * 무통장입금으로 간다 — 화면이 어느 줄 때문인지 짚어 줄 수 있어야 한다.
+         */
+        @Schema(description = "카드·간편결제 가능. false 면 무통장입금 전용", example = "true")
+        boolean cardPayable
 ) {
 
     /** 시세를 확인할 수 없을 때의 문구 (설계서 §12.4). */
@@ -84,7 +91,8 @@ public record CartItemResponse(
                 quote.status().isOrderable() && !shortage,
                 reasonOf(quote.status(), shortage, quote.unavailableReason()),
                 shortage,
-                shortage ? currentStock : null);
+                shortage ? currentStock : null,
+                product.isCardPayable());
     }
 
     private static String reasonOf(PriceStatus status, boolean shortage, String quoteReason) {

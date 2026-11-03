@@ -10,6 +10,7 @@ import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderItem;
 import com.hanseongge.domain.order.entity.OrderItemComponent;
+import com.hanseongge.domain.order.entity.PaymentMethod;
 import com.hanseongge.domain.order.repository.OrderItemComponentRepository;
 import com.hanseongge.domain.order.repository.OrderItemRepository;
 import com.hanseongge.domain.order.repository.OrderRepository;
@@ -38,6 +39,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -109,8 +111,18 @@ public class OrderService {
             itemsTotal = itemsTotal.add(line.quote().totalFor(line.quantity()).value());
         }
 
+        PaymentMethod paymentMethod = resolvePaymentMethod(request, priced);
+        String depositorName = null;
+        OffsetDateTime depositDueAt = null;
+        if (paymentMethod.isBankTransfer()) {
+            depositorName = requireDepositorName(request);
+            requireBankAccountConfigured();
+            depositDueAt = OffsetDateTime.now().plusHours(depositDueHours());
+        }
+
         BigDecimal shippingFee = shippingFeeFor(itemsTotal);
-        Order order = saveWithOrderNo(userId, itemsTotal, shippingFee, request);
+        Order order = saveWithOrderNo(userId, itemsTotal, shippingFee, request,
+                paymentMethod, depositorName, depositDueAt);
 
         List<OrderItem> items = new ArrayList<>(priced.size());
         for (Priced line : priced) {
@@ -181,6 +193,86 @@ public class OrderService {
     }
 
     // =================================================================
+    // 결제수단
+    // =================================================================
+
+    /**
+     * 이 주문을 어느 수단으로 받을지 정한다. <b>화면이 보낸 값을 그대로 쓰지 않는다.</b>
+     *
+     * <p>장바구니에 카드로 팔 수 없는 상품이 하나라도 있으면 주문 <b>전체</b>가 무통장이다.
+     * 가장 엄격한 줄을 따른다 — 섞인 장바구니에서 카드를 허용하려면 주문을 둘로 쪼개야
+     * 하는데, 그러면 배송비·재고·취소가 전부 두 벌이 된다. 쪼개는 일은 고객이 장바구니에서
+     * 한다.
+     *
+     * <p>무통장 전용 주문에 {@code EASY_PAY} 가 오면 조용히 무통장으로 바꾸지 않고
+     * <b>거절한다.</b> 고객은 카드로 내려고 버튼을 눌렀고, 말없이 다른 길로 보내면
+     * 주문완료 화면에서야 입금하라는 말을 처음 본다.
+     *
+     * @throws BusinessException 카드로 팔 수 없는 상품이 섞였는데 카드를 고른 경우
+     */
+    private PaymentMethod resolvePaymentMethod(OrderCreateRequest request, List<Priced> priced) {
+        // 카드로 팔 수 없는 상품이 섞였나. 판정은 상품이 스스로 한다 (Product#isCardPayable).
+        boolean cardPayable = priced.stream().allMatch(line -> line.product().isCardPayable());
+
+        // 비어 있으면 카드로 본다 — 이 칸이 생기기 전의 화면이 아직 떠 있을 수 있다.
+        PaymentMethod requested = request.paymentMethod() == null
+                ? PaymentMethod.EASY_PAY
+                : request.paymentMethod();
+
+        if (requested == PaymentMethod.EASY_PAY && !cardPayable) {
+            throw new BusinessException(ErrorCode.ORDER_CARD_NOT_ALLOWED);
+        }
+        // 무통장은 언제나 된다. 카드 가능한 상품도 계좌로 받을 수 있다.
+        return requested;
+    }
+
+    private String requireDepositorName(OrderCreateRequest request) {
+        String name = request.depositorName() == null ? "" : request.depositorName().trim();
+        if (name.isEmpty()) {
+            throw new BusinessException(ErrorCode.ORDER_DEPOSITOR_NAME_REQUIRED);
+        }
+        return name;
+    }
+
+    /**
+     * 입금받을 계좌가 설정돼 있는지 본다.
+     *
+     * <p>없으면 주문을 받지 않는다. 받아 두면 고객은 입금할 곳 없는 주문완료 화면을
+     * 보게 되고, 그 주문은 영원히 입금되지 않은 채 재고만 잡고 있는다.
+     */
+    private void requireBankAccountConfigured() {
+        if (bankAccount().isEmpty()) {
+            log.error("[ORDER] 무통장 주문을 받을 수 없다 — 입금 계좌가 설정되지 않았다"
+                    + " (관리자 설정 BANK_ACCOUNT_BANK/NUMBER/HOLDER)");
+            throw new BusinessException(ErrorCode.BANK_ACCOUNT_NOT_CONFIGURED);
+        }
+    }
+
+    /**
+     * 입금받을 계좌. 셋 중 하나라도 비어 있으면 <b>없는 것으로 본다.</b>
+     *
+     * <p>은행명만 있고 계좌번호가 없는 안내는 안내가 아니다.
+     */
+    public Optional<BankAccount> bankAccount() {
+        String bank = settingService.get("BANK_ACCOUNT_BANK", "").trim();
+        String number = settingService.get("BANK_ACCOUNT_NUMBER", "").trim();
+        String holder = settingService.get("BANK_ACCOUNT_HOLDER", "").trim();
+        if (bank.isEmpty() || number.isEmpty() || holder.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new BankAccount(bank, number, holder));
+    }
+
+    /** 입금 안내 기한(시간). 안내용이며 지나도 자동으로 취소하지 않는다. */
+    public int depositDueHours() {
+        return settingService.getInt("DEPOSIT_DUE_HOURS", 3);
+    }
+
+    /** 입금받을 계좌 — 은행·번호·예금주가 모두 있을 때만 만들어진다. */
+    public record BankAccount(String bank, String number, String holder) {
+    }
+
+    // =================================================================
     // 조회
     // =================================================================
 
@@ -204,19 +296,45 @@ public class OrderService {
         }
 
         // 주문마다 항목을 따로 조회하면 목록 한 장에 쿼리가 스무 번 나간다.
-        Map<Long, List<OrderItem>> byOrder = orderItemRepository
-                .findByOrderIdInOrderByIdAsc(orders.getContent().stream().map(Order::getId).toList())
-                .stream()
+        List<OrderItem> items = orderItemRepository
+                .findByOrderIdInOrderByIdAsc(orders.getContent().stream().map(Order::getId).toList());
+        Map<Long, List<OrderItem>> byOrder = items.stream()
                 .collect(Collectors.groupingBy(OrderItem::getOrderId));
+        Map<Long, String> thumbnails = thumbnailsOf(items);
 
         return orders.map(order -> OrderResponse.of(order,
-                byOrder.getOrDefault(order.getId(), List.of())));
+                byOrder.getOrDefault(order.getId(), List.of()), thumbnails));
     }
 
     @Transactional(readOnly = true)
     public OrderResponse getMine(Long userId, String orderNo) {
         Order order = requireOrder(userId, orderNo);
-        return OrderResponse.of(order, orderItemRepository.findByOrderIdOrderByIdAsc(order.getId()));
+        List<OrderItem> items = orderItemRepository.findByOrderIdOrderByIdAsc(order.getId());
+        return OrderResponse.of(order, items, thumbnailsOf(items));
+    }
+
+    /**
+     * 주문 항목들의 상품 사진 — 상품 id → 대표이미지 키.
+     *
+     * <p>주문 항목은 주문 당시를 복사한 스냅샷이라 사진을 들고 있지 않다. 그래서 상품을
+     * 한 번 더 읽는다 — 한 번에 모두(in 절), 항목마다 따로가 아니다.
+     *
+     * <p>사진은 <b>스냅샷으로 두지 않는다.</b> 금액·상품명은 분쟁의 근거라 굳혀야 하지만,
+     * 사진까지 복사해 두면 상품 사진을 바꿀 때마다 지나간 주문이 옛 사진에 묶인다.
+     * 지워진 상품은 비어 있고, 화면은 사진 없는 자리로 그린다.
+     */
+    private Map<Long, String> thumbnailsOf(List<OrderItem> items) {
+        List<Long> productIds = items.stream()
+                .map(OrderItem::getProductId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        return productRepository.findAllById(productIds).stream()
+                .filter(product -> product.getThumbnailKey() != null)
+                .collect(Collectors.toMap(Product::getId, Product::getThumbnailKey));
     }
 
     /** 결제가 함께 쓰는 조회. 남의 주문이면 404 다. */
@@ -305,7 +423,8 @@ public class OrderService {
      * 대신 순번이라 동시 요청이 같은 번호를 집을 수 있어, 유니크 위반이면 다시 센다.
      */
     private Order saveWithOrderNo(Long userId, BigDecimal itemsTotal, BigDecimal shippingFee,
-                                  OrderCreateRequest request) {
+                                  OrderCreateRequest request, PaymentMethod paymentMethod,
+                                  String depositorName, OffsetDateTime depositDueAt) {
         String prefix = ORDER_NO_PREFIX + LocalDate.now().format(ORDER_NO_DATE) + "-";
         DataIntegrityViolationException last = null;
 
@@ -318,7 +437,8 @@ public class OrderService {
                         request.receiverName().trim(), request.receiverPhone().trim(),
                         request.zipcode().trim(), request.address1().trim(),
                         blankToNull(request.address2()), blankToNull(request.orderMemo()),
-                        request.withdrawalConsent(), request.refundPolicyId()));
+                        request.withdrawalConsent(), request.refundPolicyId(),
+                        paymentMethod, depositorName, depositDueAt));
             } catch (DataIntegrityViolationException e) {
                 last = e;
                 log.warn("[ORDER] 주문번호 충돌 {}. 다시 채번한다 ({}회차)", orderNo, attempt + 1);
