@@ -8,6 +8,7 @@ import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
 import { CartIcon, SearchIcon } from '@/layouts/icons';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
+import { StickyHeader } from '@/layouts/StickyHeader';
 import { buildNav } from '@/layouts/navigation';
 import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
 import styles from './ShopLayout.module.css';
@@ -54,7 +55,9 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* ---------- 헤더 ---------- */}
-      <header className={styles.header}>
+      {/* 내려가면 메뉴 줄이 접힌다. 안쪽은 그대로 서버에서 그려진다 —
+          StickyHeader 는 껍데기만 클라이언트다 */}
+      <StickyHeader className={styles.header} compactClass={styles.compact}>
         <div className={`wrap ${styles.headerMain}`}>
           {/* 햄버거는 모바일에서만 보인다. 로고 왼쪽이 엄지가 닿는 자리다 */}
           <MobileDrawer nav={nav} />
@@ -109,7 +112,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
             ))}
           </ul>
         </nav>
-      </header>
+      </StickyHeader>
 
       <main id="main">{children}</main>
 
