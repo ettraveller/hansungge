@@ -278,6 +278,22 @@
   color: var(--dark);
 }
 
+/* 공급가액·부가세 (주문 상세).
+
+   합계 아래에 작게 둔다. 결제 금액에 이미 들어 있는 값이라 위에 두면
+   더해지는 줄로 읽힌다. 세금계산서를 떼거나 경비 처리할 때 찾는 숫자다. */
+.vatNote {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--gray);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.vatHint {
+  color: var(--ink-400);
+}
+
 .total strong {
   font-size: 20px;
   font-weight: 700;

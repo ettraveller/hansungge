@@ -56,6 +56,14 @@ export interface Order {
   discountAmount: number;
   totalAmount: number;
 
+  /**
+   * 부가세액(원). 과세 상품의 판매가는 부가세 포함가라(V38) 이 금액은
+   * <b>결제 금액 안에 들어 있다</b> - 더해지는 값이 아니다. 면세 주문이면 0.
+   */
+  vatAmount: number;
+  /** 공급가액(원) = 상품 합계 - 부가세액 */
+  supplyAmount: number;
+
   /** 결제창·목록에 쓰는 한 줄 이름 — "순금 골드바 3.75g 외 2건" */
   orderName: string;
   items: OrderItem[];

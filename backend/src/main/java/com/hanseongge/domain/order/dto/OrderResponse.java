@@ -30,6 +30,22 @@ public record OrderResponse(
         @Schema(description = "할인") BigDecimal discountAmount,
         @Schema(description = "결제(예정) 금액") BigDecimal totalAmount,
 
+        /**
+         * 부가세액 - 주문 항목에 굳어 있는 값을 더한 것이다.
+         *
+         * <p><b>컬럼을 따로 두지 않는다.</b> {@code order_items.tax} 가 주문 시점의
+         * 세액을 이미 품고 있어, 주문에 한 번 더 적으면 두 값이 어긋날 자리가 생긴다 -
+         * 그리고 어긋난 날 어느 쪽이 맞는지 판단할 근거가 없다.
+         *
+         * <p>과세 상품의 판매가는 부가세 포함가라(V38) 이 금액은 <b>결제 금액 안에
+         * 들어 있다.</b> 더해지는 값이 아니다. 면세 주문이면 0 이다.
+         */
+        @Schema(description = "부가세액(원). 결제 금액에 포함되어 있다", example = "144309")
+        BigDecimal vatAmount,
+
+        /** 공급가액 = 상품 합계 - 부가세액. 세금계산서·영수증이 쓰는 숫자다 */
+        @Schema(description = "공급가액(원)", example = "1443091") BigDecimal supplyAmount,
+
         @Schema(description = "주문 대표 이름", example = "순금 골드바 3.75g 외 2건") String orderName,
         @Schema(description = "주문 항목") List<Item> items,
 
@@ -98,6 +114,14 @@ public record OrderResponse(
                 .map(OrderItem::getFinalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // order_items.tax 는 <b>한 개당</b> 세액이다. 금액 칸들과 단위가 다르므로
+        // 수량을 곱해야 줄의 세액이 된다 - 곱하지 않으면 2개짜리 주문의 세액이 절반이 된다.
+        BigDecimal vatAmount = items.stream()
+                .map(item -> item.getTax() == null
+                        ? BigDecimal.ZERO
+                        : item.getTax().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return new OrderResponse(
                 order.getOrderNo(),
                 order.getStatus(),
@@ -107,6 +131,8 @@ public record OrderResponse(
                 order.getShippingFee(),
                 order.getDiscountAmount(),
                 order.getTotalAmount(),
+                vatAmount,
+                itemsAmount.subtract(vatAmount),
                 orderNameOf(items),
                 items.stream().map(item -> Item.of(item, thumbnails)).toList(),
                 order.getReceiverName(),

@@ -131,6 +131,21 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
           <strong>{formatKrw(order.totalAmount)}</strong>
         </div>
 
+        {/*
+          과세 상품이 섞인 주문에만 적는다 (V38). 면세 주문에 「부가세 0원」을
+          적으면 세금이 붙는 거래인데 면제받은 것처럼 읽히고, 금지금은 애초에
+          과세 대상이 아니다.
+
+          합계 <b>아래</b>에 둔다. 위에 두면 더해지는 값으로 읽히는데, 이 세액은
+          결제 금액 안에 이미 들어 있다 - 판매가가 부가세 포함가다.
+        */}
+        {order.vatAmount > 0 && (
+          <p className={styles.vatNote}>
+            공급가액 {formatKrw(order.supplyAmount)} · 부가세 {formatKrw(order.vatAmount)}
+            <span className={styles.vatHint}> (결제 금액에 포함)</span>
+          </p>
+        )}
+
         <dl className={styles.addressBox}>
           <dt>받는 분</dt>
           <dd>

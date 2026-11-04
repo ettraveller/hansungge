@@ -221,6 +221,43 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(readCart().get("cardPayable").asBoolean()).isFalse();
     }
 
+    // =================================================================
+    // 부가세 (V38) — 상품이 과세인지 면세인지에 따라 주문에 세액이 남는다
+    // =================================================================
+
+    @Test
+    @DisplayName("면세 상품만 담으면 세액이 0 이고 공급가액 = 상품 합계다")
+    void exemptOrderHasNoVat() throws Exception {
+        onlyInCart(optionId, 2);     // 픽스처 상품은 면세다
+
+        JsonNode order = read(createOrder());
+
+        assertThat(order.get("vatAmount").decimalValue()).isEqualByComparingTo("0");
+        assertThat(order.get("supplyAmount").decimalValue())
+                .isEqualByComparingTo(order.get("itemsAmount").decimalValue());
+    }
+
+    @Test
+    @DisplayName("과세 상품의 세액은 수량만큼 곱해진다 — 2개 주문의 세액이 절반이 되지 않는다")
+    void taxableOrderMultipliesVatByQuantity() throws Exception {
+        // 단가 100,000 짜리 픽스처 상품을 과세로 돌린다
+        long productId = jdbc.queryForObject(
+                "SELECT product_id FROM product_options WHERE id = ?", Long.class, optionId);
+        jdbc.update("UPDATE products SET vat_taxable = TRUE WHERE id = ?", productId);
+
+        onlyInCart(optionId, 2);
+        JsonNode order = read(createOrder());
+
+        // 단가 100,000 안에 든 10% 분은 9,090.91. 두 개면 18,181.82 다.
+        // 한 개분(9,090.91)만 남으면 수량을 곱하지 않은 것이다.
+        assertThat(order.get("itemsAmount").decimalValue()).isEqualByComparingTo("200000");
+        assertThat(order.get("vatAmount").decimalValue()).isEqualByComparingTo("18181.82");
+        assertThat(order.get("supplyAmount").decimalValue()).isEqualByComparingTo("181818.18");
+
+        // 핵심 — 과세로 돌려도 고객이 내는 돈은 그대로다
+        assertThat(order.get("totalAmount").decimalValue()).isEqualByComparingTo("200000");
+    }
+
     @Test
     @DisplayName("주문서를 만들면 재고가 준다 — 장바구니는 아직 그대로다")
     void orderTakesStockButKeepsCart() throws Exception {
