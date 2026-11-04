@@ -43,7 +43,14 @@ const DESKS = [
 export function SupportView() {
   // 지점 연락처는 지점 데이터가 원천이다. 여기에 다시 적으면 지점이 이전할 때
   // 한쪽만 고쳐지고, 그 차이는 누가 전화를 걸어 보기 전까지 드러나지 않는다.
-  const branch = ALL_BRANCHES[0];
+  /**
+   * 전화 문의에 내걸 지점.
+   *
+   * <p>그냥 첫 지점을 쓰면 안 된다. 지점 목록의 차례는 지역순이고, 맨 앞에 오는
+   * 지점이 <b>아직 번호가 안 나온 새 지점</b>일 수 있다 — 그러면 고객센터의
+   * 대표번호 자리가 빈 채로 뜬다. 번호가 있는 첫 지점을 고른다.
+   */
+  const branch = ALL_BRANCHES.find((b) => b.tel) ?? ALL_BRANCHES[0];
 
   return (
     <div className={styles.page}>
@@ -56,12 +63,14 @@ export function SupportView() {
             <h2 id="support-call" className={styles.callLabel}>
               전화 문의
             </h2>
-            <p className={`${styles.callNumber} tabular`}>{branch.tel}</p>
+            <p className={`${styles.callNumber} tabular`}>{branch.tel ?? '준비 중'}</p>
             {branch.hours && <p className={styles.callHours}>{branch.hours}</p>}
           </div>
-          <a className={styles.callBtn} href={`tel:${branch.tel.replace(/[^0-9]/g, '')}`}>
-            전화 걸기
-          </a>
+          {branch.tel && (
+            <a className={styles.callBtn} href={`tel:${branch.tel.replace(/[^0-9]/g, '')}`}>
+              전화 걸기
+            </a>
+          )}
         </section>
 
         {/* ---------- 바로가기 ---------- */}

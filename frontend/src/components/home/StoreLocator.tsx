@@ -28,9 +28,13 @@ export function StoreLocator({ regions }: { regions: Region[] }) {
               <li key={branch.name} className={styles.branch}>
                 <p className={styles.branchName}>{branch.name}</p>
                 <p className={styles.address}>{branch.address}</p>
-                <a href={`tel:${branch.tel.replace(/-/g, '')}`} className={styles.tel}>
-                  {branch.tel}
-                </a>
+                {/* 번호가 아직 없는 지점이 있다. 비어 있으면 줄을 그리지 않는다 —
+                    눌러도 걸리지 않는 「전화」를 내걸지 않는다. */}
+                {branch.tel && (
+                  <a href={`tel:${branch.tel.replace(/-/g, '')}`} className={styles.tel}>
+                    {branch.tel}
+                  </a>
+                )}
               </li>
             ))}
           </ul>

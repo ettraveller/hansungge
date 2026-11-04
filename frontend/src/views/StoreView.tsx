@@ -7,6 +7,7 @@ import {
   ALL_BRANCHES,
   REGIONS,
   TOTAL_BRANCHES,
+  branchKey,
   naverDirectionsUrl,
   naverPlaceUrl,
   type FlatBranch,
@@ -147,23 +148,27 @@ export function StoreView() {
               </p>
             ) : (
               <ul className={styles.list}>
-                {results.map((b) => (
-                  <li key={b.naverPlaceId}>
-                    <button
-                      type="button"
-                      className={`${styles.item} ${
-                        b.naverPlaceId === selected?.naverPlaceId ? styles.itemOn : ''
-                      }`}
-                      onClick={() => setSelected(b)}
-                      aria-pressed={b.naverPlaceId === selected?.naverPlaceId}
-                    >
-                      <span className={styles.itemRegion}>{b.region}</span>
-                      <span className={styles.itemName}>{b.name}</span>
-                      <span className={styles.itemAddress}>{b.address}</span>
-                      <span className={`${styles.itemTel} tabular`}>{b.tel}</span>
-                    </button>
-                  </li>
-                ))}
+                {results.map((b) => {
+                  // 네이버 장소 ID 는 없을 수 있다(등록 전 지점). 이름으로 가린다 —
+                  // ID 로 비교하면 ID 없는 지점끼리 undefined === undefined 가 되어
+                  // 하나를 고를 때 둘이 같이 선택된 것으로 보인다.
+                  const on = branchKey(b) === (selected ? branchKey(selected) : '');
+                  return (
+                    <li key={branchKey(b)}>
+                      <button
+                        type="button"
+                        className={`${styles.item} ${on ? styles.itemOn : ''}`}
+                        onClick={() => setSelected(b)}
+                        aria-pressed={on}
+                      >
+                        <span className={styles.itemRegion}>{b.region}</span>
+                        <span className={styles.itemName}>{b.name}</span>
+                        <span className={styles.itemAddress}>{b.address}</span>
+                        {b.tel && <span className={`${styles.itemTel} tabular`}>{b.tel}</span>}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -178,7 +183,10 @@ export function StoreView() {
 
                   <dl className={styles.detailRows}>
                     <div>
-                      <dt>도로명</dt>
+                      {/* 지번을 따로 들고 있을 때만 「도로명」이라고 못 박는다.
+                          하나뿐인 지점은 그 값이 도로명일 수도 지번일 수도 있는데,
+                          지번을 「도로명」 아래에 적으면 그냥 틀린 말이 된다. */}
+                      <dt>{selected.addressJibun ? '도로명' : '주소'}</dt>
                       <dd>
                         {selected.address}
                         {selected.postalCode && (
@@ -194,10 +202,13 @@ export function StoreView() {
                         <dd>{selected.addressJibun}</dd>
                       </div>
                     )}
-                    <div>
-                      <dt>전화</dt>
-                      <dd className="tabular">{selected.tel}</dd>
-                    </div>
+                    {/* 번호가 아직 없는 지점이 있다. 「전화 —」 같은 빈 줄을 두지 않는다 */}
+                    {selected.tel && (
+                      <div>
+                        <dt>전화</dt>
+                        <dd className="tabular">{selected.tel}</dd>
+                      </div>
+                    )}
                     {selected.hours && (
                       <div>
                         <dt>영업시간</dt>
@@ -207,10 +218,16 @@ export function StoreView() {
                   </dl>
 
                   <div className={styles.actions}>
-                    {/* 전화는 모바일에서 바로 걸린다 */}
-                    <a className={styles.callBtn} href={`tel:${selected.tel.replace(/[^0-9]/g, '')}`}>
-                      전화 걸기
-                    </a>
+                    {/* 전화는 모바일에서 바로 걸린다. 번호가 없으면 버튼도 없다 —
+                        눌러도 아무 데도 걸리지 않는 버튼을 내걸지 않는다. */}
+                    {selected.tel && (
+                      <a
+                        className={styles.callBtn}
+                        href={`tel:${selected.tel.replace(/[^0-9]/g, '')}`}
+                      >
+                        전화 걸기
+                      </a>
+                    )}
                     <a
                       className={styles.mapBtn}
                       href={naverDirectionsUrl(selected)}
