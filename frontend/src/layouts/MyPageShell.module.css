@@ -122,6 +122,31 @@
   color: var(--dark);
   letter-spacing: var(--tracking-snug);
   margin: 0 0 6px;
+  /* 금색 획의 폭. 좁은 화면에서 줄인다 (SectionHead 와 같은 방식) */
+  --rule-w: 28px;
+}
+
+/* 제목 위의 금색 한 획 — 상호 표시.
+   마이페이지는 SectionHead 를 쓰지 않아 이 표시만 빠져 있었다. 쇼핑몰 쪽
+   섹션에는 전부 붙어 있는데 여기만 없으면, 로그인하고 들어온 순간 다른
+   사이트처럼 보인다. 모양과 크기를 SectionHead.module.css 와 맞춘다. */
+.head::before {
+  content: '';
+  display: block;
+  width: var(--rule-w);
+  height: 2px;
+  background: var(--gold-500);
+  margin-bottom: 14px;
+}
+
+@media (max-width: 900px) {
+  .head {
+    --rule-w: 22px;
+  }
+
+  .head::before {
+    margin-bottom: 9px;
+  }
 }
 
 .lead {

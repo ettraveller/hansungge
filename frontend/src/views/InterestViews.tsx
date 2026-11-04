@@ -17,7 +17,12 @@ import { ApiError } from '@/types/api';
 import type { ProductSummary } from '@/types/product';
 import { mediaUrl } from '@/utils/media';
 import { formatKrw } from '@/utils/format';
+import { Reveal } from '@/components/ui/Reveal';
 import styles from '@/views/InterestViews.module.css';
+
+/** 등장 지연을 쌓는 줄 수. 이 뒤로는 같은 지연을 쓴다 — 목록이 길수록
+    아래쪽이 한참 뒤에 도착해 "느리게 뜨는 화면"이 되는 것을 막는다. */
+const STAGGER_MAX = 5;
 
 /**
  * 찜한 상품 · 최근 본 상품.
@@ -143,10 +148,11 @@ function ProductList({
 
   return (
     <div>
-      {products.map((product) => (
+      {products.map((product, index) => (
         <ProductRow
           key={product.id}
           product={product}
+          index={index}
           showWishlistToggle={showWishlistToggle}
           onAdded={(name) => setAdded(`${name} · 장바구니에 담았습니다`)}
         />
@@ -163,10 +169,12 @@ function ProductList({
 
 function ProductRow({
   product,
+  index,
   showWishlistToggle,
   onAdded,
 }: {
   product: ProductSummary;
+  index: number;
   showWishlistToggle?: boolean;
   onAdded: (productName: string) => void;
 }) {
@@ -179,7 +187,8 @@ function ProductRow({
   const orderable = product.orderable;
 
   return (
-    <article className={styles.row}>
+    // 줄이 하나씩 차례로 들어온다 (주문 목록·장바구니와 같은 방식)
+    <Reveal as="article" rise="sm" delay={Math.min(index, STAGGER_MAX) * 60} className={styles.row}>
       <Link href={`/shop/product/${product.id}`} className={styles.thumb} aria-hidden="true" tabIndex={-1}>
         {/* 사진이 없는 상품에는 전처럼 "상품 사진"이라고 적어 둔다 — 빈 네모는
             "안 뜬다"로 읽히고, 칸을 빼면 줄 높이가 달라져 목록이 들쭉날쭉해진다. */}
@@ -236,6 +245,6 @@ function ProductRow({
           </button>
         )}
       </div>
-    </article>
+    </Reveal>
   );
 }

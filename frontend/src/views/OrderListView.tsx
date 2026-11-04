@@ -13,7 +13,12 @@ import { ApiError } from '@/types/api';
 import type { Order, OrderStatusGroup } from '@/types/order';
 import { formatDateTime, formatKrw } from '@/utils/format';
 import { mediaUrl } from '@/utils/media';
+import { Reveal } from '@/components/ui/Reveal';
 import styles from '@/views/OrderListView.module.css';
+
+/** 등장 지연을 쌓는 줄 수. 이 뒤로는 같은 지연을 쓴다 — 목록이 길수록
+    아래쪽이 한참 뒤에 도착해 "느리게 뜨는 화면"이 되는 것을 막는다. */
+const STAGGER_MAX = 5;
 
 /**
  * 주문/배송내역.
@@ -289,8 +294,13 @@ function OrderList() {
         </div>
       ) : (
         <div>
-          {shown.map((order) => (
-            <OrderRow key={order.orderNo} order={order} onReordered={setToast} />
+          {shown.map((order, index) => (
+            <OrderRow
+              key={order.orderNo}
+              order={order}
+              index={index}
+              onReordered={setToast}
+            />
           ))}
         </div>
       )}
@@ -330,9 +340,11 @@ function OrderList() {
 
 function OrderRow({
   order,
+  index,
   onReordered,
 }: {
   order: Order;
+  index: number;
   onReordered: (message: string) => void;
 }) {
   const item = order.items[0];
@@ -369,7 +381,8 @@ function OrderRow({
   };
 
   return (
-    <article className={styles.row}>
+    // 줄이 하나씩 차례로 들어온다. 태그와 클래스는 그대로라 테두리 규칙이 그대로 걸린다
+    <Reveal as="article" rise="sm" delay={Math.min(index, STAGGER_MAX) * 60} className={styles.row}>
       <div className={styles.rowHead}>
         <strong className={order.status === 'PAID' ? `${styles.state} ${styles.stateOk}` : styles.state}>
           {order.statusLabel}
@@ -443,6 +456,6 @@ function OrderRow({
           </>
         )}
       </div>
-    </article>
+    </Reveal>
   );
 }
