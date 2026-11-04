@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanseongge.domain.audit.dto.AuditRecord;
 import com.hanseongge.domain.audit.entity.ActorType;
 import com.hanseongge.domain.audit.service.AuditLogService;
+import com.hanseongge.domain.marketprice.dto.BuybackQuoteResponse;
 import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.MarketPricePolicy;
 import com.hanseongge.domain.marketprice.entity.MetalType;
@@ -271,6 +272,46 @@ public class MarketPriceService {
     @Cacheable(cacheNames = CacheConfig.MARKET_PRICES, key = "'cur:' + #metalType + ':' + #priceSide")
     public Optional<PricePerGram> getCurrentPrice(MetalType metalType, PriceSide priceSide) {
         return current(metalType, priceSide).map(MarketPriceEffective::price);
+    }
+
+    /**
+     * 매입 예상 금액 — 고객이 "내 금 팔면 얼마인가"를 물을 때의 답.
+     *
+     * <h2>여기서 곱한다</h2>
+     * 화면이 시세 × 중량을 곱하지 않는다 (원칙 P1). 곱셈 한 줄이라 사소해 보이지만,
+     * 반올림 자리가 한쪽만 바뀌는 날 화면의 숫자와 가게가 쳐 주는 값이 갈라지고,
+     * 그 차이를 들고 온 고객을 설득할 방법은 없다.
+     *
+     * <h2>차감을 따로 하지 않는다</h2>
+     * 고시된 <b>매입가에 이미 가게 몫이 들어 있다.</b> 18K 매입가는 24K 매입가 ×0.73 인데
+     * 18K 의 실제 금 함량은 0.75 다 — 그 차이가 마진이다 (V35). 여기서 또 빼면 두 번 빼는
+     * 것이 되어 실제보다 낮게 안내된다.
+     *
+     * <h2>원 단위로 끊는다</h2>
+     * 매입은 현금으로 치르므로 소수점이 남을 자리가 없다. 올림이 아니라 버림이다 —
+     * 안내한 금액보다 적게 주는 일은 없어야 하지만, 많게 안내해 두고 덜 주는 일은
+     * 더 나쁘다. 실제 지급액은 실측 뒤 정해지고 보통 이 값보다 크거나 같다.
+     *
+     * @param weightG 고객이 입력한 중량(g). 0 이하는 호출부가 막는다
+     */
+    @Transactional(readOnly = true)
+    public BuybackQuoteResponse quoteBuyback(MetalType metalType, BigDecimal weightG) {
+        BigDecimal weightDon = weightG.divide(MetalType.GRAMS_PER_DON, 4, RoundingMode.HALF_UP);
+
+        return getCurrentPrice(metalType, PriceSide.BUY)
+                .map(price -> new BuybackQuoteResponse(
+                        metalType,
+                        metalType.displayName(),
+                        true,
+                        weightG,
+                        weightDon,
+                        price.value(),
+                        MetalType.perDonFromGram(price.value()),
+                        price.value().multiply(weightG).setScale(0, RoundingMode.DOWN)))
+                // 고시된 적 없는 금속(지금은 은·백금). 0 원을 돌려주지 않는다 (원칙 P6).
+                .orElseGet(() -> new BuybackQuoteResponse(
+                        metalType, metalType.displayName(), false,
+                        weightG, weightDon, null, null, null));
     }
 
     @Transactional(readOnly = true)

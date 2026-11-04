@@ -1,0 +1,218 @@
+/* =====================================================================
+   매입 계산기
+
+   선과 여백으로만 나눈다. 떠 있는 카드를 쌓지 않는다 — 이 프로젝트의 공통
+   원칙이다 (tokens.css). 결과 금액만 바탕 한 톤으로 구분한다.
+   ===================================================================== */
+
+.root {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 22px;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+/* ---------- 금속 고르기 ---------- */
+.metals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metal,
+.metalOn {
+  /* 손가락 목표 크기 */
+  min-height: 38px;
+  padding: 0 15px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--gray);
+  cursor: pointer;
+  transition:
+    border-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
+}
+
+.metal:hover {
+  border-color: var(--dark);
+  color: var(--dark);
+}
+
+/* 고른 것은 색만이 아니라 굵기도 바꾼다 — 색만으로 알리지 않는다 */
+.metalOn {
+  border-color: var(--dark);
+  background: var(--dark);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- 무게 ---------- */
+.weightRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex-grow: 1;
+  min-width: 0;
+  /* 16px 미만이면 iOS 가 입력칸을 누를 때 화면을 확대한다 */
+  font-size: 16px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--dark);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--gold-deep);
+  outline-offset: 1px;
+  border-color: var(--gold-deep);
+}
+
+.units {
+  display: flex;
+  flex: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.unit,
+.unitOn {
+  min-width: 48px;
+  min-height: 44px;
+  border: 0;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.unit + .unit,
+.unit + .unitOn,
+.unitOn + .unit {
+  border-left: 1px solid var(--line);
+}
+
+.unitOn {
+  background: var(--dark);
+  color: #fff;
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--gray);
+}
+
+/* ---------- 결과 ---------- */
+.result {
+  margin-top: 18px;
+  padding: 18px 16px;
+  background: var(--light-gray);
+  border-radius: var(--radius-sm);
+  /* 숫자가 들어오고 나갈 때 상자 높이가 튀지 않게 바닥을 잡아 둔다 */
+  min-height: 108px;
+  display: flex;
+  align-items: center;
+}
+
+.resultIdle {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--gray);
+}
+
+.amountLabel {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--gray);
+}
+
+.amount {
+  margin: 4px 0 0;
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-snug);
+}
+
+.basis {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  color: var(--gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.dim {
+  color: var(--ink-400);
+}
+
+/* 고시 전 금속. 0 원을 적지 않는다 */
+.inquiry {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--gold-deep);
+}
+
+.resultNote {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--gray);
+}
+
+/* ---------- 단서 ----------
+   경고색을 쓰지 않는다 — 잘못된 것이 아니라 알아야 할 사실이다. 다만 본문보다
+   흐리게 두면 아무도 읽지 않으므로 글자색은 본문과 같이 둔다. */
+.caveat {
+  margin: 14px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--gray);
+}
+
+.caveat strong {
+  color: var(--dark);
+}
+
+@media (max-width: 560px) {
+  .root {
+    padding: 18px 16px;
+  }
+
+  .amount {
+    font-size: 26px;
+  }
+}

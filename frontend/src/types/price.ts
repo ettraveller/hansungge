@@ -178,3 +178,29 @@ export interface ProductPrice {
   priceQuotedAt?: string | null;
   notice?: string | null;
 }
+
+/**
+ * 매입 예상 금액 — 고객이 "내 금 팔면 얼마인가"를 물었을 때의 답.
+ *
+ * <p><b>금액은 서버가 낸다.</b> 화면이 시세 × 중량을 곱하지 않는다 (원칙 P1).
+ *
+ * <p>아직 고시되지 않은 금속(지금은 은·백금)은 {@link available} 이 false 이고
+ * 금액 자리가 비어 있다 — 0 원이 오는 경로는 없다 (원칙 P6).
+ */
+export interface BuybackQuote {
+  metalType: MetalType;
+  metalName: string;
+  available: boolean;
+  weightG: number;
+  weightDon: number;
+  /** 적용 매입가(원/g). 고시 전이면 없다 */
+  pricePerGram?: number | null;
+  /** 적용 매입가(원/돈). 고시 전이면 없다 */
+  pricePerDon?: number | null;
+  /**
+   * 매입 예상 금액(원). 고시 전이면 없다.
+   *
+   * <b>확정 금액이 아니다.</b> 실제 지급액은 저울에 올린 중량과 순도 검사로 정해진다.
+   */
+  amount?: number | null;
+}

@@ -204,6 +204,61 @@ class MarketPriceDonUnitIntegrationTest extends EmbeddedPostgresSupport {
     // 도우미
     // =================================================================
 
+    // =================================================================
+    // 매입 계산기 — 고객이 "내 금 팔면 얼마인가"를 묻는 길
+    // =================================================================
+
+    @Test
+    @DisplayName("매입 예상액은 서버가 낸다 — 매입가(원/g) × 중량, 원 단위로 끊는다")
+    void buybackQuoteIsComputedByServer() throws Exception {
+        // 팔 때 705,000원/돈 → 188,000원/g
+        declare("828000", "705000");
+
+        MvcResult result = mockMvc.perform(get("/api/v1/prices/buyback")
+                        .param("metal", "GOLD_24K")
+                        .param("weightG", "7.5"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(body.get("available").asBoolean()).isTrue();
+        assertThat(body.get("pricePerGram").decimalValue()).isEqualByComparingTo("188000.00");
+        assertThat(body.get("pricePerDon").decimalValue()).isEqualByComparingTo("705000");
+        // 7.5g = 2돈 → 188,000 × 7.5 = 1,410,000
+        assertThat(body.get("amount").decimalValue()).isEqualByComparingTo("1410000");
+        assertThat(body.get("weightDon").decimalValue()).isEqualByComparingTo("2.0000");
+    }
+
+    @Test
+    @DisplayName("고시된 적 없는 금속은 0원이 아니라 '시세문의'로 돌아온다 — 원칙 P6")
+    void buybackReturnsNoPriceInsteadOfZero() throws Exception {
+        // 은은 고시한 적이 없다.
+        MvcResult result = mockMvc.perform(get("/api/v1/prices/buyback")
+                        .param("metal", "SILVER")
+                        .param("weightG", "100"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(body.get("available").asBoolean()).isFalse();
+        // 0 이 아니라 아예 없어야 한다. 0 원은 "안 쳐 준다"로 읽힌다.
+        assertThat(body.hasNonNull("amount")).isFalse();
+        assertThat(body.hasNonNull("pricePerGram")).isFalse();
+    }
+
+    @Test
+    @DisplayName("중량이 0 이거나 음수면 거절한다 — 0원 견적을 만들지 않는다")
+    void buybackRejectsNonPositiveWeight() throws Exception {
+        declare("828000", "705000");
+
+        for (String weight : new String[] {"0", "-1"}) {
+            mockMvc.perform(get("/api/v1/prices/buyback")
+                            .param("metal", "GOLD_24K")
+                            .param("weightG", weight))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
     private void declare(String sellPerDon, String buyPerDon) throws Exception {
         mockMvc.perform(post("/api/admin/prices/apply-pair")
                         .header("Authorization", bearer())

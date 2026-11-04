@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { BuybackCalculator } from '@/components/price/BuybackCalculator';
 import { Reveal } from '@/components/ui/Reveal';
 import { SectionHead } from '@/components/ui/SectionHead';
 import { FAQS, ITEM_GROUPS, NOTES, STEPS, type Step } from './purchase-guide-content';
@@ -47,6 +48,20 @@ export function PurchaseGuideView() {
             title="매입절차"
             desc="보유하신 금·은 제품을 당일 고시 시세로 매입해 드립니다"
           />
+
+          {/*
+            계산기를 절차 설명보다 먼저 둔다.
+
+            이 페이지에 오는 사람이 가장 먼저 알고 싶은 것은 "얼마 받나"이고,
+            절차는 그 금액이 마음에 들었을 때 읽는다. 순서를 뒤집으면 품목·단계를
+            지나야 숫자가 나오는데, 그 사이에 대부분 떠난다.
+          */}
+          <section className={styles.block} aria-labelledby="pg-calc">
+            {/* 번호를 붙이지 않는다 — 계산기는 절차의 한 단계가 아니라 도구다.
+                01·02·03 사이에 00 을 끼우면 단계가 넷인 것처럼 읽힌다. */}
+            <h2 id="pg-calc" className={styles.blockTitle}>얼마에 사드리나</h2>
+            <BuybackCalculator />
+          </section>
 
           {/* ---------- 01. 매입 품목 ---------- */}
           <section className={styles.block} aria-labelledby="pg-items">

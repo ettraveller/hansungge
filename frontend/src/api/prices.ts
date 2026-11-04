@@ -1,5 +1,6 @@
 import { api } from '@/api/client';
 import type {
+  BuybackQuote,
   MarketPrice,
   MetalType,
   PriceHistoryPoint,
@@ -29,6 +30,22 @@ export const priceApi = {
   history: (metal: MetalType, days = 30, side: PriceSide = 'SELL') =>
     api.get<PriceHistoryPoint[]>('/api/v1/prices/history', {
       query: { metal, side, days },
+      cache: 'no-store',
+    }),
+
+  /**
+   * 매입 예상 금액.
+   *
+   * <b>금액을 화면에서 곱하지 않는다</b> — 시세 × 중량을 서버가 낸다 (원칙 P1).
+   * 곱셈 한 줄이라 사소해 보이지만, 반올림 자리가 한쪽만 바뀌는 날 화면의 숫자와
+   * 가게가 쳐 주는 값이 갈라지고, 그 차이를 들고 온 고객을 설득할 방법은 없다.
+   *
+   * 아직 고시되지 않은 금속(지금은 은·백금)은 {@code available: false} 로 오고
+   * 금액이 비어 있다. 0 원이 오는 경로는 없다.
+   */
+  buyback: (metal: MetalType, weightG: number) =>
+    api.get<BuybackQuote>('/api/v1/prices/buyback', {
+      query: { metal, weightG },
       cache: 'no-store',
     }),
 

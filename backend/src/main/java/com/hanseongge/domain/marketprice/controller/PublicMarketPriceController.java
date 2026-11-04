@@ -7,6 +7,10 @@ import com.hanseongge.domain.marketprice.entity.MarketPriceEffective;
 import com.hanseongge.domain.marketprice.entity.MetalType;
 import com.hanseongge.domain.marketprice.entity.PriceSide;
 import com.hanseongge.domain.marketprice.service.MarketPriceService;
+import com.hanseongge.domain.marketprice.dto.BuybackQuoteResponse;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import java.math.BigDecimal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -60,6 +64,22 @@ public class PublicMarketPriceController {
                         view,
                         previous.get(MarketPriceService.previousKey(view.metalType(), view.priceSide()))))
                 .toList());
+    }
+
+    @Operation(summary = "매입 예상 금액",
+            description = "고객이 가진 금의 금속과 중량으로 매입 예상액을 돌려준다. "
+                    + "금액은 서버가 낸다 — 화면이 시세 × 중량을 곱하지 않는다(원칙 P1). "
+                    + "아직 고시되지 않은 금속(지금은 은·백금)은 available=false 이고 금액이 비어 있다. "
+                    + "이 응답에 0원이 담기는 경로는 없다.")
+    @GetMapping("/buyback")
+    public ResponseEntity<BuybackQuoteResponse> buyback(
+            @RequestParam MetalType metal,
+            @RequestParam
+            @DecimalMin(value = "0.01", message = "중량을 입력해 주세요.")
+            @DecimalMax(value = "100000", message = "중량이 너무 큽니다. 지점으로 문의해 주세요.")
+            BigDecimal weightG) {
+
+        return ResponseEntity.ok(marketPriceService.quoteBuyback(metal, weightG));
     }
 
     @Operation(summary = "시세 버전",
