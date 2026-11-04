@@ -21,8 +21,12 @@ import { useCreateOrder, usePaymentConfig } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
 import { ApiError } from '@/types/api';
 import type { PaymentMethod } from '@/types/order';
+import { Reveal } from '@/components/ui/Reveal';
 import { formatKrw, formatPhoneInput } from '@/utils/format';
 import styles from '@/views/CheckoutView.module.css';
+
+/** 등장 지연을 쌓는 줄 수. 이 뒤로는 같은 지연을 쓴다 (CartView 와 같은 이유). */
+const STAGGER_MAX = 5;
 
 
 /**
@@ -262,8 +266,16 @@ export function CheckoutView() {
               주문 상품 <span className={styles.titleCount}>{orderableItems.length}건</span>
             </h2>
             <ul className={styles.items}>
-              {orderableItems.map((item) => (
-                <li key={item.id} className={styles.item}>
+              {/* 줄이 하나씩 차례로 들어온다. li 그대로라 .item + .item 테두리
+                  규칙이 그대로 걸린다. 지연은 다섯 줄까지만 쌓는다. */}
+              {orderableItems.map((item, index) => (
+                <Reveal
+                  as="li"
+                  key={item.id}
+                  className={styles.item}
+                  rise="sm"
+                  delay={Math.min(index, STAGGER_MAX) * 60}
+                >
                   <div className={styles.itemName}>
                     {item.productName}
                     {item.optionName && <span className={styles.itemOption}> · {item.optionName}</span>}
@@ -276,7 +288,7 @@ export function CheckoutView() {
                     </span>
                     <strong>{formatKrw(item.lineAmount)}</strong>
                   </div>
-                </li>
+                </Reveal>
               ))}
             </ul>
           </section>

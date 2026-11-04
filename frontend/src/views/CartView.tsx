@@ -17,7 +17,16 @@ import { mediaUrl } from '@/utils/media';
 import { METAL_LABEL } from '@/types/price';
 import { ApiError } from '@/types/api';
 import type { CartItem } from '@/types/cart';
+import { Reveal } from '@/components/ui/Reveal';
 import styles from './CartView.module.css';
+
+/**
+ * 등장 지연을 쌓는 줄 수. 이 뒤로는 같은 지연을 쓴다.
+ *
+ * <p>끝까지 쌓으면 장바구니가 긴 사람일수록 아래쪽 줄이 한참 뒤에 도착한다 —
+ * 기다리게 하려고 넣는 움직임이 아니다.
+ */
+const STAGGER_MAX = 5;
 
 /**
  * 장바구니 (개발계획 §13.6).
@@ -72,8 +81,8 @@ export function CartView() {
 
           <div className={styles.layout}>
             <section className={styles.list} aria-label="담긴 상품">
-              {cart.items.map((item) => (
-                <CartRow key={item.id} item={item} />
+              {cart.items.map((item, index) => (
+                <CartRow key={item.id} item={item} index={index} />
               ))}
               <ClearButton />
             </section>
@@ -102,7 +111,7 @@ function EmptyCart() {
   );
 }
 
-function CartRow({ item }: { item: CartItem }) {
+function CartRow({ item, index }: { item: CartItem; index: number }) {
   const changeQuantity = useChangeCartQuantity();
   const remove = useRemoveCartItem();
   const busy = changeQuantity.isPending || remove.isPending;
@@ -117,7 +126,15 @@ function CartRow({ item }: { item: CartItem }) {
   const error = changeQuantity.error ?? remove.error;
 
   return (
-    <article className={item.orderable ? styles.row : styles.rowBlocked}>
+    // 줄이 하나씩 차례로 들어온다. 태그와 클래스는 그대로라 격자·테두리 규칙이
+    // 그대로 걸린다. 지연은 다섯 줄까지만 쌓는다 — 장바구니가 길면 아래쪽이
+    // 한참 뒤에 도착해 "느리게 뜨는 화면"이 된다.
+    <Reveal
+      as="article"
+      rise="sm"
+      delay={Math.min(index, STAGGER_MAX) * 60}
+      className={item.orderable ? styles.row : styles.rowBlocked}
+    >
       {/*
         상품 대표이미지. 장바구니는 "내가 뭘 담았더라"를 확인하는 자리라, 글만 있으면
         비슷한 이름의 상품을 구분하기 어렵다.
@@ -224,7 +241,7 @@ function CartRow({ item }: { item: CartItem }) {
       >
         ✕
       </button>
-    </article>
+    </Reveal>
   );
 }
 
