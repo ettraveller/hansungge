@@ -113,6 +113,21 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(partialIndex).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("매입 계산기 팝업은 꺼진 채로 배포된다 — V37 이 시드로 켜 둔 것을 V39 가 내렸다")
+    void seededCalculatorPopupIsOff() {
+        // 행은 남아 있어야 한다. 지우면 다시 띄울 때 기간·링크·문구를 처음부터
+        // 적어야 하고, 관리자 화면의 팝업 목록도 빈 채로 시작한다.
+        Integer seeded = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM popups WHERE kind = 'CALCULATOR' AND created_by = 'system'",
+                Integer.class);
+        assertThat(seeded).isEqualTo(1);
+
+        Integer live = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM popups WHERE active", Integer.class);
+        assertThat(live).isZero();
+    }
+
     // ---------- 설정 ----------
 
     @Test
