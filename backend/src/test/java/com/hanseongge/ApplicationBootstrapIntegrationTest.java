@@ -52,7 +52,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 45개 테이블이 생성된다")
+    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 47개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
@@ -95,8 +95,8 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // 테이블 수는 일부러 손으로 둔다 — 마이그레이션이 의도치 않게 테이블을
         // 만들거나 지우면 걸려야 한다. 늘어난 것이 의도된 것이면 위 주석에 이유를
         // 한 줄 적고 이 숫자를 올린다.
-        // V34 가 refund_policies 를 더한다.
-        assertThat(tableCount).isEqualTo(46);
+        // V34 가 refund_policies 를, V37 이 popups 를 더한다.
+        assertThat(tableCount).isEqualTo(47);
     }
 
     @Test

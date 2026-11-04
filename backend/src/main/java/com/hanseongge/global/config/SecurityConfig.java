@@ -120,6 +120,8 @@ public class SecurityConfig {
                                 "/api/v1/news/**",
                                 "/api/v1/faqs/**",
                                 "/api/v1/events/**",
+                                // 메인 팝업. 로그인 전 첫 화면에서 부르므로 열려 있어야 한다
+                                "/api/v1/popups",
                                 "/api/v1/stores/**",
                                 // 환불규정 등 정책 문서. 주문서의 동의 구역이 읽는다.
                                 "/api/v1/policies/**",

@@ -1,0 +1,184 @@
+/* =====================================================================
+   메인 팝업
+
+   알림창 하나만 띄운다. 겹쳐 뜨는 화면은 그 자체로 신뢰를 깎는다.
+   ===================================================================== */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gutter);
+  /* 완전히 검게 덮지 않는다. 뒤가 비쳐야 "이 사이트 위에 뜬 것"으로 읽힌다 */
+  background: rgba(15, 27, 45, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* 바깥을 눌러 닫는 자리. 보이지 않는 버튼이라 크기만 차지한다 */
+.backdropHit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: default;
+}
+
+.panel {
+  position: relative;
+  width: min(460px, 100%);
+  /* 긴 팝업이 화면을 넘지 않게. 안에서 스크롤된다 */
+  max-height: calc(100dvh - var(--gutter) * 2);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 26px 22px 0;
+  box-shadow: 0 20px 60px -24px rgba(15, 27, 45, 0.5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    animation: popIn 320ms var(--ease-out) both;
+  }
+}
+
+/* 되튀지 않는다 — 수백만 원짜리 금을 파는 화면에서 통통 튀는 창은 가볍다 */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  /* 손가락 목표 크기 */
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+  color: var(--ink-400);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.close:hover {
+  color: var(--dark);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--gold-deep);
+  letter-spacing: var(--tracking-snug);
+}
+
+.title {
+  margin: 6px 0 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--dark);
+  letter-spacing: var(--tracking-snug);
+}
+
+.calc {
+  display: grid;
+  gap: 0;
+}
+
+/* 계산기가 이미 테두리를 갖고 있다. 팝업 안에서 한 겹 더 두르면 상자 속 상자가 된다 */
+.calc > :last-child {
+  margin-top: 16px;
+  border: 0;
+  padding: 0;
+}
+
+.content {
+  display: grid;
+  gap: 12px;
+}
+
+.image {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.body {
+  margin: 0;
+  font-size: 14px;
+  line-height: var(--leading-relaxed);
+  color: var(--gray);
+  white-space: pre-line;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  min-height: 46px;
+  border-radius: var(--radius-sm);
+  background: var(--action);
+  color: var(--on-action);
+  font-size: var(--text-md);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cta:hover {
+  background: var(--action-hover);
+}
+
+/* 아래 띠. 패널 바닥에 붙어 스크롤해도 늘 보인다 */
+.foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 0;
+  margin: 18px -22px 0;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+.footBtn {
+  flex: 1;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.footBtn + .footBtn {
+  border-left: 1px solid var(--line);
+}
+
+.footBtn:hover {
+  color: var(--dark);
+  background: var(--light-gray);
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: 22px 16px 0;
+  }
+
+  .foot {
+    margin: 16px -16px 0;
+  }
+}

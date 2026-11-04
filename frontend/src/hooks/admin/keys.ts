@@ -61,6 +61,8 @@ export const adminKeys = {
   notices: () => [...adminKeys.all, 'notices'] as const,
   noticeList: (search: AdminNoticeSearch) => [...adminKeys.notices(), 'list', search] as const,
 
+  popups: () => [...adminKeys.all, 'popups'] as const,
+
   events: () => [...adminKeys.all, 'events'] as const,
   eventList: (search: AdminEventSearch) => [...adminKeys.events(), 'list', search] as const,
   eventEntries: (id: number, page: number) =>

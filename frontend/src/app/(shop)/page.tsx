@@ -5,6 +5,7 @@ import { load } from '@/api/server';
 import type { CategoryProducts } from '@/components/home/ProductTabs';
 import type { Category } from '@/types/product';
 import { METAL_ORDER, type MetalType, type PriceHistoryPoint } from '@/types/price';
+import { PopupLayer } from '@/components/popup/PopupLayer';
 import { HomeView } from '@/views/HomeView';
 
 /** 제품 소개 탭에서 카테고리당 보여줄 개수. 레퍼런스는 12~15개다. */
@@ -46,7 +47,13 @@ export default async function HomePage() {
   const groups = await loadProductGroups(categories.data);
 
   return (
-    <HomeView prices={prices} histories={histories} groups={groups} notices={notices} />
+    <>
+      {/* 팝업은 메인에만 띄운다. 모든 화면에 두면 상품을 보다 장바구니로 가는
+          길목마다 알림창이 끼어든다 — 광고가 길을 막는 순간 광고가 아니라 방해다.
+          내용은 관리자가 정한다(관리자 › 팝업 관리). */}
+      <PopupLayer />
+      <HomeView prices={prices} histories={histories} groups={groups} notices={notices} />
+    </>
   );
 }
 
