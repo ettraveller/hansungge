@@ -158,8 +158,14 @@ public class PriceCalculationService {
 
         // 5. 할인·쿠폰은 주문 시점(STEP 11~13)에 붙는다. 조회 단계에서는 적용하지 않는다.
 
-        // 6. 부가세
-        VatMode vatMode = vatPolicyResolver.resolve();
+        // 6. 부가세 — 상품이 정한다 (V38)
+        //
+        //    전역 설정 하나였을 때는 금지금(면세)과 주얼리(과세)를 동시에 맞출 수
+        //    없었다. 이제 상품의 과세 여부가 방식을 정하고, 설정은 세율만 준다.
+        //
+        //    과세여도 최종 금액은 소계와 같다(INCLUDED) — 표시가가 곧 받는 돈이고
+        //    세액은 그 안에 얼마가 들어 있는지를 알려 주는 값이다.
+        VatMode vatMode = product.vatMode();
         Money vat = vatMode.vatOf(subtotal, vatPolicyResolver.ratePercent());
         Money withVat = vatMode.totalOf(subtotal, vat);
 
@@ -174,7 +180,9 @@ public class PriceCalculationService {
                 status, productId, optionId,
                 market.price(), market.effectiveId(), market.quotedAt(),
                 components, subtotal,
-                vatMode, vatPolicyResolver.isUsingTemporaryDefault(), vat,
+                // 「정책 미확정」 표시는 이제 쓰지 않는다. 상품이 과세/면세를 직접
+                // 들고 있으므로 임시 기본값으로 떨어지는 경로가 없다.
+                vatMode, false, vat,
                 rounding, roundingResolver.isUsingTemporaryDefault(), finalUnitPrice,
                 status.isOrderable() ? null : statusReason(status));
     }

@@ -89,6 +89,14 @@ export interface ProductInput {
    * 갈린다. 보내지 않으면 서버가 false 로 읽는다 -- 빠뜨렸을 때 안전한 쪽이다.
    */
   madeToOrder: boolean;
+  /**
+   * 과세 상품인가 (V38).
+   *
+   * 과세여도 고객이 내는 금액은 바뀌지 않는다 - 판매가에 이미 부가세가
+   * 들어 있다고 보고 공급가액과 세액을 쪼갤 뿐이다. 세율은 상품마다 두지 않고
+   * 설정(VAT_RATE)을 쓴다.
+   */
+  vatTaxable: boolean;
   /** 등록 시에만 쓰인다 */
   defaultOptionName?: string | null;
   initialStock?: number | null;
@@ -188,6 +196,14 @@ export interface DraftDetailInput {
   galleryKeys: string[];
   detailKeys: string[];
   madeToOrder: boolean;
+  /**
+   * 과세 상품인가 (V38).
+   *
+   * 과세여도 고객이 내는 금액은 바뀌지 않는다 - 판매가에 이미 부가세가
+   * 들어 있다고 보고 공급가액과 세액을 쪼갤 뿐이다. 세율은 상품마다 두지 않고
+   * 설정(VAT_RATE)을 쓴다.
+   */
+  vatTaxable: boolean;
   pricing: DraftPriceInput;
 }
 

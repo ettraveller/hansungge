@@ -125,10 +125,22 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
-    @DisplayName("미확정('TBD') 설정은 값이 없는 것으로 취급된다 — 예외를 던지지 않는다")
-    void undecidedSettingIsTreatedAsAbsent() {
-        // 부가세(A-1)는 아직 미확정이라 'TBD' 이며, 값이 없는 것으로 취급된다.
-        assertThat(systemSettingService.find("VAT_MODE")).isEmpty();
+    @DisplayName("부가세는 전역 설정이 아니라 상품이 정한다 (V38)")
+    void vatIsDecidedPerProduct() {
+        // V38 이 전역 VAT_MODE 를 'PER_PRODUCT' 로 바꾼다. 이 값은 더 이상
+        // 가격 계산에 쓰이지 않는다 - 상품의 vat_taxable 이 방식을 정한다.
+        assertThat(systemSettingService.find("VAT_MODE")).contains("PER_PRODUCT");
+
+        // 세율은 전역이다. 법이 정하는 값이지 상품의 성질이 아니다.
+        assertThat(systemSettingService.find("VAT_RATE")).contains("10");
+
+        // 새 상품은 면세로 시작한다 - 과세로 시작하면 이 변경 하나로 전 상품이
+        // "부가세 포함"이라고 주장하게 된다.
+        Boolean columnDefault = jdbcTemplate.queryForObject(
+                "SELECT column_default LIKE '%false%' FROM information_schema.columns "
+                        + "WHERE table_name = 'products' AND column_name = 'vat_taxable'",
+                Boolean.class);
+        assertThat(columnDefault).isTrue();
     }
 
     @Test
@@ -189,7 +201,8 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
                 // A-2 확정값이 V11 로 반영되어 있으므로 임시 정책이 아니다.
                 .andExpect(jsonPath("$.roundingPolicy").value(RoundingPolicy.CEIL_100.name()))
                 .andExpect(jsonPath("$.roundingPolicyTemporary").value(false))
-                // A-1(부가세)도 미확정이므로 임시 정책이 그대로 노출된다
+                // 부가세는 상품이 정하므로(V38) 이 건강검진의 전역 값은 참고용이다.
+                // 전역 설정이 'PER_PRODUCT' 라 파싱되지 않고 임시 기본값으로 떨어진다.
                 .andExpect(jsonPath("$.vatMode").value(VatMode.TEMPORARY_DEFAULT.name()))
                 .andExpect(jsonPath("$.vatPolicyTemporary").value(true))
                 .andExpect(jsonPath("$.serverTime").exists());

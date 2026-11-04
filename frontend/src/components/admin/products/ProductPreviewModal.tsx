@@ -24,6 +24,8 @@ export interface PreviewInput {
   detailKeys: string[];
   /** 주문제작인가. 미리보기의 배송기간·청약철회 안내가 이 값으로 갈린다 */
   madeToOrder: boolean;
+  /** 과세 상품인가 (V38). 미리보기의 「부가세 포함」 표시가 갈린다 */
+  vatTaxable: boolean;
   pricing: DraftPriceInput;
 }
 
@@ -103,6 +105,7 @@ function PreviewBody({ input, productId }: { input: PreviewInput; productId: num
     galleryKeys,
     detailKeys,
     madeToOrder: input.madeToOrder,
+    vatTaxable: input.vatTaxable,
     pricing: input.pricing,
   };
 

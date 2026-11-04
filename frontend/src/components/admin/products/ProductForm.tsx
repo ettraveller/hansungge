@@ -145,6 +145,13 @@ export function ProductForm({
    * 청약철회권을 근거 없이 깎는다. 조용히 틀리는 쪽이 더 위험하다.
    */
   const [madeToOrder, setMadeToOrder] = useState(initial?.madeToOrder ?? false);
+  /**
+   * 과세 상품인가 (V38).
+   *
+   * 기본은 면세다 — 금지금(골드바·순금)이 그렇고, 틀렸을 때 안전한 쪽이기도 하다.
+   * 면세인 물건을 과세로 적으면 받지도 않은 세금을 받은 것처럼 영수증에 남는다.
+   */
+  const [vatTaxable, setVatTaxable] = useState(initial?.vatTaxable ?? false);
   const [defaultOptionName, setDefaultOptionName] = useState('');
   // 등록 화면에서 미리 올려 두는 이미지. 파일은 저장소에 바로 올라가고, 상품에
   // 붙이는 것만 등록이 끝난 뒤로 미룬다 — 아직 붙일 상대가 없다.
@@ -207,6 +214,7 @@ export function ProductForm({
       multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',
       fixedPrice: marketLinked ? null : fixedPrice,
       madeToOrder,
+      vatTaxable,
       ...(mode === 'create'
         ? {
             defaultOptionName: defaultOptionName.trim() === '' ? null : defaultOptionName.trim(),
@@ -512,6 +520,53 @@ export function ProductForm({
         </div>
       </Field>
 
+      {/*
+        부가세도 상품마다 정한다 (V38). 금지금(골드바·순금)은 면세 요건이 있고
+        가공한 주얼리는 과세라, 설정 하나로는 둘을 동시에 맞출 수 없다.
+
+        배송 구분과 같은 두 갈래다. 체크박스로 두면 "안 누르면 무슨 뜻인지"가
+        화면에 없는데, 그 기본값이 영수증에 세액으로 찍혀 나간다.
+
+        세율은 받지 않는다 - 법이 정하는 값이지 상품의 성질이 아니다. 상품마다
+        숫자를 받으면 오타 하나가 그대로 금액이 된다.
+      */}
+      <Field
+        label="부가세"
+        required
+        hint={
+          vatTaxable
+            ? '판매가에 부가세가 포함된 것으로 보고 주문서·영수증에서 공급가액과 세액을 쪼갠다. 고객이 내는 금액은 바뀌지 않는다.'
+            : '세액 0 으로 둔다. 금지금(골드바·순금)이 여기에 해당한다. 과세 물건을 면세로 두면 신고가 틀어진다.'
+        }
+      >
+        <div className={styles.choiceRow}>
+          <label className={vatTaxable ? styles.choice : styles.choiceOn}>
+            <input
+              type="radio"
+              name="p-vat-taxable"
+              checked={!vatTaxable}
+              onChange={() => setVatTaxable(false)}
+            />
+            <span>
+              <b>면세</b>
+              <em>세액 0 · 금지금</em>
+            </span>
+          </label>
+          <label className={vatTaxable ? styles.choiceOn : styles.choice}>
+            <input
+              type="radio"
+              name="p-vat-taxable"
+              checked={vatTaxable}
+              onChange={() => setVatTaxable(true)}
+            />
+            <span>
+              <b>과세</b>
+              <em>부가세 포함가 · 가격 그대로</em>
+            </span>
+          </label>
+        </div>
+      </Field>
+
       <Field
         label="상품 설명"
         htmlFor="p-desc"
@@ -592,6 +647,7 @@ export function ProductForm({
           galleryKeys,
           detailKeys,
           madeToOrder,
+          vatTaxable,
           // 가격 재료는 등록할 때 보내는 값과 똑같이 만든다. 여기서 한 줄이라도
           // 달라지면 미리보기 금액과 등록 후 금액이 갈린다.
           pricing: {

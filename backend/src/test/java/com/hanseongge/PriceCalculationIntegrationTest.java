@@ -397,11 +397,10 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
     class Policies {
 
         @Test
-        @DisplayName("A-1 미확정 상태에서도 계산이 멈추지 않는다 — 임시 NONE, 최종 = 소계")
-        void vatUndecided() {
-            assertThat(vatPolicyResolver.isUsingTemporaryDefault()).isTrue();
-
+        @DisplayName("면세 상품은 세액 0, 최종 = 소계 (V38 — 부가세는 상품이 정한다)")
+        void vatExemptProduct() {
             declareMarketPrice("200000");
+            // 픽스처는 면세로 만든다 — 금지금의 기본값이다
             Product product = saveProduct(ProductTestFixtures.marketProduct(
                     CATEGORY_ID, "골드바", MetalType.GOLD_24K,
                     PriceType.MARKET_LINKED, "3.75", "0", "1"));
@@ -409,36 +408,35 @@ class PriceCalculationIntegrationTest extends EmbeddedPostgresSupport {
             PriceQuote quote = priceCalculationService.quote(product.getId(), null);
 
             assertThat(quote.vatMode()).isEqualTo(VatMode.NONE);
-            assertThat(quote.vatPolicyTemporary()).isTrue();
             assertThat(quote.vat().value()).isEqualByComparingTo("0.00");
-            // 임시 정책이 금액을 바꾸지 않는다는 것이 핵심이다
             assertThat(quote.finalUnitPrice().value()).isEqualByComparingTo(quote.subtotal().value());
         }
 
         @Test
-        @DisplayName("VAT_MODE=EXCLUDED 로 확정하면 10%가 가산된다 — 재배포 없이 설정만 바꾼다")
-        void vatExcluded() {
-            try {
-                systemSettingService.update(VatPolicyResolver.SETTING_KEY, "EXCLUDED", "test");
-                evictAllCaches();
+        @DisplayName("과세 상품으로 바꿔도 고객이 내는 돈은 그대로다 — 세액만 쪼개진다")
+        void vatTaxableDoesNotChangeTheAmount() {
+            declareMarketPrice("200000");
+            Product product = saveProduct(ProductTestFixtures.marketProduct(
+                    CATEGORY_ID, "18k 팔찌", MetalType.GOLD_24K,
+                    PriceType.MARKET_LINKED, "3.75", "0", "1"));
 
-                declareMarketPrice("200000");
-                Product product = saveProduct(ProductTestFixtures.marketProduct(
-                        CATEGORY_ID, "골드바", MetalType.GOLD_24K,
-                        PriceType.MARKET_LINKED, "3.75", "0", "1"));
+            // 면세일 때의 금액을 먼저 잡아 둔다
+            BigDecimal beforeTotal = priceCalculationService.quote(product.getId(), null)
+                    .finalUnitPrice().value();
 
-                PriceQuote quote = priceCalculationService.quote(product.getId(), null);
+            // 같은 상품을 과세로 돌린다
+            jdbcTemplate.update("UPDATE products SET vat_taxable = TRUE WHERE id = ?", product.getId());
+            evictAllCaches();
 
-                assertThat(quote.vatMode()).isEqualTo(VatMode.EXCLUDED);
-                assertThat(quote.vatPolicyTemporary()).isFalse();
-                assertThat(quote.subtotal().value()).isEqualByComparingTo("750000.00");
-                assertThat(quote.vat().value()).isEqualByComparingTo("75000.00");
-                assertThat(quote.finalUnitPrice().value()).isEqualByComparingTo("825000.00");
-            } finally {
-                systemSettingService.update(VatPolicyResolver.SETTING_KEY,
-                        SystemSettingService.UNDECIDED, "test");
-                evictAllCaches();
-            }
+            PriceQuote quote = priceCalculationService.quote(product.getId(), null);
+
+            assertThat(quote.vatMode()).isEqualTo(VatMode.INCLUDED);
+            assertThat(quote.subtotal().value()).isEqualByComparingTo("750000.00");
+            // 750,000 안에 들어 있는 10% 분: 750000 * 10/110
+            assertThat(quote.vat().value()).isEqualByComparingTo("68181.82");
+            // 핵심 — 과세로 바꿔도 받는 돈은 한 푼도 달라지지 않는다
+            assertThat(quote.finalUnitPrice().value()).isEqualByComparingTo(beforeTotal);
+            assertThat(quote.finalUnitPrice().value()).isEqualByComparingTo("750000.00");
         }
 
         @Test

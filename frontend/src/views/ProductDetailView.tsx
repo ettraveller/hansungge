@@ -292,6 +292,14 @@ export function ProductDetailView({
               <PriceTag price={price?.price ?? null} size="lg" />
               {/* 아래에서 개수를 고를 수 있으니, 이 값이 한 개 값이라는 것을 적어 둔다 */}
               {price?.price != null && <span className={styles.priceUnit}>1개</span>}
+              {/*
+                과세 상품에만 적는다 (V38). 면세 상품에 「부가세 포함」이라고 적으면
+                받지도 않은 세금을 받은 것처럼 보인다 - 금지금이 그렇다.
+
+                금액은 이 표시로 바뀌지 않는다. 표시가가 곧 받는 돈이고, 그 안에
+                세금이 들어 있다는 사실만 알려 주는 것이다.
+              */}
+              {price?.vatIncluded && <span className={styles.priceUnit}>부가세 포함</span>}
             </div>
             {price?.notice && <p className={styles.notice}>{price.notice}</p>}
           </div>

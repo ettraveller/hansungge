@@ -229,6 +229,8 @@ export interface AdminProduct {
   active: boolean;
   /** 주문제작 상품인가 (V33). 수정 화면이 체크 상태를 되살리는 데 쓴다 */
   madeToOrder: boolean;
+  /** 과세 상품인가 (V38). 과세여도 고객이 내는 금액은 바뀌지 않는다 */
+  vatTaxable: boolean;
   createdBy?: string | null;
   createdAt: string;
   updatedBy?: string | null;

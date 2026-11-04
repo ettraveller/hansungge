@@ -164,7 +164,7 @@ public class ProductService {
 
         Product draft = Product.create(null, request.name(), pricing, request.description(),
                 request.galleryKeys().isEmpty() ? null : request.galleryKeys().get(0),
-                request.madeToOrder(), "preview");
+                request.madeToOrder(), request.vatTaxable(), "preview");
 
         // ⚠️ 판매중으로 두고 계산한다. Product.create 는 HIDDEN 으로 시작하는데, 그대로
         // 두면 공개 응답이 금액을 가리고 "시세문의"만 내보낸다 — 판매하지 않는 상품의
@@ -213,7 +213,7 @@ public class ProductService {
               targetType = AuditActions.TARGET_PRODUCT,
               targetId = "#result.getId()")
     public Product create(Long categoryId, String name, ProductPricing pricing,
-                          String description, boolean madeToOrder,
+                          String description, boolean madeToOrder, boolean vatTaxable,
                           String defaultOptionName, Integer initialStock, String adminLoginId) {
 
         categoryService.find(categoryId);   // 존재 확인
@@ -221,7 +221,8 @@ public class ProductService {
         // 썸네일은 null 로 시작한다. 새 상품에는 아직 대표이미지 목록이 없고,
         // 그 목록의 첫 장이 들어오는 순간 replaceImages(GALLERY) 가 채운다.
         Product product = productRepository.save(Product.create(
-                categoryId, name, pricing, description, null, madeToOrder, adminLoginId));
+                categoryId, name, pricing, description, null, madeToOrder, vatTaxable,
+                adminLoginId));
 
         // 재고를 담을 곳을 반드시 하나 만든다 (D-7)
         ProductOption defaultOption = optionRepository.save(ProductOption.createDefault(
@@ -242,12 +243,14 @@ public class ProductService {
               targetType = AuditActions.TARGET_PRODUCT,
               targetId = "#id")
     public Product update(Long id, Long categoryId, String name, ProductPricing pricing,
-                          String description, boolean madeToOrder, String adminLoginId) {
+                          String description, boolean madeToOrder, boolean vatTaxable,
+                          String adminLoginId) {
         Product product = find(id);
         AuditContext.before(snapshot(product));
 
         categoryService.find(categoryId);
-        product.update(categoryId, name, pricing, description, madeToOrder, adminLoginId);
+        product.update(categoryId, name, pricing, description, madeToOrder, vatTaxable,
+                adminLoginId);
 
         // 가격 재료가 바뀌었으므로 캐시된 산출 결과는 더 이상 유효하지 않다.
         evictPriceCache();

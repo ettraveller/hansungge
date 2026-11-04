@@ -33,6 +33,9 @@ public record ProductDraftDetailRequest(
                 example = "false")
         boolean madeToOrder,
 
+        @Schema(description = "과세 상품인가. 미리보기 금액의 부가세 표시가 갈린다", example = "false")
+        boolean vatTaxable,
+
         @Schema(description = "가격 재료", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "가격 재료를 보내 주세요.")
         @Valid

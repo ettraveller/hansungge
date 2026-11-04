@@ -34,7 +34,7 @@ public final class ProductTestFixtures {
         Product product = Product.create(categoryId, name,
                 new ProductPricing(metal, priceType, new BigDecimal(weightG), null,
                         new BigDecimal(laborCost), new BigDecimal(multiplier), null),
-                null, null, false, CREATED_BY);
+                null, null, false, false, CREATED_BY);
         product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
         return product;
     }
@@ -44,7 +44,7 @@ public final class ProductTestFixtures {
         Product product = Product.create(categoryId, name,
                 new ProductPricing(null, PriceType.FIXED, null, null,
                         BigDecimal.ZERO, BigDecimal.ONE, new BigDecimal(fixedPrice)),
-                null, null, false, CREATED_BY);
+                null, null, false, false, CREATED_BY);
         product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
         return product;
     }
@@ -59,7 +59,7 @@ public final class ProductTestFixtures {
         Product product = Product.create(categoryId, name,
                 new ProductPricing(null, PriceType.INQUIRY, null, null,
                         BigDecimal.ZERO, BigDecimal.ONE, null),
-                null, null, false, CREATED_BY);
+                null, null, false, false, CREATED_BY);
         product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
         return product;
     }

@@ -1,6 +1,7 @@
 package com.hanseongge.domain.product.entity;
 
 import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.global.util.VatMode;
 import com.hanseongge.global.util.Money;
 import com.hanseongge.global.util.Weight;
 import jakarta.persistence.Column;
@@ -105,6 +106,22 @@ public class Product {
     private boolean madeToOrder;
 
     /**
+     * 과세 상품인가 (V38).
+     *
+     * <p>이 가게가 파는 물건은 한 종류가 아니다 — 금지금(골드바·순금)은 면세 요건이
+     * 있고, 가공한 주얼리는 과세다. 전역 설정 하나로는 둘을 동시에 맞출 수 없어
+     * 상품마다 둔다.
+     *
+     * <p><b>과세여도 판매가는 바뀌지 않는다.</b> 표시가가 곧 받는 돈이고(부가세 포함),
+     * 그 안에 얼마가 세금인지를 주문서·영수증에서 쪼개 보여 줄 뿐이다.
+     *
+     * <p>세율은 여기 두지 않는다 — 법이 정하는 값이지 상품의 성질이 아니다.
+     * {@code system_settings.VAT_RATE} 하나를 쓴다.
+     */
+    @Column(name = "vat_taxable", nullable = false)
+    private boolean vatTaxable;
+
+    /**
      * 1회 주문 최소 수량 (V8).
      *
      * <p>골드바처럼 낱개 판매가 기본인 상품은 1이지만, 소액 부자재는 묶음으로만 파는
@@ -136,13 +153,14 @@ public class Product {
 
     private Product(Long categoryId, String name, ProductPricing pricing,
                     String description, String thumbnailKey, boolean madeToOrder,
-                    String createdBy) {
+                    boolean vatTaxable, String createdBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
         this.description = description;
         this.thumbnailKey = thumbnailKey;
         this.madeToOrder = madeToOrder;
+        this.vatTaxable = vatTaxable;
         this.status = ProductStatus.HIDDEN;   // 등록 직후에는 노출하지 않는다 (아래 설명)
         // DB 기본값과 같은 값을 명시한다. 엔티티로 INSERT 하면 컬럼 DEFAULT 가 쓰이지 않는다.
         this.minQty = 1;
@@ -163,9 +181,9 @@ public class Product {
      */
     public static Product create(Long categoryId, String name, ProductPricing pricing,
                                  String description, String thumbnailKey,
-                                 boolean madeToOrder, String createdBy) {
+                                 boolean madeToOrder, boolean vatTaxable, String createdBy) {
         return new Product(categoryId, name, pricing, description, thumbnailKey,
-                madeToOrder, createdBy);
+                madeToOrder, vatTaxable, createdBy);
     }
 
     /**
@@ -176,12 +194,14 @@ public class Product {
      * 목록의 사진이 사라진다 — 사진을 지운 적이 없는데 사라지므로 원인을 찾기 어렵다.
      */
     public void update(Long categoryId, String name, ProductPricing pricing,
-                       String description, boolean madeToOrder, String updatedBy) {
+                       String description, boolean madeToOrder, boolean vatTaxable,
+                       String updatedBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
         this.description = description;
         this.madeToOrder = madeToOrder;
+        this.vatTaxable = vatTaxable;
         touch(updatedBy);
     }
 
@@ -205,6 +225,20 @@ public class Product {
     public void changeActive(boolean active, String updatedBy) {
         this.active = active;
         touch(updatedBy);
+    }
+
+    /**
+     * 이 상품에 적용할 부가세 방식.
+     *
+     * <p>과세면 {@link VatMode#INCLUDED} — 표시가 안에 세금이 들어 있다고 보고
+     * 공급가액과 세액을 쪼갠다. <b>최종 금액은 소계와 같다.</b> 면세면
+     * {@link VatMode#NONE} 이고 세액은 0 이다.
+     *
+     * <p>{@code EXCLUDED}(별도 부과)는 쓰지 않는다. 그 방식이면 과세 상품 가격이
+     * 전부 10% 올라 보이는데, 이 가게의 고시가는 받을 돈 그대로다.
+     */
+    public VatMode vatMode() {
+        return vatTaxable ? VatMode.INCLUDED : VatMode.NONE;
     }
 
     /**

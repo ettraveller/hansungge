@@ -2,6 +2,7 @@ package com.hanseongge.domain.pricing.dto;
 
 import com.hanseongge.domain.pricing.service.PriceQuote;
 import com.hanseongge.domain.pricing.service.PriceStatus;
+import com.hanseongge.global.util.VatMode;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -62,7 +63,17 @@ public record PublicPriceQuoteResponse(
         OffsetDateTime priceQuotedAt,
 
         @Schema(description = "안내 문구. 정상이면 null", example = "시세문의 후 주문해 주세요.")
-        String notice
+        String notice,
+
+        /**
+         * 부가세가 포함된 금액인가 (V38).
+         *
+         * <p>과세 상품이면 true 다. <b>금액은 바뀌지 않는다</b> — 표시가가 곧 받는
+         * 돈이고, 그 안에 세금이 들어 있다는 사실만 알려 준다. 면세 상품에 「부가세
+         * 포함」이라고 적으면 받지도 않은 세금을 받은 것처럼 보인다.
+         */
+        @Schema(description = "부가세 포함 금액인가. 면세 상품이면 false", example = "false")
+        boolean vatIncluded
 ) {
 
     /** 가격을 표시할 수 없을 때의 문구 (개발계획 §12.4). */
@@ -79,6 +90,8 @@ public record PublicPriceQuoteResponse(
                 hasPrice ? quote.finalUnitPrice().value() : null,
                 hasPrice ? quote.finalUnitPrice().value().toPlainString() : INQUIRY_TEXT,
                 hasPrice ? quote.priceQuotedAt() : null,
-                quote.unavailableReason());
+                quote.unavailableReason(),
+                // 금액을 못 내는 상태면 "부가세 포함"도 뜻이 없다
+                hasPrice && quote.vatMode() == VatMode.INCLUDED);
     }
 }

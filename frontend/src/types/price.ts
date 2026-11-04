@@ -177,6 +177,14 @@ export interface ProductPrice {
    */
   priceQuotedAt?: string | null;
   notice?: string | null;
+  /**
+   * 부가세가 포함된 금액인가 (V38).
+   *
+   * <p>과세 상품이면 true 다. <b>금액은 바뀌지 않는다</b> - 표시가가 곧 받는 돈이고,
+   * 그 안에 세금이 들어 있다는 사실만 알려 준다. 면세 상품에 「부가세 포함」이라고
+   * 적으면 받지도 않은 세금을 받은 것처럼 보인다.
+   */
+  vatIncluded: boolean;
 }
 
 /**

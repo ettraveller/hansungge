@@ -67,6 +67,9 @@ public record ProductResponse(
                 example = "false")
         boolean madeToOrder,
 
+        @Schema(description = "과세 상품인가 (V38). 금액은 부가세 포함가다", example = "false")
+        boolean vatTaxable,
+
         @Schema(description = "등록자", example = "admin")
         String createdBy,
 
@@ -98,6 +101,7 @@ public record ProductResponse(
                 product.getStatus(),
                 product.isActive(),
                 product.isMadeToOrder(),
+                product.isVatTaxable(),
                 product.getCreatedBy(),
                 product.getCreatedAt(),
                 product.getUpdatedBy(),
