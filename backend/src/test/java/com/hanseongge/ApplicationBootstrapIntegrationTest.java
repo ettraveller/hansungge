@@ -6,7 +6,7 @@ import com.hanseongge.domain.admin.repository.AdminUserRepository;
 import com.hanseongge.domain.setting.service.SystemSettingService;
 import com.hanseongge.global.util.PriceRoundingResolver;
 import com.hanseongge.global.util.RoundingPolicy;
-import com.hanseongge.global.util.VatMode;
+import com.hanseongge.global.util.VatPolicyResolver;
 import com.hanseongge.support.EmbeddedPostgresSupport;
 import com.hanseongge.support.Migrations;
 import org.junit.jupiter.api.DisplayName;
@@ -201,10 +201,10 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
                 // A-2 확정값이 V11 로 반영되어 있으므로 임시 정책이 아니다.
                 .andExpect(jsonPath("$.roundingPolicy").value(RoundingPolicy.CEIL_100.name()))
                 .andExpect(jsonPath("$.roundingPolicyTemporary").value(false))
-                // 부가세는 상품이 정하므로(V38) 이 건강검진의 전역 값은 참고용이다.
-                // 전역 설정이 'PER_PRODUCT' 라 파싱되지 않고 임시 기본값으로 떨어진다.
-                .andExpect(jsonPath("$.vatMode").value(VatMode.TEMPORARY_DEFAULT.name()))
-                .andExpect(jsonPath("$.vatPolicyTemporary").value(true))
+                // 부가세는 상품이 정한다(V38). 설정값 그대로 적는다 — resolve() 를 쓰면
+                // NONE 이 나와서 「아직 안 정해져 면세로 임시 운영 중」으로 읽힌다.
+                .andExpect(jsonPath("$.vatMode").value(VatPolicyResolver.PER_PRODUCT))
+                .andExpect(jsonPath("$.vatPolicyTemporary").value(false))
                 .andExpect(jsonPath("$.serverTime").exists());
     }
 

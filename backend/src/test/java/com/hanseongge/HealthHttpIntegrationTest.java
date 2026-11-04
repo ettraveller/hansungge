@@ -35,7 +35,12 @@ class HealthHttpIntegrationTest extends EmbeddedPostgresSupport {
                 .contains("\"service\":\"hanseongge-api\"")
                 .contains("\"database\":\"UP\"")
                 .contains("\"schemaVersion\":\"" + Migrations.latest() + "\"")
-                .contains("\"roundingPolicy\":\"CEIL_100\"");
+                .contains("\"roundingPolicy\":\"CEIL_100\"")
+                // V38 이후 부가세는 상품이 정한다. 설정값은 VatMode 에 없는 PER_PRODUCT 라
+                // resolve() 로 읽으면 NONE/임시값으로 떨어지는데, 그러면 배포 직후 이
+                // 응답을 보는 사람이 「부가세가 아직 안 정해졌다」고 읽는다 — 정해졌는데도.
+                .contains("\"vatMode\":\"PER_PRODUCT\"")
+                .contains("\"vatPolicyTemporary\":false");
     }
 
     @Test

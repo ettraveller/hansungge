@@ -33,6 +33,16 @@ public class VatPolicyResolver {
     /** 부가세율(%) 설정 키. 없으면 10%. */
     public static final String RATE_SETTING_KEY = "VAT_RATE";
 
+    /**
+     * 「상품마다 정한다」 (V38). {@code VAT_MODE} 가 가질 수 있는 값이지만
+     * <b>{@link VatMode} 의 값은 아니다.</b>
+     *
+     * <p>enum 에 넣지 않는 이유는 종류가 다르기 때문이다. {@code NONE/INCLUDED/EXCLUDED}
+     * 는 "세액을 어떻게 계산하는가"이고, 이 값은 "그것을 어디서 정하는가"다. enum 에
+     * 섞으면 {@link VatMode#vatOf} 가 계산할 수 없는 분기를 하나 떠안는다.
+     */
+    public static final String PER_PRODUCT = "PER_PRODUCT";
+
     private static final BigDecimal DEFAULT_RATE_PERCENT = BigDecimal.TEN;
 
     private final SystemSettingService systemSettingService;
@@ -42,6 +52,16 @@ public class VatPolicyResolver {
 
     public VatMode resolve() {
         Optional<String> raw = systemSettingService.find(SETTING_KEY);
+
+        // 상품마다 정하는 중이면 전역 모드로 환산할 수 없다 — 면세 상품과 과세 상품이
+        // 같은 가게에 있으므로 어느 쪽을 골라도 절반은 틀린다.
+        //
+        // 금액을 바꾸지 않는 NONE 을 준다. 지금 금액을 내는 경로는 상품을 직접 보므로
+        // (PriceCalculationService 6단계) 이 값을 쓰지 않는다. WARN 도 남기지 않는다 —
+        // 정책이 정해져 있는데 「미확정」이라고 적으면 그 로그를 보고 사람이 움직인다.
+        if (raw.isPresent() && isPerProduct(raw.get())) {
+            return VatMode.NONE;
+        }
 
         if (raw.isEmpty()) {
             if (undecidedWarned.compareAndSet(false, true)) {
@@ -73,10 +93,32 @@ public class VatPolicyResolver {
         return systemSettingService.getDecimal(RATE_SETTING_KEY, DEFAULT_RATE_PERCENT);
     }
 
+    /**
+     * 설정에 적힌 값 그대로. 정책을 <b>보고</b>하는 자리가 쓴다 (헬스체크).
+     *
+     * <p>{@link #resolve()} 를 쓰면 {@link #PER_PRODUCT} 가 {@code NONE} 으로 보여
+     * "아직 면세로 임시 운영 중"처럼 읽힌다. 보고는 설정된 대로 해야 한다.
+     *
+     * <p>설정이 없으면 {@code "TBD"} — 그것도 사실이다.
+     */
+    public String rawMode() {
+        return systemSettingService.find(SETTING_KEY)
+                .map(value -> value.trim().toUpperCase())
+                .filter(value -> !value.isEmpty())
+                .orElse("TBD");
+    }
+
     /** 현재 정책이 A-1 확정 전 임시값인지. 관리자 대시보드 경고 표시에 쓴다. */
     public boolean isUsingTemporaryDefault() {
-        return systemSettingService.find(SETTING_KEY)
-                .flatMap(VatMode::parse)
-                .isEmpty();
+        Optional<String> raw = systemSettingService.find(SETTING_KEY);
+        // 상품마다 정하기로 확정됐다 (V38). 임시값으로 떨어지는 경로가 아니다.
+        if (raw.isPresent() && isPerProduct(raw.get())) {
+            return false;
+        }
+        return raw.flatMap(VatMode::parse).isEmpty();
+    }
+
+    private static boolean isPerProduct(String settingValue) {
+        return PER_PRODUCT.equals(settingValue.trim().toUpperCase());
     }
 }

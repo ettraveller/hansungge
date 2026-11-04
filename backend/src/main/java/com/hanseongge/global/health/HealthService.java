@@ -55,7 +55,10 @@ public class HealthService {
                 schemaVersion,
                 priceRoundingResolver.resolve().name(),
                 priceRoundingResolver.isUsingTemporaryDefault(),
-                vatPolicyResolver.resolve().name(),
+                // resolve() 가 아니라 설정값 그대로다. PER_PRODUCT 를 resolve() 로 읽으면
+                // NONE 이 나오고, 배포 직후 이 응답을 보는 사람은 「부가세가 아직 안
+                // 정해져서 면세로 도는 중」이라고 읽는다 — 정해져 있는데도.
+                vatPolicyResolver.rawMode(),
                 vatPolicyResolver.isUsingTemporaryDefault(),
                 OffsetDateTime.now(KST));
     }

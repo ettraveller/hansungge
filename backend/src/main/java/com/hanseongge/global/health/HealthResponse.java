@@ -32,10 +32,12 @@ public record HealthResponse(
         @Schema(description = "반올림 정책이 A-2 확정 전 임시값인지", example = "true")
         boolean roundingPolicyTemporary,
 
-        @Schema(description = "적용 중인 부가세 정책 (TODO A-1 미확정 시 임시값)", example = "NONE")
+        @Schema(description = "설정된 부가세 정책. PER_PRODUCT 면 상품마다 과세/면세를 정한다(V38). "
+                + "설정이 없으면 TBD", example = "PER_PRODUCT")
         String vatMode,
 
-        @Schema(description = "부가세 정책이 A-1 확정 전 임시값인지", example = "true")
+        @Schema(description = "부가세 정책이 A-1 확정 전 임시값인지. PER_PRODUCT 는 확정이므로 false",
+                example = "false")
         boolean vatPolicyTemporary,
 
         @Schema(description = "서버 시각 (KST)")
