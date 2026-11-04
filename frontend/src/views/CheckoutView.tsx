@@ -315,7 +315,10 @@ export function CheckoutView() {
                     onChange={() => setMethodChoice('EASY_PAY')}
                   />
                   <span className={styles.methodName}>간편결제</span>
-                  <span className={styles.methodNote}>카드 · 계좌이체 · 휴대폰</span>
+                  {/* 결제창에 실제로 뜨는 것만 적는다. 휴대폰(소액)결제는 신청하지
+                      않았다 (2026-11-05 토스페이먼츠 회신). 여기 적어 두면 결제창에
+                      없는 수단을 찾다가 고장으로 읽는다. */}
+                  <span className={styles.methodNote}>카드 · 계좌이체</span>
                 </label>
               )}
 
