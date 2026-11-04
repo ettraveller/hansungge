@@ -23,7 +23,9 @@ const LEADING: NavItem[] = [
 ];
 
 const TRAILING: NavItem[] = [
-  { href: '/purchase-guide', label: '매입절차', children: [] },
+  // 「계산기」를 이름에 붙인다 — 매입 계산기가 이 페이지 맨 위에 있는데,
+  // 「매입절차」만 보고는 절차 설명서로 읽혀 눌러 볼 이유가 없다.
+  { href: '/purchase-guide', label: '매입 절차/계산기', children: [] },
   { href: '/store', label: '지점안내', children: [] },
   {
     href: '/support',

@@ -45,7 +45,7 @@ export function PurchaseGuideView() {
         <div className="wrap">
           <SectionHead
             as="h1"
-            title="매입절차"
+            title="매입 절차/계산기"
             desc="보유하신 금·은 제품을 당일 고시 시세로 매입해 드립니다"
           />
 

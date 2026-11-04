@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { PurchaseGuideView } from '@/views/PurchaseGuideView';
 
 export const metadata: Metadata = {
-  title: '매입절차',
+  title: '매입 절차/계산기',
   description:
     '한성금거래소 매입 절차 안내. 금·은·세공품을 당일 고시 시세로 매입해 드립니다. 매장 방문부터 대금 지급까지 다섯 단계와 준비물을 안내합니다.',
 };
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /**
  * 매입절차 (`/purchase-guide`).
  *
- * <p>GNB 「매입절차」와 메인 히어로 배너가 이미 이 주소를 가리키고 있었다.
+ * <p>GNB 「매입 절차/계산기」와 메인 히어로 배너가 이미 이 주소를 가리키고 있었다.
  *
  * <p>내용이 전부 편집 콘텐츠라 이 페이지가 서버에서 가져올 것은 없다. 그래서
  * {@code dynamic} 을 쓰지 않는다.
