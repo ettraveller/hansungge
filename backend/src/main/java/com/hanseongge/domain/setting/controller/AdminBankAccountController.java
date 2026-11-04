@@ -3,7 +3,13 @@ package com.hanseongge.domain.setting.controller;
 import com.hanseongge.domain.payment.dto.PaymentConfigResponse;
 import com.hanseongge.domain.setting.dto.BankAccountSettingRequest;
 import com.hanseongge.domain.setting.service.SystemSettingService;
+import com.hanseongge.domain.audit.service.AuditLogService;
+import com.hanseongge.domain.audit.entity.ActorType;
+import com.hanseongge.global.audit.AuditActions;
+import com.hanseongge.domain.audit.dto.AuditRecord;
 import com.hanseongge.global.auth.AdminPrincipal;
+import com.hanseongge.global.auth.RequestInfo;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,6 +27,18 @@ import java.util.Map;
 
 /**
  * 무통장입금 계좌 설정.
+ *
+ * <h2>바꾼 사실을 감사로그에 남긴다</h2>
+ * 이 계좌로 고객의 돈이 들어온다. 한 줄만 바뀌어도 그날의 모든 입금이 남의 통장으로
+ * 간다 — 이 시스템에서 가장 조용하게, 가장 크게 잘못될 수 있는 값이다. 그래서
+ * 권한과 별개로, 누가 언제 무엇을 무엇으로 바꿨는지는 반드시 남긴다.
+ *
+ * <p>⚠️ 지금은 {@code ADMIN} 이상이면 바꿀 수 있다. 더 좁힐지는 미정이다
+ * (2026-11-04). 좁힌다면 로그인 아이디가 아니라 역할로 막아야 한다 — 아이디를
+ * 코드에 박으면 그 계정이 잠기거나(5회 실패) 이름이 바뀌는 날 아무도 계좌를
+ * 고칠 수 없어 배포를 해야 한다.
+ * 바뀐 값과 바꾼 사람, 접속 IP 까지 남긴다. 계좌번호는 가게가 내거는 공개 정보라
+ * 가리지 않는다 — 가려 두면 정작 "언제 무엇에서 무엇으로 바뀌었나"를 확인할 수 없다.
  *
  * <h2>시스템 설정 전체를 열지 않는다</h2>
  * {@code system_settings} 에는 {@code MAX_PRICE_CHANGE_PERCENT}(시세 자동적용 허용
@@ -47,6 +65,7 @@ public class AdminBankAccountController {
     private static final int MAX_DUE_HOURS = 168;
 
     private final SystemSettingService settingService;
+    private final AuditLogService auditLogService;
 
     @Operation(summary = "입금 계좌 조회",
             description = "셋 중 하나라도 비어 있으면 무통장 주문을 받지 않는다.")
@@ -67,7 +86,12 @@ public class AdminBankAccountController {
     @PutMapping
     public ResponseEntity<PaymentConfigResponse.BankAccount> save(
             @Valid @RequestBody BankAccountSettingRequest request,
-            @AuthenticationPrincipal AdminPrincipal actor) {
+            @AuthenticationPrincipal AdminPrincipal actor,
+            HttpServletRequest httpRequest) {
+
+        // 바뀌기 전 값을 먼저 뜬다. 감사로그의 before 가 없으면 "무엇에서" 가 사라지고,
+        // 남는 것은 "누가 언제 이걸로 바꿨다" 뿐이라 되돌릴 근거가 되지 못한다.
+        Map<String, String> before = current();
 
         String bank = trimmed(request.bank());
         String number = trimmed(request.number());
@@ -83,7 +107,24 @@ public class AdminBankAccountController {
             settingService.update(DUE_HOURS, String.valueOf(hours), actor.loginId());
         }
 
+        auditLogService.record(AuditRecord.builder(AuditActions.BANK_ACCOUNT_UPDATE)
+                .actor(ActorType.ADMIN, actor.loginId())
+                .target(AuditActions.TARGET_SETTING, "BANK_ACCOUNT")
+                .before(before)
+                .after(current())
+                .request(RequestInfo.from(httpRequest).ip(), RequestInfo.from(httpRequest).userAgent())
+                .build());
+
         return ResponseEntity.ok(new PaymentConfigResponse.BankAccount(bank, number, holder));
+    }
+
+    /** 지금 설정값. 감사로그의 before/after 에 같은 모양으로 들어간다. */
+    private Map<String, String> current() {
+        return Map.of(
+                "bank", settingService.get(BANK, ""),
+                "number", settingService.get(NUMBER, ""),
+                "holder", settingService.get(HOLDER, ""),
+                "depositDueHours", String.valueOf(settingService.getInt(DUE_HOURS, 3)));
     }
 
     private static String trimmed(String value) {

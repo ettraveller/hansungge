@@ -38,6 +38,9 @@ public final class AuditActions {
 
     // --- 시세 (STEP 6) ---
     /** 최종 시세 발행 */
+    /** 무통장입금 계좌 변경. 고객의 돈이 들어오는 곳이라 반드시 남긴다 */
+    public static final String BANK_ACCOUNT_UPDATE = "BANK_ACCOUNT_UPDATE";
+
     public static final String PRICE_APPLY = "PRICE_APPLY";
     /**
      * 18K·14K 고시 방식(직접 입력 / 24K 환산) 변경.
@@ -100,6 +103,7 @@ public final class AuditActions {
 
     // --- 대상 유형 ---
     public static final String TARGET_ADMIN_USER = "ADMIN_USER";
+    public static final String TARGET_SETTING = "SETTING";
     /** 쇼핑몰 회원({@code users}). 관리자 계정과 구분한다 */
     public static final String TARGET_MEMBER = "MEMBER";
     public static final String TARGET_NOTICE = "NOTICE";
