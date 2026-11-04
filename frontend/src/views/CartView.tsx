@@ -89,6 +89,8 @@ export function CartView() {
 
             <Summary
               subtotal={cart.subtotal}
+              shippingFee={cart.shippingFee}
+              payableTotal={cart.payableTotal}
               orderable={cart.orderable}
               unavailableCount={cart.unavailableCount}
               totalQuantity={cart.totalQuantity}
@@ -263,11 +265,15 @@ function ClearButton() {
 
 function Summary({
   subtotal,
+  shippingFee,
+  payableTotal,
   orderable,
   unavailableCount,
   totalQuantity,
 }: {
   subtotal?: number | null;
+  shippingFee: number;
+  payableTotal: number;
   orderable: boolean;
   unavailableCount: number;
   totalQuantity: number;
@@ -287,13 +293,15 @@ function Summary({
         </div>
         <div>
           <dt>배송비</dt>
-          <dd className={styles.later}>주문 단계에서 확정</dd>
+          {/* 「무료」를 글자로 박지 않는다 — 서버가 계산한 값이 0 일 때만 무료라고 적는다.
+              배송비를 받기로 한 날 설정만 바꾸면 이 줄이 저절로 따라온다. */}
+          <dd>{shippingFee > 0 ? formatKrw(shippingFee) : '무료'}</dd>
         </div>
       </dl>
 
       <div className={styles.total}>
         <span>합계</span>
-        <strong>{formatKrw(subtotal)}</strong>
+        <strong>{formatKrw(payableTotal)}</strong>
       </div>
 
       {unavailableCount > 0 && (

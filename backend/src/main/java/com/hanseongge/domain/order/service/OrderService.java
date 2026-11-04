@@ -403,8 +403,12 @@ public class OrderService {
      *
      * <p>기준이 0 이면 "항상 무료"다 (V1 주석). 0 을 "기준 없음"으로 읽어 유료로 처리하면
      * 지금 설정(둘 다 0)에서 배송비가 붙는다.
+     *
+     * <p>장바구니도 이 메서드를 쓴다. 화면이 "무료"를 글자로 박아 두면, 배송비를 받기로
+     * 한 날 설정만 바꿔서는 화면이 따라오지 않고 <b>장바구니는 무료라는데 주문서에서
+     * 돈이 붙는다.</b> 두 화면이 같은 계산을 지나야 한다.
      */
-    private BigDecimal shippingFeeFor(BigDecimal itemsTotal) {
+    public BigDecimal shippingFeeFor(BigDecimal itemsTotal) {
         BigDecimal fee = settingService.getDecimal("SHIPPING_FEE", BigDecimal.ZERO);
         if (fee.signum() <= 0) {
             return BigDecimal.ZERO;

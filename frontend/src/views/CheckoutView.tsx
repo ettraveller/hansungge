@@ -420,12 +420,21 @@ export function CheckoutView() {
             </li>
           </ul>
 
-          {/* 배송비 줄을 두지 않는다. 지금 이 화면에는 배송비를 알 방법이 없고
-              (서버 설정값이라 장바구니 응답에 없다), 「무료」라고 적으면 그 줄이
-              곧 약속이 된다. 확정 금액은 다음 화면에서 서버가 보여 준다. */}
+          {/* 배송비 줄이 돌아왔다. 전에는 이 화면에서 값을 알 방법이 없어 비워
+              뒀는데(서버 설정값이라 장바구니 응답에 없었다), 이제 서버가 주문서와
+              같은 계산을 지난 값을 내려보낸다. 「무료」를 글자로 박지 않는 이유는
+              같다 — 받기로 한 날 설정만 바꿔서는 화면이 따라오지 않는다. */}
+          <ul className={styles.rows}>
+            <li>
+              <span>배송비</span>
+              <strong>
+                {cart != null && cart.shippingFee > 0 ? formatKrw(cart.shippingFee) : '무료'}
+              </strong>
+            </li>
+          </ul>
           <div className={styles.total}>
             <span>결제 예정 금액</span>
-            <strong>{formatKrw(cart?.subtotal)}</strong>
+            <strong>{formatKrw(cart?.payableTotal)}</strong>
           </div>
 
           <p className={styles.disclaimer}>
@@ -448,7 +457,7 @@ export function CheckoutView() {
           <div className={styles.payBarRight}>
             <p className={styles.payBarTotal}>
               <span>{isBankTransfer ? '입금 예정' : '결제 예정'}</span>
-              <strong>{formatKrw(cart?.subtotal)}</strong>
+              <strong>{formatKrw(cart?.payableTotal)}</strong>
             </p>
             {/* type="submit" 이 아니다 — 폼의 암묵적 제출 경로를 아예 없앤다.
                 Enter 든, 레이어가 닫히며 밑으로 떨어진 클릭이든, 이 버튼을 직접 누른

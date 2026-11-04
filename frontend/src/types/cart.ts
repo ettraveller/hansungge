@@ -76,5 +76,15 @@ export interface Cart {
    * 판정은 서버가 한다. 화면에서 다시 따지면 두 판정이 갈라진다.
    */
   cardPayable: boolean;
+  /**
+   * 배송비(원). 0 이면 무료.
+   *
+   * <p>「무료」를 화면에 글자로 박지 않는다. 박아 두면 배송비를 받기로 한 날
+   * 설정만 바꿔서는 화면이 따라오지 않고, 장바구니는 무료라는데 주문서에서 돈이 붙는다.
+   * 주문서와 같은 계산을 지난 값이다.
+   */
+  shippingFee: number;
+  /** 결제 예정 금액 = 합계 + 배송비. 화면이 더하지 않는다 (원칙 P1) */
+  payableTotal: number;
   notice?: string | null;
 }

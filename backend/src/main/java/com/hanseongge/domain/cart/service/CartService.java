@@ -6,6 +6,7 @@ import com.hanseongge.domain.cart.entity.Cart;
 import com.hanseongge.domain.cart.entity.CartItem;
 import com.hanseongge.domain.cart.repository.CartItemRepository;
 import com.hanseongge.domain.cart.repository.CartRepository;
+import com.hanseongge.domain.order.service.OrderService;
 import com.hanseongge.domain.pricing.service.PriceCalculationService;
 import com.hanseongge.domain.pricing.service.PriceQuote;
 import com.hanseongge.domain.product.entity.Product;
@@ -59,6 +60,7 @@ public class CartService {
     private final ProductRepository productRepository;
     private final ProductOptionRepository optionRepository;
     private final PriceCalculationService priceCalculationService;
+    private final OrderService orderService;
 
     // =================================================================
     // 조회
@@ -105,7 +107,9 @@ public class CartService {
             }
         }
 
-        return CartResponse.of(lines, subtotal);
+        // 배송비는 주문서와 같은 계산을 지난다. 여기서 0 을 박아 두면 배송비를 받기로
+        // 한 날 장바구니만 무료라고 적혀 있게 된다.
+        return CartResponse.of(lines, subtotal, orderService.shippingFeeFor(subtotal));
     }
 
     /** 헤더 배지용. 줄 수만 필요할 때 가격 계산까지 돌리지 않는다. */

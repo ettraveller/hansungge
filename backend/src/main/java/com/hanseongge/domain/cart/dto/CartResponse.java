@@ -45,10 +45,31 @@ public record CartResponse(
         @Schema(description = "카드·간편결제 가능. false 면 무통장입금만", example = "true")
         boolean cardPayable,
 
+        /**
+         * 배송비(원). 지금 설정으로는 늘 0 이다.
+         *
+         * <p>화면이 "무료"를 글자로 박지 않도록 값으로 내려보낸다. 박아 두면 배송비를
+         * 받기로 한 날 설정만 바꿔서는 화면이 따라오지 않고, <b>장바구니는 무료라는데
+         * 주문서에서 돈이 붙는다.</b> 주문서와 같은 계산({@code OrderService#shippingFeeFor})
+         * 을 지난 값이다.
+         */
+        @Schema(description = "배송비(원). 0 이면 무료", example = "0")
+        BigDecimal shippingFee,
+
+        /**
+         * 결제 예정 금액 = 주문 가능한 줄의 합계 + 배송비.
+         *
+         * <p>화면이 더하지 않는다 (원칙 P1). 이 값도 결제 금액은 아니다 — 주문을 만들 때
+         * 서버가 처음부터 다시 계산한다.
+         */
+        @Schema(description = "결제 예정 금액(원) = 합계 + 배송비", example = "1803900")
+        BigDecimal payableTotal,
+
         @Schema(description = "화면 상단에 띄울 안내. 없으면 null") String notice
 ) {
 
-    public static CartResponse of(List<CartItemResponse> items, BigDecimal subtotal) {
+    public static CartResponse of(List<CartItemResponse> items, BigDecimal subtotal,
+                                 BigDecimal shippingFee) {
         int unavailable = (int) items.stream().filter(i -> !i.orderable()).count();
         int changed = (int) items.stream().filter(CartItemResponse::priceChanged).count();
         int totalQuantity = items.stream().mapToInt(CartItemResponse::quantity).sum();
@@ -69,11 +90,14 @@ public record CartResponse(
                 changed,
                 orderable,
                 cardPayable,
+                shippingFee,
+                (subtotal == null ? BigDecimal.ZERO : subtotal).add(shippingFee),
                 noticeOf(unavailable, changed));
     }
 
     public static CartResponse empty() {
-        return new CartResponse(List.of(), 0, 0, BigDecimal.ZERO, "0", 0, 0, false, true, null);
+        return new CartResponse(List.of(), 0, 0, BigDecimal.ZERO, "0", 0, 0, false, true,
+                BigDecimal.ZERO, BigDecimal.ZERO, null);
     }
 
     /**
