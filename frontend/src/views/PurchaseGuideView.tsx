@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { Reveal } from '@/components/ui/Reveal';
 import { SectionHead } from '@/components/ui/SectionHead';
 import { FAQS, ITEM_GROUPS, NOTES, STEPS, type Step } from './purchase-guide-content';
 import styles from './PurchaseGuideView.module.css';
@@ -148,7 +149,12 @@ export function PurchaseGuideView() {
 
 function StepRow({ n, step }: { n: number; step: Step }) {
   return (
-    <li className={styles.step}>
+    // 단계가 하나씩 차례로 들어온다. 절차를 설명하는 자리라 순서대로 도착하는
+    // 것 자체가 내용이다 — 다섯 줄이 한꺼번에 나타나면 그냥 목록으로 읽힌다.
+    //
+    // 지연을 끝까지 쌓는다(다른 목록과 다르다). 단계는 많아야 대여섯이고,
+    // 마지막까지 차례가 이어져야 "순서"로 보인다.
+    <Reveal as="li" rise="sm" delay={(n - 1) * 90} className={styles.step}>
       <span className={`${styles.stepNum} tabular`} aria-hidden="true">
         {n}
       </span>
@@ -161,6 +167,6 @@ function StepRow({ n, step }: { n: number; step: Step }) {
           </Link>
         )}
       </div>
-    </li>
+    </Reveal>
   );
 }
