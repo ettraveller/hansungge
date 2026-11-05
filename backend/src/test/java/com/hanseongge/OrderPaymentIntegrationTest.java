@@ -579,6 +579,24 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
+    @DisplayName("무통장 주문은 하루가 지나도 접지 않는다 — 안내한 입금 기한보다 먼저 취소되면 안 된다")
+    void bankTransferOrderIsNeverSwept() throws Exception {
+        seedBankAccount();
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 1);
+        String orderNo = read(createOrderRaw("BANK_TRANSFER", "김영희")).get("orderNo").asText();
+
+        // 운영 설정은 10분이다. 고객에게 안내하는 입금 기한은 3시간이고, 은행 영업시간이나
+        // 이체 한도에 걸리면 그보다 더 걸린다. 하루를 넘겨도 살아 있어야 한다 —
+        // 접힌 뒤에 들어온 돈은 갈 곳이 없다. 주문은 취소됐고 재고는 돌아갔는데
+        // 통장에는 돈이 찍혀 있다.
+        agedBy(orderNo, 60 * 24);
+        sweeper.sweep();
+
+        assertThat(statusOf(orderNo)).isEqualTo("ORDER_CREATED");
+    }
+
+    @Test
     @DisplayName("결제가 끝난 주문은 오래되어도 접지 않는다 — 이미 받은 돈이다")
     void paidOrderIsNeverSwept() throws Exception {
         addToCart(optionId, 1);
