@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import type { RefundPolicy } from '@/api/policies';
+import { DELIVERY_PERIOD_NOTICE } from '@/content/delivery';
 import type { QnaSummary } from '@/types/board';
 import type { ProductDetail, ProductSummary } from '@/types/product';
 import { mediaUrl } from '@/utils/media';
@@ -125,10 +126,13 @@ function PurchaseInfo({
     <div className={styles.infoList}>
       <div className={styles.infoItem}>
         <span className={styles.infoLabel}>배송기간</span>
+        {/* 같은 페이지의 배송 안내 박스(DeliveryTerms)와 한 문장이어야 한다. 전에는
+            여기만 content/delivery.ts 를 읽지 않고 제 문장으로 「영업일 기준 2~6주」라고
+            적고 있었다 — 박스는 「최대 6주」인데 여기는 "빠르면 2주"로 읽혀, 한 화면이
+            두 기간을 말했다. 그런 경우 고객에게 유리한 쪽이 적용된다. */}
         <span className={styles.infoBody}>
-          {product.madeToOrder
-            ? '주문을 받은 뒤 제작합니다. 영업일 기준 2~6주가 걸리며, 제작 착수 후에는 단순 변심으로 취소하실 수 없습니다.'
-            : '결제 확인 후 영업일 기준 7일 이내에 보내 드립니다.'}
+          {DELIVERY_PERIOD_NOTICE}
+          {product.madeToOrder && ' 주문제작 상품은 제작 착수 후 단순 변심으로 취소하실 수 없습니다.'}
         </span>
       </div>
 
