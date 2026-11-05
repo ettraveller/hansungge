@@ -83,7 +83,7 @@ export interface Order {
   paymentMethod: PaymentMethod;
   /** 통장에 찍히는 입금자명. 무통장 주문에만 있다 — 주문자와 다를 수 있다 */
   depositorName?: string | null;
-  /** 입금 안내 기한. <b>지나도 자동취소하지 않는다</b> — 안내용이다 */
+  /** 입금 기한. <b>지나면 주문이 자동 취소된다</b> (2026-11-05). 고객 화면에도 적혀 있다 */
   depositDueAt?: string | null;
 }
 

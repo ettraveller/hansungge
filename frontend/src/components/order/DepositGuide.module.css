@@ -92,6 +92,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 기한 옆의 「취소됩니다」 한 줄.
+
+   경고색(빨강)을 쓰지 않는다 — 잘못된 것이 아니라 알아야 할 사실이고, 입금하러
+   온 사람에게 빨간 글씨를 보이면 뭔가 틀어진 줄 안다. 대신 줄을 바꿔 세워
+   날짜에 묻히지 않게 한다. */
+.dueWarn {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--gray);
+  font-variant-numeric: normal;
+}
+
 /* 계좌번호 전체가 누르는 자리다. 휴대폰에서 열두 자리를 손으로 옮겨 적는 것이
    이 화면에서 가장 짜증나는 일이고, 한 자리만 틀려도 돈이 엉뚱한 곳으로 간다. */
 .account {

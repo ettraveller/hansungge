@@ -195,8 +195,13 @@ app:
   # 그 위험을 감수하는 이유는 반대쪽이 매일 일어나기 때문이다 — 재고가 1개인 상품은
   # 누가 결제창까지 갔다 돌아오기만 해도 그동안 다른 사람에게 품절로 보인다.
   # 결제창에서 「취소」를 누르면 기다리지 않고 바로 풀린다 (PaymentService.markFailed).
+  #
+  # 이 값은 카드·간편결제에만 쓰인다. 무통장입금은 주문마다 안내한 입금 기한
+  # (deposit_due_at)을 보고 접는다 -- 은행에 가서 돈을 부치는 일은 걸리는 시간이
+  # 카드와 비교가 안 되고, 무엇보다 그 기한이 고객 화면에 적혀 있다. 화면에 적힌
+  # 기한과 실제로 접히는 시각이 다르면 설명할 방법이 없다.
   order:
-    stale-minutes: ${ORDER_STALE_MINUTES:10}
+    stale-minutes: ${ORDER_STALE_MINUTES:30}
     sweep-interval-ms: ${ORDER_SWEEP_INTERVAL_MS:60000}
   # 배송조회 (우체국 국내우편물 종적 조회, 공공데이터포털).
   #

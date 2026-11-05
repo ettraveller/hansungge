@@ -29,6 +29,14 @@ import java.util.List;
  * <b>갈 곳이 없다</b> — 돈은 빠져나갔는데 주문은 취소된 상태가 된다. 토스 결제창의 유효시간이
  * 10분이라 30분이면 충분히 안전하다.
  *
+ * <h2>무통장입금은 기준이 다르다</h2>
+ * 위의 고정 시간을 쓰지 않고 <b>주문마다 안내한 입금 기한</b>({@code deposit_due_at})을
+ * 본다. 은행에 가서 돈을 부치는 일은 카드 결제와 걸리는 시간이 비교가 안 되고, 무엇보다
+ * 고객 화면에 기한이 날짜·시각으로 찍혀 있다. 화면에 적힌 기한과 실제로 접히는 시각이
+ * 다르면 설명할 방법이 없다.
+ *
+ * <p>자세한 것은 {@code OrderRepository.findStale} 주석 참조.
+ *
  * <p>그래도 그 일이 일어나면 {@code PaymentService.settle} 이 ERROR 로 크게 남긴다.
  * 사람이 환불해야 한다.
  *
@@ -47,7 +55,12 @@ public class StaleOrderSweeper {
     private final OrderRepository orderRepository;
     private final StaleOrderExpirer expirer;
 
-    /** 결제 없이 방치된 주문을 접기까지의 시간(분). 운영에서 줄이려면 api.env 로 조절한다. */
+    /**
+     * 카드·간편결제 주문을 접기까지의 시간(분). 운영에서 바꾸려면 api.env 로 조절한다.
+     *
+     * <p><b>무통장입금에는 쓰이지 않는다.</b> 무통장은 주문마다 안내한 입금 기한
+     * ({@code deposit_due_at})을 보고 접는다 — OrderRepository.findStale 주석 참조.
+     */
     @Value("${app.order.stale-minutes:30}")
     private int staleMinutes;
 
@@ -59,10 +72,13 @@ public class StaleOrderSweeper {
      */
     @Scheduled(fixedDelayString = "${app.order.sweep-interval-ms:300000}", initialDelay = 60_000)
     public void sweep() {
-        OffsetDateTime cutoff = OffsetDateTime.now().minusMinutes(staleMinutes);
+        OffsetDateTime now = OffsetDateTime.now();
+        // 카드는 주문 시각 + 고정 시간, 무통장은 그 주문에 안내한 입금 기한을 본다.
+        // 기준이 둘로 갈리는 이유는 OrderRepository.findStale 주석 참조.
+        OffsetDateTime cutoff = now.minusMinutes(staleMinutes);
         List<Order> stale = orderRepository.findStale(
                 List.of(OrderStatus.ORDER_CREATED, OrderStatus.PAYMENT_PENDING),
-                cutoff, Limit.of(BATCH));
+                cutoff, now, Limit.of(BATCH));
 
         if (stale.isEmpty()) {
             return;
@@ -81,7 +97,9 @@ public class StaleOrderSweeper {
         }
 
         if (done > 0) {
-            log.info("[ORDER] 방치 주문 {}건을 접고 재고를 돌려주었습니다 ({}분 초과)", done, staleMinutes);
+            // 분 수를 적지 않는다 — 무통장은 이 값으로 접힌 것이 아니라 주문마다의
+            // 입금 기한으로 접힌 것이라, 한 줄에 섞어 적으면 로그가 거짓말을 한다.
+            log.info("[ORDER] 방치 주문 {}건을 접고 재고를 돌려주었습니다", done);
         }
     }
 }

@@ -127,8 +127,9 @@ export function AdminOrderDetailView({ orderId }: { orderId: number }) {
               <dt>안내한 기한</dt>
               <dd>
                 {formatDateTime(order.depositDueAt)}
-                {/* 기한이 지나도 주문은 그대로다. 자동취소를 두지 않았다 —
-                    입금하려는 사이에 취소되면 보낸 돈이 갈 곳을 잃는다. */}
+                {/* 기한이 지나면 스위퍼가 접는다 (2026-11-05). 여기 「기한 지남」이
+                    보이는데 주문이 아직 살아 있다면, 스위퍼가 다음 바퀴를 돌기 전이다
+                    (1분 주기). 접히기 전에 입금이 확인되면 그대로 눌러도 된다. */}
                 {depositOverdue && <span className={styles.overdue}>기한 지남</span>}
               </dd>
             </div>

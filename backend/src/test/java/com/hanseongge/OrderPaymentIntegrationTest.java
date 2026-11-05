@@ -579,17 +579,50 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
-    @DisplayName("무통장 주문은 하루가 지나도 접지 않는다 — 안내한 입금 기한보다 먼저 취소되면 안 된다")
-    void bankTransferOrderIsNeverSwept() throws Exception {
+    @DisplayName("무통장 주문은 카드 기준(주문 시각)으로 접지 않는다 — 입금 기한이 남았으면 하루가 지나도 살아 있다")
+    void bankTransferIgnoresCardWindow() throws Exception {
         seedBankAccount();
         long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
         onlyInCart(gold24k, 1);
         String orderNo = read(createOrderRaw("BANK_TRANSFER", "김영희")).get("orderNo").asText();
 
-        // 운영 설정은 10분이다. 고객에게 안내하는 입금 기한은 3시간이고, 은행 영업시간이나
-        // 이체 한도에 걸리면 그보다 더 걸린다. 하루를 넘겨도 살아 있어야 한다 —
-        // 접힌 뒤에 들어온 돈은 갈 곳이 없다. 주문은 취소됐고 재고는 돌아갔는데
-        // 통장에는 돈이 찍혀 있다.
+        // 주문한 지 하루가 지났지만 입금 기한은 아직 남아 있다(기한만 앞으로 밀어 둔다).
+        // 카드 기준으로 접으면 고객이 안내받은 기한 안에 부쳤는데도 주문이 사라진다.
+        agedBy(orderNo, 60 * 24);
+        depositDueIn(orderNo, 60);
+        sweeper.sweep();
+
+        assertThat(statusOf(orderNo)).isEqualTo("ORDER_CREATED");
+    }
+
+    @Test
+    @DisplayName("무통장 주문은 안내한 입금 기한이 지나면 접고 재고를 돌려준다")
+    void bankTransferIsSweptAfterDepositDeadline() throws Exception {
+        seedBankAccount();
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 1);
+        String orderNo = read(createOrderRaw("BANK_TRANSFER", "김영희")).get("orderNo").asText();
+        int afterOrder = stockOf(gold24k);
+
+        // 주문은 방금 했지만 기한이 지났다 — 접는 기준이 주문 시각이 아니라 기한임을
+        // 보인다. 무기한으로 두면 재고가 묶이고(주문서에서 가져간다) 시세 연동 상품은
+        // 「쌀 때 주문해 두고 오르면 입금한다」가 된다.
+        depositDueIn(orderNo, -1);
+        sweeper.sweep();
+
+        assertThat(statusOf(orderNo)).isEqualTo("CANCELLED");
+        assertThat(stockOf(gold24k)).isEqualTo(afterOrder + 1);
+    }
+
+    @Test
+    @DisplayName("입금 기한이 비어 있으면 접지 않는다 — 언제까지인지 모르는 주문을 짐작으로 접지 않는다")
+    void bankTransferWithoutDeadlineSurvives() throws Exception {
+        seedBankAccount();
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "500000");
+        onlyInCart(gold24k, 1);
+        String orderNo = read(createOrderRaw("BANK_TRANSFER", "김영희")).get("orderNo").asText();
+
+        jdbc.update("UPDATE orders SET deposit_due_at = NULL WHERE order_no = ?", orderNo);
         agedBy(orderNo, 60 * 24);
         sweeper.sweep();
 
@@ -687,6 +720,12 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
     // =================================================================
 
     /** 주문한 지 {@code minutes} 분 지난 것으로 만든다. 시계를 돌리지 않고 데이터를 옮긴다. */
+    /** 입금 기한을 지금부터 {@code minutes} 뒤로 옮긴다. 음수면 이미 지난 것이 된다. */
+    private void depositDueIn(String orderNo, int minutes) {
+        jdbc.update("UPDATE orders SET deposit_due_at = now() + (? * INTERVAL '1 minute') WHERE order_no = ?",
+                minutes, orderNo);
+    }
+
     private void agedBy(String orderNo, int minutes) {
         jdbc.update("UPDATE orders SET ordered_at = now() - (? * INTERVAL '1 minute') WHERE order_no = ?",
                 minutes, orderNo);
