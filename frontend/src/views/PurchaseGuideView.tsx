@@ -56,10 +56,12 @@ export function PurchaseGuideView() {
             절차는 그 금액이 마음에 들었을 때 읽는다. 순서를 뒤집으면 품목·단계를
             지나야 숫자가 나오는데, 그 사이에 대부분 떠난다.
           */}
-          <section className={styles.block} aria-labelledby="pg-calc">
-            {/* 번호를 붙이지 않는다 — 계산기는 절차의 한 단계가 아니라 도구다.
-                01·02·03 사이에 00 을 끼우면 단계가 넷인 것처럼 읽힌다. */}
-            <h2 id="pg-calc" className={styles.blockTitle}>얼마에 사드리나</h2>
+          {/* 보이는 제목을 두지 않는다. 계산기 자체가 「금속 고르고 무게 넣으면
+              금액이 나온다」를 그대로 보여 주므로 한 줄 더 얹을 것이 없다.
+
+              대신 aria-label 로 이름을 남긴다 — 화면 낭독기는 구역을 건너뛰며
+              듣기 때문에 이름 없는 구역은 「섹션」으로만 읽혀 무엇인지 알 수 없다. */}
+          <section className={styles.block} aria-label="매입 계산기">
             <BuybackCalculator />
           </section>
 
