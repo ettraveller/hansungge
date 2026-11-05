@@ -2,7 +2,7 @@ import { noticeApi } from '@/api/board';
 import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
-import type { CategoryProducts } from '@/components/home/ProductTabs';
+import { ALL_PRODUCTS_TAB, type CategoryProducts } from '@/components/home/ProductTabs';
 import type { Category } from '@/types/product';
 import { METAL_ORDER, type MetalType, type PriceHistoryPoint } from '@/types/price';
 import { PopupLayer } from '@/components/popup/PopupLayer';
@@ -78,32 +78,46 @@ async function loadHistories(): Promise<Partial<Record<MetalType, PriceHistoryPo
 }
 
 /**
- * 최상위 카테고리별 상품 묶음.
+ * 「전체상품」 + 최상위 카테고리별 상품 묶음.
  *
  * <p>카테고리 수만큼 요청이 나가므로 <b>반드시 병렬</b>이다. 순차로 돌면 카테고리가
- * 6개일 때 메인 응답이 6배 느려진다.
+ * 6개일 때 메인 응답이 6배 느려진다. 전체 조회도 그 병렬에 함께 넣는다 — 앞에
+ * 따로 await 하면 그 한 번이 나머지 전부를 기다리게 한다.
  *
  * <p>백엔드가 null 필드를 생략하므로({@code non_null}) 최상위 판정은 느슨한 비교여야
  * {@code undefined} 도 잡힌다.
+ *
+ * <p>2026-11-05: 맨 앞에 「전체상품」을 둔다. 카테고리 목록을 못 불러와도 이 묶음은
+ * 나가므로, 전에는 통째로 비던 자리에 상품이 남는다 ({@link ALL_PRODUCTS_TAB}).
  */
 async function loadProductGroups(categories: Category[] | null): Promise<CategoryProducts[]> {
-  if (!categories) return [];
-
-  const roots = categories
+  const roots = (categories ?? [])
     .filter((c) => c.parentId == null)
     .sort((a, b) => a.sort - b.sort || a.id - b.id);
 
-  return Promise.all(
-    roots.map(async (root) => {
-      const page = await load(
-        () => productApi.list({ categoryId: root.id, size: PER_CATEGORY }),
-        `메인 상품 (${root.name})`,
-      );
-      return {
-        categoryId: root.id,
-        name: root.name,
-        products: page.data?.content ?? [],
-      };
-    }),
-  );
+  const [all, byCategory] = await Promise.all([
+    load(() => productApi.list({ size: PER_CATEGORY }), '메인 상품 (전체)'),
+    Promise.all(
+      roots.map(async (root) => {
+        const page = await load(
+          () => productApi.list({ categoryId: root.id, size: PER_CATEGORY }),
+          `메인 상품 (${root.name})`,
+        );
+        return {
+          categoryId: root.id,
+          name: root.name,
+          products: page.data?.content ?? [],
+        };
+      }),
+    ),
+  ]);
+
+  return [
+    {
+      categoryId: ALL_PRODUCTS_TAB.id,
+      name: ALL_PRODUCTS_TAB.name,
+      products: all.data?.content ?? [],
+    },
+    ...byCategory,
+  ];
 }
