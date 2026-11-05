@@ -1,6 +1,7 @@
 package com.hanseongge.support;
 
 import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.product.entity.DeliveryNotice;
 import com.hanseongge.domain.product.entity.PriceType;
 import com.hanseongge.domain.product.entity.Product;
 import com.hanseongge.domain.product.entity.ProductOption;
@@ -34,7 +35,7 @@ public final class ProductTestFixtures {
         Product product = Product.create(categoryId, name,
                 new ProductPricing(metal, priceType, new BigDecimal(weightG), null,
                         new BigDecimal(laborCost), new BigDecimal(multiplier), null),
-                null, null, false, false, CREATED_BY);
+                null, null, false, false, DeliveryNotice.NONE, CREATED_BY);
         product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
         return product;
     }
@@ -44,7 +45,7 @@ public final class ProductTestFixtures {
         Product product = Product.create(categoryId, name,
                 new ProductPricing(null, PriceType.FIXED, null, null,
                         BigDecimal.ZERO, BigDecimal.ONE, new BigDecimal(fixedPrice)),
-                null, null, false, false, CREATED_BY);
+                null, null, false, false, DeliveryNotice.NONE, CREATED_BY);
         product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
         return product;
     }
@@ -59,7 +60,7 @@ public final class ProductTestFixtures {
         Product product = Product.create(categoryId, name,
                 new ProductPricing(null, PriceType.INQUIRY, null, null,
                         BigDecimal.ZERO, BigDecimal.ONE, null),
-                null, null, false, false, CREATED_BY);
+                null, null, false, false, DeliveryNotice.NONE, CREATED_BY);
         product.changeStatus(ProductStatus.ON_SALE, CREATED_BY);
         return product;
     }

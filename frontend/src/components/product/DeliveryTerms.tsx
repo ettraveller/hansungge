@@ -17,9 +17,13 @@ import styles from './DeliveryTerms.module.css';
  * 제품마다 다르다.
  *
  * <p>구분(「재고 보유」·「주문제작」)은 그대로 보인다 — 그것은 체크박스가 실제로
- * 아는 사실이다. 기간만 {@link DELIVERY_PERIOD_NOTICE} 로 바뀐다.
+ * 아는 사실이다.
  *
- * <p>⚠️ 그래서 <b>상세설명에 기간이 적혀 있어야 한다.</b> PG 심사가 상품페이지
+ * <h2>기간·택배사는 상품마다 받는다 (V41)</h2>
+ * 관리자가 등록 화면에 적어 두면 그 문장이 그대로 나온다. 적지 않으면
+ * {@link DELIVERY_PERIOD_NOTICE} 와 {@code DELIVERY_COMMON.carrier} 로 떨어진다.
+ *
+ * <p>⚠️ 비워 둔 상품은 <b>상세설명에 기간이 적혀 있어야 한다.</b> PG 심사가 상품페이지
  * 내 기재를 요구하고(V33), 전자상거래법 제13조 제2항의 공급시기 고지이기도 하다.
  * 고지를 면제받은 것이 아니라 적는 자리를 옮긴 것이다.
  *
@@ -33,7 +37,17 @@ import styles from './DeliveryTerms.module.css';
  * 같은 기간을 이용약관·환불약관·이용안내가 함께 말한다. {@code content/delivery.ts}
  * 하나에서 읽어 — 각자 적어 두면 한 곳만 고치는 날 공개된 약속이 어긋난다.
  */
-export function DeliveryTerms({ madeToOrder }: { madeToOrder: boolean }) {
+export function DeliveryTerms({
+  madeToOrder,
+  deliveryPeriod,
+  courier,
+}: {
+  madeToOrder: boolean;
+  /** 관리자가 이 상품에 적어 둔 배송기간 (V41). 비면 기본 문구 */
+  deliveryPeriod?: string | null;
+  /** 관리자가 이 상품에 적어 둔 택배사 (V41). 비면 우체국택배 */
+  courier?: string | null;
+}) {
   const terms = madeToOrder ? MADE_TO_ORDER_DELIVERY : IN_STOCK_DELIVERY;
 
   return (
@@ -50,12 +64,14 @@ export function DeliveryTerms({ madeToOrder }: { madeToOrder: boolean }) {
         <div>
           <dt>배송기간</dt>
           <dd>
-            <strong>{DELIVERY_PERIOD_NOTICE}</strong>
+            {/* 공백만 들어온 값은 기본 문구로 접는다. 서버가 이미 접지만, 화면이
+                빈 칸을 찍는 경로를 한 군데라도 남기면 고지가 없는 상품이 생긴다. */}
+            <strong>{deliveryPeriod?.trim() || DELIVERY_PERIOD_NOTICE}</strong>
           </dd>
         </div>
         <div>
           <dt>택배사</dt>
-          <dd>{DELIVERY_COMMON.carrier}</dd>
+          <dd>{courier?.trim() || DELIVERY_COMMON.carrier}</dd>
         </div>
       </dl>
 

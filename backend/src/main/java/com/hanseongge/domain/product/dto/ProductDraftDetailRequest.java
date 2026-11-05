@@ -1,5 +1,6 @@
 package com.hanseongge.domain.product.dto;
 
+import com.hanseongge.domain.product.entity.DeliveryNotice;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -29,12 +30,21 @@ public record ProductDraftDetailRequest(
         @Schema(description = "상세 이미지 키 (순서대로)")
         List<@Size(max = 300) String> detailKeys,
 
-        @Schema(description = "주문제작 상품인가. 상세의 배송기간·청약철회 안내가 달라진다",
+        @Schema(description = "주문제작 상품인가. 상세의 청약철회 안내가 달라진다",
                 example = "false")
         boolean madeToOrder,
 
         @Schema(description = "과세 상품인가. 미리보기 금액의 부가세 표시가 갈린다", example = "false")
         boolean vatTaxable,
+
+        @Schema(description = "배송기간 문구. 비우면 「상품별 상이 · 상세페이지 참조」",
+                example = "결제 확인 후 영업일 7일 이내")
+        @Size(max = 100)
+        String deliveryPeriod,
+
+        @Schema(description = "택배사. 비우면 「우체국택배」", example = "우체국택배")
+        @Size(max = 40)
+        String courier,
 
         @Schema(description = "가격 재료", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "가격 재료를 보내 주세요.")
@@ -48,5 +58,10 @@ public record ProductDraftDetailRequest(
         galleryKeys = galleryKeys == null ? List.of() : List.copyOf(galleryKeys);
         detailKeys = detailKeys == null ? List.of() : List.copyOf(detailKeys);
         name = name == null ? "" : name;
+    }
+
+    /** 배송 고지로 변환. 공백은 "안 정했다"(null)로 접힌다. */
+    public DeliveryNotice toDeliveryNotice() {
+        return DeliveryNotice.of(deliveryPeriod, courier);
     }
 }

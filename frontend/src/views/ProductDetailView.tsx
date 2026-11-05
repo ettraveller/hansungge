@@ -484,7 +484,11 @@ export function ProductDetailView({
             2026-11-05: 배송기간 칸은 「상품별 상이 · 상세페이지 참조」다. 기간은
             상세페이지 이미지에 적는다 — DeliveryTerms 주석 참조.
           */}
-          <DeliveryTerms madeToOrder={product.madeToOrder} />
+          <DeliveryTerms
+            madeToOrder={product.madeToOrder}
+            deliveryPeriod={product.deliveryPeriod}
+            courier={product.courier}
+          />
 
           {/*
             무통장 전용 상품임을 담기 전에 알린다.

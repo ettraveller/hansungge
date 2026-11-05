@@ -64,13 +64,27 @@ public record ProductDetailResponse(
         /**
          * 주문을 받아 개별 생산하는 상품인가 (V33).
          *
-         * <p>화면이 이 값으로 배송기간과 청약철회 안내를 갈라 적는다. 두 안내는 함께
-         * 움직여야 한다 -- 제작 기간만 알리고 철회 제한을 빼면 제한이 성립하지 않고,
-         * 철회 제한만 알리고 기간을 빼면 PG 심사에서 걸린다.
+         * <p>화면이 이 값으로 <b>구분과 청약철회 안내</b>를 갈라 적는다. 배송기간은
+         * 2026-11-05(V41)부터 여기서 갈리지 않는다 -- {@link #deliveryPeriod} 가
+         * 상품마다 들고 있다.
          */
-        @Schema(description = "주문제작 상품인가. true 면 제작 기간과 청약철회 제한을 함께 고지한다",
+        @Schema(description = "주문제작 상품인가. true 면 청약철회 제한을 함께 고지한다",
                 example = "false")
         boolean madeToOrder,
+
+        /**
+         * 이 상품의 배송기간 문구 (V41). null 이면 화면이 기본 문구를 쓴다
+         * (「상품별 상이 · 상세페이지 참조」).
+         *
+         * <p>⚠️ 비어 있는 상품은 <b>상세 이미지에 기간이 적혀 있어야 한다.</b> PG 심사가
+         * 상품페이지 내 기재를 요구하고, 전자상거래법 §13② 의 공급시기 고지다.
+         */
+        @Schema(description = "배송기간 문구. null 이면 화면이 기본 문구를 쓴다",
+                example = "결제 확인 후 영업일 7일 이내")
+        String deliveryPeriod,
+
+        @Schema(description = "택배사. null 이면 화면이 「우체국택배」를 쓴다", example = "우체국택배")
+        String courier,
 
         /**
          * 카드·간편결제로 살 수 있는 상품인가. false 면 <b>무통장입금 전용</b>이다.
@@ -109,6 +123,8 @@ public record ProductDetailResponse(
                 product.getPurity(),
                 product.getStatus(),
                 product.isMadeToOrder(),
+                product.getDeliveryPeriod(),
+                product.getCourier(),
                 product.isCardPayable(),
                 options,
                 prices);

@@ -131,7 +131,7 @@ function PurchaseInfo({
             적고 있었다 — 박스는 「최대 6주」인데 여기는 "빠르면 2주"로 읽혀, 한 화면이
             두 기간을 말했다. 그런 경우 고객에게 유리한 쪽이 적용된다. */}
         <span className={styles.infoBody}>
-          {DELIVERY_PERIOD_NOTICE}
+          {product.deliveryPeriod?.trim() || DELIVERY_PERIOD_NOTICE}
           {product.madeToOrder && ' 주문제작 상품은 제작 착수 후 단순 변심으로 취소하실 수 없습니다.'}
         </span>
       </div>

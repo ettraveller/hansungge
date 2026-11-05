@@ -92,18 +92,31 @@ public class Product {
     /**
      * 주문을 받아 개별 생산하는 상품인가 (V33).
      *
-     * <p>두 가지를 함께 결정한다.
-     * <ul>
-     *   <li><b>배송기간</b> — 재고 보유는 영업일 7일, 주문제작은 결제일부터 최대 6주</li>
-     *   <li><b>청약철회</b> — 주문제작은 제작이 시작되면 철회가 제한된다. 그 사실을
-     *       <b>상품을 사기 전에</b> 알려야 제한이 성립한다 (전자상거래법 §17②①)</li>
-     * </ul>
-     *
-     * <p>고지 없이 제한하면 제한이 무효가 되어, 제작이 끝난 주문도 환불해야 한다.
+     * <p><b>청약철회</b>를 결정한다 — 주문제작은 제작이 시작되면 철회가 제한되고,
+     * 그 사실을 <b>상품을 사기 전에</b> 알려야 제한이 성립한다 (전자상거래법 §17②①).
+     * 고지 없이 제한하면 제한이 무효가 되어, 제작이 끝난 주문도 환불해야 한다.
      * 그래서 이 값은 표시용 꼬리표가 아니라 <b>고지의 근거</b>다.
+     *
+     * <p>2026-11-05(V41)부터 <b>배송기간은 여기서 갈리지 않는다.</b> 전에는 이 값
+     * 하나로 「영업일 7일 이내」와 「최대 6주」가 갈렸는데, 같은 주문제작 안에서도
+     * 제품마다 기간이 달랐고 선택이 틀린 상품은 지킬 수 없는 기간을 약속했다.
+     * 기간은 {@link #deliveryNotice} 가 상품마다 받는다.
      */
     @Column(name = "made_to_order", nullable = false)
     private boolean madeToOrder;
+
+    /**
+     * 이 상품의 배송기간 문구 (V41). NULL 이면 화면이 기본 문구를 쓴다.
+     *
+     * <p>⚠️ 비워 두는 상품은 <b>상세 이미지에 기간이 적혀 있어야 한다.</b> PG 심사가
+     * 상품페이지 내 기재를 요구하고, 전자상거래법 §13② 의 공급시기 고지이기도 하다.
+     */
+    @Column(name = "delivery_period", length = 100)
+    private String deliveryPeriod;
+
+    /** 이 상품의 택배사 (V41). NULL 이면 화면이 기본값(우체국택배)을 쓴다. */
+    @Column(name = "courier", length = 40)
+    private String courier;
 
     /**
      * 과세 상품인가 (V38).
@@ -153,7 +166,7 @@ public class Product {
 
     private Product(Long categoryId, String name, ProductPricing pricing,
                     String description, String thumbnailKey, boolean madeToOrder,
-                    boolean vatTaxable, String createdBy) {
+                    boolean vatTaxable, DeliveryNotice delivery, String createdBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
@@ -161,6 +174,7 @@ public class Product {
         this.thumbnailKey = thumbnailKey;
         this.madeToOrder = madeToOrder;
         this.vatTaxable = vatTaxable;
+        applyDelivery(delivery);
         this.status = ProductStatus.HIDDEN;   // 등록 직후에는 노출하지 않는다 (아래 설명)
         // DB 기본값과 같은 값을 명시한다. 엔티티로 INSERT 하면 컬럼 DEFAULT 가 쓰이지 않는다.
         this.minQty = 1;
@@ -181,9 +195,10 @@ public class Product {
      */
     public static Product create(Long categoryId, String name, ProductPricing pricing,
                                  String description, String thumbnailKey,
-                                 boolean madeToOrder, boolean vatTaxable, String createdBy) {
+                                 boolean madeToOrder, boolean vatTaxable,
+                                 DeliveryNotice delivery, String createdBy) {
         return new Product(categoryId, name, pricing, description, thumbnailKey,
-                madeToOrder, vatTaxable, createdBy);
+                madeToOrder, vatTaxable, delivery, createdBy);
     }
 
     /**
@@ -195,14 +210,27 @@ public class Product {
      */
     public void update(Long categoryId, String name, ProductPricing pricing,
                        String description, boolean madeToOrder, boolean vatTaxable,
-                       String updatedBy) {
+                       DeliveryNotice delivery, String updatedBy) {
         this.categoryId = categoryId;
         this.name = name;
         applyPricing(pricing);
         this.description = description;
         this.madeToOrder = madeToOrder;
         this.vatTaxable = vatTaxable;
+        applyDelivery(delivery);
         touch(updatedBy);
+    }
+
+    /**
+     * 배송 고지를 덮어쓴다 (V41).
+     *
+     * <p>null 묶음도 받는다 — 이 필드를 보내지 않는 옛 호출이 있으면 "안 정했다"가
+     * 되어 화면이 기본 문구를 쓴다. 조용히 빈 칸이 찍히는 것보다 낫다.
+     */
+    private void applyDelivery(DeliveryNotice delivery) {
+        DeliveryNotice notice = delivery == null ? DeliveryNotice.NONE : delivery;
+        this.deliveryPeriod = notice.period();
+        this.courier = notice.courier();
     }
 
     /** 대표이미지 목록의 첫 장. 비면 null — 빈 문자열은 "사진이 있다"로 읽힌다. */

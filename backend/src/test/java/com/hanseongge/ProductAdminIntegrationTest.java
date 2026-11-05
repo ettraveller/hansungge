@@ -228,6 +228,75 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(jsonPath("$.madeToOrder").value(false));
         }
 
+        /**
+         * 배송기간·택배사는 상품마다 정한다 (V41).
+         *
+         * <p>보내지 않으면 null 이다. 빈 문자열이 아니다 — 화면은 null 을 보고
+         * 기본 문구(「상품별 상이 · 상세페이지 참조」)를 쓴다. 빈 문자열이 저장되면
+         * 상세에 <b>빈 칸</b>이 찍혀, 고지가 없는 것인지 비워 둔 것인지 알 수 없다.
+         */
+        @Test
+        @DisplayName("배송기간·택배사는 보낸 대로 저장되고, 공백만 보내면 null 이 된다")
+        void deliveryNoticeIsPerProduct() throws Exception {
+            MvcResult created = mockMvc.perform(post("/api/admin/products")
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "categoryId", CATEGORY_ID,
+                                    "name", "test_배송기간 있는 반지",
+                                    "metalType", "GOLD_24K",
+                                    "priceType", "MARKET_PLUS",
+                                    "weightG", 3.75,
+                                    "laborCost", 150000,
+                                    "deliveryPeriod", "  결제일부터 최대 4주  ",
+                                    "courier", "CJ대한통운",
+                                    "initialStock", 0))))
+                    .andExpect(status().isCreated())
+                    // 앞뒤 공백은 서버가 떼어 낸다. 그대로 두면 화면에서 줄이 밀린다.
+                    .andExpect(jsonPath("$.deliveryPeriod").value("결제일부터 최대 4주"))
+                    .andExpect(jsonPath("$.courier").value("CJ대한통운"))
+                    .andReturn();
+
+            long id = objectMapper.readTree(created.getResponse().getContentAsString())
+                    .get("id").asLong();
+
+            // 고객이 보는 화면에 나와야 한다. 관리자 응답에만 있으면 저장은 됐는데
+            // 고지는 안 된 상태가 된다.
+            declareMarketPrice("150000");
+            startSelling(id);
+            mockMvc.perform(get("/api/v1/products/" + id))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.deliveryPeriod").value("결제일부터 최대 4주"))
+                    .andExpect(jsonPath("$.courier").value("CJ대한통운"));
+
+            // 공백만 보내면 "안 정했다"로 접힌다 — 빈 칸이 아니라 null 이다.
+            mockMvc.perform(put("/api/admin/products/" + id)
+                            .header("Authorization", bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of(
+                                    "categoryId", CATEGORY_ID,
+                                    "name", "test_배송기간 있는 반지",
+                                    "metalType", "GOLD_24K",
+                                    "priceType", "MARKET_PLUS",
+                                    "weightG", 3.75,
+                                    "laborCost", 150000,
+                                    "deliveryPeriod", "   ",
+                                    "courier", ""))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.deliveryPeriod").doesNotExist())
+                    .andExpect(jsonPath("$.courier").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("배송기간을 보내지 않은 상품은 null 이다 — 화면이 기본 문구를 쓴다")
+        void deliveryNoticeIsNullWhenOmitted() throws Exception {
+            long id = createGoldBar();   // deliveryPeriod·courier 를 보내지 않는다
+            mockMvc.perform(get("/api/admin/products/" + id).header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.deliveryPeriod").doesNotExist())
+                    .andExpect(jsonPath("$.courier").doesNotExist());
+        }
+
         @Test
         @DisplayName("시세 연동 상품에 중량이 없으면 400 — DB 제약이 아니라 도메인 오류로 막는다")
         void marketProductRequiresWeight() throws Exception {

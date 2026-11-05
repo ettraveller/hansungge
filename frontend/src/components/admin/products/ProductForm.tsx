@@ -152,6 +152,14 @@ export function ProductForm({
    * 면세인 물건을 과세로 적으면 받지도 않은 세금을 받은 것처럼 영수증에 남는다.
    */
   const [vatTaxable, setVatTaxable] = useState(initial?.vatTaxable ?? false);
+  /*
+   * 배송기간·택배사 (V41). 빈 문자열은 "안 정했다"는 뜻이고, 그러면 고객 화면이
+   * 기본 문구를 쓴다 -- 기간은 「상품별 상이 · 상세페이지 참조」, 택배사는
+   * 「우체국택배」. 서버에는 null 로 보낸다. 빈 문자열을 그대로 보내면 상세에
+   * 빈 칸이 찍혀, 고지가 없는 것인지 비워 둔 것인지 구분할 수 없다.
+   */
+  const [deliveryPeriod, setDeliveryPeriod] = useState(initial?.deliveryPeriod ?? '');
+  const [courier, setCourier] = useState(initial?.courier ?? '');
   const [defaultOptionName, setDefaultOptionName] = useState('');
   // 등록 화면에서 미리 올려 두는 이미지. 파일은 저장소에 바로 올라가고, 상품에
   // 붙이는 것만 등록이 끝난 뒤로 미룬다 — 아직 붙일 상대가 없다.
@@ -215,6 +223,8 @@ export function ProductForm({
       fixedPrice: marketLinked ? null : fixedPrice,
       madeToOrder,
       vatTaxable,
+      deliveryPeriod: deliveryPeriod.trim() === '' ? null : deliveryPeriod.trim(),
+      courier: courier.trim() === '' ? null : courier.trim(),
       ...(mode === 'create'
         ? {
             defaultOptionName: defaultOptionName.trim() === '' ? null : defaultOptionName.trim(),
@@ -482,18 +492,16 @@ export function ProductForm({
         체크박스가 아니라 두 갈래로 고르게 한다. 체크박스는 "안 누르면 무슨 뜻인지"가
         화면에 없는데, 그 기본값이 고객 화면에 그대로 나간다.
 
-        2026-11-05: 고객 화면의 배송기간 칸이 「상품별 상이 · 상세페이지 참조」로 바뀌어,
-        이 선택이 더 이상 기간을 정하지 않는다. 정하는 것은 구분과 청약철회 제한 고지다.
-        기간은 상세페이지 이미지에 적어야 하고, 적지 않으면 고지가 아예 없는 상품이 된다
-        (전자상거래법 §13② 공급시기, PG 심사 요건).
+        2026-11-05(V41): 이 선택이 더 이상 기간을 정하지 않는다. 정하는 것은 구분과
+        청약철회 제한 고지다. 기간은 바로 아래 「배송기간」 칸이 상품마다 받는다.
       */}
       <Field
         label="배송 구분"
         required
         hint={
           madeToOrder
-            ? '상세에 「주문제작 상품」과 청약철회 제한 고지가 표시된다. ⚠️ 배송기간은 화면에 자동으로 나오지 않는다 — 상세페이지 이미지에 직접 적는다.'
-            : '상세에 「재고 보유 상품」으로 표시되고 청약철회 제한 고지는 붙지 않는다. ⚠️ 배송기간은 상세페이지 이미지에 직접 적는다.'
+            ? '상세에 「주문제작 상품」과 청약철회 제한 고지가 표시된다. 배송기간은 아래 칸에서 따로 정한다.'
+            : '상세에 「재고 보유 상품」으로 표시되고 청약철회 제한 고지는 붙지 않는다. 배송기간은 아래 칸에서 따로 정한다.'
         }
       >
         <div className={styles.choiceRow}>
@@ -522,6 +530,50 @@ export function ProductForm({
             </span>
           </label>
         </div>
+      </Field>
+
+      {/*
+        배송기간·택배사를 상품마다 받는다 (V41).
+
+        전에는 위 라디오 하나로 「영업일 7일 이내」와 「최대 6주」가 갈렸다. 그 둘은
+        상품의 성격이 아니라 선택 하나로 정해졌고, 선택이 틀린 상품은 지킬 수 없는
+        기간을 약속했다. 같은 주문제작 안에서도 제품마다 기간이 다르다.
+
+        ⚠️ 비워 두면 상세에 「상품별 상이 · 상세페이지 참조」가 나간다. 그 경우
+        상세페이지 이미지에 기간이 적혀 있어야 한다 — PG 심사가 상품페이지 내
+        기재를 요구하고(V33), 전자상거래법 §13② 의 공급시기 고지다. 그래서 빈 칸을
+        "안 적어도 되는 칸"으로 보이게 두지 않고 hint 에 그 사실을 적는다.
+      */}
+      <Field
+        label="배송기간"
+        htmlFor="p-delivery-period"
+        hint={
+          deliveryPeriod.trim() === ''
+            ? '⚠️ 비우면 상세에 「상품별 상이 · 상세페이지 참조」가 나간다. 그 경우 상세페이지 이미지에 기간이 적혀 있어야 한다 (전자상거래법 §13②, PG 심사 요건).'
+            : '적은 문장이 상세의 배송기간 칸에 그대로 나간다. 공개한 기간은 약속이 된다.'
+        }
+      >
+        <TextInput
+          id="p-delivery-period"
+          value={deliveryPeriod}
+          maxLength={100}
+          placeholder="예: 결제 확인 후 영업일 7일 이내 / 결제일부터 최대 6주"
+          onChange={(e) => setDeliveryPeriod(e.target.value)}
+        />
+      </Field>
+
+      <Field
+        label="택배사"
+        htmlFor="p-courier"
+        hint="비우면 「우체국택배」로 나간다."
+      >
+        <TextInput
+          id="p-courier"
+          value={courier}
+          maxLength={40}
+          placeholder="우체국택배"
+          onChange={(e) => setCourier(e.target.value)}
+        />
       </Field>
 
       {/*
@@ -652,6 +704,8 @@ export function ProductForm({
           detailKeys,
           madeToOrder,
           vatTaxable,
+          deliveryPeriod: deliveryPeriod.trim() === '' ? null : deliveryPeriod.trim(),
+          courier: courier.trim() === '' ? null : courier.trim(),
           // 가격 재료는 등록할 때 보내는 값과 똑같이 만든다. 여기서 한 줄이라도
           // 달라지면 미리보기 금액과 등록 후 금액이 갈린다.
           pricing: {

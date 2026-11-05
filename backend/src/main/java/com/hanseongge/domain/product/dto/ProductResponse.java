@@ -70,6 +70,14 @@ public record ProductResponse(
         @Schema(description = "과세 상품인가 (V38). 금액은 부가세 포함가다", example = "false")
         boolean vatTaxable,
 
+        @Schema(description = "배송기간 문구 (V41). null 이면 화면이 기본 문구를 쓴다",
+                example = "결제 확인 후 영업일 7일 이내")
+        String deliveryPeriod,
+
+        @Schema(description = "택배사 (V41). null 이면 화면이 「우체국택배」를 쓴다",
+                example = "우체국택배")
+        String courier,
+
         @Schema(description = "등록자", example = "admin")
         String createdBy,
 
@@ -102,6 +110,8 @@ public record ProductResponse(
                 product.isActive(),
                 product.isMadeToOrder(),
                 product.isVatTaxable(),
+                product.getDeliveryPeriod(),
+                product.getCourier(),
                 product.getCreatedBy(),
                 product.getCreatedAt(),
                 product.getUpdatedBy(),

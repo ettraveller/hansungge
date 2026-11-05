@@ -1,6 +1,7 @@
 package com.hanseongge.domain.product.dto;
 
 import com.hanseongge.domain.marketprice.entity.MetalType;
+import com.hanseongge.domain.product.entity.DeliveryNotice;
 import com.hanseongge.domain.product.entity.PriceType;
 import com.hanseongge.domain.product.entity.ProductPricing;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -97,6 +98,25 @@ public record ProductRequest(
                 + "공급가액/세액을 쪼갠다. 금액 자체는 바뀌지 않는다", example = "false")
         boolean vatTaxable,
 
+        /**
+         * 이 상품의 배송기간 문구 (V41).
+         *
+         * <p>비우면 상세 화면이 「상품별 상이 · 상세페이지 참조」를 쓴다. 숫자가 아니라
+         * 문장을 받는다 — 「결제 확인 후 영업일 7일 이내」와 「결제일부터 최대 6주」는
+         * 기준 시점부터 다르고, 주수만 받으면 그 차이를 화면이 지어내야 한다.
+         *
+         * <p>⚠️ 비워 두는 상품은 상세 이미지에 기간이 적혀 있어야 한다 (PG 심사 요건,
+         * 전자상거래법 §13② 공급시기 고지).
+         */
+        @Schema(description = "배송기간 문구. 비우면 「상품별 상이 · 상세페이지 참조」로 표시된다",
+                example = "결제 확인 후 영업일 7일 이내")
+        @Size(max = 100, message = "배송기간은 100자 이내로 적어 주세요.")
+        String deliveryPeriod,
+
+        @Schema(description = "택배사. 비우면 「우체국택배」로 표시된다", example = "우체국택배")
+        @Size(max = 40, message = "택배사는 40자 이내로 적어 주세요.")
+        String courier,
+
         @Schema(description = "기본 옵션 이름. 비우면 중량으로 자동 생성 (등록 시에만 사용)",
                 example = "3.75g (1돈)")
         @Size(max = 100)
@@ -110,5 +130,10 @@ public record ProductRequest(
     /** 가격 재료로 변환. 여기서 {@code price_type} 별 정합성이 검사된다. */
     public ProductPricing toPricing() {
         return new ProductPricing(metalType, priceType, weightG, purity, laborCost, multiplier, fixedPrice);
+    }
+
+    /** 배송 고지로 변환. 공백은 여기서 "안 정했다"(null)로 접힌다. */
+    public DeliveryNotice toDeliveryNotice() {
+        return DeliveryNotice.of(deliveryPeriod, courier);
     }
 }

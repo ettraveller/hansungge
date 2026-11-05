@@ -231,6 +231,10 @@ export interface AdminProduct {
   madeToOrder: boolean;
   /** 과세 상품인가 (V38). 과세여도 고객이 내는 금액은 바뀌지 않는다 */
   vatTaxable: boolean;
+  /** 배송기간 문구 (V41). null 이면 화면이 기본 문구를 쓴다 */
+  deliveryPeriod?: string | null;
+  /** 택배사 (V41). null 이면 화면이 「우체국택배」를 쓴다 */
+  courier?: string | null;
   createdBy?: string | null;
   createdAt: string;
   updatedBy?: string | null;

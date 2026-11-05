@@ -22,10 +22,14 @@ export interface PreviewInput {
   description?: string | null;
   galleryKeys: string[];
   detailKeys: string[];
-  /** 주문제작인가. 미리보기의 배송기간·청약철회 안내가 이 값으로 갈린다 */
+  /** 주문제작인가. 미리보기의 구분·청약철회 안내가 이 값으로 갈린다 */
   madeToOrder: boolean;
   /** 과세 상품인가 (V38). 미리보기의 「부가세 포함」 표시가 갈린다 */
   vatTaxable: boolean;
+  /** 배송기간 문구 (V41). 비우면 미리보기도 기본 문구로 보인다 */
+  deliveryPeriod?: string | null;
+  /** 택배사 (V41). 비우면 「우체국택배」 */
+  courier?: string | null;
   pricing: DraftPriceInput;
 }
 
@@ -106,6 +110,8 @@ function PreviewBody({ input, productId }: { input: PreviewInput; productId: num
     detailKeys,
     madeToOrder: input.madeToOrder,
     vatTaxable: input.vatTaxable,
+    deliveryPeriod: input.deliveryPeriod,
+    courier: input.courier,
     pricing: input.pricing,
   };
 

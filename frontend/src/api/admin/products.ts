@@ -85,8 +85,9 @@ export interface ProductInput {
   /**
    * 주문을 받아 개별 생산하는 상품인가 (V33).
    *
-   * <p>상세의 배송기간(영업일 7일 vs 최대 6주)과 청약철회 제한 고지가 이 값으로
-   * 갈린다. 보내지 않으면 서버가 false 로 읽는다 -- 빠뜨렸을 때 안전한 쪽이다.
+   * <p>상세의 구분 표시와 청약철회 제한 고지가 이 값으로 갈린다. 배송기간은
+   * V41 부터 여기서 갈리지 않는다 -- deliveryPeriod 가 상품마다 받는다.
+   * 보내지 않으면 서버가 false 로 읽는다 -- 빠뜨렸을 때 안전한 쪽이다.
    */
   madeToOrder: boolean;
   /**
@@ -97,6 +98,15 @@ export interface ProductInput {
    * 설정(VAT_RATE)을 쓴다.
    */
   vatTaxable: boolean;
+  /**
+   * 배송기간 문구 (V41). 비우면 상세가 「상품별 상이 · 상세페이지 참조」를 쓴다.
+   *
+   * ⚠️ 비워 두는 상품은 상세 이미지에 기간이 적혀 있어야 한다 — PG 심사가
+   * 상품페이지 내 기재를 요구하고, 전자상거래법 §13② 의 공급시기 고지다.
+   */
+  deliveryPeriod?: string | null;
+  /** 택배사 (V41). 비우면 「우체국택배」 */
+  courier?: string | null;
   /** 등록 시에만 쓰인다 */
   defaultOptionName?: string | null;
   initialStock?: number | null;
@@ -204,6 +214,10 @@ export interface DraftDetailInput {
    * 설정(VAT_RATE)을 쓴다.
    */
   vatTaxable: boolean;
+  /** 배송기간 문구 (V41). 비우면 미리보기도 기본 문구로 보인다 */
+  deliveryPeriod?: string | null;
+  /** 택배사 (V41). 비우면 「우체국택배」 */
+  courier?: string | null;
   pricing: DraftPriceInput;
 }
 
