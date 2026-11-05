@@ -131,7 +131,9 @@ export function PurchaseGuideView() {
       </div>
 
       {/* ---------- 자주 묻는 것 + 다음 행동 ---------- */}
-      <section className={styles.faqSection} aria-labelledby="pg-faq">
+      {/* SectionHead 는 id 를 받지 않아 pg-faq 가 어디에도 없었다 — 가리키는 대상이
+          없는 참조라 화면 낭독기가 이 구역을 「섹션」으로만 읽었다. 이름을 직접 적는다. */}
+      <section className={styles.faqSection} aria-label="자주 묻는 것">
         <div className="wrap">
           <SectionHead title="자주 묻는 것" />
 
