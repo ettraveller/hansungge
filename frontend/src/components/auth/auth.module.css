@@ -510,52 +510,17 @@
   }
 }
 
-/* 본인확인 방법 고르기 — 간편인증(앱) / 휴대폰 문자.
-   앱이 없는 분이 인증창 앞에서 막히지 않도록 가입 전에 고르게 한다. */
+/* 본인확인 방법 안내. 고르게 하지 않는다 — 인증창 안에서 사용자가 고른다. */
 .methods {
   margin-top: 20px;
   border: 0;
   padding: 0;
 }
 
-.method,
-.methodOn {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 8px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--dark);
-}
-
-.methodOn {
-  border-color: var(--dark);
-  box-shadow: inset 0 0 0 1px var(--dark);
-}
-
 .methodNote {
   display: block;
-  margin-top: 4px;
+  margin-top: 8px;
   font-size: 12.5px;
   color: var(--gray);
   line-height: 1.6;
-}
-
-/* 아직 고를 수 없는 방법. 지우지 않고 남겨 둔다 — 그런 길이 생길 예정이라는 것을
-   알려 주는 편이, 앱이 없는 분이 그냥 떠나는 것보다 낫다. */
-.methodOff {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 8px;
-  padding: 14px;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  color: var(--gray);
-  cursor: not-allowed;
 }

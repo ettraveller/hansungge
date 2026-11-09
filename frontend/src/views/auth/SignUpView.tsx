@@ -53,12 +53,11 @@ export function SignUpView() {
   /**
    * 어떻게 본인확인을 받을 것인가.
    *
-   * <p>간편인증은 PASS·토스 <b>앱</b>이 깔려 있어야 한다. 그 앱이 없는 분을 인증창 앞에
-   * 세워 두면 거기서 가입이 끝난다 — 되돌아올 길이 화면에 없기 때문이다.
-   * 문자 인증은 휴대폰만 있으면 되므로, 고를 수 있게 둔다.
+   * <p>여기서 고르지 않는다. 지금 공급자(KG파이낸셜 mcash 휴대폰본인확인)는 인증창
+   * 안에서 문자 · PASS앱 · QR 을 사용자가 직접 고르게 한다 (연동매뉴얼 3.1~3.5).
+   * 그래서 이 값은 그 공급자에게 전달되지 않는다 — 이니시스로 되돌릴 때만 쓰인다.
    */
-  // 지금은 간편인증뿐이다. 문자인증이 열리면 다시 고를 수 있게 한다 (TODO E-8).
-  const method: IdentityMethod = 'SIMPLE';
+  const method: IdentityMethod = 'PHONE';
   const signUpSocial = useSignUpSocial();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
@@ -192,46 +191,14 @@ export function SignUpView() {
           <fieldset className={styles.methods}>
             <legend className={styles.sectionTitle}>본인확인 방법</legend>
 
-            <label className={styles.methodOn}>
-              <input
-                type="radio"
-                name="identity-method"
-                value="SIMPLE"
-                checked
-                readOnly
-                disabled={busy}
-              />
-              <span>
-                <strong>간편인증</strong>
-                <span className={styles.methodNote}>
-                  PASS · 토스 · 카카오 등 <b>앱</b>으로 확인합니다. 앱이 깔려 있어야 합니다.
-                </span>
-              </span>
-            </label>
-
-            {/* 아직 고를 수 없다.
-
-                우리가 붙여 둔 것은 KG이니시스 <b>통합인증</b>이고, 거기서 reqSvcCd=03 을
-                보내면 규격상 "본인확인" 이지만 지금 상점(INIiasTest)에는 그 인증수단이
-                열려 있지 않아 이니시스가 간편인증 창으로 돌려보낸다.
-
-                그리고 실제로 쓰려는 것은 그것도 아니다 — <b>KG파이낸셜 휴대폰인증</b>
-                (이니시스가 중계, 43원/건, 소켓통신방식)으로 별도 계약이고 연동 방식도
-                다르다. 계약 전에는 공급자 구현 자체가 없다 (TODO E-8).
-
-                고를 수는 있는데 다른 창이 뜨는 것이 가장 나쁘다 — 쓰는 사람은 우리가
-                뭘 잘못 만들었다고 생각하고, 그 자리에서 가입을 그만둔다. 그래서
-                잠가 두고 왜 그런지 적는다. */}
-            <label className={styles.methodOff}>
-              <input type="radio" name="identity-method" value="PHONE" disabled />
-              <span>
-                <strong>휴대폰 문자인증</strong>
-                <span className={styles.methodNote}>
-                  통신사가 보낸 <b>문자</b>로 확인하는 방법입니다. 앱이 없어도 됩니다 —
-                  <b>준비 중</b>이라 지금은 간편인증으로 진행해 주세요.
-                </span>
-              </span>
-            </label>
+            {/* 라디오로 묻지 않는다. 인증창이 열리면 그 안에서 같은 것을 다시 고르게
+                되고, 바깥에서 고른 것과 어긋나면 쓰는 사람은 우리가 뭘 잘못 만들었다고
+                생각한다. 그래서 무엇이 뜨는지만 미리 알려 준다. */}
+            <p className={styles.methodNote}>
+              <strong>휴대폰 본인확인</strong> — 다음 화면에서 <b>문자</b> · <b>PASS 앱</b> ·{' '}
+              <b>QR</b> 중 편한 방법을 고를 수 있습니다. 통신사에 등록된 본인 명의 휴대폰이
+              필요합니다.
+            </p>
           </fieldset>
         )}
 
