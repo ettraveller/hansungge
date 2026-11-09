@@ -1,0 +1,115 @@
+# =====================================================================
+# QA 배포 — qa 브랜치를 https://hanseongge.com/qa 에 올린다
+#
+# 운영 배포(deploy.yml)와 같은 러너, 같은 스크립트를 쓴다. 다른 것은 SLOT
+# 환경변수 하나뿐이다 — 그래야 운영에서만 겪는 문제가 QA 에서도 드러난다.
+#
+# 처음 한 번은 서버에 자리를 만들어야 한다:
+#   sudo bash infra/deploy/provision-qa.sh
+# =====================================================================
+name: QA 배포
+
+on:
+  push:
+    branches: [qa]
+
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 무엇을 배포할지
+        required: true
+        default: all
+        type: choice
+        options: [all, api, web]
+
+# 운영 배포와 그룹을 나눈다. 같은 그룹이면 QA 를 올리는 동안 운영 배포가 취소된다.
+concurrency:
+  group: deploy-qa
+  cancel-in-progress: false
+
+jobs:
+  deploy-qa:
+    runs-on: [self-hosted, hanseongge]
+    timeout-minutes: 30
+
+    steps:
+      - name: 코드 받기
+        uses: actions/checkout@v5
+
+      - name: QA 빌드 값 준비
+        # NEXT_PUBLIC_* 는 빌드 시점에 번들에 박힌다. QA 는 두 가지가 운영과 다르다.
+        #
+        #   BASE_PATH      /qa          모든 주소 앞에 붙는다
+        #   API_BASE_URL   .../qa-api   QA 백엔드로 간다
+        #
+        # 둘 중 하나만 틀려도 화면은 뜨는데 데이터가 안 온다. 그래서 값을 여기서
+        # 만들고 저장소나 Variables 에서 가져오지 않는다 — 가져오면 운영 값과
+        # 바뀌어 들어갈 자리가 생긴다.
+        run: |
+          set -euo pipefail
+          cat > frontend/.env.production <<'EOF'
+          NEXT_PUBLIC_BASE_PATH=/qa
+          NEXT_PUBLIC_API_BASE_URL=https://hanseongge.com/qa-api
+          NEXT_PUBLIC_SITE_URL=https://hanseongge.com/qa
+          NEXT_PUBLIC_ENV_LABEL=qa
+          EOF
+          echo "NEXT_PUBLIC_NAVER_MAP_CLIENT_ID=${{ vars.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID }}" \
+            >> frontend/.env.production
+          cat frontend/.env.production
+
+      - name: 실행 권한 확인
+        run: |
+          set -euo pipefail
+          missing=""
+          for f in backend/gradlew infra/deploy/*.sh; do
+            [ -x "$f" ] || missing="$missing $f"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::실행 비트가 없는 파일이 있습니다:$missing"
+            echo "::error::  git update-index --chmod=+x$missing"
+            exit 1
+          fi
+
+      - name: 자리가 준비되었는지 확인
+        # 없는 자리에 올리면 ln 이 엉뚱한 곳을 가리키고, 그때는 되돌릴 것도 없다.
+        run: |
+          set -euo pipefail
+          for d in /opt/hanseongge/api-qa/releases /opt/hanseongge/web-qa/releases; do
+            if [ ! -d "$d" ]; then
+              echo "::error::$d 가 없습니다. 서버에서 먼저 실행하세요:"
+              echo "::error::  sudo bash infra/deploy/provision-qa.sh"
+              exit 1
+            fi
+          done
+
+      - name: 배포
+        env:
+          SLOT: '-qa'
+          API_HEALTH_PORT: '8181'
+          WEB_PORT: '3100'
+        run: infra/deploy/deploy-local.sh "${{ inputs.target || 'all' }}"
+
+      - name: 배포 후 확인
+        run: |
+          set -euo pipefail
+          for url in https://hanseongge.com/qa https://hanseongge.com/qa-api/api/v1/health; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url")
+            echo "  $url -> $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::$url 이 200 이 아닙니다 ($code)"
+              exit 1
+            fi
+          done
+
+      - name: 운영이 멀쩡한지 확인
+        # QA 를 올리다가 운영을 건드리는 실수가 가장 무섭다. 매번 본다.
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://hanseongge.com/)
+          echo "  운영 -> $code"
+          [ "$code" = "200" ] || { echo "::error::운영이 $code 입니다"; exit 1; }
+
+      - name: 빌드 산출물 정리
+        if: always()
+        run: |
+          rm -rf backend/build frontend/.next frontend/node_modules || true

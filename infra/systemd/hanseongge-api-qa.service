@@ -1,0 +1,43 @@
+# =====================================================================
+# QA API — qa 브랜치를 시험해 보는 자리
+#
+# 운영(hanseongge-api.service)과 다른 것은 셋뿐이다.
+#   1. 포트      8180 / 관리 8181   (운영 8080 / 8081)
+#   2. 설정 파일  api-qa.env         (운영 api.env)
+#   3. 데이터     hanseongge_qa DB   (운영 hanseongge)
+#
+# 셋 다 달라야 한다. 하나라도 운영과 같으면 QA 에서 누른 것이 운영을 바꾼다.
+# =====================================================================
+[Unit]
+Description=한성금거래소 QA API (Spring Boot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hanseongge
+Group=hanseongge
+
+EnvironmentFile=/etc/hanseongge/api-qa.env
+Environment="SPRING_PROFILES_ACTIVE=prod"
+
+WorkingDirectory=/opt/hanseongge/api-qa
+ExecStart=/usr/bin/java -XX:MaxRAMPercentage=20 -Duser.timezone=Asia/Seoul -jar /opt/hanseongge/api-qa/current/app.jar
+
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/hanseongge /var/lib/hanseongge/uploads-qa
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hanseongge-api-qa
+
+[Install]
+WantedBy=multi-user.target

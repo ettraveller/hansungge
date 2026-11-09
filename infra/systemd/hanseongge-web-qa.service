@@ -1,0 +1,39 @@
+# =====================================================================
+# QA 웹 — qa 브랜치를 시험해 보는 자리
+#
+# 포트만 다른 것이 아니다. 이 빌드는 NEXT_PUBLIC_BASE_PATH=/qa 로 만들어져
+# 모든 주소 앞에 /qa 가 붙어 있다. 운영 자리(3000)에 올리면 안 된다.
+# =====================================================================
+[Unit]
+Description=한성금거래소 QA 웹 (Next.js standalone)
+After=network-online.target hanseongge-api-qa.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hanseongge
+Group=hanseongge
+
+EnvironmentFile=/etc/hanseongge/web-qa.env
+Environment="NODE_ENV=production"
+Environment="PORT=3100"
+Environment="HOSTNAME=127.0.0.1"
+
+WorkingDirectory=/opt/hanseongge/web-qa/current
+ExecStart=/usr/bin/node /opt/hanseongge/web-qa/current/server.js
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hanseongge-web-qa
+
+[Install]
+WantedBy=multi-user.target

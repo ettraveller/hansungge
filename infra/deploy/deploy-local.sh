@@ -20,6 +20,18 @@ TARGET="${1:-all}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 KEEP=3
 
+# 어느 자리에 올리는가. 비어 있으면 운영, "-qa" 면 QA 다.
+#
+# 분기가 아니라 이름 조각이다. 두 자리가 같은 길을 지나야, 운영에서만 겪는
+# 문제가 QA 에서도 똑같이 드러난다. 파일을 두 벌로 두면 한쪽만 고쳐진다.
+SLOT="${SLOT:-}"
+API_DIR="/opt/hanseongge/api${SLOT}"
+WEB_DIR="/opt/hanseongge/web${SLOT}"
+API_SVC="hanseongge-api${SLOT}"
+WEB_SVC="hanseongge-web${SLOT}"
+API_HEALTH_PORT="${API_HEALTH_PORT:-8081}"
+WEB_PORT="${WEB_PORT:-3000}"
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 기동을 확인하는 방식이 deploy.sh 와 같다. 고정 대기(sleep)로는 안 된다 —
@@ -50,13 +62,13 @@ deploy_api() {
   jar="$(ls "$ROOT"/backend/build/libs/*.jar | grep -v plain | head -n1)"
   echo "==> 산출물: $jar"
 
-  mkdir -p "/opt/hanseongge/api/releases/$STAMP"
-  cp "$jar" "/opt/hanseongge/api/releases/$STAMP/app.jar"
+  mkdir -p "$API_DIR/releases/$STAMP"
+  cp "$jar" "$API_DIR/releases/$STAMP/app.jar"
 
-  ln -sfn "/opt/hanseongge/api/releases/$STAMP" /opt/hanseongge/api/current
-  sudo systemctl restart hanseongge-api
-  wait_healthy http://127.0.0.1:8081/actuator/health hanseongge-api
-  prune /opt/hanseongge/api/releases
+  ln -sfn "$API_DIR/releases/$STAMP" "$API_DIR/current"
+  sudo systemctl restart "$API_SVC"
+  wait_healthy "http://127.0.0.1:$API_HEALTH_PORT/actuator/health" "$API_SVC"
+  prune "$API_DIR/releases"
 
   echo "==> 백엔드 배포 완료: $STAMP"
 }
@@ -125,16 +137,16 @@ deploy_web() {
   fi
   echo "  깨끗함 (API 주소: $api_url)"
 
-  local dest="/opt/hanseongge/web/releases/$STAMP"
+  local dest="$WEB_DIR/releases/$STAMP"
   mkdir -p "$dest/.next"
   cp -r "$ROOT/frontend/.next/standalone/." "$dest/"
   cp -r "$ROOT/frontend/.next/static" "$dest/.next/static"
   [ -d "$ROOT/frontend/public" ] && cp -r "$ROOT/frontend/public" "$dest/public"
 
-  ln -sfn "$dest" /opt/hanseongge/web/current
-  sudo systemctl restart hanseongge-web
-  wait_healthy http://127.0.0.1:3000/ hanseongge-web
-  prune /opt/hanseongge/web/releases
+  ln -sfn "$dest" "$WEB_DIR/current"
+  sudo systemctl restart "$WEB_SVC"
+  wait_healthy "http://127.0.0.1:$WEB_PORT/" "$WEB_SVC"
+  prune "$WEB_DIR/releases"
 
   echo "==> 프론트엔드 배포 완료: $STAMP"
 }
