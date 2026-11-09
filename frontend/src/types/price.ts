@@ -54,6 +54,24 @@ export const METAL_LABEL: Record<MetalType, string> = {
   PLATINUM: '백금',
 };
 
+/**
+ * 시세 화면에서 쓰는 이름 — 「무엇의 시세인가」를 이름 안에 넣는다.
+ *
+ * <p>{@link METAL_LABEL} 과 따로 두는 이유는 쓰이는 자리가 다르기 때문이다. 그쪽은
+ * 금속 자체의 이름이라 장바구니·상품 상세·관리자 선택지에도 쓰인다 — 거기에 "시세"가
+ * 붙으면 "장바구니 · 18K 금시세"가 된다.
+ */
+export const METAL_QUOTE_LABEL: Record<MetalType, string> = {
+  GOLD_24K: '순금시세',
+  GOLD_18K: '18K 금시세',
+  GOLD_14K: '14K 금시세',
+  SILVER: '은시세',
+  PLATINUM: '백금시세',
+};
+
+/** 고시 단위. 모든 금속이 1돈 기준이다 — 금액 필드가 pricePerDon 하나뿐이다. */
+export const QUOTE_UNIT_LABEL = '3.75g';
+
 /** 시세표에 이 순서로 노출한다. 24K 가 주력이라 맨 앞이다. */
 export const METAL_ORDER: MetalType[] = ['GOLD_24K', 'GOLD_18K', 'GOLD_14K', 'SILVER', 'PLATINUM'];
 

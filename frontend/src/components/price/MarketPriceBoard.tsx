@@ -6,6 +6,8 @@ import { Sparkline } from '@/components/price/Sparkline';
 import {
   directionOf,
   METAL_LABEL,
+  METAL_QUOTE_LABEL,
+  QUOTE_UNIT_LABEL,
   type MarketPrice,
   type MetalType,
 } from '@/types/price';
@@ -118,7 +120,7 @@ function FeatureCard({ row }: { row: MetalRow }) {
   return (
     <article className={styles.feature}>
       <div className={styles.featureHead}>
-        <h3 className={styles.metalName}>{METAL_LABEL[row.metalType]}</h3>
+        <h3 className={styles.metalName}>{METAL_QUOTE_LABEL[row.metalType]}</h3>
         <span className={styles.purity}>{PURITY[row.metalType]}</span>
       </div>
 
@@ -206,7 +208,7 @@ function SideCard({
       onBlur={onLeave}
       aria-pressed={active}
     >
-      <span className={styles.sideCardName}>{METAL_LABEL[row.metalType]}</span>
+      <span className={styles.sideCardName}>{METAL_QUOTE_LABEL[row.metalType]}</span>
       {/* 이 칸에는 「내가 살 때」만 싣는다. 큰 카드·시세표와 달리 어느 쪽 값인지 적힌
           곳이 없어서, 값의 뜻을 여기서 밝힌다. 시세문의일 때는 붙이지 않는다 —
           금액이 없는데 "VAT 포함"만 남으면 무엇을 포함했다는 뜻인지 알 수 없다. */}
@@ -263,10 +265,10 @@ function PriceTable({
               onMouseLeave={onLeave}
             >
               <th scope="row" className={styles.rowName}>
-                {METAL_LABEL[row.metalType]}
-                {row.metalType === PRIMARY && (
-                  <span className={styles.rowPurity}>{PURITY[row.metalType]}</span>
-                )}
+                {METAL_QUOTE_LABEL[row.metalType]}
+                {/* 순도(999.9) 대신 고시 단위를 적는다. 금속마다 다른 순도보다,
+                    이 금액이 몇 g 기준인지가 모든 줄에 필요한 정보다. */}
+                <span className={styles.rowUnit}>{QUOTE_UNIT_LABEL}</span>
               </th>
               <PriceCells price={row.sell} />
               <PriceCells price={row.buy} />
