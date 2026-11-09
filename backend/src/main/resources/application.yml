@@ -154,6 +154,11 @@ app:
     callback-url: ${IDENTITY_CALLBACK_URL:http://localhost:8080/api/v1/auth/identity/return}
     return-page-url: ${IDENTITY_RETURN_PAGE_URL:http://localhost:3000/auth/identity}
     mock-persona: ${IDENTITY_MOCK_PERSONA:1}
+    # 아래 넷은 mcash(KG파이낸셜) 전용이다. 이니시스·목에서는 읽지 않는다.
+    noti-url: ${IDENTITY_NOTI_URL:}
+    site-url: ${IDENTITY_SITE_URL:}
+    pay-mode: ${IDENTITY_PAY_MODE:10}
+    keygb: ${IDENTITY_KEYGB:1}
   # 문자 발송 (NCP SENS). 비우면 인증번호 로그인만 꺼진다.
   sms:
     access-key: ${SENS_ACCESS_KEY:}

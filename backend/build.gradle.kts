@@ -56,6 +56,14 @@ dependencies {
     // 호환성은 KISA 공식 코드로 만든 암호문으로 고정한다 (InicisSeedCipherTest).
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 
+    // --- SEED 암호 (KG파이낸셜 mcash 휴대폰본인확인) ---
+    // 같은 SEED 지만 이니시스 것과 호환되지 않는다. mcash 는 ECB + 영패딩 + hex 인데,
+    // 같은 키·같은 평문으로 BouncyCastle 과 결과가 달랐다 (직접 대조했다).
+    // 그래서 공급자가 배포하는 모듈을 그대로 쓴다. 매뉴얼도 그 방식을 전제로 하고
+    // ("6. 암복호화 모듈 설치"), 프로토콜 역분석은 라이선스가 금지한다.
+    // 출처: 가맹점 관리자 > 기술지원 > 결제모듈다운로드 > CI_WEB_NEW_001_20260901.zip
+    implementation(files("libs/mcash-seed-0001.jar"))
+
     // --- Persistence ---
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.flywaydb:flyway-core")

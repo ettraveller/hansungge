@@ -26,6 +26,9 @@ out/
 *.class
 *.jar
 !gradle-wrapper.jar
+# KG파이낸셜(mcash)이 배포하는 SEED 암복호화 모듈. 소스가 없고 공개 저장소에도 없다 —
+# 가맹점 관리자에 로그인해야 받을 수 있어서, 여기 두지 않으면 빌드를 재현할 수 없다.
+!backend/libs/*.jar
 *.log
 
 # --- Node / Next.js ---

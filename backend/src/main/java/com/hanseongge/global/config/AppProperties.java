@@ -136,9 +136,14 @@ public record AppProperties(
      */
     public record Identity(
             @DefaultValue("") String provider,
-            /** 이니시스 상점아이디(MID) */
+            /** 이니시스 상점아이디(MID). mcash 는 <b>서비스ID</b>({@code CI_SVCID}) 를 여기 넣는다 */
             @DefaultValue("") String mid,
-            /** 이니시스 apiKey. authHash 계산에 쓰는 비밀값 */
+            /**
+             * 이니시스 apiKey — authHash 계산에 쓰는 비밀값.
+             *
+             * <p>mcash 는 <b>가맹점 고유 암호화키 8자리</b>를 여기 넣는다. 복호화 키는
+             * 이 값과 {@link #mid} 앞 8자리를 이어 붙인 16바이트다.
+             */
             @DefaultValue("") String apiKey,
             /**
              * 이니시스 요청구분코드. {@code 01} 간편인증(PASS·카카오·네이버·토스·은행 — CI 제공),
@@ -169,7 +174,29 @@ public record AppProperties(
              * <p>고정값이어야 "이미 가입한 사람이 다시 가입" 같은 경우를 로컬에서 재현할 수 있다.
              * 다른 사람으로 가입해 보려면 이 값을 바꿔 재기동한다.
              */
-            @DefaultValue("1") int mockPersona
+            @DefaultValue("1") int mockPersona,
+            /**
+             * mcash 전용 — 인증결과를 <b>서버 간 호출</b>로 받는 주소 ({@code Notiurl}).
+             *
+             * <p>{@link #callbackUrl} 과 다른 주소다. 그쪽은 사용자의 브라우저가 돌아오는 곳이고,
+             * 이쪽은 mcash 서버가 신원을 밀어 넣는 곳이다. 둘 다 있어야 한 번의 인증이 끝난다.
+             *
+             * <p>기본 포트(80·443)가 아니면 mcash 쪽에 따로 등록해야 한다 (매뉴얼 5.3).
+             */
+            @DefaultValue("") String notiUrl,
+            /**
+             * mcash 전용 — 가맹점도메인 ({@code Siteurl}). <b>20바이트 이하</b>로 줄여 넣는다.
+             */
+            @DefaultValue("") String siteUrl,
+            /** mcash 전용 — {@code 00} 테스트, {@code 10} 실거래. 00 은 사전 협의가 필요하다. */
+            @DefaultValue("10") String payMode,
+            /**
+             * mcash 전용 — 쓸 암호화키 순번 ({@code 1} 또는 {@code 2}).
+             *
+             * <p>가맹점 관리자 > 가맹점정보관리 > 암호화키관리에 등록한 번호다.
+             * {@code IDENTITY_API_KEY} 는 그 순번에 등록한 8자리 값이어야 한다.
+             */
+            @DefaultValue("1") String keygb
     ) {
         public boolean is(String code) {
             return provider != null && provider.equalsIgnoreCase(code);

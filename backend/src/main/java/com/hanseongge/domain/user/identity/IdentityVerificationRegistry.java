@@ -17,7 +17,7 @@ import java.util.List;
  * 안에서 이루어진다. 그래서 서버가 정한다.
  *
  * <h2>무엇이 뜨는가는 설정 한 줄이 정한다</h2>
- * {@code IDENTITY_PROVIDER=MOCK|TOSS|INICIS}. 각 구현체가 그 값일 때만 빈이 되므로
+ * {@code IDENTITY_PROVIDER=MOCK|INICIS|MCASH}. 각 구현체가 그 값일 때만 빈이 되므로
  * 여기에는 보통 0 개나 1 개가 들어온다. 0 개면 가입이 닫힌다 — 기존 회원 로그인은 된다.
  */
 @Slf4j
@@ -40,9 +40,9 @@ public class IdentityVerificationRegistry {
         if (usable.isEmpty()) {
             log.warn("""
                     [IDENTITY] 사용 가능한 본인확인 공급자가 없습니다. 새 회원가입이 닫힙니다.
-                    기존 회원의 로그인은 그대로 됩니다. 계약(TODO E-4)이 끝나면 아래를 주입하세요.
-                      IDENTITY_PROVIDER=TOSS 또는 INICIS
-                      IDENTITY_CLIENT_ID / IDENTITY_CLIENT_SECRET""");
+                    기존 회원의 로그인은 그대로 됩니다. 아래를 주입하세요.
+                      IDENTITY_PROVIDER=MCASH
+                      IDENTITY_MID(서비스ID) / IDENTITY_API_KEY(암호화키 8자리) / IDENTITY_NOTI_URL""");
             return;
         }
         log.info("[IDENTITY] 사용 가능한 본인확인 공급자: {}", usable);

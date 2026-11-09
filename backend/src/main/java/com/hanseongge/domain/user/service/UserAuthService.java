@@ -80,8 +80,16 @@ import java.util.Set;
 public class UserAuthService {
 
     /** 본인확인 공급자가 수신 주소로 보내는 값 중 화면까지 나를 것. 나머지는 버린다. */
+    /**
+     * 화면까지 들고 갈 응답 필드. 공급자마다 이름이 다르므로 둘 다 적는다 — 쓰지 않는 쪽은
+     * 애초에 오지 않는다. 여기 없는 값은 버린다: 토큰에 담기는 만큼 작게 유지한다.
+     *
+     * <p>앞 여섯은 이니시스, 뒤 여덟은 mcash 다. mcash 의 Okurl 에는 신원이 없다 —
+     * 신원은 노티로 따로 오고, 이 값들은 "그 인증이 우리 것인지" 대조하는 데만 쓴다.
+     */
     private static final Set<String> IDENTITY_RETURN_KEYS =
-            Set.of("resultCode", "resultMsg", "txId", "authRequestUrl", "token", "mTxId");
+            Set.of("resultCode", "resultMsg", "txId", "authRequestUrl", "token", "mTxId",
+                    "Resultcd", "Resultmsg", "Tradeid", "Svcid", "Mobilid", "Signdate", "MSTR", "Mac");
 
     private final OAuthProviderRegistry registry;
     private final OAuthTokenFactory tokenFactory;
