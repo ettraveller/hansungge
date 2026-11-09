@@ -219,7 +219,6 @@ export function PriceDeclareForm() {
                     id="declare-sell"
                     value={sellPrice}
                     invalid={sellInvalid || spreadInverted}
-                    placeholder="752,727"
                     onValueChange={setSellPrice}
                   />
                   {sellToPublish !== '' && (
@@ -245,7 +244,6 @@ export function PriceDeclareForm() {
                   id="declare-buy"
                   value={buyPrice}
                   invalid={buyInvalid || spreadInverted}
-                  placeholder="705,000"
                   onValueChange={setBuyPrice}
                 />
               </Field>

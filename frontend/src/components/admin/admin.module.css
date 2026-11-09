@@ -1371,13 +1371,22 @@ a.hint:hover {
   opacity: 0.65;
 }
 
+/* 칸 수를 쇼핑몰 목록과 똑같이 맞춘다 (ProductListView.module.css 의 .prodGrid).
+   여기서 6칸으로 보이고 손님 화면에서 4칸이면, 끌어다 놓은 줄바꿈 자리가 달라져
+   「두 번째 줄 맨 앞」 같은 것을 여기서 가늠할 수 없다. */
 .orderGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+@media (max-width: 960px) {
+  .orderGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* grab 커서로 「이건 끌 수 있다」를 알린다. 설명문으로 적어 두면 읽지 않는다. */
