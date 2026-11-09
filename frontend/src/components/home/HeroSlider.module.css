@@ -368,3 +368,29 @@
     justify-content: center;
   }
 }
+
+/* ---------- 관리자가 올린 배너 ----------
+   문구·버튼까지 이미지 안에 들어 있다. 그래서 오른쪽 58%만 덮는 .bg 와 달리 전체를
+   덮고, 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다. */
+
+.bgFull {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 배너 전체가 누르는 자리다. 안에 글자를 두지 않는다 — 이미지가 이미 들고 있다. */
+.bannerLink {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* 키보드로 왔을 때 어디에 와 있는지 보여야 한다. 테두리를 안쪽에 그려
+   배너 밖으로 삐져나가지 않게 한다. */
+.bannerLink:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
+}

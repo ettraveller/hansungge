@@ -6,6 +6,7 @@ import { ALL_PRODUCTS_TAB, type CategoryProducts } from '@/components/home/Produ
 import type { Category } from '@/types/product';
 import { METAL_ORDER, type MetalType, type PriceHistoryPoint } from '@/types/price';
 import { PopupLayer } from '@/components/popup/PopupLayer';
+import { bannerApi } from '@/api/banners';
 import { HomeView } from '@/views/HomeView';
 
 /** 제품 소개 탭에서 카테고리당 보여줄 개수. 레퍼런스는 12~15개다. */
@@ -37,11 +38,13 @@ export const dynamic = 'force-dynamic';
  */
 export default async function HomePage() {
   // 시세·카테고리·추이·공지를 병렬로 부른다. 순차로 부르면 느린 쪽이 빠른 쪽을 기다린다.
-  const [prices, categories, histories, notices] = await Promise.all([
+  const [prices, categories, histories, notices, banners] = await Promise.all([
     load(() => priceApi.current(), '메인 시세'),
     load(() => productApi.categories(), '메인 카테고리'),
     loadHistories(),
     load(() => noticeApi.list({ size: HOME_NOTICES }), '메인 공지'),
+    // 배너는 없을 수 있다. 실패해도 메인을 멈추지 않는다 — 화면이 기본 배너로 돌아간다.
+    load(() => bannerApi.list(), '메인 배너'),
   ]);
 
   const groups = await loadProductGroups(categories.data);
@@ -52,7 +55,13 @@ export default async function HomePage() {
           길목마다 알림창이 끼어든다 — 광고가 길을 막는 순간 광고가 아니라 방해다.
           내용은 관리자가 정한다(관리자 › 팝업 관리). */}
       <PopupLayer />
-      <HomeView prices={prices} histories={histories} groups={groups} notices={notices} />
+      <HomeView
+        prices={prices}
+        histories={histories}
+        groups={groups}
+        notices={notices}
+        banners={banners.data ?? []}
+      />
     </>
   );
 }

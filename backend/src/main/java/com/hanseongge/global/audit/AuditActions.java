@@ -64,6 +64,8 @@ public final class AuditActions {
     public static final String PRODUCT_IMAGE_CHANGE = "PRODUCT_IMAGE_CHANGE";
     /** 진열 순서 변경. 상품 내용은 바뀌지 않으므로 PRODUCT_UPDATE 와 섞지 않는다 */
     public static final String PRODUCT_REORDER = "PRODUCT_REORDER";
+    /** 메인 배너 전체 교체 (V43) */
+    public static final String HERO_BANNER_REPLACE = "HERO_BANNER_REPLACE";
 
     // --- 주문 · 배송 ---
     //
@@ -112,6 +114,7 @@ public final class AuditActions {
     public static final String TARGET_EVENT = "EVENT";
     public static final String TARGET_QNA = "QNA";
     public static final String TARGET_CATEGORY = "CATEGORY";
+    public static final String TARGET_HERO_BANNER = "HERO_BANNER";
     public static final String TARGET_PRODUCT = "PRODUCT";
     public static final String TARGET_PRODUCT_OPTION = "PRODUCT_OPTION";
     public static final String TARGET_ORDER = "ORDER";

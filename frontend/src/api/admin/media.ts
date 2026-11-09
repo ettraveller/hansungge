@@ -6,7 +6,7 @@ export interface UploadedMedia {
 }
 
 /** 키 앞머리로 쓸 분류. 백엔드의 허용 목록과 같아야 한다 (AdminMediaController). */
-export type MediaFolder = 'products' | 'events' | 'notices';
+export type MediaFolder = 'products' | 'events' | 'notices' | 'banners';
 
 /**
  * 이미지 업로드.

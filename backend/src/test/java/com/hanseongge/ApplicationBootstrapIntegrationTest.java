@@ -95,8 +95,8 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // 테이블 수는 일부러 손으로 둔다 — 마이그레이션이 의도치 않게 테이블을
         // 만들거나 지우면 걸려야 한다. 늘어난 것이 의도된 것이면 위 주석에 이유를
         // 한 줄 적고 이 숫자를 올린다.
-        // V34 가 refund_policies 를, V37 이 popups 를 더한다.
-        assertThat(tableCount).isEqualTo(47);
+        // V34 가 refund_policies 를, V37 이 popups 를, V43 이 hero_banners 를 더한다.
+        assertThat(tableCount).isEqualTo(48);
     }
 
     @Test

@@ -15,6 +15,22 @@ export interface Slide {
   image?: string;
 }
 
+/**
+ * 관리자가 올린 배너 한 장.
+ *
+ * <p>문구·버튼까지 이미지 안에 들어간다. 그래서 {@link Slide} 처럼 글자를 받지 않고
+ * 화면 전체를 사진으로 덮는다 — 글자를 밖에 두면 사진의 어느 자리에 글이 올라갈지를
+ * 화면 코드가 정하게 되고, 사진이 바뀔 때마다 그 자리가 어긋난다.
+ */
+export interface BannerSlide {
+  id: number;
+  image: string;
+  /** 누르면 갈 곳. 없으면 누를 수 없는 배너다 */
+  href?: string | null;
+  /** 화면 낭독기가 읽을 설명. 이미지 안의 글자는 읽히지 않는다 */
+  alt?: string | null;
+}
+
 const AUTOPLAY_MS = 6000;
 
 /**
@@ -37,23 +53,29 @@ const SWIPE_MIN_PX = 40;
  * 사용자가 방금 본 것을 다시 찾아야 한다. {@code prefers-reduced-motion} 을 켠 사용자는
  * 자동 넘김 자체를 하지 않는다 — 움직임이 불편해서 끈 설정이다.
  */
-export function HeroSlider({ slides }: { slides: Slide[] }) {
+export function HeroSlider({ slides, banners }: { slides: Slide[]; banners?: BannerSlide[] }) {
+  // 관리자가 올린 배너가 있으면 그것만 쓴다. 섞지 않는다 — 글자가 밖에 있는 슬라이드와
+  // 이미지 한 장짜리가 번갈아 나오면 같은 배너의 두 가지 모양처럼 보인다.
+  const uploaded = banners ?? [];
+  const useUploaded = uploaded.length > 0;
+  const count = useUploaded ? uploaded.length : slides.length;
+
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (paused || slides.length <= 1) return;
+    if (paused || count <= 1) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     timer.current = setInterval(() => {
-      setIndex((i) => (i + 1) % slides.length);
+      setIndex((i) => (i + 1) % count);
     }, AUTOPLAY_MS);
 
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [paused, slides.length]);
+  }, [paused, count]);
 
   /**
    * 손짓 넘김.
@@ -70,7 +92,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
   const swiped = useRef(false);
 
   const go = (delta: number) =>
-    setIndex((i) => (i + delta + slides.length) % slides.length);
+    setIndex((i) => (i + delta + count) % count);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -81,7 +103,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
   const onPointerUp = (e: React.PointerEvent) => {
     const from = start.current;
     start.current = null;
-    if (!from || slides.length <= 1) return;
+    if (!from || count <= 1) return;
 
     const dx = e.clientX - from.x;
     const dy = e.clientY - from.y;
@@ -113,7 +135,36 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
       aria-roledescription="carousel"
       aria-label="메인 배너"
     >
-      {slides.map((slide, i) => (
+      {useUploaded &&
+        uploaded.map((banner, i) => (
+          <div
+            key={banner.id}
+            className={i === index ? styles.slideOn : styles.slide}
+            aria-hidden={i !== index}
+          >
+            {/* 글자가 이미지 안에 있으므로 화면 전체를 덮는다. 오른쪽만 덮는 .bg 와
+                달리 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다. */}
+            <div
+              className={styles.bgFull}
+              style={{ backgroundImage: `url(${banner.image})` }}
+              role="img"
+              aria-label={banner.alt ?? ''}
+            />
+            {/* 주소가 없으면 누를 수 없는 배너다. 빈 링크를 두면 눌리는데 아무 일도
+                일어나지 않아, 쓰는 사람은 고장으로 읽는다. */}
+            {banner.href && (
+              <Link
+                href={banner.href}
+                className={styles.bannerLink}
+                tabIndex={i === index ? 0 : -1}
+                aria-label={banner.alt ?? '배너 바로가기'}
+              />
+            )}
+          </div>
+        ))}
+
+      {!useUploaded &&
+        slides.map((slide, i) => (
         <div
           key={slide.title}
           className={i === index ? styles.slideOn : styles.slide}
@@ -156,22 +207,25 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
         </div>
       ))}
 
-      {slides.length > 1 && (
+      {count > 1 && (
         <div className={`wrap ${styles.dotsWrap}`}>
           <div className={styles.dots} role="tablist" aria-label="배너 선택">
-            {slides.map((slide, i) => (
+            {/* 점은 몇 장이든 장수만큼 생긴다. 어느 쪽을 쓰든 같은 수를 센다. */}
+            {Array.from({ length: count }, (_, i) => (
               <button
-                key={slide.title}
+                key={useUploaded ? uploaded[i].id : slides[i].title}
                 type="button"
                 role="tab"
                 aria-selected={i === index}
-                aria-label={`${i + 1}번 배너: ${slide.title}`}
+                aria-label={`${i + 1}번 배너${
+                  useUploaded ? '' : `: ${slides[i].title}`
+                }`}
                 className={i === index ? styles.dotOn : styles.dot}
                 onClick={() => setIndex(i)}
               />
             ))}
             <span className={styles.counter}>
-              <b>{index + 1}</b> / {slides.length}
+              <b>{index + 1}</b> / {count}
             </span>
           </div>
         </div>
