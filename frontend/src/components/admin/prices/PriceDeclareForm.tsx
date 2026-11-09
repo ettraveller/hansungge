@@ -23,6 +23,24 @@ import styles from '../admin.module.css';
 /** 소수점 포함 양수만 통과시킨다. 서버 검증과 겹치지만, 오타를 왕복 없이 잡아준다. */
 const DECIMAL_PATTERN = /^\d{1,13}(\.\d{1,2})?$/;
 
+/** 부가세율(%). 법정 세율이라 상수로 둔다 — 바뀌면 서버의 VAT_RATE 설정과 함께 고친다. */
+const VAT_PERCENT = 10;
+
+/**
+ * 공급가액 → 고시될 판매가.
+ *
+ * <p>여기서 곱한 값을 관리자가 눈으로 확인하고 고시한다. 고시되는 숫자 자체는 바뀌지
+ * 않는다 — 바뀌는 것은 <b>관리자가 치는 숫자</b>뿐이다. 그래서 상품 가격도, 고시 이력의
+ * 뜻도 그대로다.
+ *
+ * <p>원 단위로 반올림한다. 고시가에 소수점이 붙으면 시세표에서 읽기 나쁘다.
+ */
+function addVat(supplyPrice: string): string {
+  const value = Number(supplyPrice);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  return String(Math.round(value * (1 + VAT_PERCENT / 100)));
+}
+
 /**
  * 시세 고시 — 살 때와 팔 때를 <b>한 번에</b> 받는다.
  *
@@ -64,20 +82,25 @@ export function PriceDeclareForm() {
   const sellInvalid = sellPrice !== '' && !DECIMAL_PATTERN.test(sellPrice);
   const buyInvalid = buyPrice !== '' && !DECIMAL_PATTERN.test(buyPrice);
 
+  /** 실제로 고시될 판매가. 입력칸은 공급가액을 받는다. */
+  const sellToPublish = DECIMAL_PATTERN.test(sellPrice) ? addVat(sellPrice) : '';
+
   // 서버도 같은 것을 본다. 여기서 먼저 잡는 이유는 왕복 한 번을 아끼려는 것이지
   // 서버 검사를 대신하려는 것이 아니다.
+  //
+  // 비교는 고시될 값으로 한다 — 서버가 보는 것이 그 값이라, 공급가로 비교하면
+  // 화면에서는 걸리는데 서버에서는 통과하는(또는 그 반대의) 경우가 생긴다.
   const spreadInverted =
-    DECIMAL_PATTERN.test(sellPrice) &&
+    sellToPublish !== '' &&
     DECIMAL_PATTERN.test(buyPrice) &&
-    Number(sellPrice) <= Number(buyPrice);
+    Number(sellToPublish) <= Number(buyPrice);
 
   const busy = preview.isPending || declare.isPending;
 
   const canSubmit =
     !derived &&
-    DECIMAL_PATTERN.test(sellPrice) &&
+    sellToPublish !== '' &&
     DECIMAL_PATTERN.test(buyPrice) &&
-    Number(sellPrice) > 0 &&
     Number(buyPrice) > 0 &&
     !spreadInverted &&
     changeReason.trim().length > 0 &&
@@ -93,7 +116,7 @@ export function PriceDeclareForm() {
     declare.mutate(
       {
         metalType,
-        sellPricePerDon: sellPrice,
+        sellPricePerDon: sellToPublish,
         buyPricePerDon: buyPrice,
         changeReason: changeReason.trim(),
         confirmLargeChange,
@@ -115,7 +138,7 @@ export function PriceDeclareForm() {
     if (!canSubmit) return;
     clearFeedback();
     preview.mutate(
-      { metalType, sellPricePerDon: sellPrice, buyPricePerDon: buyPrice },
+      { metalType, sellPricePerDon: sellToPublish, buyPricePerDon: buyPrice },
       {
         onSuccess: (plan) => {
           if (plan.needsConfirm) {
@@ -138,7 +161,7 @@ export function PriceDeclareForm() {
   return (
     <Panel
       title="시세 고시"
-      note="살 때와 팔 때를 함께 고시한다. 입력한 값(1돈 = 3.75g 기준)이 그대로 쇼핑몰 시세가 된다."
+      note="살 때와 팔 때를 함께 고시한다. 1돈 = 3.75g 기준이다. 살 때는 부가세를 뺀 공급가액으로 넣는다 — 발행될 때 서버가 부가세를 더한다."
     >
       <form className={styles.form} onSubmit={submit}>
         {/* 확인창이 떠 있는 동안에는 오류를 창 안에서 보여준다. 두 곳에 같은 오류가 겹치지 않게. */}
@@ -182,26 +205,34 @@ export function PriceDeclareForm() {
           <>
             <div className={styles.formGrid}>
               <Field
-                label="살 때 (원/1돈)"
+                label="살 때 — 공급가액 (원/1돈)"
                 htmlFor="declare-sell"
                 required
-                hint={hintFor('SELL', '고객이 사는 가격. 1돈(3.75g) 기준이다.')}
+                hint={hintFor('SELL', `부가세를 뺀 금액을 넣는다. 고시되는 값은 여기에 ${VAT_PERCENT}% 를 더한 금액이다.`)}
                 error={sellInvalid ? '숫자만, 소수점 두 자리까지 입력할 수 있습니다.' : null}
               >
                 <MoneyInput
                   id="declare-sell"
                   value={sellPrice}
                   invalid={sellInvalid || spreadInverted}
-                  placeholder="828,000"
+                  placeholder="752,727"
                   onValueChange={setSellPrice}
                 />
+                {/* 곱한 값을 치는 자리 바로 아래에 둔다. 발행 버튼까지 가서야 보이면
+                    자릿수를 잘못 친 것을 거기서 알게 되고, 그 자리에는 확인창이 떠 있다. */}
+                {sellToPublish !== '' && (
+                  <p className={styles.hint}>
+                    고시될 값 <strong>{formatPricePerDon(Number(sellToPublish))}</strong> (부가세{' '}
+                    {VAT_PERCENT}% 포함)
+                  </p>
+                )}
               </Field>
 
               <Field
                 label="팔 때 (원/1돈)"
                 htmlFor="declare-buy"
                 required
-                hint={hintFor('BUY', '고객이 파는 가격.')}
+                hint={hintFor('BUY', '고객이 파는 가격. 부가세가 붙지 않는다 — 넣은 값이 그대로 나간다.')}
                 error={buyInvalid ? '숫자만, 소수점 두 자리까지 입력할 수 있습니다.' : null}
               >
                 <MoneyInput

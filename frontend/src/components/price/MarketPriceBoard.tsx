@@ -29,13 +29,18 @@ interface Props {
 /** 주력 금속. 이 값이 기본으로 큰 카드에 뜬다. */
 const PRIMARY: MetalType = 'GOLD_24K';
 
-/** 금속별 순도 표기. 계산에는 쓰지 않는다 — 표시 전용이다 (개발계획 §9.2). */
+/**
+ * 금속별 기준 표기. 계산에는 쓰지 않는다 — 표시 전용이다 (개발계획 §9.2).
+ *
+ * <p>은은 순도가 아니라 <b>실버바</b>를 기준으로 고시한다. 같은 999 라도 바와
+ * 제품은 값이 다르다. 백금은 99 기준이다.
+ */
 const PURITY: Record<MetalType, string> = {
   GOLD_24K: '999.9',
   GOLD_18K: '750',
   GOLD_14K: '585',
-  SILVER: '999',
-  PLATINUM: '999.5',
+  SILVER: '실버바 기준',
+  PLATINUM: '99',
 };
 
 /**
