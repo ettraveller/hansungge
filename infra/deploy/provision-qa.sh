@@ -77,8 +77,12 @@ DB_URL=jdbc:postgresql://127.0.0.1:5432/hanseongge_qa
 SERVER_PORT=8180
 MANAGEMENT_PORT=8181
 
-# 본인확인은 목으로 돌린다. MCASH 로 두면 시험 가입 한 건마다 요금이 나간다.
-IDENTITY_PROVIDER=MOCK
+# 본인확인은 비워 둔다. QA 에서 자체 가입만 닫히고 로그인·소셜·관리자는 된다.
+#
+# MOCK 으로 두면 기동 자체가 막힌다 — 코드가 prod 프로파일에서 목 인증을 거부한다
+# (누구나 아무 이름으로 가입할 수 있게 되므로). QA 도 prod 프로파일로 돈다.
+# MCASH 로 두면 시험 가입 한 건마다 요금이 나간다.
+IDENTITY_PROVIDER=
 
 # 돌아오는 주소도 /qa 아래여야 한다.
 IDENTITY_CALLBACK_URL=https://hanseongge.com/qa-api/api/v1/auth/identity/return

@@ -25,7 +25,16 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
-  const url = new URL(path.startsWith('/') ? path : `/${path}`, BASE_URL);
+  // 기준 주소에 경로가 있으면 이어 붙인다.
+  //
+  // new URL('/api/v1/x', 'https://a.com/qa-api') 는 'https://a.com/api/v1/x' 다 —
+  // 두 번째 인자의 경로가 통째로 버려진다. 규격이 그렇다. 기준 주소가
+  // https://api.hanseongge.com 처럼 경로가 없을 때는 차이가 없어서 오래 드러나지
+  // 않았는데, QA(https://hanseongge.com/qa-api)를 띄우자 모든 호출이 운영 쪽
+  // /api/... 로 갔다. 그런 경로가 없으니 전부 실패하고, 화면에는 "일시적인 오류"만
+  // 떴다 (2026-11-09).
+  const base = BASE_URL.replace(/\/+$/, '');
+  const url = new URL(base + (path.startsWith('/') ? path : `/${path}`));
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value != null && value !== '') {

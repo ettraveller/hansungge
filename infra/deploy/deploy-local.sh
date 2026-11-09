@@ -31,6 +31,8 @@ API_SVC="hanseongge-api${SLOT}"
 WEB_SVC="hanseongge-web${SLOT}"
 API_HEALTH_PORT="${API_HEALTH_PORT:-8081}"
 WEB_PORT="${WEB_PORT:-3000}"
+# basePath 를 주면 / 가 404 다. QA 는 /qa 를 봐야 한다.
+WEB_HEALTH_PATH="${WEB_HEALTH_PATH:-/}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -145,7 +147,7 @@ deploy_web() {
 
   ln -sfn "$dest" "$WEB_DIR/current"
   sudo systemctl restart "$WEB_SVC"
-  wait_healthy "http://127.0.0.1:$WEB_PORT/" "$WEB_SVC"
+  wait_healthy "http://127.0.0.1:$WEB_PORT$WEB_HEALTH_PATH" "$WEB_SVC"
   prune "$WEB_DIR/releases"
 
   echo "==> 프론트엔드 배포 완료: $STAMP"
