@@ -191,6 +191,34 @@ class SelfSignUpIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
+        @DisplayName("이미 쓰이는 이메일이면 번호를 보내기 전에 막는다 — 헛걸음하지 않게")
+        void emailInUseIsRejectedBeforeSending() throws Exception {
+            String first = agreeAndVerify(UserTestFixtures.personWith("CI-1", "홍길동", "01012345678"))
+                    .get("signUpToken").asText();
+            mockMvc.perform(post("/api/v1/auth/email/verification")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("signUpToken", first, "email", "buyer@test.local"))))
+                    .andExpect(status().isNoContent());
+            assertThat(complete(first, PASSWORD, "buyer@test.local", mailSender.lastCode())
+                    .getResponse().getStatus()).isEqualTo(200);
+
+            // 다른 사람이 같은 주소를 넣는다. 대소문자가 달라도 같은 주소다.
+            String second = agreeAndVerify(UserTestFixtures.personWith("CI-2", "김철수", "01099998888"))
+                    .get("signUpToken").asText();
+            int sentSoFar = mailSender.sent.size();
+
+            MvcResult blocked = mockMvc.perform(post("/api/v1/auth/email/verification")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("signUpToken", second, "email", "Buyer@Test.local"))))
+                    .andReturn();
+
+            assertThat(blocked.getResponse().getStatus()).isEqualTo(409);
+            assertThat(read(blocked).get("code").asText()).isEqualTo("EMAIL_OWNED_BY_ANOTHER");
+            // 메일을 보내지 않았다 — 받아 놓고 나중에 거절하는 것이 원래 문제였다
+            assertThat(mailSender.sent).hasSize(sentSoFar);
+        }
+
+        @Test
         @DisplayName("본인확인을 건너뛰고 가입을 마칠 수 없다")
         void identityCannotBeSkipped() throws Exception {
             String agreedOnly = flow.agree();

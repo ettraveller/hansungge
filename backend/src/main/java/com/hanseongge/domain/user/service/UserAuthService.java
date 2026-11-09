@@ -305,14 +305,28 @@ public class UserAuthService {
      * 가입 중 선택 이메일로 인증번호를 보낸다.
      *
      * <p>본인확인을 마친 진행 토큰이 있어야 한다 — 아무나 우리 도메인으로 메일을 보내게 하지 않는다.
-     * 이미 쓰이는 주소인지는 여기서 알려주지 않고, 가입을 마칠 때 판정한다.
+     *
+     * <h2>이미 쓰이는 주소면 보내지 않는다</h2>
+     * 예전에는 가입을 마칠 때 판정했다. 계정이 있는지 알려주는 창구를 만들지 않으려는 것이었는데,
+     * 그 결과 <b>메일을 받아 번호까지 넣은 다음에</b> 「다른 계정에서 사용 중」이 떴다 — 되돌릴
+     * 수 없는 헛걸음이고, 어차피 그 자리에서 같은 사실을 알려주고 있었다.
+     *
+     * <p>여기로 옮겨도 노출이 늘지는 않는다. 이 창구는 <b>본인확인을 끝낸 토큰</b>이 있어야
+     * 열리고(건당 과금되며 신원이 남는다), 15분 뒤 만료되고, 발송 쿨다운이 걸려 있다. 남의
+     * 주소를 훑어보려면 그 비용을 먼저 치러야 한다.
+     *
+     * <p>최종 판정은 가입 트랜잭션에 그대로 둔다 — 여기서 본 것과 가입하는 순간이 다를 수 있다.
      */
     public void sendSignUpEmailCode(String signUpToken, String email, RequestInfo requestInfo) {
         PendingSignUp pending = tokenFactory.readPendingToken(signUpToken);
         if (pending.isSocial() || !pending.isIdentityVerified()) {
             throw new BusinessException(ErrorCode.SIGNUP_TOKEN_INVALID, "이메일 인증 단계가 아님");
         }
-        codeService.issue(VerificationChannel.EMAIL, normalizeEmail(email),
+        String target = normalizeEmail(email);
+        if (userRepository.findByEmail(target).isPresent()) {
+            throw new BusinessException(ErrorCode.EMAIL_OWNED_BY_ANOTHER);
+        }
+        codeService.issue(VerificationChannel.EMAIL, target,
                 VerificationPurpose.EMAIL_VERIFY, requestInfo, true);
     }
 
