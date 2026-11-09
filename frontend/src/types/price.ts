@@ -72,8 +72,8 @@ export const METAL_QUOTE_LABEL: Record<MetalType, string> = {
 /** 고시 단위. 모든 금속이 1돈 기준이다 — 금액 필드가 pricePerDon 하나뿐이다. */
 export const QUOTE_UNIT_LABEL = '3.75g';
 
-/** 시세표에 이 순서로 노출한다. 24K 가 주력이라 맨 앞이다. */
-export const METAL_ORDER: MetalType[] = ['GOLD_24K', 'GOLD_18K', 'GOLD_14K', 'SILVER', 'PLATINUM'];
+/** 시세표에 이 순서로 노출한다. 24K 가 주력이라 맨 앞이고, 금 다음은 백금·은 순이다. */
+export const METAL_ORDER: MetalType[] = ['GOLD_24K', 'GOLD_18K', 'GOLD_14K', 'PLATINUM', 'SILVER'];
 
 /** 이력에는 옛 방식 이름도 그대로 나온다 — 그때 그렇게 계산됐다는 사실이다. */
 export const POLICY_MODE_LABEL: Record<PricePolicyMode, string> = {
