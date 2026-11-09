@@ -1300,3 +1300,40 @@ a.hint:hover {
   color: #fff;
   font-weight: 600;
 }
+
+/* --- 시세 고시: 입력칸과 「고시될 값」 ------------------------------
+   같은 행에 둔다. 치는 숫자와 나갈 숫자가 세로로 떨어져 있으면 눈이 두 번
+   움직이고, 자릿수 하나 틀린 것이 그 사이에서 넘어간다.
+   좁아지면 줄을 바꿔 내려간다 — 칸이 찌그러지는 것보다 낫다. */
+
+.declaredRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.declaredRow input {
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+.declaredOut {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+/* 흐린 안내문이 아니다. 실제로 고객 화면에 걸릴 금액이다. */
+.declaredAmount {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.declaredLabel {
+  font-size: 11px;
+  color: var(--gray);
+}

@@ -15,7 +15,7 @@ import {
   useDerivations,
   usePreviewPair,
 } from '@/hooks/admin/usePrices';
-import { formatDateTime, formatPricePerDon } from '@/utils/format';
+import { formatDateTime, formatKrw, formatPricePerDon } from '@/utils/format';
 import { METAL_LABEL, METAL_ORDER, type MetalType, type PriceSide } from '@/types/price';
 import type { QuotePlan, QuotePublishResult } from '@/types/admin';
 import styles from '../admin.module.css';
@@ -211,21 +211,27 @@ export function PriceDeclareForm() {
                 hint={hintFor('SELL', `부가세를 뺀 금액을 넣는다. 고시되는 값은 여기에 ${VAT_PERCENT}% 를 더한 금액이다.`)}
                 error={sellInvalid ? '숫자만, 소수점 두 자리까지 입력할 수 있습니다.' : null}
               >
-                <MoneyInput
-                  id="declare-sell"
-                  value={sellPrice}
-                  invalid={sellInvalid || spreadInverted}
-                  placeholder="752,727"
-                  onValueChange={setSellPrice}
-                />
-                {/* 곱한 값을 치는 자리 바로 아래에 둔다. 발행 버튼까지 가서야 보이면
-                    자릿수를 잘못 친 것을 거기서 알게 되고, 그 자리에는 확인창이 떠 있다. */}
-                {sellToPublish !== '' && (
-                  <p className={styles.hint}>
-                    고시될 값 <strong>{formatPricePerDon(Number(sellToPublish))}</strong> (부가세{' '}
-                    {VAT_PERCENT}% 포함)
-                  </p>
-                )}
+                {/* 곱한 값을 치는 칸 바로 옆에 둔다. 발행 버튼까지 가서야 보이면 자릿수를
+                    잘못 친 것을 거기서 알게 되고, 그 자리에는 확인창이 떠 있다.
+                    흐린 안내문으로 두지 않는 이유도 같다 — 실제로 나갈 금액이다. */}
+                <div className={styles.declaredRow}>
+                  <MoneyInput
+                    id="declare-sell"
+                    value={sellPrice}
+                    invalid={sellInvalid || spreadInverted}
+                    placeholder="752,727"
+                    onValueChange={setSellPrice}
+                  />
+                  {sellToPublish !== '' && (
+                    <p className={styles.declaredOut}>
+                      <span className={styles.declaredLabel}>고시될 값</span>
+                      <strong className={styles.declaredAmount}>
+                        {formatKrw(Number(sellToPublish))}
+                      </strong>
+                      <span className={styles.declaredLabel}>부가세 {VAT_PERCENT}% 포함</span>
+                    </p>
+                  )}
+                </div>
               </Field>
 
               <Field
