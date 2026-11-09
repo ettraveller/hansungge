@@ -1149,15 +1149,37 @@ class ProductAdminIntegrationTest extends EmbeddedPostgresSupport {
 
         @Test
         @DisplayName("일부만 보내면 거절한다 — 빠진 상품이 자리를 못 받아 맨 앞에 끼어든다")
-        void partialListIsRejected() throws Exception {
+        void partialListMovesOnlyWhatWasSent() throws Exception {
+            long a = createGoldBarIn(CATEGORY_ID, "test_진열 A");
+            long b = createGoldBarIn(CATEGORY_ID, "test_진열 B");
+            long c = createGoldBarIn(CATEGORY_ID, "test_진열 C");
+            declareMarketPrice("150000");
+            startSelling(a);
+            startSelling(b);
+            startSelling(c);
+
+            // 지금 차례는 최신순 C, B, A. 보이지 않는 B 를 빼고 C 와 A 만 뒤집는다.
+            reorder(List.of(a, c));
+
+            // C 와 A 가 차지하던 1·3번 자리에 A, C 가 들어가고 B 는 2번에 그대로 있다.
+            mockMvc.perform(get("/api/v1/products").param("size", "10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(a))
+                    .andExpect(jsonPath("$.content[1].id").value(b))
+                    .andExpect(jsonPath("$.content[2].id").value(c));
+        }
+
+        @Test
+        @DisplayName("없는 상품이 섞여 있으면 거절한다 — 아무것도 바꾸지 않는다")
+        void unknownProductIsRejected() throws Exception {
             long first = createGoldBarIn(CATEGORY_ID, "test_진열 A");
             createGoldBarIn(CATEGORY_ID, "test_진열 B");
 
             mockMvc.perform(put("/api/admin/products/order")
                             .header("Authorization", bearer())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(json(Map.of("productIds", List.of(first)))))
-                    .andExpect(status().isBadRequest());
+                            .content(json(Map.of("productIds", List.of(first, 999999)))))
+                    .andExpect(status().isNotFound());
 
             assertThat(jdbcTemplate.queryForObject(
                     "SELECT count(*) FROM products WHERE sort <> 0", Integer.class)).isZero();

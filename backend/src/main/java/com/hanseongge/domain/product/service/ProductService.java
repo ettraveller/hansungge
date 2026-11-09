@@ -30,10 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -446,22 +448,19 @@ public class ProductService {
      * 상품 쪽 변경을 담당한다.
      */
     /**
-     * 진열 순서를 통째로 다시 매긴다.
+     * 진열 순서를 바꾼다. <b>보낸 상품들끼리만</b> 자리를 바꾼다.
      *
-     * <h2>왜 전부를 받는가</h2>
-     * 일부만 받아 그 자리만 고치면, 받지 못한 상품의 {@code sort} 와 값이 겹친다. 겹치면
-     * 둘의 앞뒤가 등록순으로 결정되어 <b>관리자가 끌어다 놓은 자리와 다른 곳에 선다.</b>
-     * 그래서 화면이 들고 있는 순서 전체를 받아 0 부터 다시 매긴다.
+     * <h2>보내지 않은 상품은 제자리에 둔다</h2>
+     * 화면은 지금 보이는 것만 보낸다 — 「골드바」 탭이거나, 숨김 상품이 빠진 목록이다.
+     * 그래서 <b>보낸 상품들이 지금 차지한 자리</b>를 모아, 그 자리에만 새 차례대로 다시
+     * 꽂는다. 다른 상품은 몇 번째였든 그대로다.
      *
-     * <h2>그 사이에 상품이 생기면 저장하지 않는다</h2>
-     * 화면을 열어 둔 동안 다른 곳에서 상품이 등록되면 그 상품은 보낸 목록에 없다. 그대로
-     * 저장하면 새 상품만 자리를 못 받아 맨 앞(0)에 끼어든다 — 관리자는 자기가 그렇게
-     * 놓은 줄 안다. 그래서 수를 맞춰 보고 다르면 거절한다.
+     * <p>자리 번호를 그대로 쓰지 않고 전체를 0 부터 다시 매기는 이유는 처음에 모두 0 이기
+     * 때문이다. 겹친 번호로는 앞뒤가 등록순으로 결정되어, 끌어다 놓은 자리와 다른 곳에 선다.
      *
      * <h2>카테고리마다 따로 두지 않는다</h2>
-     * 상품은 카테고리를 하나만 가진다. 그래서 전체 순서 하나면 모든 탭의 순서가 정해지고,
-     * 「골드바」 탭은 그 순서에서 골드바만 걸러낸 것이 된다. 탭마다 따로 두면 같은 상품이
-     * 두 화면에서 다른 자리에 서는데, 그것을 원하는 화면이 없다.
+     * 상품은 카테고리를 하나만 가진다. 그래서 전체 순서 하나로 모든 탭의 차례가 정해지고,
+     * 「골드바」 탭은 그 순서에서 골드바만 걸러낸 것이 된다.
      */
     @Transactional
     @AuditLog(action = AuditActions.PRODUCT_REORDER,
@@ -475,16 +474,28 @@ public class ProductService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "같은 상품이 두 번 들어 있습니다.");
         }
 
-        List<Product> products = productRepository.findAllById(productIds);
-        if (products.size() != productIds.size() || productRepository.count() != productIds.size()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT,
-                    "그 사이에 상품 목록이 바뀌었습니다. 새로고침한 뒤 다시 저장해 주세요.");
+        Map<Long, Product> moving = productRepository.findAllById(productIds).stream()
+                .collect(Collectors.toMap(Product::getId, product -> product));
+        if (moving.size() != productIds.size()) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND,
+                    "없는 상품이 들어 있습니다. 새로고침한 뒤 다시 저장해 주세요.");
         }
 
-        Map<Long, Product> byId = products.stream()
-                .collect(Collectors.toMap(Product::getId, product -> product));
-        for (int position = 0; position < productIds.size(); position++) {
-            byId.get(productIds.get(position)).placeAt(position);
+        // 지금 손님에게 보이는 그 차례. 화면이 본 것과 같은 정렬이어야 자리가 어긋나지 않는다.
+        List<Product> shelf = new ArrayList<>(productRepository.findAll(
+                Sort.by(Sort.Order.asc("sort"), Sort.Order.desc("id"))));
+
+        List<Integer> slots = new ArrayList<>();
+        for (int i = 0; i < shelf.size(); i++) {
+            if (moving.containsKey(shelf.get(i).getId())) {
+                slots.add(i);
+            }
+        }
+        for (int i = 0; i < productIds.size(); i++) {
+            shelf.set(slots.get(i), moving.get(productIds.get(i)));
+        }
+        for (int position = 0; position < shelf.size(); position++) {
+            shelf.get(position).placeAt(position);
         }
         log.info("[PRODUCT] 진열 순서 변경 {}개. by={}", productIds.size(), adminLoginId);
     }
