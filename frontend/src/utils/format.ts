@@ -198,3 +198,14 @@ export function formatPhoneInput(value: string | null | undefined): string {
 
 /** 시세를 표시할 수 없을 때의 문구 (설계서 §12.4) */
 export const PRICE_INQUIRY_LABEL = '시세문의';
+
+/**
+ * 판매가에 붙이는 부가세 문구.
+ *
+ * <p>「내가 살 때」는 소비자가 실제로 내는 금액이라 부가세를 포함해 고지한다
+ * (부가가치세법 §63, 표시·광고의 공정화에 관한 법률). 「내가 팔 때」에는 붙이지
+ * 않는다 — 개인에게서 매입하는 금액이라 부가세가 붙지 않는다.
+ *
+ * <p>한 글자라도 달라지면 같은 가격이 화면마다 다른 뜻으로 읽힌다. 그래서 여기 한 곳에 둔다.
+ */
+export const VAT_INCLUDED_NOTE = '(VAT 포함)';

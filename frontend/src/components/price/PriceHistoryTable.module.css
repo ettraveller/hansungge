@@ -176,3 +176,12 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* 판매가에 붙는 부가세 문구. 값보다 작고 흐리게 — MarketPriceBoard 와 같은 규칙이다. */
+.vatNote {
+  font-size: 0.85em;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ink-400);
+  white-space: nowrap;
+}

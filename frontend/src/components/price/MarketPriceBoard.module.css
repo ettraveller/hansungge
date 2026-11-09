@@ -484,3 +484,25 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 부가세 문구 ----------
+   값보다 작고 흐리게 둔다. 「내가 살 때」와 같은 크기로 적으면 두 개의 제목처럼
+   읽혀서, 정작 어느 쪽 값인지가 묻힌다. 그렇다고 지워서는 안 되는 문구다. */
+
+.vatNote {
+  font-size: 0.85em;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-400);
+  white-space: nowrap;
+}
+
+.sideCardNote {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink-400);
+  white-space: nowrap;
+}

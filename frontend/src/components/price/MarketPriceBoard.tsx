@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { MetalRow } from '@/components/price/metalRows';
 import { Sparkline } from '@/components/price/Sparkline';
 import {
@@ -13,6 +13,7 @@ import {
   formatDeltaWithPercent,
   formatKrw,
   PRICE_INQUIRY_LABEL,
+  VAT_INCLUDED_NOTE,
 } from '@/utils/format';
 import styles from './MarketPriceBoard.module.css';
 
@@ -122,7 +123,15 @@ function FeatureCard({ row }: { row: MetalRow }) {
       </div>
 
       <div className={styles.sides}>
-        <PriceSide label="내가 살 때" price={row.sell} emphasis />
+        <PriceSide
+          label={
+            <>
+              내가 살 때 <span className={styles.vatNote}>{VAT_INCLUDED_NOTE}</span>
+            </>
+          }
+          price={row.sell}
+          emphasis
+        />
         <div className={styles.divider} aria-hidden="true" />
         <PriceSide label="내가 팔 때" price={row.buy} />
       </div>
@@ -143,7 +152,7 @@ function PriceSide({
   price,
   emphasis = false,
 }: {
-  label: string;
+  label: ReactNode;
   price: MarketPrice | null;
   emphasis?: boolean;
 }) {
@@ -198,6 +207,12 @@ function SideCard({
       aria-pressed={active}
     >
       <span className={styles.sideCardName}>{METAL_LABEL[row.metalType]}</span>
+      {/* 이 칸에는 「내가 살 때」만 싣는다. 큰 카드·시세표와 달리 어느 쪽 값인지 적힌
+          곳이 없어서, 값의 뜻을 여기서 밝힌다. 시세문의일 때는 붙이지 않는다 —
+          금액이 없는데 "VAT 포함"만 남으면 무엇을 포함했다는 뜻인지 알 수 없다. */}
+      {available && (
+        <span className={styles.sideCardNote}>내가 살 때 {VAT_INCLUDED_NOTE}</span>
+      )}
       <span className={`${styles.sideCardPrice} tabular`}>
         {available ? formatKrw(sell.pricePerDon) : PRICE_INQUIRY_LABEL}
       </span>
@@ -232,7 +247,7 @@ function PriceTable({
           <tr>
             <th scope="col">항목</th>
             <th scope="col" className={styles.numCol}>
-              내가 살 때
+              내가 살 때 <span className={styles.vatNote}>{VAT_INCLUDED_NOTE}</span>
             </th>
             <th scope="col" className={styles.numCol}>
               내가 팔 때
