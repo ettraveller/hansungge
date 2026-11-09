@@ -100,9 +100,14 @@ chmod 640 "$QA_WEB_ENV"
 # ---------------------------------------------------------------------
 # 3. 배포 자리
 # ---------------------------------------------------------------------
+# install -d 는 <b>마지막 칸에만</b> 소유자를 준다. 부모까지 적지 않으면 api-qa 가
+# root 소유로 남고, 배포가 그 안에 current 링크를 만들지 못해 거기서 멈춘다.
+# 빌드는 성공한 뒤라 로그만 보면 다 된 것처럼 보인다 (2026-11-09 에 겪었다).
 echo "==> /opt/hanseongge/{api-qa,web-qa}"
-install -d -o hanseongge -g hanseongge /opt/hanseongge/api-qa/releases
-install -d -o hanseongge -g hanseongge /opt/hanseongge/web-qa/releases
+for d in /opt/hanseongge/api-qa /opt/hanseongge/web-qa; do
+  install -d -o hanseongge -g hanseongge "$d"
+  install -d -o hanseongge -g hanseongge "$d/releases"
+done
 
 # ---------------------------------------------------------------------
 # 4. systemd
