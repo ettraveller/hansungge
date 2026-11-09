@@ -231,3 +231,14 @@ export interface DraftDetailInput {
 export function previewDraftDetail(input: DraftDetailInput) {
   return adminApi.post<ProductDetail>('/api/admin/products/detail-preview', { body: input });
 }
+
+/**
+ * 진열 순서 저장.
+ *
+ * <p>보낸 차례가 그대로 쇼핑몰 목록 순서가 된다. 「골드바」 탭에서 끌었더라도
+ * 화면이 들고 있는 <b>전체</b> 순서를 보낸다 — 일부만 보내면 보내지 않은 상품과
+ * 자리 번호가 겹쳐, 끌어다 놓은 자리와 다른 곳에 선다.
+ */
+export function reorderProducts(productIds: number[]) {
+  return adminApi.put<void>('/api/admin/products/order', { body: { productIds } });
+}

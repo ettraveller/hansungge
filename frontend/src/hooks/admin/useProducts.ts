@@ -78,6 +78,10 @@ export function useUpdateProduct() {
   );
 }
 
+export function useReorderProducts() {
+  return useProductMutation(productsApi.reorderProducts);
+}
+
 export function useChangeProductStatus() {
   return useProductMutation(
     ({

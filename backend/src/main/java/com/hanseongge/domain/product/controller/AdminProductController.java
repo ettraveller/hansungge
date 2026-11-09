@@ -2,6 +2,7 @@ package com.hanseongge.domain.product.controller;
 
 import com.hanseongge.domain.product.dto.ProductOptionRequest;
 import com.hanseongge.domain.product.dto.ProductOptionResponse;
+import com.hanseongge.domain.product.dto.ProductReorderRequest;
 import com.hanseongge.domain.product.dto.ProductRequest;
 import com.hanseongge.domain.product.dto.ProductResponse;
 import com.hanseongge.domain.product.dto.ProductSearchCondition;
@@ -135,6 +136,17 @@ public class AdminProductController {
 
         return ResponseEntity.ok(ProductResponse.from(productService.changeStatus(
                 id, request.status(), request.activeOrDefault(), request.reason(), actor.loginId())));
+    }
+
+    @Operation(summary = "진열 순서 저장",
+            description = "보낸 차례가 그대로 쇼핑몰 목록 순서가 된다. 일부가 아니라 전체를 보낸다 — "
+                    + "그 사이에 상품이 생기거나 지워졌으면 400 으로 거절하고 아무것도 바꾸지 않는다.")
+    @PreAuthorize("hasRole('MANAGER')")
+    @PutMapping("/order")
+    public ResponseEntity<Void> reorder(@Valid @RequestBody ProductReorderRequest request,
+                                        @AuthenticationPrincipal AdminPrincipal actor) {
+        productService.reorder(request.productIds(), actor.loginId());
+        return ResponseEntity.noContent().build();
     }
 
     // ---------- 옵션 ----------
