@@ -62,8 +62,6 @@ public final class AuditActions {
     /** 재고 실사 반영. 주문에 의한 차감은 별도 행위다 */
     public static final String PRODUCT_STOCK_ADJUST = "PRODUCT_STOCK_ADJUST";
     public static final String PRODUCT_IMAGE_CHANGE = "PRODUCT_IMAGE_CHANGE";
-    /** 진열 순서 변경. 상품 내용은 바뀌지 않으므로 PRODUCT_UPDATE 와 섞지 않는다 */
-    public static final String PRODUCT_REORDER = "PRODUCT_REORDER";
 
     // --- 주문 · 배송 ---
     //

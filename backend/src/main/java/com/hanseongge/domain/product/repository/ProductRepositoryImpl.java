@@ -37,10 +37,9 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         List<Product> content = queryFactory
                 .selectFrom(product)
                 .where(where)
-                // 관리자가 정한 진열 순서 → 같은 자리면 최신 등록순. 서버가 고정한다.
-                // 정렬을 클라이언트가 정하게 두면 인덱스를 벗어난 정렬로 전건 스캔이 나고,
-                // 상품 목록은 그 비용을 감당할 만큼 작지 않다.
-                .orderBy(product.sort.asc(), product.id.desc())
+                // 최신 등록순 고정. 정렬을 클라이언트가 정하게 두면 인덱스를 벗어난 정렬로
+                // 전건 스캔이 나고, 상품 목록은 그 비용을 감당할 만큼 작지 않다.
+                .orderBy(product.id.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();

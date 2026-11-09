@@ -90,18 +90,6 @@ public class Product {
     private boolean active;
 
     /**
-     * 진열 순서. 작을수록 앞이다.
-     *
-     * <p>같은 값이면 최신 등록순으로 떨어진다. 새 상품은 0 으로 들어와 맨 앞에 서는데,
-     * 그래야 등록하자마자 보인다 — 맨 뒤로 보내면 등록한 사람이 "안 올라갔다"고 읽는다.
-     *
-     * <p>상품은 카테고리를 하나만 가지므로 이 값 하나로 모든 탭의 순서가 정해진다.
-     * 「골드바」 탭은 이 순서에서 골드바만 걸러낸 것이다.
-     */
-    @Column(name = "sort", nullable = false)
-    private Integer sort;
-
-    /**
      * 주문을 받아 개별 생산하는 상품인가 (V33).
      *
      * <p><b>청약철회</b>를 결정한다 — 주문제작은 제작이 시작되면 철회가 제한되고,
@@ -191,7 +179,6 @@ public class Product {
         // DB 기본값과 같은 값을 명시한다. 엔티티로 INSERT 하면 컬럼 DEFAULT 가 쓰이지 않는다.
         this.minQty = 1;
         this.active = true;
-        this.sort = 0;
         this.createdBy = createdBy;
         this.updatedBy = createdBy;
         this.createdAt = OffsetDateTime.now();
@@ -260,17 +247,6 @@ public class Product {
     public void changeStatus(ProductStatus newStatus, String updatedBy) {
         this.status = newStatus;
         touch(updatedBy);
-    }
-
-    /**
-     * 진열 자리를 옮긴다.
-     *
-     * <p>{@code touch} 하지 않는다 — 순서를 바꾼 것은 상품 내용이 바뀐 것이 아니다.
-     * 수정자·수정시각까지 갈아치우면 "누가 이 상품을 마지막으로 고쳤나"를 더 이상
-     * 알 수 없게 된다. 누가 언제 순서를 바꿨는지는 감사로그가 들고 있다.
-     */
-    public void placeAt(int position) {
-        this.sort = position;
     }
 
     /** 노출 토글. {@code active=false} 는 상태와 무관하게 모든 공개 조회에서 제외된다. */

@@ -75,9 +75,6 @@ export function AdminProductsView() {
         {canEdit && (
           <div className={styles.headActions}>
             {/* 이동은 <a> 여야 한다 — 버튼으로 감싸면 새 탭 열기·주소 복사가 막힌다. */}
-            <Link className={styles.btn} href="/admin/products/order">
-              진열 순서
-            </Link>
             <Link className={`${styles.btn} ${styles.btnGold}`} href="/admin/products/new">
               상품 등록
             </Link>

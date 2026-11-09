@@ -1,22 +1,18 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import type { MetalRow } from '@/components/price/metalRows';
 import { Sparkline } from '@/components/price/Sparkline';
 import {
   directionOf,
   METAL_LABEL,
-  METAL_QUOTE_LABEL,
-  QUOTE_UNIT_LABEL,
   type MarketPrice,
   type MetalType,
 } from '@/types/price';
 import {
-  AGENCY_PRICE_NOTE,
   formatDeltaWithPercent,
   formatKrw,
   PRICE_INQUIRY_LABEL,
-  VAT_INCLUDED_NOTE,
 } from '@/utils/format';
 import styles from './MarketPriceBoard.module.css';
 
@@ -29,18 +25,13 @@ interface Props {
 /** 주력 금속. 이 값이 기본으로 큰 카드에 뜬다. */
 const PRIMARY: MetalType = 'GOLD_24K';
 
-/**
- * 금속별 기준 표기. 계산에는 쓰지 않는다 — 표시 전용이다 (개발계획 §9.2).
- *
- * <p>은은 순도가 아니라 <b>실버바</b>를 기준으로 고시한다. 같은 999 라도 바와
- * 제품은 값이 다르다. 백금은 99 기준이다.
- */
+/** 금속별 순도 표기. 계산에는 쓰지 않는다 — 표시 전용이다 (개발계획 §9.2). */
 const PURITY: Record<MetalType, string> = {
   GOLD_24K: '999.9',
   GOLD_18K: '750',
   GOLD_14K: '585',
-  SILVER: '실버바 기준',
-  PLATINUM: '99',
+  SILVER: '999',
+  PLATINUM: '999.5',
 };
 
 /**
@@ -126,29 +117,14 @@ function FeatureCard({ row }: { row: MetalRow }) {
   return (
     <article className={styles.feature}>
       <div className={styles.featureHead}>
-        <h3 className={styles.metalName}>{METAL_QUOTE_LABEL[row.metalType]}</h3>
+        <h3 className={styles.metalName}>{METAL_LABEL[row.metalType]}</h3>
         <span className={styles.purity}>{PURITY[row.metalType]}</span>
       </div>
 
       <div className={styles.sides}>
-        <PriceSide
-          label={
-            <>
-              내가 살 때 <span className={styles.vatNote}>{VAT_INCLUDED_NOTE}</span>
-            </>
-          }
-          price={row.sell}
-          emphasis
-        />
+        <PriceSide label="내가 살 때" price={row.sell} emphasis />
         <div className={styles.divider} aria-hidden="true" />
-        <PriceSide
-          label={
-            <>
-              내가 팔 때 <span className={styles.vatNote}>{AGENCY_PRICE_NOTE}</span>
-            </>
-          }
-          price={row.buy}
-        />
+        <PriceSide label="내가 팔 때" price={row.buy} />
       </div>
 
       <div className={styles.chartBox}>
@@ -167,7 +143,7 @@ function PriceSide({
   price,
   emphasis = false,
 }: {
-  label: ReactNode;
+  label: string;
   price: MarketPrice | null;
   emphasis?: boolean;
 }) {
@@ -221,13 +197,7 @@ function SideCard({
       onBlur={onLeave}
       aria-pressed={active}
     >
-      <span className={styles.sideCardName}>{METAL_QUOTE_LABEL[row.metalType]}</span>
-      {/* 이 칸에는 「내가 살 때」만 싣는다. 큰 카드·시세표와 달리 어느 쪽 값인지 적힌
-          곳이 없어서, 값의 뜻을 여기서 밝힌다. 시세문의일 때는 붙이지 않는다 —
-          금액이 없는데 "VAT 포함"만 남으면 무엇을 포함했다는 뜻인지 알 수 없다. */}
-      {available && (
-        <span className={styles.sideCardNote}>내가 살 때 {VAT_INCLUDED_NOTE}</span>
-      )}
+      <span className={styles.sideCardName}>{METAL_LABEL[row.metalType]}</span>
       <span className={`${styles.sideCardPrice} tabular`}>
         {available ? formatKrw(sell.pricePerDon) : PRICE_INQUIRY_LABEL}
       </span>
@@ -262,10 +232,10 @@ function PriceTable({
           <tr>
             <th scope="col">항목</th>
             <th scope="col" className={styles.numCol}>
-              내가 살 때 <span className={styles.vatNote}>{VAT_INCLUDED_NOTE}</span>
+              내가 살 때
             </th>
             <th scope="col" className={styles.numCol}>
-              내가 팔 때 <span className={styles.vatNote}>{AGENCY_PRICE_NOTE}</span>
+              내가 팔 때
             </th>
           </tr>
         </thead>
@@ -278,10 +248,10 @@ function PriceTable({
               onMouseLeave={onLeave}
             >
               <th scope="row" className={styles.rowName}>
-                {METAL_QUOTE_LABEL[row.metalType]}
-                {/* 순도(999.9) 대신 고시 단위를 적는다. 금속마다 다른 순도보다,
-                    이 금액이 몇 g 기준인지가 모든 줄에 필요한 정보다. */}
-                <span className={styles.rowUnit}>{QUOTE_UNIT_LABEL}</span>
+                {METAL_LABEL[row.metalType]}
+                {row.metalType === PRIMARY && (
+                  <span className={styles.rowPurity}>{PURITY[row.metalType]}</span>
+                )}
               </th>
               <PriceCells price={row.sell} />
               <PriceCells price={row.buy} />
