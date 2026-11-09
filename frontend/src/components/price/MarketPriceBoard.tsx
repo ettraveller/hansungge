@@ -12,6 +12,7 @@ import {
   type MetalType,
 } from '@/types/price';
 import {
+  AGENCY_PRICE_NOTE,
   formatDeltaWithPercent,
   formatKrw,
   PRICE_INQUIRY_LABEL,
@@ -135,7 +136,14 @@ function FeatureCard({ row }: { row: MetalRow }) {
           emphasis
         />
         <div className={styles.divider} aria-hidden="true" />
-        <PriceSide label="내가 팔 때" price={row.buy} />
+        <PriceSide
+          label={
+            <>
+              내가 팔 때 <span className={styles.vatNote}>{AGENCY_PRICE_NOTE}</span>
+            </>
+          }
+          price={row.buy}
+        />
       </div>
 
       <div className={styles.chartBox}>
@@ -252,7 +260,7 @@ function PriceTable({
               내가 살 때 <span className={styles.vatNote}>{VAT_INCLUDED_NOTE}</span>
             </th>
             <th scope="col" className={styles.numCol}>
-              내가 팔 때
+              내가 팔 때 <span className={styles.vatNote}>{AGENCY_PRICE_NOTE}</span>
             </th>
           </tr>
         </thead>

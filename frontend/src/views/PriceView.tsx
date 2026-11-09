@@ -123,7 +123,9 @@ export function PriceView({ prices, histories, metal, days, range, expanded, sel
                 <>
                   &ldquo;내가 살 때&rdquo;는 고객이 구매하는 가격, &ldquo;내가 팔 때&rdquo;는
                   회사가 매입하는 가격입니다. 표시된 <strong>판매가는 부가세가 포함된
-                  금액</strong>이며, 매입가는 부가세가 붙지 않습니다.
+                  금액</strong>이며, 매입가는 부가세가 붙지 않습니다. 매입가는{' '}
+                  <strong>대리점 전용시세</strong>로, 개인 매입은 중량과 순도 검사를 거쳐
+                  금액이 정해집니다.
                 </>
               }
             />
