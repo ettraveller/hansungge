@@ -6,6 +6,7 @@ import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
 import { Field, TextInput } from '@/components/admin/Field';
 import { ImageUploader } from '@/components/admin/ImageUploader';
+import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
@@ -65,6 +66,7 @@ export function AdminBannersView() {
   /** 손대기 전에는 null 이고, 그때는 서버가 준 것을 그대로 쓴다. */
   const [draft, setDraft] = useState<Row[] | null>(null);
   const [saved, setSaved] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const rows: Row[] =
     draft ??
@@ -150,11 +152,18 @@ export function AdminBannersView() {
         title="홈페이지 배너 이미지"
         note={`권장 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 여기 올린 장수가 슬라이드 수다.`}
         actions={
-          canEdit && (
-            <Button variant="gold" onClick={save} disabled={!changed || replace.isPending}>
-              {replace.isPending ? '저장 중…' : '저장'}
+          <>
+            {/* 저장하지 않아도 눌린다 — 저장한 뒤에만 볼 수 있으면 "일단 저장하고
+                확인하고 되돌리는" 절차가 되고, 그 사이 확인되지 않은 배너가 메인에 걸린다. */}
+            <Button onClick={() => setPreviewing(true)} disabled={rows.length === 0}>
+              미리보기
             </Button>
-          )
+            {canEdit && (
+              <Button variant="gold" onClick={save} disabled={!changed || replace.isPending}>
+                {replace.isPending ? '저장 중…' : '저장'}
+              </Button>
+            )}
+          </>
         }
       >
         {/* 크기를 여기에 적는 이유 — 아래 「휴대폰 배너 이미지」 칸은 홈페이지용을 한 장
@@ -221,6 +230,13 @@ export function AdminBannersView() {
           </ul>
         </Panel>
       )}
+
+      <BannerPreviewModal
+        open={previewing}
+        onClose={() => setPreviewing(false)}
+        imageKeys={rows.map((r) => r.imageKey)}
+        mobileImageKeys={rows.map((r) => r.mobileImageKey)}
+      />
 
       {rows.length > 0 && (
         <Panel

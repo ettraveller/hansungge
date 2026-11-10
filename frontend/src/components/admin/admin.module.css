@@ -1502,3 +1502,58 @@ a.hint:hover {
   min-width: 0;
   max-width: 320px;
 }
+
+/* ---------- 배너 미리보기 ---------- */
+
+/* PC/휴대폰 고르기. 탭처럼 보이되 탭이 아니다 — 같은 내용을 다른 폭으로 보는 것이라
+   aria-pressed 로 "눌린 버튼"으로 알린다. */
+.previewDevices {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.previewDevice,
+.previewDeviceOn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.previewDeviceOn {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+
+.previewDeviceSize {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* PC 미리보기는 1280px 그대로 띄운다. 모달이 좁으면 좌우로 밀어 본다 —
+   화면에 맞게 줄이면 그 폭이 다시 미디어 쿼리를 건드려서, 정작 확인하려던
+   "PC 에서 보이는 모양"이 아니게 된다. */
+.previewStage {
+  overflow-x: auto;
+  background: var(--light-gray);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.previewIframe {
+  display: block;
+  margin: 0 auto;
+  border: 0;
+  background: #fff;
+}
