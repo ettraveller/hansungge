@@ -39,6 +39,26 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        /*
+         * 배너 미리보기 한 화면만 예외다.
+         *
+         * DENY 는 <b>우리 화면이 우리 화면을 끼우는 것까지</b> 막는다. 관리자 배너
+         * 화면의 「미리보기」가 /banner-preview 를 iframe 에 띄우는데, DENY 로는
+         * 「연결을 거부했습니다」만 뜬다 (2026-11-10 확인).
+         *
+         * iframe 이어야 하는 이유는 PC/휴대폰 배너가 갈리는 기준이 창 너비 미디어
+         * 쿼리라서다 — 모달 안에 그대로 그리면 PC 관리자 화면에서 휴대폰 쪽을
+         * 확인할 방법이 없다.
+         *
+         * <b>위 규칙보다 뒤에 와야 한다.</b> 같은 키를 두 규칙이 내보내면 Next 는
+         * 나중 것으로 덮는다 — 순서를 바꾸면 DENY 가 이겨서 다시 거부된다.
+         * 막으려는 것은 남의 사이트가 우리 화면을 끼우는 클릭재킹이고 SAMEORIGIN 이
+         * 그것을 그대로 막는다. 나머지 화면은 DENY 그대로다.
+         */
+        source: '/banner-preview',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
+      },
+      {
         // 관리자 화면은 검색엔진·캐시에서 제외
         source: '/admin/:path*',
         headers: [
