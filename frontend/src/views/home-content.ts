@@ -17,7 +17,7 @@ import type { Slide } from '@/components/home/HeroSlider';
 /** ⚠️ 임시 콘텐츠. 배너 관리 기능이 생기면 API 로 대체한다. */
 export const HERO_SLIDES: Slide[] = [
   {
-    eyebrow: 'HANSUNG GOLD EXCHANGE',
+    eyebrow: 'HANSEONG GOLD EXCHANGE',
     title: '오늘의 정확한 시세로',
     highlight: '안심하고 거래하세요',
     desc: '당사가 고시한 시세를 그대로 적용합니다. 최종 금액은 주문하시는 시각의 고시 시세로 확정됩니다.',
