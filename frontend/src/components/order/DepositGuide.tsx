@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { SUPPORT_TEL } from '@/data/company';
 import { usePaymentConfig } from '@/hooks/useOrder';
 import type { Order } from '@/types/order';
 import { formatDateTime, formatKrw } from '@/utils/format';
@@ -106,7 +107,7 @@ export function DepositGuide({ order, justPlaced }: { order: Order; justPlaced?:
         // 계좌 설정이 비었다. 주문을 받을 때 막고 있으므로 보통 오지 않는 자리지만,
         // 주문 뒤에 설정이 지워졌을 수 있다. 빈 칸 대신 연락할 곳을 준다.
         <p className={styles.noAccount}>
-          입금 계좌 안내를 불러오지 못했습니다. 고객센터(02-743-4176)로 문의해 주세요.
+          입금 계좌 안내를 불러오지 못했습니다. 고객센터({SUPPORT_TEL})로 문의해 주세요.
         </p>
       )}
 

@@ -11,6 +11,7 @@ import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { StickyHeader } from '@/layouts/StickyHeader';
 import { buildNav } from '@/layouts/navigation';
 import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
+import { SUPPORT_TEL } from '@/data/company';
 import styles from './ShopLayout.module.css';
 
 /**
@@ -166,7 +167,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
 
             <div className={styles.footCs}>
               <p className={styles.csLabel}>대표전화</p>
-              <p>02-743-4176</p>
+              <p>{SUPPORT_TEL}</p>
               <p className={styles.csLabel}>운영시간</p>
               <p>월-토 10:00 ~ 19:00</p>
               <p>일요일·공휴일 휴무</p>
@@ -175,7 +176,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className={styles.copyright}>
-          COPYRIGHT © HANSUNG GOLD EXCHANGE. ALL RIGHTS RESERVED.
+          COPYRIGHT © HANSEONG GOLD EXCHANGE. ALL RIGHTS RESERVED.
         </div>
       </footer>
     </>

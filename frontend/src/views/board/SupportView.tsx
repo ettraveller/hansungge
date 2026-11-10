@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { ALL_BRANCHES } from '@/data/branches';
+import { SUPPORT_HOURS, SUPPORT_TEL, SUPPORT_TEL_HREF } from '@/data/company';
 import { SectionHead } from '@/components/ui/SectionHead';
 import styles from './SupportView.module.css';
 
@@ -41,17 +41,6 @@ const DESKS = [
  * 필요하지만 전화는 아니다.
  */
 export function SupportView() {
-  // 지점 연락처는 지점 데이터가 원천이다. 여기에 다시 적으면 지점이 이전할 때
-  // 한쪽만 고쳐지고, 그 차이는 누가 전화를 걸어 보기 전까지 드러나지 않는다.
-  /**
-   * 전화 문의에 내걸 지점.
-   *
-   * <p>그냥 첫 지점을 쓰면 안 된다. 지점 목록의 차례는 지역순이고, 맨 앞에 오는
-   * 지점이 <b>아직 번호가 안 나온 새 지점</b>일 수 있다 — 그러면 고객센터의
-   * 대표번호 자리가 빈 채로 뜬다. 번호가 있는 첫 지점을 고른다.
-   */
-  const branch = ALL_BRANCHES.find((b) => b.tel) ?? ALL_BRANCHES[0];
-
   return (
     <div className={styles.page}>
       <div className="wrap">
@@ -63,14 +52,16 @@ export function SupportView() {
             <h2 id="support-call" className={styles.callLabel}>
               전화 문의
             </h2>
-            <p className={`${styles.callNumber} tabular`}>{branch.tel ?? '준비 중'}</p>
-            {branch.hours && <p className={styles.callHours}>{branch.hours}</p>}
+            {/* 대표전화다. 전에는 「번호가 있는 첫 지점」을 집어 올렸는데, 그래서
+                다산점 휴대폰 번호(010-5901-4979)가 대표번호 자리에 떴다 — 같은 화면
+                푸터에는 02-743-4176 이 적혀 있었으니 한 페이지 안에서 두 번호가
+                어긋나 있었다. 지점 번호와 대표번호는 다른 것이다 (data/company.ts). */}
+            <p className={`${styles.callNumber} tabular`}>{SUPPORT_TEL}</p>
+            <p className={styles.callHours}>{SUPPORT_HOURS}</p>
           </div>
-          {branch.tel && (
-            <a className={styles.callBtn} href={`tel:${branch.tel.replace(/[^0-9]/g, '')}`}>
-              전화 걸기
-            </a>
-          )}
+          <a className={styles.callBtn} href={SUPPORT_TEL_HREF}>
+            전화 걸기
+          </a>
         </section>
 
         {/* ---------- 바로가기 ---------- */}
