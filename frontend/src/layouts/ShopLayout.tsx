@@ -115,7 +115,9 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
         </nav>
       </StickyHeader>
 
-      <main id="main">{children}</main>
+      <main id="main" className={styles.main}>
+        {children}
+      </main>
 
       <PriceChangeWatcher initialVersion={priceVersion.data?.version ?? null} />
 
