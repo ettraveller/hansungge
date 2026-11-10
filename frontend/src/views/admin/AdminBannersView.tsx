@@ -147,8 +147,8 @@ export function AdminBannersView() {
       )}
 
       <Panel
-        title="배너 이미지"
-        note={`권장 크기 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 휴대폰용은 아래에서 따로 올린다.`}
+        title="홈페이지 배너 이미지"
+        note={`권장 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 여기 올린 장수가 슬라이드 수다.`}
         actions={
           canEdit && (
             <Button variant="gold" onClick={save} disabled={!changed || replace.isPending}>
@@ -157,11 +157,22 @@ export function AdminBannersView() {
           )
         }
       >
-        <Alert tone="info" title="문구와 버튼까지 이미지 안에 넣어 주세요">
-          이 배너는 사진 한 장을 화면 가득 채웁니다. 글자를 따로 넣는 칸은 없습니다.
+        {/* 크기를 여기에 적는 이유 — 아래 「휴대폰 배너 이미지」 칸은 홈페이지용을 한 장
+            올린 뒤에야 생긴다. 사진을 준비하는 사람은 그 전에 두 크기를 다 알아야 한다. */}
+        <Alert tone="info" title="두 가지 크기로 준비해 주세요">
+          <ul className={styles.bannerSizes}>
+            <li>
+              <strong>홈페이지 배너 {RECOMMENDED}</strong> (가로 : 세로 = 16 : 7) — 컴퓨터 화면
+            </li>
+            <li>
+              <strong>휴대폰 배너 {RECOMMENDED_MOBILE}</strong> (세로가 더 긴 사진) — 휴대폰
+            </li>
+          </ul>
+          휴대폰 배너 자리는 <strong>세로가 더 깁니다.</strong> 홈페이지용 한 장만 올리면
+          휴대폰에서 좌우가 3분의 2쯤 잘려 나갑니다.
           <br />
-          휴대폰 배너 자리는 <strong>세로가 더 깁니다</strong> — 가로용 한 장만 올리면 좌우가 크게
-          잘립니다. 아래 「배너별 설정」에서 휴대폰용을 따로 올려 주세요.
+          문구와 버튼까지 이미지 안에 들어갑니다 — 글자를 따로 넣는 칸은 없고,{' '}
+          <strong>같은 문구를 두 장에 각각</strong> 넣으셔야 합니다.
         </Alert>
 
         {isLoading ? (
@@ -173,16 +184,48 @@ export function AdminBannersView() {
             folder="banners"
             max={MAX_BANNERS}
             disabled={!canEdit}
-            emptyLabel="배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
+            emptyLabel="홈페이지 배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
             preview="tall"
           />
         )}
       </Panel>
 
+      {/* 휴대폰용을 제 패널로 떼어낸다. 홈페이지용 옆에 썸네일을 함께 두는 이유는
+          이 칸이 「몇 번째 배너의 휴대폰 사진」인지가 보여야 하기 때문이다 — 두 목록을
+          따로 세우면 세 장씩 올렸을 때 어느 것이 어느 것의 짝인지 알 수 없다. */}
+      {rows.length > 0 && (
+        <Panel
+          title="휴대폰 배너 이미지"
+          note={`권장 ${RECOMMENDED_MOBILE} (세로가 더 긴 사진). 비워 두면 왼쪽의 홈페이지 배너를 그대로 쓴다 — 좌우가 크게 잘린다.`}
+        >
+          <ul className={styles.bannerRows}>
+            {rows.map((row, index) => (
+              <li key={row.imageKey} className={styles.bannerRow}>
+                <span className={styles.bannerNo}>{index + 1}</span>
+                {/* 관리자 화면이고 수가 적다. next/image 로 최적화할 것이 없다. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className={styles.bannerThumb} src={mediaUrl(row.imageKey) ?? ''} alt="" />
+                <div className={styles.bannerMobileSlot}>
+                  <ImageUploader
+                    value={row.mobileImageKey ? [row.mobileImageKey] : []}
+                    onChange={(keys) => edit(row.imageKey, { mobileImageKey: keys[0] ?? '' })}
+                    folder="banners"
+                    max={1}
+                    disabled={!canEdit}
+                    emptyLabel={`${index + 1}번 배너의 휴대폰 이미지를 올려 주세요`}
+                    preview="tall"
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       {rows.length > 0 && (
         <Panel
           title="배너별 설정"
-          note="휴대폰용 이미지, 누르면 갈 곳, 눈으로 보지 않는 분에게 읽어 줄 설명."
+          note="누르면 갈 곳과, 눈으로 보지 않는 분에게 읽어 줄 설명."
         >
           <ul className={styles.bannerRows}>
             {rows.map((row, index) => (
@@ -192,20 +235,6 @@ export function AdminBannersView() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={styles.bannerThumb} src={mediaUrl(row.imageKey) ?? ''} alt="" />
                 <div className={styles.bannerFields}>
-                  <Field
-                    label="휴대폰용 이미지"
-                    hint={`권장 ${RECOMMENDED_MOBILE} (세로로 긴 사진). 비우면 위의 가로 이미지를 그대로 쓴다 — 좌우가 크게 잘린다.`}
-                  >
-                    <ImageUploader
-                      value={row.mobileImageKey ? [row.mobileImageKey] : []}
-                      onChange={(keys) => edit(row.imageKey, { mobileImageKey: keys[0] ?? '' })}
-                      folder="banners"
-                      max={1}
-                      disabled={!canEdit}
-                      emptyLabel="휴대폰용 이미지를 끌어다 놓거나 클릭해서 선택하세요"
-                      preview="tall"
-                    />
-                  </Field>
                   <Field
                     label="누르면 갈 곳"
                     htmlFor={`href-${index}`}

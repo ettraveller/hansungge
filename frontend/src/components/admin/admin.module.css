@@ -1485,3 +1485,20 @@ a.hint:hover {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
+
+/* 배너 권장 크기 두 줄. 안내 상자(Alert) 안이라 좌우 여백만 들어내고
+   글머리표를 남긴다 — 「가로용 / 휴대폰용」 둘을 나란히 세는 목록이다. */
+.bannerSizes {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+
+/* 휴대폰 배너 한 칸. 세로로 긴 사진이라 업로더를 가로로 늘리지 않는다 —
+   늘리면 미리보기가 띠처럼 길어져 세로 사진인지 가로 사진인지 분간되지 않는다. */
+.bannerMobileSlot {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+}
