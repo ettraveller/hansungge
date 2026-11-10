@@ -37,6 +37,22 @@ html {
 }
 
 body {
+  /*
+   * 짧은 화면에서 푸터가 중간에 떠 있지 않게 한다.
+   *
+   * 공지사항처럼 글이 한 건뿐인 화면은 내용이 화면 높이를 못 채운다. 그러면
+   * 푸터가 내용 바로 아래에서 끝나고 그 밑으로 흰 바닥이 남는다 — 페이지가
+   * 잘린 것처럼 보인다.
+   *
+   * 레이아웃의 머리·본문·푸터는 body 의 바로 아래 형제다 (중간 래퍼가 없다).
+   * 그래서 body 를 세로 플렉스로 두고 본문만 늘리면 된다. 관리자 레이아웃은
+   * 제 뿌리에 min-height:100vh 를 갖고 있어 이 변화에 영향받지 않고,
+   * 「본문 바로가기」는 position:absolute 라 자리를 차지하지 않는다.
+   */
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+
   font-family: var(--font-sans);
   font-size: var(--text-md);
   font-weight: 400;
