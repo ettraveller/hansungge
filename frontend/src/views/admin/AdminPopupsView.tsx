@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
 import { Field, TextArea, TextInput } from '@/components/admin/Field';
+import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { Panel } from '@/components/admin/Panel';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
@@ -204,13 +205,12 @@ export function AdminPopupsView() {
             <Field
               label="누르면 갈 곳"
               htmlFor="pp-href"
-              hint="비우면 버튼을 그리지 않는다. 예: /purchase-guide"
+              hint="메뉴나 상품에서 고른다. 비우면 버튼을 그리지 않는다."
             >
-              <TextInput
+              <LinkTargetPicker
                 id="pp-href"
-                maxLength={500}
                 value={form.linkHref ?? ''}
-                onChange={(e) => patch({ linkHref: e.target.value })}
+                onChange={(linkHref) => patch({ linkHref })}
               />
             </Field>
 
