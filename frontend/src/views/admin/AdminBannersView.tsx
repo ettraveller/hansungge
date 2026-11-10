@@ -6,6 +6,7 @@ import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
 import { Field, TextInput } from '@/components/admin/Field';
 import { ImageUploader } from '@/components/admin/ImageUploader';
+import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
@@ -265,14 +266,13 @@ export function AdminBannersView() {
                   <Field
                     label="누르면 갈 곳"
                     htmlFor={`href-${index}`}
-                    hint="비우면 누를 수 없는 배너가 된다. 예: /shop?categoryId=1"
+                    hint="메뉴나 상품에서 고른다. 비우면 누를 수 없는 배너가 된다."
                   >
-                    <TextInput
+                    <LinkTargetPicker
                       id={`href-${index}`}
                       value={row.linkHref}
                       disabled={!canEdit}
-                      placeholder="/shop"
-                      onChange={(e) => edit(row.imageKey, { linkHref: e.target.value })}
+                      onChange={(linkHref) => edit(row.imageKey, { linkHref })}
                     />
                   </Field>
                   <Field
