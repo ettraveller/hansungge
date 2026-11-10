@@ -6,16 +6,18 @@ import { Modal } from '../Modal';
 import styles from '../admin.module.css';
 
 /**
- * 미리보기 폭.
+ * 미리보기 창 크기.
  *
- * <p>실제 쓰이는 두 경계값이다 — 히어로의 미디어 쿼리가 960px 에서 갈리므로, PC 는
- * 그보다 넉넉히 넓고 휴대폰은 그보다 좁아야 한다. 390px 은 아이폰 14·15 의 논리 폭이다.
+ * <p>폭은 실제 쓰이는 두 경계값이다 — 히어로의 미디어 쿼리가 960px 에서 갈리므로,
+ * PC 는 그보다 넉넉히 넓고 휴대폰은 그보다 좁아야 한다. 390px 은 아이폰 14·15 의 논리 폭이다.
  *
- * <p>높이는 히어로의 {@code min-height} 를 그대로 쓴다 (PC 560, 휴대폰 460).
+ * <p>높이는 <b>그 기기의 화면 높이</b>다 (배너 높이가 아니다). 띄우는 것이 메인 전체라,
+ * 배너만큼만 열면 그 아래 시세표와 맞닿는 자리를 볼 수 없다 — 사진 아래쪽 문구가
+ * 시세표에 걸리는지가 정작 확인하려는 것이다. 아래로 밀어 메인 끝까지 볼 수 있다.
  */
 const DEVICES = [
-  { key: 'pc', label: 'PC', width: 1280, height: 560 },
-  { key: 'mobile', label: '휴대폰', width: 390, height: 460 },
+  { key: 'pc', label: 'PC', width: 1280, height: 760 },
+  { key: 'mobile', label: '휴대폰', width: 390, height: 780 },
 ] as const;
 
 type DeviceKey = (typeof DEVICES)[number]['key'];
@@ -67,7 +69,8 @@ export function BannerPreviewModal({
       onClose={onClose}
       footer={
         <p className={styles.hint}>
-          저장하지 않은 것까지 그대로 보인다 — 지금 올려 둔 사진으로 그린다.
+          손님이 보는 <strong>메인 화면 그대로</strong>이고, 배너만 지금 올려 둔 사진으로
+          바꿔 그린다 — 저장하지 않은 것까지 보인다. 아래로 밀면 메인 끝까지 볼 수 있다.
           <br />
           <strong>휴대폰</strong>으로 바꿔 보면 좌우가 얼마나 잘리는지 확인할 수 있다.
           휴대폰용을 올리지 않은 배너는 가로용 한 장을 잘라서 쓴다.

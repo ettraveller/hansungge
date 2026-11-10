@@ -17,11 +17,18 @@ import styles from './admin.module.css';
  */
 const PRODUCT_LIMIT = 300;
 
-/** 팔지 않는 상품은 이름 뒤에 이유를 붙인다. 모르고 고르면 손님이 빈 화면을 본다. */
+/**
+ * 목록에 올리지 않는 상태.
+ *
+ * <p>숨긴 상품과 판매종료 상품은 손님에게 아예 없는 상품이다. 고를 수 있게 두면
+ * 배너를 눌렀을 때 404 로 떨어진다. 품절은 다르다 — 상품 화면이 멀쩡히 있고
+ * 「품절」이라고 보여주므로, 재입고를 예고하는 배너라면 보낼 이유가 있다.
+ */
+const HIDDEN_STATUSES: ProductStatus[] = ['HIDDEN', 'DISCONTINUED'];
+
+/** 품절은 고를 수 있지만, 모르고 고르지 않게 이름 뒤에 적어 둔다. */
 const STATUS_SUFFIX: Partial<Record<ProductStatus, string>> = {
   SOLD_OUT: ' (품절)',
-  HIDDEN: ' (숨김)',
-  DISCONTINUED: ' (판매종료)',
 };
 
 interface Props {
@@ -46,13 +53,14 @@ interface Props {
  * 목록에 없다고 빈 값으로 떨어뜨리면, 저장을 누르는 순간 멀쩡히 걸려 있던 배너
  * 링크가 조용히 사라진다.
  *
- * <h2>숨긴 카테고리는 넣지 않는다</h2>
- * 관리자 목록에는 숨긴 카테고리까지 들어 있지만 손님 메뉴에는 없다. 그런 곳으로
- * 보내면 상품이 0개인 화면이 나온다.
+ * <h2>손님에게 없는 곳은 넣지 않는다</h2>
+ * 관리자 목록에는 숨긴 카테고리와 숨김·판매종료 상품까지 들어 있지만, 손님 화면에는
+ * 없다. 고를 수 있게 두면 배너를 누른 손님이 404 나 빈 목록을 본다.
  */
 export function LinkTargetPicker({ id, value, disabled, onChange }: Props) {
   const { data: categories } = useAdminCategories();
-  const { data: products } = useAdminProducts({ size: PRODUCT_LIMIT });
+  // active:false 는 서버에서 걸러 온다 — 비활성 상품은 손님에게 없는 상품이다.
+  const { data: products } = useAdminProducts({ size: PRODUCT_LIMIT, active: true });
 
   /** 메뉴에 실제로 보이는 것만. buildNav 가 고정 메뉴와 카테고리를 같은 모양으로 준다. */
   const menuOptions = useMemo(() => {
@@ -69,10 +77,12 @@ export function LinkTargetPicker({ id, value, disabled, onChange }: Props) {
 
   const productOptions = useMemo(
     () =>
-      (products?.content ?? []).map((p) => ({
-        href: `/shop/product/${p.id}`,
-        label: `${p.name}${STATUS_SUFFIX[p.status] ?? ''}`,
-      })),
+      (products?.content ?? [])
+        .filter((p) => !HIDDEN_STATUSES.includes(p.status))
+        .map((p) => ({
+          href: `/shop/product/${p.id}`,
+          label: `${p.name}${STATUS_SUFFIX[p.status] ?? ''}`,
+        })),
     [products],
   );
 
@@ -81,7 +91,13 @@ export function LinkTargetPicker({ id, value, disabled, onChange }: Props) {
     [menuOptions, productOptions],
   );
 
-  const missing = (products?.totalElements ?? 0) - productOptions.length;
+  /**
+   * 못 받아 온 상품 수.
+   *
+   * <p>받아 온 <b>개수</b>와 비교한다. 숨김·판매종료를 걸러낸 뒤의 수와 비교하면,
+   * 그렇게 일부러 뺀 것까지 "목록에 없다" 고 세어 버린다.
+   */
+  const missing = (products?.totalElements ?? 0) - (products?.content.length ?? 0);
 
   return (
     <>
