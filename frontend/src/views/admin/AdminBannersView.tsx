@@ -30,7 +30,6 @@ const RECOMMENDED_MOBILE = '1080 × 1280 px';
 
 interface Row {
   imageKey: string;
-  mobileImageKey: string;
   linkHref: string;
   altText: string;
 }
@@ -47,6 +46,10 @@ interface Row {
  * 길다. 한 장으로 둘 다 덮으면 가로가 크게 잘려 이미지 안의 문구가 화면 밖으로
  * 밀린다. 비워 두면 가로용 한 장이 두 폭을 다 맡는다 — 급할 때 한 장만 올리는
  * 길은 막지 않는다.
+ *
+ * <p>올리는 칸은 둘이고 <b>자리로 짝을 맞춘다</b> — 첫 장은 첫 장끼리, 둘째는
+ * 둘째끼리. 휴대폰용을 배너마다 한 칸씩 끼워 넣으면 홈페이지용을 올리기 전에는
+ * 그 칸이 아예 보이지 않는데, 사진을 준비하는 사람은 두 칸을 처음부터 함께 봐야 한다.
  *
  * <h2>넣은 수만큼 슬라이드가 생긴다</h2>
  * 한 장이면 넘어가지 않고, 여러 장이면 그 수만큼 돌아간다. 점과 번호도 따라 늘어난다.
@@ -72,10 +75,13 @@ export function AdminBannersView() {
     draft ??
     (data ?? []).map((b) => ({
       imageKey: b.imageKey,
-      mobileImageKey: b.mobileImageKey ?? '',
       linkHref: b.linkHref ?? '',
       altText: b.altText ?? '',
     }));
+
+  /** 휴대폰용 목록. 자리로 짝을 맞춘다 — n번째가 n번째 배너의 휴대폰 사진이다. */
+  const [mobileDraft, setMobileDraft] = useState<string[] | null>(null);
+  const mobileKeys: string[] = mobileDraft ?? (data ?? []).map((b) => b.mobileImageKey ?? '');
 
   /**
    * 사진 목록이 바뀌었다 — 순서를 바꿨거나, 넣었거나, 뺐다.
@@ -86,11 +92,13 @@ export function AdminBannersView() {
   const onImagesChange = (keys: string[]) => {
     const byKey = new Map(rows.map((r) => [r.imageKey, r]));
     setDraft(
-      keys.map(
-        (key) =>
-          byKey.get(key) ?? { imageKey: key, mobileImageKey: '', linkHref: '', altText: '' },
-      ),
+      keys.map((key) => byKey.get(key) ?? { imageKey: key, linkHref: '', altText: '' }),
     );
+    setSaved(false);
+  };
+
+  const onMobileChange = (keys: string[]) => {
+    setMobileDraft(keys);
     setSaved(false);
   };
 
@@ -102,22 +110,25 @@ export function AdminBannersView() {
   const save = () => {
     setSaved(false);
     replace.mutate(
-      rows.map((r) => ({
+      rows.map((r, index) => ({
         imageKey: r.imageKey,
-        mobileImageKey: r.mobileImageKey || null,
+        mobileImageKey: mobileKeys[index] || null,
         linkHref: r.linkHref.trim() || null,
         altText: r.altText.trim() || null,
       })),
       {
         onSuccess: () => {
           setDraft(null);
+          setMobileDraft(null);
           setSaved(true);
         },
       },
     );
   };
 
-  const changed = draft != null;
+  const changed = draft != null || mobileDraft != null;
+  /** 휴대폰용을 올리긴 했는데 장수가 모자란 경우. 뒤쪽 배너는 홈페이지용으로 버틴다. */
+  const shortOnMobile = mobileKeys.length > 0 && mobileKeys.length < rows.length;
 
   return (
     <div className={styles.page}>
@@ -149,8 +160,8 @@ export function AdminBannersView() {
       )}
 
       <Panel
-        title="홈페이지 배너 이미지"
-        note={`권장 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 여기 올린 장수가 슬라이드 수다.`}
+        title="배너 이미지"
+        note={`최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 홈페이지용에 올린 장수가 슬라이드 수다.`}
         actions={
           <>
             {/* 저장하지 않아도 눌린다 — 저장한 뒤에만 볼 수 있으면 "일단 저장하고
@@ -187,55 +198,55 @@ export function AdminBannersView() {
         {isLoading ? (
           <p className={styles.hint}>불러오는 중…</p>
         ) : (
-          <ImageUploader
-            value={rows.map((r) => r.imageKey)}
-            onChange={onImagesChange}
-            folder="banners"
-            max={MAX_BANNERS}
-            disabled={!canEdit}
-            emptyLabel="홈페이지 배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
-            preview="tall"
-          />
+          <div className={styles.bannerUploads}>
+            <Field
+              label="홈페이지 배너 이미지"
+              hint={`권장 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 여기 올린 장수가 슬라이드 수다.`}
+            >
+              <ImageUploader
+                value={rows.map((r) => r.imageKey)}
+                onChange={onImagesChange}
+                folder="banners"
+                max={MAX_BANNERS}
+                disabled={!canEdit}
+                emptyLabel="홈페이지 배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
+                preview="tall"
+              />
+            </Field>
+
+            {/* 바로 아래에 같은 칸을 둔다. 배너마다 한 칸씩 끼워 넣으면 홈페이지용을
+                올리기 전에는 이 칸이 아예 보이지 않아, 사진을 준비하는 사람이 두 크기를
+                함께 보지 못한다. 짝은 자리로 맞춘다 — 첫 장은 첫 장끼리. */}
+            <Field
+              label="휴대폰 배너 이미지"
+              hint={`권장 ${RECOMMENDED_MOBILE} (세로가 더 긴 사진). 위와 같은 차례로 짝이 된다 — 첫 장은 첫 장끼리. 비워 두면 그 자리는 홈페이지용을 잘라 쓴다.`}
+            >
+              <ImageUploader
+                value={mobileKeys}
+                onChange={onMobileChange}
+                folder="banners"
+                max={MAX_BANNERS}
+                disabled={!canEdit}
+                emptyLabel="휴대폰 배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
+                preview="tall"
+              />
+            </Field>
+
+            {shortOnMobile && (
+              <p className={styles.hintWarn}>
+                휴대폰 배너가 {mobileKeys.length}장, 홈페이지 배너가 {rows.length}장이다.{' '}
+                {rows.length - mobileKeys.length}장은 휴대폰에서도 홈페이지용을 잘라서 쓴다.
+              </p>
+            )}
+          </div>
         )}
       </Panel>
-
-      {/* 휴대폰용을 제 패널로 떼어낸다. 홈페이지용 옆에 썸네일을 함께 두는 이유는
-          이 칸이 「몇 번째 배너의 휴대폰 사진」인지가 보여야 하기 때문이다 — 두 목록을
-          따로 세우면 세 장씩 올렸을 때 어느 것이 어느 것의 짝인지 알 수 없다. */}
-      {rows.length > 0 && (
-        <Panel
-          title="휴대폰 배너 이미지"
-          note={`권장 ${RECOMMENDED_MOBILE} (세로가 더 긴 사진). 비워 두면 왼쪽의 홈페이지 배너를 그대로 쓴다 — 좌우가 크게 잘린다.`}
-        >
-          <ul className={styles.bannerRows}>
-            {rows.map((row, index) => (
-              <li key={row.imageKey} className={styles.bannerRow}>
-                <span className={styles.bannerNo}>{index + 1}</span>
-                {/* 관리자 화면이고 수가 적다. next/image 로 최적화할 것이 없다. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className={styles.bannerThumb} src={mediaUrl(row.imageKey) ?? ''} alt="" />
-                <div className={styles.bannerMobileSlot}>
-                  <ImageUploader
-                    value={row.mobileImageKey ? [row.mobileImageKey] : []}
-                    onChange={(keys) => edit(row.imageKey, { mobileImageKey: keys[0] ?? '' })}
-                    folder="banners"
-                    max={1}
-                    disabled={!canEdit}
-                    emptyLabel={`${index + 1}번 배너의 휴대폰 이미지를 올려 주세요`}
-                    preview="tall"
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      )}
 
       <BannerPreviewModal
         open={previewing}
         onClose={() => setPreviewing(false)}
         imageKeys={rows.map((r) => r.imageKey)}
-        mobileImageKeys={rows.map((r) => r.mobileImageKey)}
+        mobileImageKeys={rows.map((_, index) => mobileKeys[index] ?? '')}
       />
 
       {rows.length > 0 && (
