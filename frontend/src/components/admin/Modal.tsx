@@ -4,6 +4,12 @@ import { useEffect, useRef } from 'react';
 
 import styles from './admin.module.css';
 
+const WIDTH_CLASS = {
+  default: '',
+  wide: styles.dialogWide,
+  full: styles.dialogFull,
+} as const;
+
 /**
  * 모달.
  *
@@ -28,8 +34,10 @@ export function Modal({
    * - `default` — 확인·입력용. 560px.
    * - `wide` — 고객 화면을 그대로 보여주는 미리보기용. 560px 에 2단 레이아웃을 넣으면
    *   한 칸이 235px 이 되어 실제와 전혀 다르게 보인다.
+   * - `full` — 창을 거의 꽉 채운다. PC 폭(1280px) 한 화면을 통째로 띄우는 자리용이고,
+   *   몸통 높이 제한도 풀려서 스크롤이 안쪽 한 군데서만 일어난다.
    */
-  width?: 'default' | 'wide';
+  width?: 'default' | 'wide' | 'full';
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -44,7 +52,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={width === 'wide' ? `${styles.dialog} ${styles.dialogWide}` : styles.dialog}
+      className={[styles.dialog, WIDTH_CLASS[width]].filter(Boolean).join(' ')}
       // ESC 로 닫아도 부모의 open 상태가 따라오게 한다. 안 그러면 다시 열리지 않는다.
       onCancel={(e) => {
         e.preventDefault();
