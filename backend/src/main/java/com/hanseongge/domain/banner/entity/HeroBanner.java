@@ -35,6 +35,16 @@ public class HeroBanner {
     @Column(name = "image_key", length = 300, nullable = false)
     private String imageKey;
 
+    /**
+     * 휴대폰용 이미지. 비우면 {@link #imageKey} 를 그대로 쓴다.
+     *
+     * <p>히어로의 비율이 화면 폭에 따라 뒤집힌다 — 데스크톱은 가로로 긴 2.3:1,
+     * 휴대폰은 세로로 긴 0.85:1 이다. 한 장으로 둘 다 덮으면 가로가 3분의 2쯤
+     * 잘려 나가고, 이미지 안에 넣은 문구가 화면 밖으로 밀린다.
+     */
+    @Column(name = "mobile_image_key", length = 300)
+    private String mobileImageKey;
+
     /** 누르면 갈 곳. 비우면 누를 수 없는 배너다. */
     @Column(name = "link_href", length = 500)
     private String linkHref;
@@ -60,8 +70,10 @@ public class HeroBanner {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    private HeroBanner(String imageKey, String linkHref, String altText, int sort, String by) {
+    private HeroBanner(String imageKey, String mobileImageKey, String linkHref, String altText,
+                       int sort, String by) {
         this.imageKey = imageKey;
+        this.mobileImageKey = blankToNull(mobileImageKey);
         this.linkHref = blankToNull(linkHref);
         this.altText = blankToNull(altText);
         this.sort = sort;
@@ -72,8 +84,9 @@ public class HeroBanner {
         this.updatedAt = OffsetDateTime.now();
     }
 
-    public static HeroBanner of(String imageKey, String linkHref, String altText, int sort, String by) {
-        return new HeroBanner(imageKey, linkHref, altText, sort, by);
+    public static HeroBanner of(String imageKey, String mobileImageKey, String linkHref,
+                                String altText, int sort, String by) {
+        return new HeroBanner(imageKey, mobileImageKey, linkHref, altText, sort, by);
     }
 
     private static String blankToNull(String value) {

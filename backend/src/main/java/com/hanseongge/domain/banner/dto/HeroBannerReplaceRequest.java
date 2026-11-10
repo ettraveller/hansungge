@@ -34,6 +34,10 @@ public record HeroBannerReplaceRequest(
             @Size(max = 300)
             String imageKey,
 
+            @Schema(description = "휴대폰용 이미지 키. 비우면 가로용 한 장이 두 폭을 다 맡는다")
+            @Size(max = 300)
+            String mobileImageKey,
+
             @Schema(description = "누르면 갈 곳 (예: /shop?categoryId=1). 비우면 누를 수 없다")
             @Size(max = 500)
             String linkHref,

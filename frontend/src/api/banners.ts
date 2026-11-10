@@ -4,6 +4,8 @@ import { api } from '@/api/client';
 export interface HeroBanner {
   id: number;
   imageKey: string;
+  /** 휴대폰용 이미지. 없으면 가로용 한 장을 그대로 쓴다 */
+  mobileImageKey?: string | null;
   linkHref?: string | null;
   altText?: string | null;
   sort: number;

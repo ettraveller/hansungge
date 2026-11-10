@@ -52,7 +52,7 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
     // ---------- Flyway ----------
 
     @Test
-    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 47개 테이블이 생성된다")
+    @DisplayName("db/migration 의 마이그레이션이 하나도 빠짐없이 적용되고 48개 테이블이 생성된다")
     void flywayAppliesAllMigrations() {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",

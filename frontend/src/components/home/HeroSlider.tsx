@@ -25,6 +25,8 @@ export interface Slide {
 export interface BannerSlide {
   id: number;
   image: string;
+  /** 휴대폰용 이미지. 없으면 {@link image} 한 장이 두 폭을 다 맡는다 */
+  mobileImage?: string | null;
   /** 누르면 갈 곳. 없으면 누를 수 없는 배너다 */
   href?: string | null;
   /** 화면 낭독기가 읽을 설명. 이미지 안의 글자는 읽히지 않는다 */
@@ -143,13 +145,27 @@ export function HeroSlider({ slides, banners }: { slides: Slide[]; banners?: Ban
             aria-hidden={i !== index}
           >
             {/* 글자가 이미지 안에 있으므로 화면 전체를 덮는다. 오른쪽만 덮는 .bg 와
-                달리 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다. */}
+                달리 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다.
+
+                휴대폰용이 따로 올라온 배너는 폭에 따라 한쪽만 보인다 (.bgWide/.bgNarrow).
+                안 쓰는 쪽은 display:none 이라 브라우저가 내려받지도 않는다. 휴대폰용이
+                없으면 가로용 한 장이 두 폭을 다 맡는다. */}
             <div
-              className={styles.bgFull}
+              className={
+                banner.mobileImage ? `${styles.bgFull} ${styles.bgWide}` : styles.bgFull
+              }
               style={{ backgroundImage: `url(${banner.image})` }}
               role="img"
               aria-label={banner.alt ?? ''}
             />
+            {banner.mobileImage && (
+              <div
+                className={`${styles.bgFull} ${styles.bgNarrow}`}
+                style={{ backgroundImage: `url(${banner.mobileImage})` }}
+                role="img"
+                aria-label={banner.alt ?? ''}
+              />
+            )}
             {/* 주소가 없으면 누를 수 없는 배너다. 빈 링크를 두면 눌리는데 아무 일도
                 일어나지 않아, 쓰는 사람은 고장으로 읽는다. */}
             {banner.href && (

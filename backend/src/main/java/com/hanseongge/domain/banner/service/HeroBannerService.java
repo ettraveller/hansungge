@@ -54,8 +54,8 @@ public class HeroBannerService {
         List<HeroBannerReplaceRequest.Item> items = request.banners();
         for (int position = 0; position < items.size(); position++) {
             HeroBannerReplaceRequest.Item item = items.get(position);
-            saved.add(HeroBanner.of(item.imageKey(), item.linkHref(), item.altText(),
-                    position, adminLoginId));
+            saved.add(HeroBanner.of(item.imageKey(), item.mobileImageKey(), item.linkHref(),
+                    item.altText(), position, adminLoginId));
         }
         bannerRepository.saveAll(saved);
 

@@ -4,6 +4,7 @@ import { adminApi } from '@/api/admin/client';
 export interface AdminHeroBanner {
   id: number;
   imageKey: string;
+  mobileImageKey?: string | null;
   linkHref?: string | null;
   altText?: string | null;
   sort: number;
@@ -12,6 +13,7 @@ export interface AdminHeroBanner {
 
 export interface HeroBannerInput {
   imageKey: string;
+  mobileImageKey?: string | null;
   linkHref?: string | null;
   altText?: string | null;
 }

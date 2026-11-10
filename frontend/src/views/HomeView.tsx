@@ -64,6 +64,7 @@ export function HomeView({ prices, histories, groups, notices, banners }: Props)
         banners={banners.map((b) => ({
           id: b.id,
           image: mediaUrl(b.imageKey) ?? '',
+          mobileImage: mediaUrl(b.mobileImageKey),
           href: b.linkHref,
           alt: b.altText,
         }))}

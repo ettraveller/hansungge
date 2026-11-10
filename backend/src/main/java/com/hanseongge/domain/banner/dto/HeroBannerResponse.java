@@ -7,13 +7,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record HeroBannerResponse(
         @Schema(description = "배너 ID") Long id,
         @Schema(description = "이미지 키. 화면이 미디어 주소로 바꿔 쓴다") String imageKey,
+        @Schema(description = "휴대폰용 이미지 키. 없으면 imageKey 를 쓴다") String mobileImageKey,
         @Schema(description = "누르면 갈 곳. 없으면 누를 수 없다") String linkHref,
         @Schema(description = "화면 낭독기가 읽을 설명") String altText,
         @Schema(description = "진열 차례") int sort,
         @Schema(description = "내걸려 있는가") boolean active
 ) {
     public static HeroBannerResponse from(HeroBanner banner) {
-        return new HeroBannerResponse(banner.getId(), banner.getImageKey(), banner.getLinkHref(),
-                banner.getAltText(), banner.getSort(), banner.isActive());
+        return new HeroBannerResponse(banner.getId(), banner.getImageKey(),
+                banner.getMobileImageKey(), banner.getLinkHref(), banner.getAltText(),
+                banner.getSort(), banner.isActive());
     }
 }

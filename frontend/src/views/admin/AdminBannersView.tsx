@@ -16,11 +16,20 @@ import styles from '@/components/admin/admin.module.css';
 /** 넣을 수 있는 장수. 서버도 같은 값으로 막는다. */
 const MAX_BANNERS = 10;
 
-/** 권장 크기. 화면의 배너 높이(560px)를 2배로 잡은 값이다. */
+/** 권장 크기 (데스크톱). 화면의 배너 높이(560px)를 2배로 잡은 값이다. */
 const RECOMMENDED = '2560 × 1120 px';
+
+/**
+ * 권장 크기 (휴대폰).
+ *
+ * 휴대폰에서 배너 자리는 390×460 — <b>세로가 더 길다.</b> 데스크톱(2.3:1)과 비율이
+ * 아예 뒤집혀 있어서, 가로용 한 장을 그대로 쓰면 가로가 3분의 2쯤 잘려 나간다.
+ */
+const RECOMMENDED_MOBILE = '1080 × 1280 px';
 
 interface Row {
   imageKey: string;
+  mobileImageKey: string;
   linkHref: string;
   altText: string;
 }
@@ -31,6 +40,12 @@ interface Row {
  * <h2>이미지 한 장이 배너 하나다</h2>
  * 문구도 버튼도 이미지 안에 들어간다. 글자를 밖에 두면 사진의 어느 자리에 글이
  * 올라갈지를 화면 코드가 정하게 되고, 사진이 바뀔 때마다 그 자리가 어긋난다.
+ *
+ * <h2>휴대폰용은 따로 올린다</h2>
+ * 배너 자리의 비율이 폭에 따라 뒤집힌다 — 데스크톱은 가로로 길고 휴대폰은 세로로
+ * 길다. 한 장으로 둘 다 덮으면 가로가 크게 잘려 이미지 안의 문구가 화면 밖으로
+ * 밀린다. 비워 두면 가로용 한 장이 두 폭을 다 맡는다 — 급할 때 한 장만 올리는
+ * 길은 막지 않는다.
  *
  * <h2>넣은 수만큼 슬라이드가 생긴다</h2>
  * 한 장이면 넘어가지 않고, 여러 장이면 그 수만큼 돌아간다. 점과 번호도 따라 늘어난다.
@@ -55,6 +70,7 @@ export function AdminBannersView() {
     draft ??
     (data ?? []).map((b) => ({
       imageKey: b.imageKey,
+      mobileImageKey: b.mobileImageKey ?? '',
       linkHref: b.linkHref ?? '',
       altText: b.altText ?? '',
     }));
@@ -67,7 +83,12 @@ export function AdminBannersView() {
    */
   const onImagesChange = (keys: string[]) => {
     const byKey = new Map(rows.map((r) => [r.imageKey, r]));
-    setDraft(keys.map((key) => byKey.get(key) ?? { imageKey: key, linkHref: '', altText: '' }));
+    setDraft(
+      keys.map(
+        (key) =>
+          byKey.get(key) ?? { imageKey: key, mobileImageKey: '', linkHref: '', altText: '' },
+      ),
+    );
     setSaved(false);
   };
 
@@ -81,6 +102,7 @@ export function AdminBannersView() {
     replace.mutate(
       rows.map((r) => ({
         imageKey: r.imageKey,
+        mobileImageKey: r.mobileImageKey || null,
         linkHref: r.linkHref.trim() || null,
         altText: r.altText.trim() || null,
       })),
@@ -126,7 +148,7 @@ export function AdminBannersView() {
 
       <Panel
         title="배너 이미지"
-        note={`권장 크기 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다.`}
+        note={`권장 크기 ${RECOMMENDED} (가로 : 세로 = 16 : 7). 최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 휴대폰용은 아래에서 따로 올린다.`}
         actions={
           canEdit && (
             <Button variant="gold" onClick={save} disabled={!changed || replace.isPending}>
@@ -138,7 +160,8 @@ export function AdminBannersView() {
         <Alert tone="info" title="문구와 버튼까지 이미지 안에 넣어 주세요">
           이 배너는 사진 한 장을 화면 가득 채웁니다. 글자를 따로 넣는 칸은 없습니다.
           <br />
-          휴대폰에서는 좌우가 잘리므로 <strong>중요한 글자는 가운데</strong>에 두세요.
+          휴대폰 배너 자리는 <strong>세로가 더 깁니다</strong> — 가로용 한 장만 올리면 좌우가 크게
+          잘립니다. 아래 「배너별 설정」에서 휴대폰용을 따로 올려 주세요.
         </Alert>
 
         {isLoading ? (
@@ -159,7 +182,7 @@ export function AdminBannersView() {
       {rows.length > 0 && (
         <Panel
           title="배너별 설정"
-          note="누르면 갈 곳과, 눈으로 보지 않는 분에게 읽어 줄 설명이다."
+          note="휴대폰용 이미지, 누르면 갈 곳, 눈으로 보지 않는 분에게 읽어 줄 설명."
         >
           <ul className={styles.bannerRows}>
             {rows.map((row, index) => (
@@ -169,6 +192,20 @@ export function AdminBannersView() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={styles.bannerThumb} src={mediaUrl(row.imageKey) ?? ''} alt="" />
                 <div className={styles.bannerFields}>
+                  <Field
+                    label="휴대폰용 이미지"
+                    hint={`권장 ${RECOMMENDED_MOBILE} (세로로 긴 사진). 비우면 위의 가로 이미지를 그대로 쓴다 — 좌우가 크게 잘린다.`}
+                  >
+                    <ImageUploader
+                      value={row.mobileImageKey ? [row.mobileImageKey] : []}
+                      onChange={(keys) => edit(row.imageKey, { mobileImageKey: keys[0] ?? '' })}
+                      folder="banners"
+                      max={1}
+                      disabled={!canEdit}
+                      emptyLabel="휴대폰용 이미지를 끌어다 놓거나 클릭해서 선택하세요"
+                      preview="tall"
+                    />
+                  </Field>
                   <Field
                     label="누르면 갈 곳"
                     htmlFor={`href-${index}`}
