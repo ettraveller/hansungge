@@ -67,7 +67,7 @@ fi
 # 주문이 진짜 결제창을 연다. QA 는 안에서만 돌아야 한다.
 # ---------------------------------------------------------------------
 echo "==> ${QA_ENV}"
-grep -vE '^(DB_URL|SERVER_PORT|MANAGEMENT_PORT|IDENTITY_PROVIDER|IDENTITY_MID|IDENTITY_API_KEY|IDENTITY_NOTI_URL|IDENTITY_CALLBACK_URL|IDENTITY_RETURN_PAGE_URL|APP_UPLOAD_DIR|CORS_ALLOWED_ORIGINS)=' \
+grep -vE '^(DB_URL|SERVER_PORT|MANAGEMENT_PORT|IDENTITY_PROVIDER|IDENTITY_MID|IDENTITY_API_KEY|IDENTITY_NOTI_URL|IDENTITY_CALLBACK_URL|IDENTITY_RETURN_PAGE_URL|UPLOAD_DIR|UPLOAD_PUBLIC_BASE_URL|CORS_ALLOWED_ORIGINS)=' \
   "$PROD_ENV" > "$QA_ENV"
 
 cat >> "$QA_ENV" <<'EOF'
@@ -89,7 +89,13 @@ IDENTITY_CALLBACK_URL=https://hanseongge.com/qa-api/api/v1/auth/identity/return
 IDENTITY_RETURN_PAGE_URL=https://hanseongge.com/qa/auth/identity
 
 # 업로드도 따로 쌓는다. 운영과 같은 곳에 두면 QA 에서 지운 사진이 운영에서 사라진다.
-APP_UPLOAD_DIR=/var/lib/hanseongge/uploads-qa
+#
+# ⚠️ 이름은 UPLOAD_DIR 이다. 한때 APP_UPLOAD_DIR 로 적어 뒀는데, 그런 이름을 읽는
+# 코드가 없어서 조용히 무시되고 QA 가 <b>운영 업로드 폴더</b>를 바라봤다. 유닛의
+# ReadWritePaths 가 uploads-qa 뿐이라 쓰기가 막혀 500 으로 드러났다 — 막히지
+# 않았다면 QA 에서 올린 사진이 운영 폴더에 쌓였을 것이다 (2026-11-10).
+UPLOAD_DIR=/var/lib/hanseongge/uploads-qa
+UPLOAD_PUBLIC_BASE_URL=https://hanseongge.com/qa-api/media
 EOF
 
 chown root:hanseongge "$QA_ENV"
