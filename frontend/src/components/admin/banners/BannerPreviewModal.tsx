@@ -9,15 +9,19 @@ import styles from '../admin.module.css';
 /**
  * 미리보기 폭.
  *
- * <p>실제 쓰이는 두 경계값이다 — 히어로의 미디어 쿼리가 960px 에서 갈리므로, PC 는
- * 그보다 넉넉히 넓고 휴대폰은 그보다 좁아야 한다. 390px 은 아이폰 14·15 의 논리 폭이다.
+ * <p>히어로의 미디어 쿼리가 960px 에서 갈린다. 휴대폰은 그보다 좁아야 하므로 390px
+ * 로 박는다 — 아이폰 14·15 의 논리 폭이다.
  *
- * <p>높이는 정하지 않는다. 창에 남은 높이를 전부 준다 — 숫자로 박으면 관리자 화면이
- * 큰 사람에게도 그만큼만 보인다. 배너가 크게 보이는 것이 이 창의 목적이다.
+ * <p>PC 는 창을 꽉 채운다. 1280px 로 박아 뒀더니 넓은 관리자 화면에서는 좌우에 회색
+ * 여백만 남고 정작 배너가 작게 보였다. iframe 은 제 폭이 곧 제 뷰포트라, 채워도
+ * 그 폭의 <b>실제 화면</b>이지 축소판이 아니다 — 960px 만 넘으면 손님의 PC 화면과
+ * 같은 길로 그려진다.
+ *
+ * <p>높이도 정하지 않는다. 창에 남은 높이를 전부 준다.
  */
 const DEVICES = [
-  { key: 'pc', label: 'PC', width: 1280 },
-  { key: 'mobile', label: '휴대폰', width: 390 },
+  { key: 'pc', label: 'PC', width: '100%', note: '창 폭' },
+  { key: 'mobile', label: '휴대폰', width: 390, note: '390px' },
 ] as const;
 
 type DeviceKey = (typeof DEVICES)[number]['key'];
@@ -41,6 +45,7 @@ export function BannerPreviewModal({
   onClose,
   imageKeys,
   mobileImageKeys,
+  linkHrefs,
   footer,
 }: {
   open: boolean;
@@ -49,6 +54,13 @@ export function BannerPreviewModal({
   imageKeys: string[];
   /** 같은 자리의 휴대폰용 키. 없는 자리는 빈 문자열 */
   mobileImageKeys: string[];
+  /**
+   * 같은 자리의 「누르면 갈 곳」. 없는 자리는 빈 문자열.
+   *
+   * <p>미리보기 안에서도 눌리게 한다 — 고른 목적지가 맞는지는 <b>눌러 봐야</b> 안다.
+   * 상품 목록에서 이름이 비슷한 둘을 헷갈려 고르는 일이 흔하다.
+   */
+  linkHrefs: string[];
   /**
    * 고치는 중인 푸터. 손대지 않았으면 null 이고, 그때는 미리보기가 저장된 값을 쓴다.
    *
@@ -66,6 +78,9 @@ export function BannerPreviewModal({
   const query = new URLSearchParams({
     w: imageKeys.join(','),
     m: mobileImageKeys.join(','),
+    // 주소에 ? 와 & 가 들어간다(/shop?categoryId=1). 한 칸씩 싸서 보내지 않으면
+    // 쉼표로 자르는 쪽에서 한 배너의 주소가 두 개로 쪼개진다.
+    h: linkHrefs.map((href) => encodeURIComponent(href)).join(','),
   });
   // 손대지 않았으면 아무것도 붙이지 않는다 — 미리보기가 저장된 푸터를 그대로 쓴다.
   if (footer) {
@@ -79,15 +94,6 @@ export function BannerPreviewModal({
       title="메인 배너 미리보기"
       width="full"
       onClose={onClose}
-      footer={
-        <p className={styles.hint}>
-          손님이 보는 <strong>메인 화면 그대로</strong>이고, 배너와 푸터만 지금 화면에 있는
-          것으로 바꿔 그린다 — 저장하지 않은 것까지 보인다. 아래로 밀면 푸터까지 볼 수 있다.
-          <br />
-          <strong>휴대폰</strong>으로 바꿔 보면 좌우가 얼마나 잘리는지 확인할 수 있다.
-          휴대폰용을 올리지 않은 배너는 가로용 한 장을 잘라서 쓴다.
-        </p>
-      }
     >
       <div className={styles.previewDevices} role="group" aria-label="미리보기 폭">
         {DEVICES.map((d) => (
@@ -99,7 +105,7 @@ export function BannerPreviewModal({
             onClick={() => setDevice(d.key)}
           >
             {d.label}
-            <span className={styles.previewDeviceSize}>{d.width}px</span>
+            <span className={styles.previewDeviceSize}>{d.note}</span>
           </button>
         ))}
       </div>

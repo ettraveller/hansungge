@@ -43,6 +43,29 @@ function parseKeys(value: string | undefined): string[] {
 }
 
 /**
+ * 쉼표로 묶인 「누르면 갈 곳」 목록.
+ *
+ * <p>칸마다 {@code encodeURIComponent} 로 싸여 온다 — 주소에 {@code ?} 와 {@code &}
+ * 가 들어가기 때문이다({@code /shop?categoryId=1}).
+ *
+ * <p><b>우리 화면 안의 주소만</b> 받는다. 공개 경로라서, 거르지 않으면 우리 도메인의
+ * 화면에 남의 사이트로 보내는 링크를 띄우는 주소를 누구나 만들 수 있다. {@code //} 는
+ * 프로토콜 생략 주소(= 바깥)라 함께 막는다.
+ */
+function parseHrefs(value: string | undefined): string[] {
+  if (!value) return [];
+  return value.split(',').map((raw) => {
+    let href: string;
+    try {
+      href = decodeURIComponent(raw);
+    } catch {
+      return '';
+    }
+    return href.startsWith('/') && !href.startsWith('//') ? href : '';
+  });
+}
+
+/**
  * 쿼리로 온 푸터 글자.
  *
  * <p>저장된 값 위에 덮어쓴다. <b>{@link FooterInfo} 의 칸 이름만</b> 본다 — 쿼리를
@@ -98,15 +121,16 @@ export default async function BannerPreviewPage({
 
   const wideKeys = parseKeys(typeof params.w === 'string' ? params.w : undefined);
   const mobileKeys = parseKeys(typeof params.m === 'string' ? params.m : undefined);
+  const hrefs = parseHrefs(typeof params.h === 'string' ? params.h : undefined);
 
   const banners: HeroBanner[] = wideKeys
     .map((imageKey, index) => ({
       id: index,
       imageKey,
       mobileImageKey: mobileKeys[index] || null,
-      // 미리보기에서는 누를 수 없게 둔다 — 눌러서 iframe 안이 상품 화면으로
-      // 바뀌어 버리면 돌아올 길이 없다.
-      linkHref: null,
+      // 손님 화면과 같이 눌리게 둔다 — 고른 목적지가 맞는지는 눌러 봐야 안다.
+      // 눌러서 iframe 안이 그 화면으로 바뀌면 창을 닫았다 다시 열면 된다.
+      linkHref: hrefs[index] || null,
       altText: `${index + 1}번 배너`,
       sort: index,
       active: true,

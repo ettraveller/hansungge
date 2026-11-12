@@ -10,6 +10,7 @@ import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
 import { FooterPanel } from '@/components/admin/banners/FooterPanel';
 import type { FooterInfo } from '@/api/footer';
+import { HERO_SLIDES } from '@/views/home-content';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
@@ -207,6 +208,27 @@ export function AdminBannersView() {
           <strong>같은 문구를 두 장에 각각</strong> 넣으셔야 합니다.
         </Alert>
 
+        {/* 올린 배너가 없으면 손님 화면에는 코드에 들어 있는 기본 배너가 나간다.
+            그 사실을 여기 적지 않으면 "관리자 화면은 비어 있는데 메인에는 배너가
+            돌아간다" 가 되고, 어디서 고치는 것인지 찾을 길이 없다. 기본 배너는
+            사진 한 장이 아니라 글자와 버튼이 붙은 슬라이드라 이 칸에 올려 둘 수 없다 —
+            사진을 한 장이라도 올리면 그 자리를 통째로 넘겨받는다. */}
+        {!isLoading && rows.length === 0 && (
+          <Alert tone="info" title="지금은 기본 배너가 나가고 있습니다">
+            아직 올린 사진이 없어서, 메인에는 코드에 들어 있는 기본 배너 {HERO_SLIDES.length}
+            장이 돌아갑니다.
+            <ul className={styles.bannerSizes}>
+              {HERO_SLIDES.map((slide) => (
+                <li key={slide.title}>
+                  {slide.title} {slide.highlight} — 「{slide.cta}」 → {slide.href}
+                </li>
+              ))}
+            </ul>
+            사진을 한 장이라도 올려 저장하면 기본 배너는 사라지고 <strong>올린 것만</strong>{' '}
+            나갑니다. 기본 배너는 글자와 버튼이 붙은 슬라이드라 이 칸에 올려 둘 수 없습니다.
+          </Alert>
+        )}
+
         {isLoading ? (
           <p className={styles.hint}>불러오는 중…</p>
         ) : (
@@ -259,6 +281,7 @@ export function AdminBannersView() {
         onClose={() => setPreviewing(false)}
         imageKeys={rows.map((r) => r.imageKey)}
         mobileImageKeys={rows.map((_, index) => mobileKeys[index] ?? '')}
+        linkHrefs={rows.map((r) => r.linkHref)}
         footer={footerDraft}
       />
 
