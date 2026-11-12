@@ -1,7 +1,13 @@
 import { adminApi } from '@/api/admin/client';
 import type { PageResponse } from '@/types/api';
 import type { Order } from '@/types/order';
-import type { AdminOrderSearch, AdminOrderSummary, Carrier, Shipment } from '@/types/order-admin';
+import type {
+  AdminOrderSearch,
+  AdminOrderSummary,
+  AdminOrderUncheckedCounts,
+  Carrier,
+  Shipment,
+} from '@/types/order-admin';
 
 export function listOrders(search: AdminOrderSearch = {}) {
   return adminApi.get<PageResponse<AdminOrderSummary>>('/api/admin/orders', {
@@ -21,6 +27,11 @@ export function listOrders(search: AdminOrderSearch = {}) {
 /** 목록 상단의 "발송 대기 N건". 판정 기준은 목록 필터와 같다. */
 export function awaitingCount() {
   return adminApi.get<{ count: number }>('/api/admin/orders/awaiting-count');
+}
+
+/** 상태 탭별 미확인 건수. 상세를 열면 빠지고, 결제 도착·고객 취소가 생기면 다시 잡힌다. */
+export function uncheckedCounts() {
+  return adminApi.get<AdminOrderUncheckedCounts>('/api/admin/orders/unchecked-counts');
 }
 
 export function getOrder(id: number) {

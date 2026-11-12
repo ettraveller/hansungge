@@ -44,7 +44,15 @@ public record AdminOrderSummaryResponse(
          * <p>목록에서 "발송 대기 N건"을 세고 줄을 눈에 띄게 하는 데 쓴다. 상태 조합을
          * 화면이 다시 판단하면 백엔드와 갈라진다 — 한 곳에서 정해 보낸다.
          */
-        @Schema(description = "발송 대기인가", example = "true") boolean awaitingShipment
+        @Schema(description = "발송 대기인가", example = "true") boolean awaitingShipment,
+
+        /**
+         * 관리자가 상세를 연 적이 있는 주문인가.
+         *
+         * <p>false 인 줄을 목록이 눈에 띄게 하고, 상태 탭의 미확인 배지도 같은 기준으로
+         * 센다 ({@code admin_checked_at IS NULL}).
+         */
+        @Schema(description = "확인(상세 열람)한 주문인가", example = "false") boolean checked
 ) {
 
     public static AdminOrderSummaryResponse of(Order order, List<OrderItem> items, Shipment shipment) {
@@ -64,7 +72,8 @@ public record AdminOrderSummaryResponse(
                 items.size(),
                 order.getTotalAmount(),
                 shipment == null ? ShipmentResponse.pending() : ShipmentResponse.from(shipment),
-                awaiting);
+                awaiting,
+                order.getAdminCheckedAt() != null);
     }
 
     /** "순금 골드바 3.75g 외 1건". 품목이 없으면(이론상) 빈 문자열이 아니라 안내를 둔다. */

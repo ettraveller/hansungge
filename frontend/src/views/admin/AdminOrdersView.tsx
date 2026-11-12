@@ -7,10 +7,10 @@ import { Alert } from '@/components/admin/Alert';
 import { Pagination } from '@/components/admin/Pagination';
 import { Panel } from '@/components/admin/Panel';
 import { StatusBadge, type StatusTone } from '@/components/ui/StatusBadge';
-import { useAdminOrders, useAwaitingCount } from '@/hooks/admin/useOrders';
+import { useAdminOrders, useAwaitingCount, useUncheckedCounts } from '@/hooks/admin/useOrders';
 import { ApiError } from '@/types/api';
 import type { OrderStatus } from '@/types/order';
-import type { AdminOrderSummary } from '@/types/order-admin';
+import type { AdminOrderSummary, AdminOrderUncheckedCounts } from '@/types/order-admin';
 import { formatDateTime, formatKrw } from '@/utils/format';
 import styles from '@/components/admin/admin.module.css';
 
@@ -38,6 +38,7 @@ export function AdminOrdersView() {
   };
   const { data, isLoading, error } = useAdminOrders(search);
   const awaiting = useAwaitingCount();
+  const unchecked = useUncheckedCounts();
 
   const pick = (next: TabKey) => {
     setTab(next);
@@ -73,17 +74,25 @@ export function AdminOrdersView() {
       >
         <div className={styles.form}>
           <div className={styles.statusTabs} role="group" aria-label="주문 상태 필터">
-            {TAB_ORDER.map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={key === tab ? styles.statusTabOn : styles.statusTab}
-                aria-pressed={key === tab}
-                onClick={() => pick(key)}
-              >
-                {TABS[key].label}
-              </button>
-            ))}
+            {TAB_ORDER.map((key) => {
+              const badge = unchecked.data?.[TABS[key].countKey] ?? 0;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={key === tab ? styles.statusTabOn : styles.statusTab}
+                  aria-pressed={key === tab}
+                  onClick={() => pick(key)}
+                >
+                  {TABS[key].label}
+                  {badge > 0 && (
+                    <span className={styles.tabCount} aria-label={`미확인 ${badge}건`}>
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <form
@@ -175,6 +184,8 @@ function OrderRow({ row }: { row: AdminOrderSummary }) {
   return (
     <tr>
       <td data-label="주문번호" data-card-title>
+        {/* 미확인 표시. 상세를 열면 사라진다 — 탭 배지와 같은 기준을 서버가 내려준다. */}
+        {!row.checked && <span className={styles.uncheckedDot} aria-label="미확인" title="미확인 주문" />}
         <Link href={`/admin/orders/${row.id}`}>{row.orderNo}</Link>
       </td>
       <td data-label="주문일시" className={styles.muted}>
@@ -221,12 +232,17 @@ const TAB_ORDER: TabKey[] = ['AWAITING', 'ALL', 'PAID', 'SHIPPED', 'DELIVERED', 
 
 const TABS: Record<
   TabKey,
-  { label: string; search: { status?: OrderStatus | null; awaitingShipment?: boolean } }
+  {
+    label: string;
+    search: { status?: OrderStatus | null; awaitingShipment?: boolean };
+    /** 미확인 배지가 읽을 건수 필드. 세는 기준은 서버가 탭 필터와 같게 맞춘다. */
+    countKey: keyof AdminOrderUncheckedCounts;
+  }
 > = {
-  AWAITING: { label: '발송 대기', search: { awaitingShipment: true } },
-  ALL: { label: '전체', search: {} },
-  PAID: { label: '결제완료', search: { status: 'PAID' } },
-  SHIPPED: { label: '배송중', search: { status: 'SHIPPED' } },
-  DELIVERED: { label: '배송완료', search: { status: 'DELIVERED' } },
-  CANCELLED: { label: '취소', search: { status: 'CANCELLED' } },
+  AWAITING: { label: '발송 대기', search: { awaitingShipment: true }, countKey: 'awaiting' },
+  ALL: { label: '전체', search: {}, countKey: 'all' },
+  PAID: { label: '결제완료', search: { status: 'PAID' }, countKey: 'paid' },
+  SHIPPED: { label: '배송중', search: { status: 'SHIPPED' }, countKey: 'shipped' },
+  DELIVERED: { label: '배송완료', search: { status: 'DELIVERED' }, countKey: 'delivered' },
+  CANCELLED: { label: '취소', search: { status: 'CANCELLED' }, countKey: 'cancelled' },
 };

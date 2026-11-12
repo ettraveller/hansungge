@@ -2,6 +2,7 @@ package com.hanseongge.domain.order.controller;
 
 import com.hanseongge.domain.order.dto.AdminOrderSearchCondition;
 import com.hanseongge.domain.order.dto.AdminOrderSummaryResponse;
+import com.hanseongge.domain.order.dto.AdminOrderUncheckedCounts;
 import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.service.AdminOrderService;
 import com.hanseongge.domain.shipment.dto.ShipRequest;
@@ -72,11 +73,20 @@ public class AdminOrderController {
         return ResponseEntity.ok(Map.of("count", adminOrderService.countAwaitingShipment()));
     }
 
+    @Operation(summary = "상태 탭별 미확인 건수",
+            description = "상세를 연 적 없는 주문을 탭 필터와 같은 기준으로 센다. "
+                    + "상세를 열면 빠지고, 카드 결제 도착·고객 취소가 생기면 다시 잡힌다.")
+    @GetMapping("/unchecked-counts")
+    public ResponseEntity<AdminOrderUncheckedCounts> uncheckedCounts() {
+        return ResponseEntity.ok(adminOrderService.countUnchecked());
+    }
+
     @Operation(summary = "주문 상세",
-            description = "고객이 보는 것과 같은 응답 모양이다. 금액 계산이 둘로 갈라지지 않도록.")
+            description = "고객이 보는 것과 같은 응답 모양이다. 금액 계산이 둘로 갈라지지 않도록. "
+                    + "열면 그 주문은 「확인함」으로 기록되어 미확인 배지에서 빠진다.")
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> detail(@PathVariable Long id) {
-        return ResponseEntity.ok(adminOrderService.detail(id));
+        return ResponseEntity.ok(adminOrderService.openDetail(id));
     }
 
     @Operation(summary = "배송 정보",

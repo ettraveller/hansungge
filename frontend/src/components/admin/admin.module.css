@@ -1345,6 +1345,35 @@ a.hint:hover {
   font-weight: 600;
 }
 
+/* 탭의 미확인 건수. 관리자 하단 탭바의 미답변 배지(.badge)와 같은 생김새 —
+   "빨간 숫자 = 아직 안 본 것"이 관리자 화면 전체에서 한 가지 뜻이어야 한다. */
+.tabCount {
+  display: inline-block;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: 1px;
+}
+
+/* 목록 줄의 미확인 점. 숫자는 탭에 있으니 줄에는 눈길만 끌면 된다. */
+.uncheckedDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  vertical-align: 2px;
+}
+
 /* --- 시세 고시: 입력칸과 「고시될 값」 ------------------------------
    같은 행에 둔다. 치는 숫자와 나갈 숫자가 세로로 떨어져 있으면 눈이 두 번
    움직이고, 자릿수 하나 틀린 것이 그 사이에서 넘어간다.

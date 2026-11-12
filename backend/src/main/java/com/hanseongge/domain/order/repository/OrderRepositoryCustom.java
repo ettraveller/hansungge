@@ -1,6 +1,7 @@
 package com.hanseongge.domain.order.repository;
 
 import com.hanseongge.domain.order.dto.AdminOrderSearchCondition;
+import com.hanseongge.domain.order.dto.AdminOrderUncheckedCounts;
 import com.hanseongge.domain.order.entity.Order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,4 +13,7 @@ public interface OrderRepositoryCustom {
 
     /** 발송 대기 건수. 목록 상단에 늘 보여 준다. */
     long countAwaitingShipment();
+
+    /** 상태 탭별 미확인(상세를 연 적 없는) 주문 건수. 탭 배지에 쓴다. */
+    AdminOrderUncheckedCounts countUnchecked();
 }

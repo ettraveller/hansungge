@@ -44,6 +44,8 @@ export const adminKeys = {
   orderShipment: (id: number) => [...adminKeys.orders(), id, 'shipment'] as const,
   /** 발송 대기 건수. 목록 상단에 늘 보인다 */
   orderAwaitingCount: () => [...adminKeys.orders(), 'awaiting-count'] as const,
+  /** 상태 탭별 미확인 건수. 탭 배지에 쓴다 */
+  orderUncheckedCounts: () => [...adminKeys.orders(), 'unchecked-counts'] as const,
 
   categories: () => [...adminKeys.all, 'categories'] as const,
 

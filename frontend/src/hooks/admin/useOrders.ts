@@ -23,6 +23,20 @@ export function useAwaitingCount() {
   });
 }
 
+/**
+ * 상태 탭별 미확인 건수.
+ *
+ * <p>상세를 열면 서버가 그 주문을 확인 처리하므로, 목록으로 돌아오면 이 쿼리가
+ * 다시 돌아 배지가 줄어 있다 (staleTime 0 + 마운트 시 재조회).
+ */
+export function useUncheckedCounts() {
+  return useQuery({
+    queryKey: adminKeys.orderUncheckedCounts(),
+    queryFn: () => ordersApi.uncheckedCounts(),
+    staleTime: 0,
+  });
+}
+
 export function useAdminOrder(id: number | null) {
   return useQuery({
     queryKey: adminKeys.order(id ?? 0),

@@ -2,6 +2,7 @@ package com.hanseongge.domain.order.service;
 
 import com.hanseongge.domain.order.dto.AdminOrderSearchCondition;
 import com.hanseongge.domain.order.dto.AdminOrderSummaryResponse;
+import com.hanseongge.domain.order.dto.AdminOrderUncheckedCounts;
 import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderItem;
@@ -74,6 +75,28 @@ public class AdminOrderService {
     @Transactional(readOnly = true)
     public long countAwaitingShipment() {
         return orderRepository.countAwaitingShipment();
+    }
+
+    /** 상태 탭별 미확인 건수. 세는 기준은 저장소 한 곳에 있다. */
+    @Transactional(readOnly = true)
+    public AdminOrderUncheckedCounts countUnchecked() {
+        return orderRepository.countUnchecked();
+    }
+
+    /**
+     * 주문 상세를 열며 <b>확인 처리까지</b> 한다 — 상세 화면의 진입점.
+     *
+     * <p>{@link #detail} 과 따로 둔다. 그쪽은 입금 확인·배송 처리의 응답으로도 쓰이는
+     * 읽기 전용 조회라, 거기에 확인 기록을 끼우면 모든 조회가 쓰기가 된다.
+     * 확인은 "관리자가 이 주문을 봤다"는 사실이고, 그 사실이 생기는 곳은 상세 진입
+     * 한 곳이다.
+     */
+    @Transactional
+    public OrderResponse openDetail(Long orderId) {
+        Order order = requireOrder(orderId);
+        order.markAdminChecked();
+        List<OrderItem> items = orderItemRepository.findByOrderIdOrderByIdAsc(orderId);
+        return OrderResponse.of(order, items);
     }
 
     /**
