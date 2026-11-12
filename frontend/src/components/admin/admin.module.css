@@ -1252,6 +1252,17 @@ a.hint:hover {
   width: calc(100% - 24px);
   max-width: none;
   max-height: calc(100% - 24px);
+}
+
+/*
+ * [open] 이 <b>반드시</b> 붙어야 한다.
+ *
+ * 닫힌 dialog 를 숨기는 것은 브라우저 기본 스타일(`dialog:not([open]) { display: none }`)
+ * 하나뿐이고, 기본 스타일은 우리가 적은 스타일에게 무조건 진다. 그래서 여기에
+ * display 를 조건 없이 적으면 <b>닫아 둔 미리보기 창이 화면에 계속 떠 있는다</b> —
+ * 제목줄과 PC/휴대폰 단추가 배너 관리 화면 아래에 붙박이로 남는다 (2026-11-12 확인).
+ */
+.dialogFull[open] {
   display: flex;
   flex-direction: column;
 }
