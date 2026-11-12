@@ -168,6 +168,13 @@
   color: var(--danger, #c0392b);
 }
 
+/* 빨간 문장 안의 링크다. 색까지 같으면 누를 수 있는 줄 모른다 — 이 자리에서는
+   그 링크가 다음 할 일의 전부다. */
+.noAccountLink {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 /* 좁은 화면에서는 이름표를 값 위로 올린다. 72px 을 왼쪽에 내주면 계좌번호가
    남은 폭에 들어가지 못해 「복사」와 다투고, 결국 번호가 줄을 넘는다. */
 @media (max-width: 480px) {

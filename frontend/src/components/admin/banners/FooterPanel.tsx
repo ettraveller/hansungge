@@ -4,96 +4,83 @@ import { useState } from 'react';
 
 import { Alert } from '../Alert';
 import { Button } from '../Button';
-import { Field, TextInput } from '../Field';
 import { Panel } from '../Panel';
+import { EditableText } from './EditableText';
 import type { FooterInfo } from '@/api/footer';
+import { SiteFooter } from '@/layouts/SiteFooter';
 import { useFooterInfo, useSaveFooter } from '@/hooks/admin/useFooter';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
 import { ApiError } from '@/types/api';
 import styles from '../admin.module.css';
 
 /**
- * 고칠 수 있는 칸 목록.
+ * 칸마다의 이름과 최대 길이.
  *
- * <p>원천은 백엔드의 {@code FooterField} 다. 칸마다 입력칸을 손으로 적지 않고 이
- * 목록을 돌린다 — 칸을 더하는 일이 한 줄이 되고, 라벨만 적어 두고 저장을 빠뜨리는
- * 실수가 생기지 않는다.
+ * <p>이름은 빈 칸에 흐리게 떠서 "여기가 무엇을 적는 자리인지"를 알려 준다 — 글자를
+ * 지우고 나면 그 자리가 어디였는지 보이지 않기 때문이다. 길이는 서버가 자르는 값과
+ * 같다. 화면에서 먼저 막으면 "저장했는데 뒤가 잘렸다" 를 겪지 않는다.
  *
- * <p>{@code max} 는 서버가 자르는 길이와 같다. 화면에서 먼저 막으면 "저장했는데
- * 뒤가 잘렸다" 를 겪지 않는다.
+ * <p>원천은 백엔드의 {@code FooterField} 다.
  */
-const FOOTER_FIELDS: {
-  name: keyof FooterInfo;
-  label: string;
-  max: number;
-  hint?: string;
-}[] = [
-  { name: 'companyName', label: '상호', max: 80, hint: '법인명이다. 로고의 「한성금거래소」는 브랜드명이라 법적 표시가 되지 않는다.' },
-  { name: 'ceo', label: '대표자', max: 40 },
-  { name: 'bizNo', label: '사업자등록번호', max: 40 },
-  {
-    name: 'mailOrderNo',
-    label: '통신판매업신고번호',
-    max: 60,
-    hint: '아직 받지 못했다. 비워 두면 그 줄을 아예 그리지 않는다 — 받는 날 여기 적으면 되고 배포가 필요 없다.',
-  },
-  {
-    name: 'address',
-    label: '사업장 소재지',
-    max: 200,
-    hint: '사업자등록증과 같아야 한다 (전자상거래법 §13). 이용약관·개인정보처리방침에도 같은 주소가 있어 그쪽은 따로 고쳐야 한다.',
-  },
-  { name: 'email', label: '이메일', max: 120 },
-  { name: 'tel', label: '대표전화', max: 40, hint: '고객센터 화면의 번호는 아직 따로 관리된다.' },
-  { name: 'hours', label: '운영시간', max: 80, hint: '예: 월-토 10:00 ~ 19:00' },
-  { name: 'holiday', label: '휴무', max: 80, hint: '비우면 그 줄을 그리지 않는다.' },
-  {
-    name: 'tagline',
-    label: '한 줄 문구',
-    max: 200,
-    hint: '로고 아래 작은 글씨. 비우면 그 줄을 그리지 않는다.',
-  },
-];
+const FIELD_META: Record<keyof FooterInfo, { label: string; max: number }> = {
+  companyName: { label: '상호', max: 80 },
+  ceo: { label: '대표자', max: 40 },
+  bizNo: { label: '사업자등록번호', max: 40 },
+  mailOrderNo: { label: '통신판매업신고번호', max: 60 },
+  address: { label: '사업장 소재지', max: 200 },
+  email: { label: '이메일', max: 120 },
+  tagline: { label: '한 줄 문구', max: 200 },
+  tel: { label: '대표전화', max: 40 },
+  hours: { label: '운영시간', max: 80 },
+  holiday: { label: '휴무', max: 80 },
+};
 
 /**
- * 푸터 글자 편집.
+ * 푸터 편집.
  *
- * <h2>왜 배너와 같은 화면인가</h2>
- * 둘 다 <b>손님 화면에 그대로 나가는 겉모습</b>이고, 배너를 바꾸러 들어온 사람이
- * 그 아래 푸터까지 함께 확인하게 된다. 미리보기가 메인 한 화면을 통째로 띄우니
- * 배너와 푸터가 같은 그림 안에 있다 — 고치는 자리도 같은 화면에 둔다.
+ * <h2>진짜 푸터를 띄워 놓고 그 글자를 고친다</h2>
+ * 입력칸을 늘어놓은 폼은 <b>고칠 때 보는 모양</b>과 <b>손님이 보는 모양</b>이 다르다.
+ * 주소를 한 줄 늘렸을 때 줄이 어떻게 접히는지, 운영시간을 길게 적으면 오른쪽 칸이
+ * 어떻게 밀리는지는 푸터 안에서만 보인다. 그래서 손님 화면과 <b>같은 컴포넌트</b>를
+ * 그대로 그리고({@link SiteFooter}) 글자 자리만 편집기로 바꿔 끼운다.
  *
- * <h2>비우면 기본값으로 돌아간다</h2>
- * 상호·주소처럼 법으로 표시해야 하는 칸은 빈칸으로 둘 수 없다. 지우고 저장하면
- * 코드에 적힌 기본값이 다시 나간다 — 푸터가 통째로 비는 것보다 낫다. 비워 두는 것이
- * 정답인 칸(통신판매업신고번호·휴무·한 줄 문구)은 기본값이 비어 있어 그대로 지워진다.
+ * <h2>비워 두면 어떻게 되는가</h2>
+ * 상호·주소처럼 법으로 표시해야 하는 칸은 지우고 저장하면 기본값이 다시 나간다 —
+ * 푸터가 통째로 비는 것보다 낫다. 비워 두는 것이 정답인 칸(통신판매업신고번호·휴무·
+ * 한 줄 문구)은 기본값이 비어 있어 그대로 지워지고, 손님 화면에서는 그 줄이 사라진다.
+ * 고치는 동안에는 그 줄도 보인다 — 안 그리면 다시 적을 자리가 없다.
  */
-export function FooterPanel() {
+export function FooterPanel({
+  draft,
+  onDraftChange,
+}: {
+  /**
+   * 고치는 중인 값. 손대기 전에는 null 이고, 그때는 서버가 준 것을 그대로 쓴다.
+   *
+   * <p>이 상태를 패널이 아니라 <b>화면이</b> 들고 있는 이유는 미리보기다. 「미리보기」는
+   * 저장하지 않은 배너와 함께 저장하지 않은 푸터도 보여 줘야 하고, 그 창은 이 패널의
+   * 형제다 — 패널 안에 갇힌 값은 거기까지 가지 못한다.
+   */
+  draft: FooterInfo | null;
+  onDraftChange: (draft: FooterInfo | null) => void;
+}) {
   const { can } = useAdminSession();
   const canEdit = can('MANAGER');
 
   const { data, isLoading, error } = useFooterInfo();
   const save = useSaveFooter();
 
-  /** 손대기 전에는 null 이고, 그때는 서버가 준 것을 그대로 쓴다. */
-  const [draft, setDraft] = useState<FooterInfo | null>(null);
   const [saved, setSaved] = useState(false);
 
   const info = draft ?? data ?? null;
   const changed = draft != null;
-
-  const edit = (name: keyof FooterInfo, value: string) => {
-    if (!info) return;
-    setDraft({ ...info, [name]: value });
-    setSaved(false);
-  };
 
   const submit = () => {
     if (!info) return;
     setSaved(false);
     save.mutate(info, {
       onSuccess: () => {
-        setDraft(null);
+        onDraftChange(null);
         setSaved(true);
       },
     });
@@ -102,7 +89,7 @@ export function FooterPanel() {
   return (
     <Panel
       title="푸터"
-      note="모든 화면 맨 아래에 나가는 회사 정보다. 저장하면 바로 반영된다."
+      note="모든 화면 맨 아래에 나가는 그 푸터다. 글자를 눌러서 바로 고친다."
       actions={
         canEdit && (
           <Button variant="gold" onClick={submit} disabled={!changed || save.isPending}>
@@ -130,24 +117,33 @@ export function FooterPanel() {
       {isLoading || !info ? (
         <p className={styles.hint}>불러오는 중…</p>
       ) : (
-        <div className={styles.footerFields}>
-          {FOOTER_FIELDS.map((field) => (
-            <Field
-              key={field.name}
-              label={field.label}
-              htmlFor={`footer-${field.name}`}
-              hint={field.hint}
-            >
-              <TextInput
-                id={`footer-${field.name}`}
-                value={info[field.name]}
-                maxLength={field.max}
-                disabled={!canEdit}
-                onChange={(e) => edit(field.name, e.target.value)}
-              />
-            </Field>
-          ))}
-        </div>
+        <>
+          <p className={styles.hint}>
+            글자를 눌러서 바로 고칩니다. 비우면 기본값으로 돌아가고, 통신판매업신고번호 ·
+            휴무 · 한 줄 문구는 비우면 손님 화면에서 그 줄이 사라집니다.
+          </p>
+
+          <div className={styles.footerCanvas}>
+            <SiteFooter
+              info={info}
+              renderText={
+                canEdit
+                  ? (name, value) => (
+                      <EditableText
+                        value={value}
+                        label={FIELD_META[name].label}
+                        maxLength={FIELD_META[name].max}
+                        onChange={(next) => {
+                          onDraftChange({ ...info, [name]: next });
+                          setSaved(false);
+                        }}
+                      />
+                    )
+                  : undefined
+              }
+            />
+          </div>
+        </>
       )}
     </Panel>
   );

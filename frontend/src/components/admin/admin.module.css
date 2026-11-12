@@ -1592,6 +1592,8 @@ a.hint:hover {
   margin: 0 auto;
   border: 0;
   background: #fff;
+  /* 창을 아주 낮춰도 배너 한 장은 보이게. 이 아래로는 자리가 스크롤된다. */
+  min-height: 420px;
 }
 
 /* 홈페이지용·휴대폰용 업로더 두 칸. 위아래로 세운다 — 나란히 두면 좁은 쪽이
@@ -1601,10 +1603,55 @@ a.hint:hover {
   gap: 18px;
 }
 
-/* 푸터 글자 칸들. 짧은 칸(대표자·전화)이 한 줄을 다 쓰면 열 칸을 보려고 한참
-   굴려야 한다. 주소처럼 긴 값도 240px 아래로는 읽히지 않아 그 밑으로는 한 줄씩 쌓는다. */
-.footerFields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px 18px;
+/* =====================================================================
+   푸터를 그 모양 그대로 띄워 놓고 글자를 고친다
+
+   입력칸을 늘어놓은 폼은 「고칠 때 보는 모양」과 「손님이 보는 모양」이 다르다.
+   주소를 한 줄 늘렸을 때 줄이 어떻게 접히는지는 푸터 안에서만 보인다.
+   ===================================================================== */
+
+/* 손님 화면 한 조각을 올려 두는 자리. 관리자 화면의 흰 바탕과 구분되게 테두리만
+   두르고, 안쪽은 쇼핑몰 CSS 에 그대로 맡긴다. */
+.footerCanvas {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  /* 관리자 화면의 글자색·줄간격이 섞여 들어가지 않게 기본값으로 되돌린다 */
+  color: var(--dark);
+  font-size: var(--text-base);
+}
+
+/* 고칠 수 있는 글자.
+   평소에는 손님 화면과 똑같이 보이고, 마우스를 올리거나 눌렀을 때만 자리가 드러난다 —
+   편집기 테두리가 늘 보이면 그 모양이 손님이 보는 모양이 아니게 된다. */
+.editable {
+  display: inline-block;
+  min-width: 2em;
+  border-radius: 3px;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  cursor: text;
+  transition: outline-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+
+.editable:hover {
+  outline-color: currentColor;
+}
+
+.editable:focus {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 빈 칸은 눌러야 할 곳인지 보이지 않는다. 칸 이름을 흐리게 띄워 둔다 —
+   글자가 아니라 ::after 라서 복사되거나 저장되지 않는다. */
+.editableEmpty::after {
+  content: attr(data-label);
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.editableEmpty {
+  outline-color: currentColor;
 }

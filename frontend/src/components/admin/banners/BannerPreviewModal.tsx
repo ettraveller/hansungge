@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import type { FooterInfo } from '@/api/footer';
 import { Modal } from '../Modal';
 import styles from '../admin.module.css';
 
@@ -40,6 +41,7 @@ export function BannerPreviewModal({
   onClose,
   imageKeys,
   mobileImageKeys,
+  footer,
 }: {
   open: boolean;
   onClose: () => void;
@@ -47,6 +49,13 @@ export function BannerPreviewModal({
   imageKeys: string[];
   /** 같은 자리의 휴대폰용 키. 없는 자리는 빈 문자열 */
   mobileImageKeys: string[];
+  /**
+   * 고치는 중인 푸터. 손대지 않았으면 null 이고, 그때는 미리보기가 저장된 값을 쓴다.
+   *
+   * <p>배너와 같은 이유로 넘긴다 — 저장한 뒤에만 볼 수 있으면 "일단 저장하고 확인하고
+   * 되돌리는" 절차가 되고, 그 사이 확인되지 않은 주소가 손님 화면에 걸린다.
+   */
+  footer?: FooterInfo | null;
 }) {
   const [device, setDevice] = useState<DeviceKey>('pc');
   const current = DEVICES.find((d) => d.key === device) ?? DEVICES[0];
@@ -58,6 +67,10 @@ export function BannerPreviewModal({
     w: imageKeys.join(','),
     m: mobileImageKeys.join(','),
   });
+  // 손대지 않았으면 아무것도 붙이지 않는다 — 미리보기가 저장된 푸터를 그대로 쓴다.
+  if (footer) {
+    for (const [name, value] of Object.entries(footer)) query.set(name, value);
+  }
   const src = `${basePath}/banner-preview?${query.toString()}`;
 
   return (
@@ -68,8 +81,8 @@ export function BannerPreviewModal({
       onClose={onClose}
       footer={
         <p className={styles.hint}>
-          손님이 보는 <strong>메인 화면 그대로</strong>이고, 배너만 지금 올려 둔 사진으로
-          바꿔 그린다 — 저장하지 않은 것까지 보인다. 아래로 밀면 메인 끝까지 볼 수 있다.
+          손님이 보는 <strong>메인 화면 그대로</strong>이고, 배너와 푸터만 지금 화면에 있는
+          것으로 바꿔 그린다 — 저장하지 않은 것까지 보인다. 아래로 밀면 푸터까지 볼 수 있다.
           <br />
           <strong>휴대폰</strong>으로 바꿔 보면 좌우가 얼마나 잘리는지 확인할 수 있다.
           휴대폰용을 올리지 않은 배너는 가로용 한 장을 잘라서 쓴다.
@@ -102,7 +115,18 @@ export function BannerPreviewModal({
             src={src}
             title="메인 배너 미리보기"
             className={styles.previewIframe}
-            style={{ width: current.width, height: '100%' }}
+            /*
+             * 높이를 창에서 직접 계산한다.
+             *
+             * height:100% 는 여기서 듣지 않았다 — 부모(미리보기 자리)의 높이가 플렉스가
+             * 정한 값이라 <b>확정 높이가 아니어서</b>, 백분율이 auto 로 떨어지고 iframe 의
+             * 기본 높이 150px 만 남았다. 모달은 화면만큼 큰데 안에 보이는 것은 머리띠
+             * 한 줄뿐인 그림이 그래서 나왔다 (2026-11-12).
+             *
+             * 240px 은 창 위아래로 빠지는 것의 합이다 — 제목줄·기기 단추·안쪽 여백·
+             * 아래 설명.
+             */
+            style={{ width: current.width, height: 'calc(100vh - 240px)' }}
           />
         )}
       </div>

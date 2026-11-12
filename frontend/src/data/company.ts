@@ -8,16 +8,33 @@
  *
  * <p>지점 연락처는 {@code data/branches.ts} 가 원천이고, 회사 대표 연락처는 여기다.
  * 둘은 다른 것이다 — 지점이 늘거나 이전해도 대표번호는 그대로다.
+ *
+ * <p>2026-11-12: 대표 연락처의 원천이 <b>관리자 설정값</b>으로 옮겼다
+ * ({@code GET /api/v1/footer}). 번호와 운영시간은 가게 사정으로 바뀌는 값이라
+ * 바꿀 때 배포가 필요하면 안 된다. 이 파일에 남은 것은 그 조회가 실패했을 때 쓰는
+ * 기본값과, 값을 받아 모양을 만드는 함수들이다 — 번호를 쓰는 화면은 <b>상수가 아니라
+ * 서버가 준 값</b>을 쓴다.
  */
 
-/** 대표전화. 푸터·고객센터·입금 안내가 모두 이 값을 쓴다. */
-export const SUPPORT_TEL = '02-743-4176';
+/**
+ * {@code tel:} 링크. 숫자만 남긴다.
+ *
+ * <p>번호가 관리자 설정값이 되었으므로 상수가 아니라 함수다 — 상수로 두면 그 값은
+ * 빌드 시점에 굳어서, 관리자가 번호를 바꿔도 「전화 걸기」 버튼만 옛 번호로 건다.
+ */
+export function telHref(tel: string): string {
+  return `tel:${tel.replace(/[^0-9]/g, '')}`;
+}
 
-/** 대표전화를 받는 시간. 지점 영업시간과 다를 수 있다. */
-export const SUPPORT_HOURS = '월–토 10:00 – 19:00 (일·공휴일 휴무)';
-
-/** {@code tel:} 링크용. 숫자만 남긴다. */
-export const SUPPORT_TEL_HREF = `tel:${SUPPORT_TEL.replace(/[^0-9]/g, '')}`;
+/**
+ * 운영시간을 한 줄로.
+ *
+ * <p>푸터는 두 줄로 쌓고(디자인), 고객센터는 한 줄로 쓴다. 같은 두 값에서 만들어야
+ * 한쪽만 바뀌는 일이 없다.
+ */
+export function hoursLine(hours: string, holiday: string): string {
+  return holiday ? `${hours} (${holiday})` : hours;
+}
 
 /**
  * 푸터 글자의 기본값.
@@ -40,7 +57,7 @@ export const FOOTER_DEFAULTS = {
   address: '서울특별시 종로구 돈화문로6나길 45, 3층 302호 (봉익동, 보석백화점)',
   email: 'hanseongge@gmail.com',
   tagline: '정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.',
-  tel: SUPPORT_TEL,
+  tel: '02-743-4176',
   hours: '월-토 10:00 ~ 19:00',
   holiday: '일요일·공휴일 휴무',
 } as const;

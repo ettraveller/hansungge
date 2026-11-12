@@ -25,6 +25,14 @@ export interface HomeData {
   groups: CategoryProducts[];
   notices: Loaded<PageResponse<NoticeSummary>>;
   banners: HeroBanner[];
+  /**
+   * GNB 를 만드는 카테고리.
+   *
+   * <p>메인은 쓰지 않는다 — 머리띠를 레이아웃이 그리기 때문이다. 배너 미리보기는
+   * 레이아웃 밖에서 머리띠를 직접 그리므로 이 값이 필요하다. 상품 묶음을 만들 때
+   * 이미 받아 둔 것이라 요청이 늘지 않는다.
+   */
+  categories: Category[];
 }
 
 /**
@@ -52,6 +60,7 @@ export async function loadHomeData(): Promise<HomeData> {
     notices,
     groups: await loadProductGroups(categories.data),
     banners: banners.data ?? [],
+    categories: categories.data ?? [],
   };
 }
 

@@ -1,17 +1,12 @@
-import Image from 'next/image';
-import Link from 'next/link';
 import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
-import { HeaderAuth } from '@/layouts/HeaderAuth';
-import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
-import { CartIcon, SearchIcon } from '@/layouts/icons';
-import { MobileDrawer } from '@/layouts/MobileDrawer';
+import { footerApi } from '@/api/footer';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
-import { StickyHeader } from '@/layouts/StickyHeader';
+import { SiteFooter } from '@/layouts/SiteFooter';
+import { SiteHeader } from '@/layouts/SiteHeader';
 import { buildNav } from '@/layouts/navigation';
 import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
-import { footerApi } from '@/api/footer';
 import { FOOTER_DEFAULTS } from '@/data/company';
 import styles from './ShopLayout.module.css';
 
@@ -31,11 +26,12 @@ import styles from './ShopLayout.module.css';
  * 먼저 보여야 할 것은 시세지 메뉴가 아니다. 유틸바에 있던 로그인·장바구니는 헤더
  * 오른쪽으로, 주문조회·고객센터는 마이페이지와 푸터로 옮겼다.
  *
- * <h2>드롭다운을 JS 없이 만든 이유</h2>
- * {@code :hover} 와 {@code :focus-within} 으로만 연다. 클라이언트 컴포넌트로 만들면
- * 하위 메뉴 링크가 <b>초기 HTML 에서 빠져</b> 검색엔진이 카테고리 구조를 읽지 못한다.
- * 이 프로젝트가 Next.js 를 고른 첫 번째 이유가 SEO 다. {@code focus-within} 덕분에
- * 키보드 Tab 이동으로도 열린다.
+ * <h2>머리띠·푸터는 컴포넌트다</h2>
+ * 그리는 일은 {@link SiteHeader}·{@link SiteFooter} 가 하고 여기는 <b>데이터를
+ * 불러와 넘기는 일</b>만 한다. 배너 미리보기가 손님 화면 그대로를 띄워야 하는데,
+ * 레이아웃은 쿼리를 읽지 못해 저장하지 않은 배너·푸터를 받을 길이 없다. 그래서
+ * 미리보기는 레이아웃 밖에서 같은 두 컴포넌트를 직접 쓴다 — 비슷하게 다시 그리는
+ * 길을 두면 쇼핑몰 쪽이 바뀔 때 미리보기만 낡는다.
  *
  * <h2>메뉴가 서버 데이터인 이유</h2>
  * 카테고리를 코드에 박아두면 관리자가 카테고리를 추가할 때마다 배포해야 한다.
@@ -54,70 +50,10 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
     // 실패해도 화면을 멈추지 않는다 — 코드의 기본값으로 푸터를 그린다.
     load(() => footerApi.get(), '푸터 정보'),
   ]);
-  const nav = buildNav(categories.data);
-  const info = footer.data ?? FOOTER_DEFAULTS;
 
   return (
     <>
-      {/* ---------- 헤더 ---------- */}
-      {/* 내려가면 메뉴 줄이 접힌다. 안쪽은 그대로 서버에서 그려진다 —
-          StickyHeader 는 껍데기만 클라이언트다 */}
-      <StickyHeader className={styles.header} compactClass={styles.compact}>
-        <div className={`wrap ${styles.headerMain}`}>
-          {/* 햄버거는 모바일에서만 보인다. 로고 왼쪽이 엄지가 닿는 자리다 */}
-          <MobileDrawer nav={nav} />
-
-          {/* 헤더가 남색 판이 되었다 (2026-10-01). 밝은 글자 쪽(logo-dark.svg)을 쓴다.
-              logo.svg 는 글자가 남색이라 여기 두면 바탕에 묻힌다. */}
-          <Link href="/" className={styles.logo} aria-label="한성금거래소 홈">
-            <Image src="/logo-dark.svg" alt="한성금거래소" width={560} height={104} priority />
-          </Link>
-
-          <form className={styles.search} action="/shop" role="search">
-            <SearchIcon size={17} className={styles.searchIcon} />
-            <input type="text" name="keyword" placeholder="찾으시는 상품을 검색해 보세요" />
-            <button type="submit">검색</button>
-          </form>
-
-          <div className={styles.headerUtil}>
-            {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
-            <HeaderAuth />
-            <Link href="/cart" className={styles.cartLink}>
-              <CartIcon size={18} />
-              <span className={styles.cartText}>장바구니</span>
-              <HeaderCartBadge />
-            </Link>
-          </div>
-        </div>
-
-        {/* ---------- GNB (CSS 드롭다운) ---------- */}
-        <nav className={styles.gnbNav} aria-label="주 메뉴">
-          <ul className={`wrap ${styles.gnb}`}>
-            {nav.map((item) => (
-              <li key={item.href} className={styles.gnbItem}>
-                <Link href={item.href} className={styles.gnbLink}>
-                  {item.label}
-                  {item.children.length > 0 && (
-                    <span className={styles.caret} aria-hidden="true" />
-                  )}
-                </Link>
-
-                {item.children.length > 0 && (
-                  <div className={styles.dropdown}>
-                    <ul>
-                      {item.children.map((child) => (
-                        <li key={child.href}>
-                          <Link href={child.href}>{child.label}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </StickyHeader>
+      <SiteHeader nav={buildNav(categories.data)} />
 
       <main id="main" className={styles.main}>
         {children}
@@ -127,64 +63,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
 
       <MobileTabBar />
 
-      {/* ---------- 푸터 ---------- */}
-      <footer className={styles.footer}>
-        <div className={styles.footTop}>
-          <div className="wrap">
-            <Link href="/about">회사소개</Link>
-            <Link href="/terms">이용약관</Link>
-            <Link href="/privacy">개인정보처리방침</Link>
-            <Link href="/guide">이용안내</Link>
-            <Link href="/refund">교환·반품·환불</Link>
-            <Link href="/store">지점안내</Link>
-          </div>
-        </div>
-
-        <div className={styles.footMain}>
-          <div className="wrap">
-            <div className={styles.footInfo}>
-              {/* 푸터는 검정 바탕이다. 여기가 logo-dark(밝은 글자)를 쓸 자리다 */}
-              <Image
-                src="/logo-dark.svg"
-                alt="한성금거래소"
-                width={560}
-                height={104}
-                className={styles.footLogo}
-              />
-              {/* 글자는 관리자 › 메인 배너 & 푸터에서 고친다. 기본값은 data/company.ts.
-
-                  상호는 법인명(주식회사 금한성)이다. 로고의 「한성금거래소」는 브랜드명이라
-                  법적 표시가 되지 않는다 — 전자상거래법상 표시해야 하는 것은 상호다.
-
-                  ⚠️ 사업장 소재지는 개인정보처리방침 §13 · 이용약관과 한 쌍이다. 이 칸만
-                  고치면 같은 회사 주소가 화면마다 달라진다. */}
-              <p>
-                상호 : {info.companyName} &nbsp;|&nbsp; 대표자 : {info.ceo}
-              </p>
-              <p>사업자등록번호 : {info.bizNo}</p>
-              {/* 통신판매업신고번호는 아직 받지 못했다 (TODO A-12). 비어 있으면 줄 자체를
-                  그리지 않는다 — 고객이 읽는 자리에 틀린 신고번호를 두는 것이 비워 두는
-                  것보다 나쁘다. 받는 날 관리자 화면에 적으면 되고, 배포가 필요 없다. */}
-              {info.mailOrderNo && <p>통신판매업신고번호 : {info.mailOrderNo}</p>}
-              <p>본사 : {info.address}</p>
-              <p>이메일 : {info.email}</p>
-              {info.tagline && <p className={styles.footNote}>{info.tagline}</p>}
-            </div>
-
-            <div className={styles.footCs}>
-              <p className={styles.csLabel}>대표전화</p>
-              <p>{info.tel}</p>
-              <p className={styles.csLabel}>운영시간</p>
-              <p>{info.hours}</p>
-              {info.holiday && <p>{info.holiday}</p>}
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.copyright}>
-          COPYRIGHT © HANSEONG GOLD EXCHANGE. ALL RIGHTS RESERVED.
-        </div>
-      </footer>
+      <SiteFooter info={footer.data ?? FOOTER_DEFAULTS} />
     </>
   );
 }

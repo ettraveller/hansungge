@@ -9,6 +9,7 @@ import { ImageUploader } from '@/components/admin/ImageUploader';
 import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
 import { FooterPanel } from '@/components/admin/banners/FooterPanel';
+import type { FooterInfo } from '@/api/footer';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
@@ -72,6 +73,14 @@ export function AdminBannersView() {
   const [draft, setDraft] = useState<Row[] | null>(null);
   const [saved, setSaved] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+
+  /**
+   * 고치는 중인 푸터.
+   *
+   * <p>푸터 패널이 아니라 여기가 들고 있다 — 「미리보기」가 저장하지 않은 푸터까지
+   * 보여 줘야 하고, 그 창은 패널의 형제다. 패널 안에 갇힌 값은 거기까지 가지 못한다.
+   */
+  const [footerDraft, setFooterDraft] = useState<FooterInfo | null>(null);
 
   const rows: Row[] =
     draft ??
@@ -250,6 +259,7 @@ export function AdminBannersView() {
         onClose={() => setPreviewing(false)}
         imageKeys={rows.map((r) => r.imageKey)}
         mobileImageKeys={rows.map((_, index) => mobileKeys[index] ?? '')}
+        footer={footerDraft}
       />
 
       {rows.length > 0 && (
@@ -299,7 +309,7 @@ export function AdminBannersView() {
 
       {/* 배너와 같은 화면에 둔다 — 둘 다 손님 화면에 그대로 나가는 겉모습이고,
           미리보기가 메인 한 화면을 통째로 띄우니 같은 그림 안에 있다. */}
-      <FooterPanel />
+      <FooterPanel draft={footerDraft} onDraftChange={setFooterDraft} />
     </div>
   );
 }
