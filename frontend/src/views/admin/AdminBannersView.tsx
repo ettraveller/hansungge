@@ -10,6 +10,7 @@ import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
 import { FooterPanel } from '@/components/admin/banners/FooterPanel';
 import type { FooterInfo } from '@/api/footer';
+import { HeroSlider } from '@/components/home/HeroSlider';
 import { HERO_SLIDES } from '@/views/home-content';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
@@ -214,18 +215,16 @@ export function AdminBannersView() {
             사진 한 장이 아니라 글자와 버튼이 붙은 슬라이드라 이 칸에 올려 둘 수 없다 —
             사진을 한 장이라도 올리면 그 자리를 통째로 넘겨받는다. */}
         {!isLoading && rows.length === 0 && (
-          <Alert tone="info" title="지금은 기본 배너가 나가고 있습니다">
-            아직 올린 사진이 없어서, 메인에는 코드에 들어 있는 기본 배너 {HERO_SLIDES.length}
-            장이 돌아갑니다.
-            <ul className={styles.bannerSizes}>
-              {HERO_SLIDES.map((slide) => (
-                <li key={slide.title}>
-                  {slide.title} {slide.highlight} — 「{slide.cta}」 → {slide.href}
-                </li>
-              ))}
-            </ul>
-            사진을 한 장이라도 올려 저장하면 기본 배너는 사라지고 <strong>올린 것만</strong>{' '}
-            나갑니다. 기본 배너는 글자와 버튼이 붙은 슬라이드라 이 칸에 올려 둘 수 없습니다.
+          <Alert tone="info" title="지금 메인에 나가고 있는 배너">
+            아직 올린 사진이 없어서 코드에 들어 있는 기본 배너가 돌아갑니다. 사진을 한
+            장이라도 올려 저장하면 이 자리를 넘겨받습니다.
+            {/* 글로 적어 두면 그 글이 낡는다 — 기본 배너가 바뀌어도 설명은 그대로 남는다.
+                손님 화면과 같은 컴포넌트를 그대로 그려 줄여 보여준다. 늘 지금 것이다. */}
+            <div className={styles.heroThumb}>
+              <div className={styles.heroThumbInner}>
+                <HeroSlider slides={HERO_SLIDES} />
+              </div>
+            </div>
           </Alert>
         )}
 
