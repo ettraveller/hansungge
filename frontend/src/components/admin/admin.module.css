@@ -1600,3 +1600,11 @@ a.hint:hover {
   display: grid;
   gap: 18px;
 }
+
+/* 푸터 글자 칸들. 짧은 칸(대표자·전화)이 한 줄을 다 쓰면 열 칸을 보려고 한참
+   굴려야 한다. 주소처럼 긴 값도 240px 아래로는 읽히지 않아 그 밑으로는 한 줄씩 쌓는다. */
+.footerFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px 18px;
+}

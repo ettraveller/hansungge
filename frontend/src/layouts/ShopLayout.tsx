@@ -11,7 +11,8 @@ import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { StickyHeader } from '@/layouts/StickyHeader';
 import { buildNav } from '@/layouts/navigation';
 import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
-import { SUPPORT_TEL } from '@/data/company';
+import { footerApi } from '@/api/footer';
+import { FOOTER_DEFAULTS } from '@/data/company';
 import styles from './ShopLayout.module.css';
 
 /**
@@ -47,11 +48,14 @@ import styles from './ShopLayout.module.css';
  * 그리는 사이에 고시가 끼어도 놓치지 않게 한다.
  */
 export async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [categories, priceVersion] = await Promise.all([
+  const [categories, priceVersion, footer] = await Promise.all([
     load(() => productApi.categories(), 'GNB 카테고리'),
     load(() => priceApi.version(), '시세 버전'),
+    // 실패해도 화면을 멈추지 않는다 — 코드의 기본값으로 푸터를 그린다.
+    load(() => footerApi.get(), '푸터 정보'),
   ]);
   const nav = buildNav(categories.data);
+  const info = footer.data ?? FOOTER_DEFAULTS;
 
   return (
     <>
@@ -147,31 +151,32 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
                 height={104}
                 className={styles.footLogo}
               />
-              {/* 통신판매업신고번호는 아직 받지 못했다 (TODO A-12). 예시값
-                  「제0000-서울중구-0000호」가 박혀 있었는데, 주소는 종로구인데 중구로
-                  적혀 있어 눈에 띄게 틀린 값이었다. 받기 전까지는 줄 자체를 뺀다 —
-                  고객이 읽는 자리에 틀린 신고번호를 두는 것이 비워 두는 것보다 나쁘다. */}
-              {/* 상호는 법인명(주식회사 금한성)이다. 로고의 「한성금거래소」는 브랜드명이라
+              {/* 글자는 관리자 › 메인 배너 & 푸터에서 고친다. 기본값은 data/company.ts.
+
+                  상호는 법인명(주식회사 금한성)이다. 로고의 「한성금거래소」는 브랜드명이라
                   법적 표시가 되지 않는다 — 전자상거래법상 표시해야 하는 것은 상호다.
-                  개인정보처리방침·이용안내는 진작 이 이름을 쓰고 있었고 푸터만 빠져 있었다. */}
-              <p>상호 : 주식회사 금한성 &nbsp;|&nbsp; 대표자 : 강성구</p>
-              <p>사업자등록번호 : 702-86-03859</p>
-              {/* 사업자등록증에 적힌 사업장 소재지다. 전자상거래법 §13 이 표시하라는
-                  것이 그 값이고, 개인정보처리방침 §13 · 이용약관의 「사업장 소재지」와
-                  <b>한 쌍</b>이다 — 한쪽만 고치면 같은 회사 주소가 화면마다 달라진다. */}
-              <p>본사 : 서울특별시 종로구 돈화문로6나길 45, 3층 302호 (봉익동, 보석백화점)</p>
-              <p>이메일 : hanseongge@gmail.com</p>
-              <p className={styles.footNote}>
-                정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.
+
+                  ⚠️ 사업장 소재지는 개인정보처리방침 §13 · 이용약관과 한 쌍이다. 이 칸만
+                  고치면 같은 회사 주소가 화면마다 달라진다. */}
+              <p>
+                상호 : {info.companyName} &nbsp;|&nbsp; 대표자 : {info.ceo}
               </p>
+              <p>사업자등록번호 : {info.bizNo}</p>
+              {/* 통신판매업신고번호는 아직 받지 못했다 (TODO A-12). 비어 있으면 줄 자체를
+                  그리지 않는다 — 고객이 읽는 자리에 틀린 신고번호를 두는 것이 비워 두는
+                  것보다 나쁘다. 받는 날 관리자 화면에 적으면 되고, 배포가 필요 없다. */}
+              {info.mailOrderNo && <p>통신판매업신고번호 : {info.mailOrderNo}</p>}
+              <p>본사 : {info.address}</p>
+              <p>이메일 : {info.email}</p>
+              {info.tagline && <p className={styles.footNote}>{info.tagline}</p>}
             </div>
 
             <div className={styles.footCs}>
               <p className={styles.csLabel}>대표전화</p>
-              <p>{SUPPORT_TEL}</p>
+              <p>{info.tel}</p>
               <p className={styles.csLabel}>운영시간</p>
-              <p>월-토 10:00 ~ 19:00</p>
-              <p>일요일·공휴일 휴무</p>
+              <p>{info.hours}</p>
+              {info.holiday && <p>{info.holiday}</p>}
             </div>
           </div>
         </div>

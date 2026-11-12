@@ -18,3 +18,29 @@ export const SUPPORT_HOURS = '월–토 10:00 – 19:00 (일·공휴일 휴무)'
 
 /** {@code tel:} 링크용. 숫자만 남긴다. */
 export const SUPPORT_TEL_HREF = `tel:${SUPPORT_TEL.replace(/[^0-9]/g, '')}`;
+
+/**
+ * 푸터 글자의 기본값.
+ *
+ * <p>실제로 나가는 값은 관리자가 고칠 수 있고 서버가 준다({@code GET /api/v1/footer}).
+ * 여기 값은 <b>그 조회가 실패했을 때</b> 쓰인다 — 백엔드가 내려가도 푸터가 통째로
+ * 비지 않게 한다. 법정 표시(상호·사업자등록번호·사업장 소재지)가 들어가는 자리라
+ * 빈칸보다 조금 낡은 값이 낫다.
+ *
+ * <p>서버 쪽 기본값은 {@code FooterField} 에 같은 값으로 들어 있다. 평소에는 서버
+ * 값이 나가므로 둘이 어긋나도 화면은 멀쩡하지만, 바꿀 때는 같이 바꾼다.
+ */
+export const FOOTER_DEFAULTS = {
+  companyName: '주식회사 금한성',
+  ceo: '강성구',
+  bizNo: '702-86-03859',
+  // 아직 받지 못했다. 비어 있으면 화면이 그 줄을 그리지 않는다 —
+  // 고객이 읽는 자리에 틀린 신고번호를 두는 것이 비워 두는 것보다 나쁘다.
+  mailOrderNo: '',
+  address: '서울특별시 종로구 돈화문로6나길 45, 3층 302호 (봉익동, 보석백화점)',
+  email: 'hanseongge@gmail.com',
+  tagline: '정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.',
+  tel: SUPPORT_TEL,
+  hours: '월-토 10:00 ~ 19:00',
+  holiday: '일요일·공휴일 휴무',
+} as const;

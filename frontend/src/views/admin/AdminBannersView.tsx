@@ -8,6 +8,7 @@ import { Field, TextInput } from '@/components/admin/Field';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
+import { FooterPanel } from '@/components/admin/banners/FooterPanel';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
@@ -135,9 +136,10 @@ export function AdminBannersView() {
     <div className={styles.page}>
       <header className={styles.head}>
         <div>
-          <h1 className={styles.title}>메인 배너</h1>
+          <h1 className={styles.title}>메인 배너 &amp; 푸터</h1>
           <p className={styles.subtitle}>
-            메인 화면 맨 위에서 돌아가는 배너다. 넣은 장수만큼 슬라이드가 생긴다.
+            손님 화면의 맨 위(배너)와 맨 아래(푸터)다. 「미리보기」로 메인 한 화면을
+            그대로 띄워 두 곳을 함께 확인할 수 있다.
           </p>
         </div>
       </header>
@@ -294,6 +296,10 @@ export function AdminBannersView() {
           </ul>
         </Panel>
       )}
+
+      {/* 배너와 같은 화면에 둔다 — 둘 다 손님 화면에 그대로 나가는 겉모습이고,
+          미리보기가 메인 한 화면을 통째로 띄우니 같은 그림 안에 있다. */}
+      <FooterPanel />
     </div>
   );
 }
