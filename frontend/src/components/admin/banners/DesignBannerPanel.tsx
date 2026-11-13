@@ -3,11 +3,13 @@
 import { useState } from 'react';
 
 
+import { uploadMedia } from '@/api/admin/media';
 import type { BannerBlock, BannerContent, BannerTextStyle } from '@/api/banners';
 import { HeroSlider } from '@/components/home/HeroSlider';
+import { ApiError } from '@/types/api';
 import { Button } from '../Button';
 import { Field } from '../Field';
-import { SelectInput } from '../Field';
+import { SelectInput, TextInput } from '../Field';
 import { ImageUploader } from '../ImageUploader';
 import { LinkTargetPicker } from '../LinkTargetPicker';
 import { Panel } from '../Panel';
@@ -52,6 +54,15 @@ const ALIGNS = [
  * <p>「두껍게」단추가 눌린 상태를 여기서 가져온다. 이것 없이 {@code bold ?? false} 로
  * 두면 제목은 두껍게 보이는데 단추는 꺼져 있어서, 한 번 눌러야 비로소 꺼진다.
  */
+/** 고를 수 있는 사진 너비(px). 서버도 20~800 으로 당긴다. */
+const IMG_SIZES = [60, 80, 100, 120, 160, 200, 240, 300, 360, 440, 520, 640];
+
+const KIND_LABEL: Record<BannerBlock['type'], string> = {
+  TEXT: '글자',
+  BUTTON: '버튼',
+  IMAGE: '사진',
+};
+
 const ROLE_BOLD: Record<BannerTextStyle, boolean> = {
   EYEBROW: false,
   TITLE: true,
@@ -83,6 +94,58 @@ function emptyBanner(): DesignRow {
 }
 
 /** 겹치지 않는 이름. 숨기기가 이 이름으로 블록을 가리킨다. */
+/**
+ * 사진 한 장 올리기.
+ *
+ * <p>고른 그 자리에서 올리고 키만 돌려준다. 끌어다 놓는 큰 칸({@link ImageUploader})을
+ * 띠에 넣지 않는 이유는 배경 사진과 같다 — 띠가 배너만큼 두꺼워진다.
+ */
+function UploadButton({
+  label,
+  disabled,
+  onKey,
+}: {
+  label: string;
+  disabled?: boolean;
+  onKey: (imageKey: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <>
+      <label className={styles.designAddBtn} aria-disabled={disabled || busy}>
+        {busy ? '올리는 중…' : label}
+        <input
+          type="file"
+          accept="image/*"
+          hidden
+          disabled={disabled || busy}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            // 같은 파일을 다시 골라도 바뀐 것으로 보이게 비운다. 올리기가 실패한
+            // 뒤 같은 파일을 다시 고르는 일이 가장 흔하다.
+            e.target.value = '';
+            if (!file) return;
+
+            setBusy(true);
+            setError(null);
+            try {
+              const [media] = await uploadMedia([file], 'banners');
+              onKey(media.objectKey);
+            } catch (err) {
+              setError(err instanceof ApiError ? err.message : '사진을 올리지 못했습니다.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      </label>
+      {error && <span className={styles.error}>{error}</span>}
+    </>
+  );
+}
+
 function nextId(blocks: BannerBlock[]): string {
   const used = new Set(blocks.map((b) => b.id));
   for (let i = 1; i <= MAX_BLOCKS + 1; i += 1) {
@@ -197,6 +260,17 @@ export function DesignBannerPanel({
         : { id, type, style: 'DESC', text: '새 글자' };
     patchContent({ blocks: [...blocks, block] });
     // 더한 것을 바로 고른 상태로 둔다. 안 그러면 띠가 빈 채라 크기를 바꾸려면 한 번 더 눌러야 한다.
+    setActiveId(id);
+  };
+
+  /** 사진은 올라온 뒤에 생긴다. 키 없는 사진 블록은 저장되지 않기 때문이다. */
+  const addImage = (imageKey: string) => {
+    const blocks = row.content.blocks;
+    if (blocks.length >= MAX_BLOCKS) return;
+    const id = nextId(blocks);
+    patchContent({
+      blocks: [...blocks, { id, type: 'IMAGE', imageKey, text: '배너 사진', size: 240 }],
+    });
     setActiveId(id);
   };
 
@@ -357,50 +431,71 @@ export function DesignBannerPanel({
                 <div className={styles.designBarRow}>
                   {active ? (
                     <>
-                      <span className={styles.designBlockKind}>
-                        {active.type === 'BUTTON' ? '버튼' : '글자'}
-                      </span>
+                      <span className={styles.designBlockKind}>{KIND_LABEL[active.type]}</span>
 
                       <SelectInput
                         value={active.size ?? ''}
-                        aria-label="글자 크기"
+                        aria-label={active.type === 'IMAGE' ? '사진 너비' : '글자 크기'}
                         onChange={(e) =>
                           patchBlock(active.id, {
                             size: e.target.value ? Number(e.target.value) : null,
                           })
                         }
                       >
-                        <option value="">기본 크기</option>
-                        {SIZES.map((s) => (
+                        <option value="">
+                          {active.type === 'IMAGE' ? '원래 너비' : '기본 크기'}
+                        </option>
+                        {(active.type === 'IMAGE' ? IMG_SIZES : SIZES).map((s) => (
                           <option key={s} value={s}>
                             {s}px
                           </option>
                         ))}
                       </SelectInput>
 
-                      <button
-                        type="button"
-                        aria-label="두껍게"
-                        title="두껍게"
-                        aria-pressed={activeBold}
-                        className={activeBold ? styles.designIconBtnOn : styles.designIconBtn}
-                        onClick={() => patchBlock(active.id, { bold: !activeBold })}
-                      >
-                        <b>가</b>
-                      </button>
+                      {/* 사진은 굵기·색이 없다. 대신 대체 텍스트와 교체가 있다 —
+                          대체 텍스트는 눈으로 보지 않는 분에게 읽어 줄 그 사진의 설명이다. */}
+                      {active.type === 'IMAGE' ? (
+                        <>
+                          <TextInput
+                            className={styles.designBarText}
+                            aria-label="사진 설명 (대체 텍스트)"
+                            placeholder="사진 설명 (대체 텍스트)"
+                            maxLength={200}
+                            value={active.text}
+                            onChange={(e) => patchBlock(active.id, { text: e.target.value })}
+                          />
+                          <UploadButton
+                            label="사진 교체"
+                            onKey={(imageKey) => patchBlock(active.id, { imageKey })}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="두껍게"
+                            title="두껍게"
+                            aria-pressed={activeBold}
+                            className={activeBold ? styles.designIconBtnOn : styles.designIconBtn}
+                            onClick={() => patchBlock(active.id, { bold: !activeBold })}
+                          >
+                            <b>가</b>
+                          </button>
 
-                      <ColorPalette
-                        value={active.color}
-                        label="글자색"
-                        clearable
-                        onChange={(color) => patchBlock(active.id, { color })}
-                      />
+                          <ColorPalette
+                            value={active.color}
+                            label="글자색"
+                            clearable
+                            onChange={(color) => patchBlock(active.id, { color })}
+                          />
 
-                      {active.type === 'BUTTON' && (
-                        <LinkTargetPicker
-                          value={active.href ?? ''}
-                          onChange={(href) => patchBlock(active.id, { href })}
-                        />
+                          {active.type === 'BUTTON' && (
+                            <LinkTargetPicker
+                              value={active.href ?? ''}
+                              onChange={(href) => patchBlock(active.id, { href })}
+                            />
+                          )}
+                        </>
                       )}
 
                       {/* 끌어다 둔 자리를 물린다. 이것이 없으면 한 번 끈 글자를
@@ -417,8 +512,8 @@ export function DesignBannerPanel({
                     </>
                   ) : (
                     <span className={styles.designBarHint}>
-                      배너 안의 글자를 누르면 여기에서 크기·굵기·색을 바꿀 수 있습니다.
-                      고른 글자의 ✥ 를 끌어 옮기고, × 로 지웁니다.
+                      배너 안의 글자·버튼·사진을 누르면 여기에서 크기·색을 바꿀 수
+                      있습니다. 고른 것의 ✥ 를 끌어 옮기고, × 로 지웁니다.
                     </span>
                   )}
                 </div>
@@ -445,6 +540,11 @@ export function DesignBannerPanel({
                   >
                     + 버튼
                   </button>
+                  <UploadButton
+                    label="+ 사진"
+                    disabled={row.content.blocks.length >= MAX_BLOCKS}
+                    onKey={addImage}
+                  />
 
                   <ColorPalette
                     value={row.content.background.color ?? DEFAULT_BG}
@@ -543,17 +643,24 @@ export function DesignBannerPanel({
                 banners={[{ id: index, design: row.content, alt: row.altText }]}
                 renderText={
                   canEdit
-                    ? (_bannerId, blockId, value) => (
+                    ? (_bannerId, blockId, value) => {
+                        // 사진에는 글자 칸을 두지 않는다. 대체 텍스트는 띠에서 고친다 —
+                        // 배너 위에 띄우면 손님이 보지 않는 글자가 한 줄 늘어 보인다.
+                        const image =
+                          row.content.blocks.find((b) => b.id === blockId)?.type === 'IMAGE';
+                        return (
                         <span
                           className={blockId === activeId ? styles.pickOn : styles.pick}
                           onFocusCapture={() => setActiveId(blockId)}
                         >
-                          <EditableText
-                            value={value}
-                            label="글자"
-                            maxLength={200}
-                            onChange={(text) => patchBlock(blockId, { text })}
-                          />
+                          {!image && (
+                            <EditableText
+                              value={value}
+                              label="글자"
+                              maxLength={200}
+                              onChange={(text) => patchBlock(blockId, { text })}
+                            />
+                          )}
                           {blockId === activeId && (
                             // 둘 다 <a> 안에도 들어가므로 <button> 이 아니라 span 이다.
                             // 버튼 안의 버튼은 브라우저가 알아서 풀어 버린다.
@@ -587,7 +694,8 @@ export function DesignBannerPanel({
                             </>
                           )}
                         </span>
-                      )
+                        );
+                      }
                     : undefined
                 }
               />

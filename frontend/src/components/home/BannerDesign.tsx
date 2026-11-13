@@ -24,6 +24,10 @@ const BLUR_STEPS = [0, 4, 8, 16];
 const MIN_SIZE = 10;
 const MAX_SIZE = 120;
 
+/** 사진 너비(px) 의 위아래 끝. 글자와 달리 배너 폭의 절반까지는 쓸 일이 있다. */
+const MIN_IMAGE = 20;
+const MAX_IMAGE = 800;
+
 /** 좁은 화면에서 px 크기를 줄이는 비율. PC 제목 48px → 휴대폰 29px. */
 const MOBILE_SCALE = 0.6;
 
@@ -62,6 +66,11 @@ const LOOK_CLASS: Record<string, string> = {
  * 다시 쌓는다 — 배너 비율이 폭에 따라 뒤집히므로(PC 2.3:1, 휴대폰 0.85:1) PC 에서
  * 오른쪽 끝에 둔 글자는 휴대폰에서 화면 밖이다. 버리는 쪽이 배치를 두 번 잡는 것보다
  * 낫다.
+ *
+ * <h2>사진 블록</h2>
+ * {@code IMAGE} 블록은 업로드한 사진 한 장을 배너 안에 얹는다. {@code size} 는 글자
+ * 크기가 아니라 <b>너비</b>(px)이고, {@code text} 는 눈으로 보지 않는 사람에게 읽어
+ * 줄 대체 텍스트다. 글자·버튼과 똑같이 끌어다 둘 수 있다.
  *
  * <h2>px 로 고른 크기는 좁은 화면에서 줄어든다</h2>
  * 그대로 두면 PC 에서 고른 48px 이 휴대폰에서도 48px 이라 제목 한 줄이 배너를 덮는다.
@@ -130,7 +139,10 @@ export function BannerDesign({
             const x = num(block.x, 0, 100);
             const y = num(block.y, 0, 100);
             const placed = x !== undefined && y !== undefined;
-            const size = num(block.size, MIN_SIZE, MAX_SIZE);
+            const image = block.type === 'IMAGE';
+            const size = image
+              ? num(block.size, MIN_IMAGE, MAX_IMAGE)
+              : num(block.size, MIN_SIZE, MAX_SIZE);
 
             // 크기는 px 가 아니라 변수로 넘긴다. 좁은 화면에서 같은 변수를 CSS 가
             // 0.6 배로 다시 잡는다 — px 를 직접 박으면 휴대폰에서도 48px 이다.
@@ -144,6 +156,25 @@ export function BannerDesign({
             const extra = `${hideClass}${placed ? ` ${styles.dPlaced}` : ''}${
               size ? ` ${styles.dSized}` : ''
             }`;
+
+            if (image) {
+              const src = mediaUrl(block.imageKey);
+              if (!src) return null;
+              return (
+                // 사진은 자식을 가질 수 없어서 상자로 한 번 싼다. 손잡이(편집기)가
+                // 걸릴 자리이면서, 너비를 px 로 받는 자리이기도 하다.
+                <span
+                  key={block.id}
+                  data-block={block.id}
+                  className={`${styles.dImage}${extra}`}
+                  style={css}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={block.text} />
+                  {renderText?.(block.id, block.text)}
+                </span>
+              );
+            }
 
             if (block.type === 'BUTTON') {
               return (

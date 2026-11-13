@@ -187,7 +187,8 @@ class BannerContentValidatorTest {
 
         private BannerContent.Block block(Integer size, Integer x, Integer y) {
             return new BannerContent.Block("b1", BannerContent.BlockType.TEXT,
-                    BannerContent.TextStyle.TITLE, "제목", null, null, null, size, true, x, y);
+                    BannerContent.TextStyle.TITLE, "제목", null, null, null, size, true, x, y,
+                    null);
         }
 
         private BannerContent.Block normalized(BannerContent.Block raw) {
@@ -229,13 +230,64 @@ class BannerContentValidatorTest {
         void appliesToButtons() {
             BannerContent.Block raw = new BannerContent.Block("b1",
                     BannerContent.BlockType.BUTTON, null, "보러가기", null, "/shop",
-                    BannerContent.ButtonLook.GOLD, 20, false, 70, 80);
+                    BannerContent.ButtonLook.GOLD, 20, false, 70, 80, null);
 
             BannerContent.Block out = validator.normalize(of(null, raw)).blocks().get(0);
             assertThat(out.size()).isEqualTo(20);
             assertThat(out.bold()).isFalse();
             assertThat(out.x()).isEqualTo(70);
             assertThat(out.y()).isEqualTo(80);
+        }
+    }
+
+    /**
+     * 배너 <b>안에</b> 얹는 사진.
+     *
+     * <p>키가 없으면 손님 화면에 깨진 그림 자리만 남고, 그 자리는 글자로 메울 수도
+     * 없다 — 그래서 조용히 지우지 않고 거절한다. 대체 텍스트도 같은 이유로 요구한다.
+     */
+    @Nested
+    @DisplayName("사진 블록")
+    class ImageBlock {
+
+        private BannerContent.Block image(String key, String alt, Integer width) {
+            return new BannerContent.Block("b1", BannerContent.BlockType.IMAGE, null, alt,
+                    null, null, null, width, null, null, null, key);
+        }
+
+        @Test
+        @DisplayName("사진 키를 들고 가고, 너비는 20~800 으로 당긴다")
+        void keepsImage() {
+            BannerContent.Block out = validator
+                    .normalize(of(null, image("banners/2026/11/a.webp", "금고 사진", 9999)))
+                    .blocks().get(0);
+
+            assertThat(out.imageKey()).isEqualTo("banners/2026/11/a.webp");
+            assertThat(out.size()).isEqualTo(800);
+            assertThat(out.text()).isEqualTo("금고 사진");
+        }
+
+        @Test
+        @DisplayName("올린 사진이 없으면 거절한다")
+        void requiresKey() {
+            assertThatThrownBy(() -> validator.normalize(of(null, image(null, "금고 사진", 240))))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("바깥 주소는 사진 키가 아니다")
+        void rejectsExternalKey() {
+            assertThatThrownBy(() -> validator
+                    .normalize(of(null, image("https://evil.example/a.png", "사진", 240))))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("대체 텍스트가 없으면 거절한다")
+        void requiresAlt() {
+            assertThatThrownBy(() -> validator
+                    .normalize(of(null, image("banners/a.webp", "   ", 240))))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 }

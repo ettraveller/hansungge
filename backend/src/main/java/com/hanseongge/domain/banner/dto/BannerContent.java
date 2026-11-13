@@ -57,14 +57,14 @@ public record BannerContent(
     ) {
     }
 
-    /** 쌓이는 요소 하나. 글자이거나 버튼이다. */
+    /** 쌓이는 요소 하나. 글자이거나 버튼이거나 사진이다. */
     @Schema(name = "BannerBlock")
     public record Block(
 
             @Schema(description = "휴대폰에서 숨길 때 가리키는 이름. 없으면 서버가 붙인다")
             String id,
 
-            @Schema(description = "TEXT 또는 BUTTON")
+            @Schema(description = "TEXT · BUTTON · IMAGE")
             BlockType type,
 
             @Schema(description = "글자의 역할. 크기·굵기가 여기서 정해진다", example = "TITLE")
@@ -92,13 +92,16 @@ public record BannerContent(
             Integer x,
 
             @Schema(description = "세로 자리(%). x 와 함께 있을 때만 쓴다. 비우면 쌓인다")
-            Integer y
+            Integer y,
+
+            @Schema(description = "IMAGE 가 보여줄 업로드된 사진 키. 그때는 text 가 대체 텍스트다")
+            String imageKey
     ) {
 
-        /** 자리·크기를 안 쓰던 때의 생김새. 쌓이는 블록을 만들 때 쓴다. */
+        /** 자리·크기·사진을 안 쓰던 때의 생김새. 쌓이는 글자 블록을 만들 때 쓴다. */
         public Block(String id, BlockType type, TextStyle style, String text, String color,
                      String href, ButtonLook look) {
-            this(id, type, style, text, color, href, look, null, null, null, null);
+            this(id, type, style, text, color, href, look, null, null, null, null, null);
         }
     }
 
@@ -121,7 +124,14 @@ public record BannerContent(
 
     public enum Align { LEFT, CENTER, RIGHT }
 
-    public enum BlockType { TEXT, BUTTON }
+    /**
+     * 블록의 종류.
+     *
+     * <p>{@code IMAGE} 는 배너 안에 얹는 <b>사진 한 장</b>이다 — 배너 자체가 사진 한
+     * 장인 {@code BannerKind.IMAGE} 와 다르다. 그때는 {@code imageKey} 가 그 사진이고
+     * {@code text} 는 눈으로 보지 않는 사람에게 읽어 줄 대체 텍스트다.
+     */
+    public enum BlockType { TEXT, BUTTON, IMAGE }
 
     /**
      * 글자의 역할.

@@ -514,6 +514,25 @@
   max-width: 40rem;
 }
 
+/* 배너 안에 얹은 사진 한 장. 사진은 자식을 가질 수 없어서 상자로 싸 두었고,
+   너비는 그 상자가 받는다 — 높이는 사진 비율이 정한다. */
+.dImage {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.dImage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.dImage.dSized {
+  width: var(--bs);
+  max-width: 100%;
+}
+
 .dAlignLeft {
   text-align: left;
   align-items: flex-start;
@@ -647,5 +666,9 @@
   /* px 로 고른 크기도 폭에 맞춰 줄인다 (0.6배) */
   .dSized {
     font-size: var(--bsm, var(--bs));
+  }
+
+  .dImage.dSized {
+    width: var(--bsm, var(--bs));
   }
 }

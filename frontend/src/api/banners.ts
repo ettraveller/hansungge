@@ -15,7 +15,14 @@ export type BannerOverlay = 'GRADIENT' | 'SOLID' | 'NONE';
 
 export interface BannerBlock {
   id: string;
-  type: 'TEXT' | 'BUTTON';
+  /**
+   * 블록의 종류.
+   *
+   * <p>`IMAGE` 는 배너 <b>안에</b> 얹는 사진 한 장이다 — 배너 자체가 사진 한 장인
+   * {@link BannerKind} 의 `IMAGE` 와 다르다. 그때는 `imageKey` 가 그 사진이고
+   * `text` 는 대체 텍스트, `size` 는 글자 크기가 아니라 <b>너비</b>(px)다.
+   */
+  type: 'TEXT' | 'BUTTON' | 'IMAGE';
   /** TEXT 의 역할. 크기·굵기·색의 기본값이다 — 아래 값이 있으면 그것이 이긴다 */
   style?: BannerTextStyle | null;
   text: string;
@@ -23,7 +30,9 @@ export interface BannerBlock {
   color?: string | null;
   href?: string | null;
   look?: BannerButtonLook | null;
-  /** 글자 크기(px). 비우면 역할의 기본 크기. 좁은 화면에서는 0.6 배로 줄어든다 */
+  /** IMAGE 가 보여줄 업로드된 사진 키 */
+  imageKey?: string | null;
+  /** 글자 크기(px) — IMAGE 면 너비(px). 좁은 화면에서는 0.6 배로 줄어든다 */
   size?: number | null;
   bold?: boolean | null;
   /** 가로·세로 자리(%). <b>둘 다</b> 있을 때만 그 자리에 선다. 좁은 화면에서는 버리고 쌓는다 */

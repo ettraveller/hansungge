@@ -54,6 +54,10 @@ public class BannerContentValidator {
     private static final int MIN_SIZE = 10;
     private static final int MAX_SIZE = 120;
 
+    /** 사진 너비(px) 의 위아래 끝. 글자와 달리 배너 폭의 절반까지는 쓸 일이 있다. */
+    private static final int MIN_IMAGE = 20;
+    private static final int MAX_IMAGE = 800;
+
     public BannerContent normalize(BannerContent raw) {
         if (raw == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "배너 내용이 비어 있습니다.");
@@ -106,7 +110,9 @@ public class BannerContentValidator {
             String text = trim(block.text());
             if (text.isEmpty()) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT,
-                        (i + 1) + "번째 요소에 글자가 없습니다.");
+                        type == BannerContent.BlockType.IMAGE
+                                ? (i + 1) + "번째 사진에 설명(대체 텍스트)이 없습니다."
+                                : (i + 1) + "번째 요소에 글자가 없습니다.");
             }
 
             // id 는 휴대폰에서 숨길 블록을 가리키는 이름이다. 겹치면 엉뚱한 블록이
@@ -115,6 +121,21 @@ public class BannerContentValidator {
             if (id.isEmpty() || !seenIds.add(id)) {
                 id = "b" + (i + 1);
                 seenIds.add(id);
+            }
+
+            // 사진은 올린 키가 있어야 한다. 비우고 저장하면 손님 화면에 깨진 그림
+            // 자리만 남는다 — 그 자리는 글자로 메울 수도 없다.
+            if (type == BannerContent.BlockType.IMAGE) {
+                String key = imageKey(block.imageKey());
+                if (key == null) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT,
+                            "사진 요소에 올린 사진이 없습니다. (" + text + ")");
+                }
+                blocks.add(new BannerContent.Block(id, type, null,
+                        cut(text, MAX_TEXT), null, null, null,
+                        size(block.size(), type), null,
+                        percent(block.x(), block.y()), percent(block.y(), block.x()), key));
+                continue;
             }
 
             if (type == BannerContent.BlockType.BUTTON) {
@@ -126,14 +147,14 @@ public class BannerContentValidator {
                 blocks.add(new BannerContent.Block(id, type, null,
                         cut(text, MAX_BUTTON_TEXT), color(block.color()), href,
                         block.look() == null ? BannerContent.ButtonLook.GOLD : block.look(),
-                        size(block.size()), block.bold(),
-                        percent(block.x(), block.y()), percent(block.y(), block.x())));
+                        size(block.size(), type), block.bold(),
+                        percent(block.x(), block.y()), percent(block.y(), block.x()), null));
             } else {
                 blocks.add(new BannerContent.Block(id, type,
                         block.style() == null ? BannerContent.TextStyle.DESC : block.style(),
                         cut(text, MAX_TEXT), color(block.color()), null, null,
-                        size(block.size()), block.bold(),
-                        percent(block.x(), block.y()), percent(block.y(), block.x())));
+                        size(block.size(), type), block.bold(),
+                        percent(block.x(), block.y()), percent(block.y(), block.x()), null));
             }
         }
         return blocks;
@@ -154,12 +175,18 @@ public class BannerContentValidator {
         return new BannerContent.Mobile(raw.align(), hide);
     }
 
-    /** 크기는 끝을 잘라 둔다. 숫자가 그대로 {@code font-size} 로 나가기 때문이다. */
-    private static Integer size(Integer raw) {
+    /**
+     * 크기는 끝을 잘라 둔다. 숫자가 그대로 {@code font-size}·{@code width} 로 나가기
+     * 때문이다. 사진은 글자보다 넓게 쓰므로 끝이 다르다.
+     */
+    private static Integer size(Integer raw, BannerContent.BlockType type) {
         if (raw == null) {
             return null;
         }
-        return Math.max(MIN_SIZE, Math.min(MAX_SIZE, raw));
+        boolean image = type == BannerContent.BlockType.IMAGE;
+        int min = image ? MIN_IMAGE : MIN_SIZE;
+        int max = image ? MAX_IMAGE : MAX_SIZE;
+        return Math.max(min, Math.min(max, raw));
     }
 
     /**

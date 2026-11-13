@@ -1958,6 +1958,10 @@ a.hint:hover {
    겹치는 순간 눌릴 수조차 없다. */
 .designAddBtn {
   flex: none;
+  /* 사진 올리기는 <label> 이다 — 숨긴 파일 칸을 품고 있어야 파일 창이 열린다 */
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
   height: 26px;
   padding: 0 10px;
   border: 1px dashed var(--line);
@@ -1973,9 +1977,20 @@ a.hint:hover {
   color: var(--ink-900);
 }
 
-.designAddBtn:disabled {
+.designAddBtn:disabled,
+.designAddBtn[aria-disabled='true'] {
   opacity: 0.35;
   cursor: default;
+}
+
+/* 띠 안의 글자 칸. 폼의 .input 은 폭을 다 먹어서 띠 한 줄을 통째로 밀어낸다. */
+.designBarText {
+  width: auto;
+  min-width: 150px;
+  max-width: 260px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: var(--text-xs);
 }
 
 /* --- 색판 ---
