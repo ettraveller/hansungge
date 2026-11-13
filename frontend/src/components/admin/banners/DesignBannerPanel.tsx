@@ -243,6 +243,8 @@ export function DesignBannerPanel({
   /** 배경 사진 올리는 창. 두 칸이 화면을 반쯤 먹어서 창으로 뺐다. */
   const [bgOpen, setBgOpen] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  /** 「누르면 갈 곳」 판. 띠의 고리와 배너 위 버튼의 고리가 같은 판을 연다. */
+  const [linkOpen, setLinkOpen] = useState(false);
 
   const index = Math.min(selected, Math.max(rows.length - 1, 0));
   const row = rows[index];
@@ -576,6 +578,8 @@ export function DesignBannerPanel({
                           {active.type === 'BUTTON' && (
                             <LinkPopover
                               value={active.href ?? ''}
+                              open={linkOpen}
+                              onOpenChange={setLinkOpen}
                               onChange={(href) => patchBlock(active.id, { href })}
                             />
                           )}
@@ -706,7 +710,12 @@ export function DesignBannerPanel({
               // 금색 안쪽 여백이 넓어서 "눌렀는데 아무 일도 없다" — 손잡이도 안 뜬다.
               onPointerDownCapture={(e) => {
                 const block = (e.target as HTMLElement).closest<HTMLElement>('[data-block]');
-                if (block?.dataset.block) setActiveId(block.dataset.block);
+                if (block?.dataset.block && block.dataset.block !== activeId) {
+                  setActiveId(block.dataset.block);
+                  // 다른 것을 고르면 판을 닫는다. 열어 둔 채로 두면 방금 고른 것이
+                  // 아니라 앞의 것에 주소를 다는 것처럼 보인다.
+                  setLinkOpen(false);
+                }
               }}
             >
               {/* PPT 의 맞춤선. 끄는 동안에만 뜬다 */}
@@ -729,8 +738,8 @@ export function DesignBannerPanel({
                     ? (_bannerId, blockId, value) => {
                         // 사진에는 글자 칸을 두지 않는다. 대체 텍스트는 띠에서 고친다 —
                         // 배너 위에 띄우면 손님이 보지 않는 글자가 한 줄 늘어 보인다.
-                        const image =
-                          row.content.blocks.find((b) => b.id === blockId)?.type === 'IMAGE';
+                        const kind = row.content.blocks.find((b) => b.id === blockId)?.type;
+                        const image = kind === 'IMAGE';
                         return (
                         <span
                           className={blockId === activeId ? styles.pickOn : styles.pick}
@@ -758,6 +767,25 @@ export function DesignBannerPanel({
                               >
                                 ✥
                               </span>
+                              {kind === 'BUTTON' && (
+                                // 지우기(×) 왼쪽에 나란히 선다. 띠까지 눈을 올리지
+                                // 않고 버튼 그 자리에서 주소를 단다.
+                                <span
+                                  role="button"
+                                  tabIndex={-1}
+                                  aria-label="누르면 갈 곳"
+                                  title="누르면 갈 곳"
+                                  className={styles.linkHandle}
+                                  onPointerDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setActiveId(blockId);
+                                    setLinkOpen(true);
+                                  }}
+                                >
+                                  🔗
+                                </span>
+                              )}
                               {image && (
                                 <span
                                   role="button"

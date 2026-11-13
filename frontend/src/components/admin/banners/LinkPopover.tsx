@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { LinkTargetPicker } from '../LinkTargetPicker';
 import styles from '../admin.module.css';
@@ -16,15 +16,22 @@ import styles from '../admin.module.css';
  *
  * <p>주소가 걸려 있으면 고리를 칠해 둔다. 판을 열어 보지 않고도 이 버튼이 어딘가로
  * 가는지 알 수 있어야 한다.
+ *
+ * <p>여닫는 것은 바깥이 들고 있다 — 배너 위의 버튼에 붙은 고리에서도 이 판을 열기
+ * 때문이다. 판을 두 벌 만들면 고른 주소가 어느 판의 것인지 헷갈린다.
  */
 export function LinkPopover({
   value,
+  open,
+  onOpenChange,
   onChange,
 }: {
   value: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onChange: (href: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const setOpen = onOpenChange;
   const box = useRef<HTMLDivElement>(null);
 
   // 밖을 누르면 닫는다. 고르려다 만 판이 떠 있으면 배너를 가린다.
@@ -42,7 +49,7 @@ export function LinkPopover({
       document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   return (
     <div className={styles.palette} ref={box}>
@@ -53,7 +60,7 @@ export function LinkPopover({
         aria-expanded={open}
         aria-label={value ? `누르면 갈 곳 (${value})` : '누르면 갈 곳'}
         title={value || '누르면 갈 곳'}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
       >
         🔗
       </button>

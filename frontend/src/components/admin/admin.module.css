@@ -1919,6 +1919,29 @@ a.hint:hover {
   color: #fff;
 }
 
+/* 버튼만 갖는 손잡이. 지우기(×) 왼쪽에 선다 — 오른쪽 위 모서리다. */
+.linkHandle {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 6px rgba(8, 10, 12, 0.45);
+}
+
+.linkHandle:hover {
+  background: var(--gold-500);
+}
+
 /* 사진만 갖는 손잡이. 오른쪽 아래 모서리를 끌면 너비가 바뀐다 — PPT 와 같은 자리다. */
 .sizeHandle {
   position: absolute;
