@@ -66,7 +66,22 @@ const SWIPE_MIN_PX = 40;
  * 사용자가 방금 본 것을 다시 찾아야 한다. {@code prefers-reduced-motion} 을 켠 사용자는
  * 자동 넘김 자체를 하지 않는다 — 움직임이 불편해서 끈 설정이다.
  */
-export function HeroSlider({ slides, banners }: { slides: Slide[]; banners?: BannerSlide[] }) {
+export function HeroSlider({
+  slides,
+  banners,
+  renderText,
+}: {
+  slides: Slide[];
+  banners?: BannerSlide[];
+  /**
+   * 꾸민 배너의 글자 자리를 대신 그린다.
+   *
+   * <p>관리자 편집기가 이 자리에 <b>그 자리에서 고치는 입력칸</b>을 꽂는다. 편집용
+   * 배너를 따로 그리지 않는 이유는 푸터와 같다 — 모양이 두 벌이 되면 "고칠 때 본
+   * 모양" 과 "손님이 보는 모양" 이 어긋난다.
+   */
+  renderText?: (bannerId: number, blockId: string, value: string) => React.ReactNode;
+}) {
   // 관리자가 올린 배너가 있으면 그것만 쓴다. 섞지 않는다 — 글자가 밖에 있는 슬라이드와
   // 이미지 한 장짜리가 번갈아 나오면 같은 배너의 두 가지 모양처럼 보인다.
   const uploaded = banners ?? [];
@@ -155,7 +170,16 @@ export function HeroSlider({ slides, banners }: { slides: Slide[]; banners?: Ban
             className={i === index ? styles.slideOn : styles.slide}
             aria-hidden={i !== index}
           >
-            {banner.design && <BannerDesign content={banner.design} />}
+            {banner.design && (
+              <BannerDesign
+                content={banner.design}
+                renderText={
+                  renderText
+                    ? (blockId, value) => renderText(banner.id, blockId, value)
+                    : undefined
+                }
+              />
+            )}
 
             {/* 글자가 이미지 안에 있으므로 화면 전체를 덮는다. 오른쪽만 덮는 .bg 와
                 달리 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다.

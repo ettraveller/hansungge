@@ -8,7 +8,7 @@ import { Field, TextInput } from '@/components/admin/Field';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
-import { DesignBannerPanel } from '@/components/admin/banners/DesignBannerPanel';
+import { DesignBannerPanel, type DesignRow } from '@/components/admin/banners/DesignBannerPanel';
 import { FooterPanel } from '@/components/admin/banners/FooterPanel';
 import type { FooterInfo } from '@/api/footer';
 import { Panel } from '@/components/admin/Panel';
@@ -90,7 +90,20 @@ export function AdminBannersView() {
    * 돌려보내야</b> 한다 — 저장은 보낸 것이 곧 전체라서, 빠뜨리면 사진 한 장을
    * 올리는 순간 꾸민 배너가 전부 지워진다.
    */
-  const designs = (data ?? []).filter((b) => b.kind === 'DESIGN');
+  /**
+   * 화면에서 꾸민 배너.
+   *
+   * <p>손대기 전에는 null 이고, 그때는 서버가 준 것을 그대로 쓴다. 저장은 보낸 것이
+   * 곧 전체라서, 고치지 않았더라도 <b>같이 보내야</b> 한다 — 빠뜨리면 사진 한 장을
+   * 올리는 순간 꾸민 배너가 전부 지워진다.
+   */
+  const [designDraft, setDesignDraft] = useState<DesignRow[] | null>(null);
+
+  const designs: DesignRow[] =
+    designDraft ??
+    (data ?? [])
+      .filter((b) => b.kind === 'DESIGN' && b.content != null)
+      .map((b) => ({ content: b.content!, altText: b.altText ?? '' }));
 
   /** 사진 배너만 아래 업로더가 다룬다. */
   const images = (data ?? []).filter((b) => b.kind !== 'DESIGN');
@@ -139,7 +152,7 @@ export function AdminBannersView() {
         ...designs.map((b) => ({
           kind: 'DESIGN' as const,
           content: b.content,
-          altText: b.altText ?? null,
+          altText: b.altText.trim() || null,
         })),
         ...rows.map((r, index) => ({
           kind: 'IMAGE' as const,
@@ -153,13 +166,14 @@ export function AdminBannersView() {
         onSuccess: () => {
           setDraft(null);
           setMobileDraft(null);
+          setDesignDraft(null);
           setSaved(true);
         },
       },
     );
   };
 
-  const changed = draft != null || mobileDraft != null;
+  const changed = draft != null || mobileDraft != null || designDraft != null;
   /** 휴대폰용을 올리긴 했는데 장수가 모자란 경우. 뒤쪽 배너는 홈페이지용으로 버틴다. */
   const shortOnMobile = mobileKeys.length > 0 && mobileKeys.length < rows.length;
 
@@ -193,7 +207,14 @@ export function AdminBannersView() {
         </Alert>
       )}
 
-      <DesignBannerPanel banners={designs} />
+      <DesignBannerPanel
+        rows={designs}
+        canEdit={canEdit}
+        onChange={(next) => {
+          setDesignDraft(next);
+          setSaved(false);
+        }}
+      />
 
       <Panel
         title="배너 이미지"
