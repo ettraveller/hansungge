@@ -173,4 +173,69 @@ class BannerContentValidatorTest {
                     .isInstanceOf(BusinessException.class);
         }
     }
+
+    /**
+     * 크기와 자리.
+     *
+     * <p>둘 다 숫자 그대로 {@code style} 로 나간다. 크기는 끝을 당기고, 자리는
+     * <b>x·y 가 함께 있을 때만</b> 인정한다 — 한쪽만 걸면 다른 쪽은 흐름이 정하는
+     * 자리에 남아, 끌어다 둔 적 없는 곳에 글자가 선다.
+     */
+    @Nested
+    @DisplayName("크기와 자리")
+    class SizeAndPlace {
+
+        private BannerContent.Block block(Integer size, Integer x, Integer y) {
+            return new BannerContent.Block("b1", BannerContent.BlockType.TEXT,
+                    BannerContent.TextStyle.TITLE, "제목", null, null, null, size, true, x, y);
+        }
+
+        private BannerContent.Block normalized(BannerContent.Block raw) {
+            return validator.normalize(of(null, raw)).blocks().get(0);
+        }
+
+        @Test
+        @DisplayName("크기는 10~120 으로 당긴다")
+        void clampsSize() {
+            assertThat(normalized(block(9999, null, null)).size()).isEqualTo(120);
+            assertThat(normalized(block(0, null, null)).size()).isEqualTo(10);
+            assertThat(normalized(block(48, null, null)).size()).isEqualTo(48);
+            assertThat(normalized(block(null, null, null)).size()).isNull();
+        }
+
+        @Test
+        @DisplayName("굵기는 고른 그대로 간다")
+        void keepsBold() {
+            assertThat(normalized(block(null, null, null)).bold()).isTrue();
+        }
+
+        @Test
+        @DisplayName("자리는 0~100 으로 당긴다")
+        void clampsPercent() {
+            BannerContent.Block out = normalized(block(null, -20, 400));
+            assertThat(out.x()).isZero();
+            assertThat(out.y()).isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("한쪽만 온 자리는 둘 다 버린다")
+        void dropsHalfPlacement() {
+            assertThat(normalized(block(null, 50, null)).x()).isNull();
+            assertThat(normalized(block(null, null, 50)).y()).isNull();
+        }
+
+        @Test
+        @DisplayName("버튼도 크기·자리를 들고 간다")
+        void appliesToButtons() {
+            BannerContent.Block raw = new BannerContent.Block("b1",
+                    BannerContent.BlockType.BUTTON, null, "보러가기", null, "/shop",
+                    BannerContent.ButtonLook.GOLD, 20, false, 70, 80);
+
+            BannerContent.Block out = validator.normalize(of(null, raw)).blocks().get(0);
+            assertThat(out.size()).isEqualTo(20);
+            assertThat(out.bold()).isFalse();
+            assertThat(out.x()).isEqualTo(70);
+            assertThat(out.y()).isEqualTo(80);
+        }
+    }
 }

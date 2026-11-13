@@ -45,6 +45,15 @@ public class BannerContentValidator {
     /** 고를 수 있는 흐림. 자유 숫자를 받으면 blur(9999px) 로 화면을 지울 수 있다. */
     private static final Set<Integer> BLUR_STEPS = Set.of(0, 4, 8, 16);
 
+    /**
+     * 글자 크기(px) 의 위아래 끝.
+     *
+     * <p>10 아래는 읽히지 않고, 120 위는 한 글자가 배너를 덮는다. 좁은 화면에서는
+     * 이 값이 CSS 에서 0.6 배로 줄어든다.
+     */
+    private static final int MIN_SIZE = 10;
+    private static final int MAX_SIZE = 120;
+
     public BannerContent normalize(BannerContent raw) {
         if (raw == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "배너 내용이 비어 있습니다.");
@@ -116,11 +125,15 @@ public class BannerContentValidator {
                 }
                 blocks.add(new BannerContent.Block(id, type, null,
                         cut(text, MAX_BUTTON_TEXT), color(block.color()), href,
-                        block.look() == null ? BannerContent.ButtonLook.GOLD : block.look()));
+                        block.look() == null ? BannerContent.ButtonLook.GOLD : block.look(),
+                        size(block.size()), block.bold(),
+                        percent(block.x(), block.y()), percent(block.y(), block.x())));
             } else {
                 blocks.add(new BannerContent.Block(id, type,
                         block.style() == null ? BannerContent.TextStyle.DESC : block.style(),
-                        cut(text, MAX_TEXT), color(block.color()), null, null));
+                        cut(text, MAX_TEXT), color(block.color()), null, null,
+                        size(block.size()), block.bold(),
+                        percent(block.x(), block.y()), percent(block.y(), block.x())));
             }
         }
         return blocks;
@@ -139,6 +152,28 @@ public class BannerContentValidator {
         List<String> hide = raw.hide() == null ? List.of()
                 : raw.hide().stream().filter(ids::contains).toList();
         return new BannerContent.Mobile(raw.align(), hide);
+    }
+
+    /** 크기는 끝을 잘라 둔다. 숫자가 그대로 {@code font-size} 로 나가기 때문이다. */
+    private static Integer size(Integer raw) {
+        if (raw == null) {
+            return null;
+        }
+        return Math.max(MIN_SIZE, Math.min(MAX_SIZE, raw));
+    }
+
+    /**
+     * 자리(%). 한쪽만 온 좌표는 버린다.
+     *
+     * <p>x 만 있고 y 가 없으면 화면에서는 {@code left} 만 걸리고 {@code top} 은 흐름이
+     * 정하는 자리에 남아, 끌어다 둔 적 없는 곳에 글자가 선다. 둘이 함께 있을 때만
+     * 자리로 친다. 0~100 밖은 배너 밖이라 끌어 들어오게 할 수도 없으므로 당겨 둔다.
+     */
+    private static Integer percent(Integer value, Integer pair) {
+        if (value == null || pair == null) {
+            return null;
+        }
+        return Math.max(0, Math.min(100, value));
     }
 
     private static String color(String raw) {

@@ -2,15 +2,11 @@
 
 import { useState } from 'react';
 
-import type {
-  BannerBlock,
-  BannerContent,
-  BannerOverlay,
-  BannerTextStyle,
-} from '@/api/banners';
+import type { BannerBlock, BannerContent, BannerTextStyle } from '@/api/banners';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { Button } from '../Button';
-import { Field, SelectInput } from '../Field';
+import { Field } from '../Field';
+import { SelectInput } from '../Field';
 import { ImageUploader } from '../ImageUploader';
 import { LinkTargetPicker } from '../LinkTargetPicker';
 import { Panel } from '../Panel';
@@ -21,27 +17,46 @@ import styles from '../admin.module.css';
 /** 한 배너에 쌓을 수 있는 요소 수. 서버도 같은 값으로 막는다. */
 const MAX_BLOCKS = 8;
 
+/**
+ * 고를 수 있는 글자 크기(px).
+ *
+ * <p>자유 입력을 받지 않는 이유는 한 배너 안에서 47px 과 48px 이 섞이면 아무도
+ * 구분하지 못하면서 줄 높이만 어긋나기 때문이다. 서버는 10~120 으로 당긴다.
+ */
+const SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 56, 64, 72, 88];
+
 /** 고를 수 있는 흐림. 자유 숫자를 받지 않는 이유는 blur(9999px) 로 화면이 지워지기 때문이다. */
-const BLUR_STEPS = [0, 4, 8, 16] as const;
-
-const TEXT_STYLES: { value: BannerTextStyle; label: string }[] = [
-  { value: 'EYEBROW', label: '작은 머리말' },
-  { value: 'TITLE', label: '제목' },
-  { value: 'HIGHLIGHT', label: '강조 제목' },
-  { value: 'DESC', label: '설명' },
+const BLURS = [
+  { value: 0, label: '흐림 없음' },
+  { value: 4, label: '흐림 4px' },
+  { value: 8, label: '흐림 8px' },
+  { value: 16, label: '흐림 16px' },
 ];
 
-const OVERLAYS: { value: BannerOverlay; label: string }[] = [
-  { value: 'GRADIENT', label: '왼쪽부터' },
-  { value: 'SOLID', label: '고르게' },
-  { value: 'NONE', label: '없음' },
-];
+const OVERLAYS = [
+  { value: 'GRADIENT', label: '어둠막 왼쪽부터' },
+  { value: 'SOLID', label: '어둠막 고르게' },
+  { value: 'NONE', label: '어둠막 없음' },
+] as const;
 
 const ALIGNS = [
   { value: 'LEFT', label: '왼쪽', glyph: '⬅' },
   { value: 'CENTER', label: '가운데', glyph: '↔' },
   { value: 'RIGHT', label: '오른쪽', glyph: '➡' },
 ] as const;
+
+/**
+ * 역할이 들고 있는 굵기.
+ *
+ * <p>「두껍게」단추가 눌린 상태를 여기서 가져온다. 이것 없이 {@code bold ?? false} 로
+ * 두면 제목은 두껍게 보이는데 단추는 꺼져 있어서, 한 번 눌러야 비로소 꺼진다.
+ */
+const ROLE_BOLD: Record<BannerTextStyle, boolean> = {
+  EYEBROW: false,
+  TITLE: true,
+  HIGHLIGHT: true,
+  DESC: false,
+};
 
 /** 배경색을 고르지 않은 배너의 바탕. 손님 화면의 히어로 바탕과 같은 값이다. */
 const DEFAULT_BG = '#0f1b2d';
@@ -75,31 +90,33 @@ function nextId(blocks: BannerBlock[]): string {
   return `b${Date.now()}`;
 }
 
+const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
 /**
  * 화면에서 배너를 꾸민다.
  *
- * <h2>배너 위에서 고르고, 배너 위에서 더한다</h2>
+ * <h2>배너 위에서 고르고, 배너 위에서 더하고, 끌어서 놓는다</h2>
  * 고를 것을 아래 목록으로 늘어놓으면 <b>같은 것이 화면에 두 번</b> 있게 된다 — 배너
- * 안의 제목과 목록 안의 제목. 쓰는 사람은 둘이 같은 것인지 매번 확인해야 하고, 글자가
- * 길면 목록 쪽은 잘려서 어느 줄인지도 알 수 없다. 그래서 고르는 것도 더하는 것도
- * 배너 안에서 한다. 고른 것에 할 수 있는 일만 배너 바로 위 띠에 뜬다 — PPT 가 글자를
- * 끌어 고른 뒤 색을 칠하는 것과 같은 차례다.
+ * 안의 제목과 목록 안의 제목. 그래서 고르는 것도, 더하는 것도, 옮기는 것도 배너
+ * 안에서 한다. 고른 것에 할 수 있는 일만 배너 바로 위 띠에 뜬다.
+ *
+ * <h2>자리는 끌어서 잡고, 좁은 화면에서는 버린다</h2>
+ * 끌면 그 블록에 {@code x}·{@code y}(%)가 붙어 그 자리에 선다. 비율이 아니라 %라서
+ * 창을 넓혀도 같은 자리다. 다만 <b>좁은 화면에서는 그 좌표를 쓰지 않는다</b> — 배너
+ * 비율이 폭에 따라 뒤집혀서(PC 2.3:1, 휴대폰 0.85:1) PC 에서 오른쪽 끝에 둔 글자는
+ * 휴대폰에서 화면 밖이다. 거기서는 다시 위에서 아래로 쌓인다. 배치를 배너마다 두 번
+ * 잡게 하는 것보다, 한 번 잡고 좁은 화면은 쌓기에 맡기는 편이 낫다.
+ *
+ * <h2>크기는 px 로 고르고, 좁은 화면에서 줄어든다</h2>
+ * 역할(제목·강조·설명)만 고르게 두면 "얼마나 큰지"가 이름 뒤에 숨는다. px 로 고르되
+ * 좁은 화면에서는 CSS 가 0.6 배로 다시 잡는다 — 고른 48px 이 휴대폰에서도 48px 이면
+ * 제목 한 줄이 배너를 덮는다. 고르지 않으면 역할의 기본 크기를 그대로 쓴다.
  *
  * <h2>진짜 배너를 띄워 놓고 그 위에서 고친다</h2>
  * 입력칸을 늘어놓은 폼은 <b>고칠 때 보는 모양</b>과 <b>손님이 보는 모양</b>이 다르다.
- * 제목을 한 줄 늘렸을 때 어디서 줄이 접히는지, 배경을 흐리면 글자가 읽히는지는
- * 배너 안에서만 보인다. 손님 화면과 <b>같은 컴포넌트</b>({@link HeroSlider})를 그대로
- * 그리고 글자 자리만 편집기로 바꿔 끼운다.
- *
- * <h2>왜 끌어다 놓지 않는가</h2>
- * 배너의 비율이 폭에 따라 뒤집힌다 (PC 2.3:1, 휴대폰 0.85:1). 좌표로 놓게 하면
- * PC 에서 오른쪽 끝에 둔 글자가 휴대폰에서는 화면 밖이라, 배너 한 장마다 배치를
- * 두 번 잡아야 한다. 위에서 아래로 쌓고 정렬만 고르면 두 폭이 알아서 맞는다.
- * 자리 바꾸기는 그래서 좌표가 아니라 <b>쌓이는 차례</b>(↑ ↓)다.
- *
- * <h2>크기를 숫자로 고르지 않는다</h2>
- * 48px 을 고르면 휴대폰에서도 48px 이라 제목 한 줄이 배너를 덮는다. 역할(제목·강조·
- * 설명)만 고르면 두 폭의 크기는 CSS 가 안다 — 지금 쓰는 배너와 같은 값이다.
+ * 손님 화면과 <b>같은 컴포넌트</b>({@link HeroSlider})를 그대로 그리고 글자 자리만
+ * 편집기로 바꿔 끼운다. 배경·흐림·어둠막도 배너 바로 위 띠에 둔다 — 아래 폼에 두면
+ * 흐림을 한 칸 올릴 때마다 결과를 보려고 화면을 위로 굴려야 한다.
  */
 export function DesignBannerPanel({
   rows,
@@ -140,7 +157,7 @@ export function DesignBannerPanel({
         ? { id, type, text: '자세히 보기', href: '/shop', look: 'GOLD' }
         : { id, type, style: 'DESC', text: '새 글자' };
     patchContent({ blocks: [...blocks, block] });
-    // 더한 것을 바로 고른 상태로 둔다. 안 그러면 띠가 빈 채라 색을 칠하려면 한 번 더 눌러야 한다.
+    // 더한 것을 바로 고른 상태로 둔다. 안 그러면 띠가 빈 채라 크기를 바꾸려면 한 번 더 눌러야 한다.
     setActiveId(id);
   };
 
@@ -149,13 +166,42 @@ export function DesignBannerPanel({
     setActiveId(null);
   };
 
-  /** 자리 바꾸기. 쌓이는 차례가 곧 보이는 차례다. */
-  const moveBlock = (from: number, to: number) => {
-    if (to < 0 || to >= row.content.blocks.length) return;
-    const blocks = [...row.content.blocks];
-    const [moved] = blocks.splice(from, 1);
-    blocks.splice(to, 0, moved);
-    patchContent({ blocks });
+  /**
+   * 끌어서 자리 잡기.
+   *
+   * <p>자리는 끄는 상자({@code [data-stack]}) 안에서의 %다. px 로 담으면 창 폭이 바뀔
+   * 때마다 글자가 배너 밖으로 밀려난다.
+   *
+   * <p>포인터를 잡아 둔다({@code setPointerCapture}). 잡지 않으면 빠르게 끌 때 포인터가
+   * 손잡이를 벗어나는 순간 {@code pointermove} 가 끊겨 글자가 중간에 멈춘다.
+   */
+  const startDrag = (blockId: string) => (e: React.PointerEvent<HTMLElement>) => {
+    // contentEditable 이 포커스를 가져가고 글자가 선택되는 것을 막는다.
+    e.preventDefault();
+    e.stopPropagation();
+
+    const handle = e.currentTarget;
+    const stack = handle.closest('[data-stack]');
+    if (!stack) return;
+
+    const box = stack.getBoundingClientRect();
+    handle.setPointerCapture(e.pointerId);
+
+    const move = (ev: PointerEvent) => {
+      patchBlock(blockId, {
+        x: pct(((ev.clientX - box.left) / box.width) * 100),
+        y: pct(((ev.clientY - box.top) / box.height) * 100),
+      });
+    };
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', stop);
+      handle.removeEventListener('pointercancel', stop);
+    };
+
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
   };
 
   const addBanner = () => {
@@ -170,13 +216,15 @@ export function DesignBannerPanel({
     setActiveId(null);
   };
 
-  const activeIndex = row ? row.content.blocks.findIndex((b) => b.id === activeId) : -1;
-  const active = activeIndex >= 0 ? row.content.blocks[activeIndex] : null;
+  const active = row ? row.content.blocks.find((b) => b.id === activeId) ?? null : null;
+  const activeBold =
+    active?.bold ?? (active ? ROLE_BOLD[active.style ?? 'DESC'] ?? false : false);
+  const placed = active?.x != null && active?.y != null;
 
   return (
     <Panel
       title="꾸민 배너"
-      note="배너 안의 글자를 눌러 고르고, 바로 위 띠에서 색·역할·차례를 바꾼다. 사진 배너보다 먼저 나간다."
+      note="배너 안의 글자를 눌러 고르고, 바로 위 띠에서 크기·색·배경을 바꾼다. 고른 글자의 ✥ 를 끌면 그 자리에 선다."
       actions={
         canEdit && (
           <Button onClick={addBanner} disabled={rows.length >= 10}>
@@ -219,65 +267,70 @@ export function DesignBannerPanel({
           </div>
 
           <div className={styles.designEditor}>
-            {/* 고른 것에 할 수 있는 일만 뜬다. 아무것도 고르지 않았을 때도 띠는 남겨 둔다 —
-                뜨고 사라지면 누를 때마다 아래 배너가 위아래로 튄다. */}
             {canEdit && (
               <div className={styles.designBar}>
-                {active ? (
-                  <>
-                    <span className={styles.designBlockKind}>
-                      {active.type === 'BUTTON' ? '버튼' : '글자'}
-                    </span>
+                {/* --- 고른 것 --- */}
+                <div className={styles.designBarRow}>
+                  {active ? (
+                    <>
+                      <span className={styles.designBlockKind}>
+                        {active.type === 'BUTTON' ? '버튼' : '글자'}
+                      </span>
 
-                    {active.type === 'TEXT' ? (
                       <SelectInput
-                        value={active.style ?? 'DESC'}
-                        aria-label="글자 역할"
+                        value={active.size ?? ''}
+                        aria-label="글자 크기"
                         onChange={(e) =>
-                          patchBlock(active.id, { style: e.target.value as BannerTextStyle })
+                          patchBlock(active.id, {
+                            size: e.target.value ? Number(e.target.value) : null,
+                          })
                         }
                       >
-                        {TEXT_STYLES.map((s) => (
-                          <option key={s.value} value={s.value}>
-                            {s.label}
+                        <option value="">기본 크기</option>
+                        {SIZES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}px
                           </option>
                         ))}
                       </SelectInput>
-                    ) : (
-                      <LinkTargetPicker
-                        value={active.href ?? ''}
-                        onChange={(href) => patchBlock(active.id, { href })}
+
+                      <button
+                        type="button"
+                        aria-label="두껍게"
+                        title="두껍게"
+                        aria-pressed={activeBold}
+                        className={activeBold ? styles.designIconBtnOn : styles.designIconBtn}
+                        onClick={() => patchBlock(active.id, { bold: !activeBold })}
+                      >
+                        <b>가</b>
+                      </button>
+
+                      <ColorPalette
+                        value={active.color}
+                        label="글자색"
+                        clearable
+                        onChange={(color) => patchBlock(active.id, { color })}
                       />
-                    )}
 
-                    <ColorPalette
-                      value={active.color}
-                      label="글자색"
-                      clearable
-                      onChange={(color) => patchBlock(active.id, { color })}
-                    />
+                      {active.type === 'BUTTON' && (
+                        <LinkTargetPicker
+                          value={active.href ?? ''}
+                          onChange={(href) => patchBlock(active.id, { href })}
+                        />
+                      )}
 
-                    <span className={styles.designBlockActions}>
-                      <button
-                        type="button"
-                        aria-label="위로"
-                        title="위로"
-                        className={styles.designIconBtn}
-                        disabled={activeIndex === 0}
-                        onClick={() => moveBlock(activeIndex, activeIndex - 1)}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="아래로"
-                        title="아래로"
-                        className={styles.designIconBtn}
-                        disabled={activeIndex === row.content.blocks.length - 1}
-                        onClick={() => moveBlock(activeIndex, activeIndex + 1)}
-                      >
-                        ↓
-                      </button>
+                      {/* 끌어다 둔 자리를 물린다. 이것이 없으면 한 번 끈 글자를
+                          다시 줄 맞춰 세울 방법이 없다. */}
+                      {placed && (
+                        <button
+                          type="button"
+                          className={styles.designClearColor}
+                          onClick={() => patchBlock(active.id, { x: null, y: null })}
+                        >
+                          자리 풀기
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         aria-label="삭제"
@@ -287,34 +340,75 @@ export function DesignBannerPanel({
                       >
                         ×
                       </button>
+                    </>
+                  ) : (
+                    <span className={styles.designBarHint}>
+                      배너 안의 글자를 누르면 여기에서 크기·굵기·색을 바꿀 수 있습니다.
                     </span>
-                  </>
-                ) : (
-                  <span className={styles.designBarHint}>
-                    배너 안의 글자를 누르면 여기에서 색·역할·차례를 바꿀 수 있습니다.
+                  )}
+                </div>
+
+                {/* --- 배너 전체 ---
+                    흐림·어둠막을 아래 폼에 두면 한 칸 올릴 때마다 결과를 보려고
+                    화면을 위로 굴려야 한다. 결과가 보이는 자리에 둔다. */}
+                <div className={styles.designBarRow}>
+                  <ColorPalette
+                    value={row.content.background.color ?? DEFAULT_BG}
+                    label="배경색"
+                    onChange={(color) => patchBackground({ color: color ?? DEFAULT_BG })}
+                  />
+
+                  <SelectInput
+                    value={row.content.background.blur}
+                    aria-label="사진 흐리게"
+                    onChange={(e) => patchBackground({ blur: Number(e.target.value) })}
+                  >
+                    {BLURS.map((b) => (
+                      <option key={b.value} value={b.value}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </SelectInput>
+
+                  <SelectInput
+                    value={row.content.background.overlay}
+                    aria-label="어둠막"
+                    onChange={(e) =>
+                      patchBackground({
+                        overlay: e.target.value as BannerContent['background']['overlay'],
+                      })
+                    }
+                  >
+                    {OVERLAYS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </SelectInput>
+
+                  <span className={styles.designBarGap} />
+
+                  {/* 끌어다 두지 않은 블록이 쌓이는 쪽. 끈 블록은 제 자리를 쓴다 */}
+                  <span className={styles.designBlockActions}>
+                    {ALIGNS.map((a) => (
+                      <button
+                        key={a.value}
+                        type="button"
+                        aria-label={`쌓이는 글자 ${a.label}`}
+                        title={`쌓이는 글자 ${a.label}`}
+                        aria-pressed={row.content.align === a.value}
+                        className={
+                          row.content.align === a.value
+                            ? styles.designIconBtnOn
+                            : styles.designIconBtn
+                        }
+                        onClick={() => patchContent({ align: a.value })}
+                      >
+                        {a.glyph}
+                      </button>
+                    ))}
                   </span>
-                )}
-
-                <span className={styles.designBarGap} />
-
-                {/* 글자가 붙는 쪽은 블록 하나가 아니라 배너 전체의 것이다 */}
-                <span className={styles.designBlockActions}>
-                  {ALIGNS.map((a) => (
-                    <button
-                      key={a.value}
-                      type="button"
-                      aria-label={`글자 ${a.label}`}
-                      title={`글자 ${a.label}`}
-                      aria-pressed={row.content.align === a.value}
-                      className={
-                        row.content.align === a.value ? styles.designIconBtnOn : styles.designIconBtn
-                      }
-                      onClick={() => patchContent({ align: a.value })}
-                    >
-                      {a.glyph}
-                    </button>
-                  ))}
-                </span>
+                </div>
               </div>
             )}
 
@@ -345,6 +439,20 @@ export function DesignBannerPanel({
                             maxLength={200}
                             onChange={(text) => patchBlock(blockId, { text })}
                           />
+                          {blockId === activeId && (
+                            // <a> 안에도 들어가므로 <button> 이 아니라 span 이다.
+                            // 버튼 안의 버튼은 브라우저가 알아서 풀어 버린다.
+                            <span
+                              role="button"
+                              tabIndex={-1}
+                              aria-label="끌어서 옮기기"
+                              title="끌어서 옮기기"
+                              className={styles.dragHandle}
+                              onPointerDown={startDrag(blockId)}
+                            >
+                              ✥
+                            </span>
+                          )}
                         </span>
                       )
                     : undefined
@@ -375,18 +483,11 @@ export function DesignBannerPanel({
             </div>
           </div>
 
-          {/* ---------- 배경 ---------- */}
+          {/* ---------- 배경 사진 ----------
+              색·흐림·어둠막과 달리 사진은 올리는 데 자리가 필요하다. 띠에 넣으면
+              띠가 배너만큼 두꺼워진다. */}
           <section className={styles.designGroup}>
-            <h3 className={styles.designGroupTitle}>배경</h3>
-
-            <Field label="배경색" hint="사진이 없으면 이 색만 보인다.">
-              <ColorPalette
-                value={row.content.background.color ?? DEFAULT_BG}
-                label="배경색"
-                disabled={!canEdit}
-                onChange={(color) => patchBackground({ color: color ?? DEFAULT_BG })}
-              />
-            </Field>
+            <h3 className={styles.designGroupTitle}>배경 사진</h3>
 
             <Field
               label="배경 사진"
@@ -422,50 +523,11 @@ export function DesignBannerPanel({
               />
             </Field>
 
-            <Field label="사진 흐리게" hint="사진이 복잡하면 흐릴수록 글자가 읽힌다.">
-              <div className={styles.previewDevices}>
-                {BLUR_STEPS.map((blur) => (
-                  <button
-                    key={blur}
-                    type="button"
-                    disabled={!canEdit}
-                    aria-pressed={row.content.background.blur === blur}
-                    className={
-                      row.content.background.blur === blur
-                        ? styles.previewDeviceOn
-                        : styles.previewDevice
-                    }
-                    onClick={() => patchBackground({ blur })}
-                  >
-                    {blur === 0 ? '없음' : `${blur}px`}
-                  </button>
-                ))}
-              </div>
-            </Field>
-
-            <Field
-              label="어둠막"
-              hint="사진 위에 깔아 글자를 읽히게 한다. 사진이 어두우면 「없음」도 된다."
-            >
-              <div className={styles.previewDevices}>
-                {OVERLAYS.map((overlay) => (
-                  <button
-                    key={overlay.value}
-                    type="button"
-                    disabled={!canEdit}
-                    aria-pressed={row.content.background.overlay === overlay.value}
-                    className={
-                      row.content.background.overlay === overlay.value
-                        ? styles.previewDeviceOn
-                        : styles.previewDevice
-                    }
-                    onClick={() => patchBackground({ overlay: overlay.value })}
-                  >
-                    {overlay.label}
-                  </button>
-                ))}
-              </div>
-            </Field>
+            <p className={styles.hint}>
+              끌어다 둔 자리와 px 크기는 <strong>넓은 화면에서만</strong> 쓰입니다. 휴대폰에서는
+              다시 위에서 아래로 쌓이고 글자는 0.6 배로 줄어듭니다 — 배너 비율이 폭에 따라
+              뒤집혀서, PC 에서 오른쪽 끝에 둔 글자는 휴대폰에서 화면 밖이기 때문입니다.
+            </p>
           </section>
         </>
       )}

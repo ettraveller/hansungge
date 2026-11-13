@@ -465,6 +465,13 @@
   background: rgba(13, 16, 19, 0.55);
 }
 
+/* 꾸민 배너는 상자 세로를 전부 쓴다 — 자리(%)가 이 높이에 걸리기 때문이다.
+   .slideOn 이 align-items:center 라서 늘어나라고 따로 말해 줘야 한다. */
+.dWrap {
+  align-self: stretch;
+  display: flex;
+}
+
 /* 쌓이는 자리. 기본 배너의 .copy 와 같은 폭 제한을 쓴다 */
 .dStack {
   position: relative;
@@ -472,6 +479,31 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+
+/* 자리(%)가 걸리는 상자다. 40rem 으로 좁혀 두면 x=100% 가 화면 오른쪽이 아니라
+   글 단 오른쪽이라, 배너 오른쪽 절반에는 아무것도 끌어다 놓을 수 없다.
+   줄바꿈을 잡던 그 40rem 은 아래 글자 쪽으로 옮겼다. */
+.dWrap .dStack {
+  flex: 1 1 auto;
+  justify-content: center;
+  max-width: none;
+}
+
+/* 끌어다 둔 블록. 쌓임에서 빠져 그 자리에 선다.
+   margin 을 지우는 이유는 .dTitle/.dDesc/.dStack>a 가 들고 있는 위 여백이
+   top 에 그대로 더해져서, 놓은 자리보다 늘 조금 아래에 서기 때문이다. */
+.dStack > .dPlaced {
+  position: absolute;
+  margin: 0;
+  max-width: min(92%, 40rem);
+}
+
+/* px 로 크기를 고른 글자. 역할이 들고 있던 폭 제한을 글 단 폭으로 되돌린다 —
+   .dDesc 의 42ch 가 48px 짜리 제목에 걸리면 한 글자씩 접힌다. */
+.dSized {
+  font-size: var(--bs);
+  max-width: 40rem;
 }
 
 .dAlignLeft {
@@ -504,6 +536,9 @@
 
 .dTitle,
 .dHighlight {
+  /* 줄바꿈을 잡는 폭. 예전에는 .dStack 이 들고 있었는데, 거기가 자리(%)의
+     기준 상자가 되면서 글자 쪽으로 내려왔다. */
+  max-width: 40rem;
   font-size: var(--text-4xl);
   line-height: 1.16;
   font-weight: 800;
@@ -589,5 +624,18 @@
 
   .dDesc {
     font-size: var(--text-md);
+  }
+
+  /* 좁은 화면에서는 좌표를 버리고 다시 쌓는다. PC 에서 오른쪽 끝에 둔 글자가
+     여기서는 화면 밖이다 — 배치를 두 벌 잡게 하는 대신 흐름에 돌려준다. */
+  .dStack > .dPlaced {
+    position: static;
+    margin-top: var(--space-4);
+    max-width: 100%;
+  }
+
+  /* px 로 고른 크기도 폭에 맞춰 줄인다 (0.6배) */
+  .dSized {
+    font-size: var(--bsm, var(--bs));
   }
 }

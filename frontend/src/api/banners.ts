@@ -16,13 +16,19 @@ export type BannerOverlay = 'GRADIENT' | 'SOLID' | 'NONE';
 export interface BannerBlock {
   id: string;
   type: 'TEXT' | 'BUTTON';
-  /** TEXT 의 역할. 크기·굵기가 여기서 정해진다 — px 를 받지 않는다 */
+  /** TEXT 의 역할. 크기·굵기·색의 기본값이다 — 아래 값이 있으면 그것이 이긴다 */
   style?: BannerTextStyle | null;
   text: string;
   /** #rrggbb. 비우면 그 역할의 기본색 */
   color?: string | null;
   href?: string | null;
   look?: BannerButtonLook | null;
+  /** 글자 크기(px). 비우면 역할의 기본 크기. 좁은 화면에서는 0.6 배로 줄어든다 */
+  size?: number | null;
+  bold?: boolean | null;
+  /** 가로·세로 자리(%). <b>둘 다</b> 있을 때만 그 자리에 선다. 좁은 화면에서는 버리고 쌓는다 */
+  x?: number | null;
+  y?: number | null;
 }
 
 /**

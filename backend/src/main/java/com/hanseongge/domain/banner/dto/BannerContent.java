@@ -7,11 +7,11 @@ import java.util.List;
 /**
  * 화면에서 꾸민 배너의 내용 ({@code hero_banners.content}).
  *
- * <h2>요소를 쌓는다 — 좌표로 놓지 않는다</h2>
+ * <h2>좌표는 PC 에만 건다 — 휴대폰에서는 쌓인다</h2>
  * 배너의 비율이 폭에 따라 뒤집힌다 (PC 1280×560 = 2.3:1, 휴대폰 390×460 = 0.85:1).
- * 좌표로 놓게 하면 PC 에서 오른쪽 끝에 둔 글자가 휴대폰에서는 <b>화면 밖</b>이라,
- * 배너 한 장마다 배치를 두 번 잡아야 한다. 위에서 아래로 쌓으면 지금 히어로 CSS 가
- * 두 폭을 그대로 처리한다 — 반응형이 공짜다.
+ * 그래서 좌표를 <b>%로</b> 받고, 좁은 화면에서는 그 좌표를 버리고 위에서 아래로 쌓는다
+ * (CSS {@code @media} 한 줄). 배치를 두 번 잡지 않아도 되면서, 넓은 화면에서는
+ * 원하는 자리에 둘 수 있다. {@code x}·{@code y} 가 비어 있으면 넓은 화면에서도 쌓인다.
  *
  * <h2>자유 문자열을 받지 않는다</h2>
  * 이 값은 손님 화면의 {@code style} 로 들어간다. 색·크기·정렬을 글자 그대로 받으면
@@ -19,9 +19,6 @@ import java.util.List;
  * 하나만, 나머지는 전부 <b>정해진 목록(enum)</b>이다. 모양이 아닌 값은
  * {@code BannerContentValidator} 가 거른다.
  *
- * <h2>나중에 끌어다 놓기를 붙일 자리</h2>
- * 블록에 좌표를 더하고 {@link Mobile} 에 좌표 한 벌을 더 두면 된다. 지금 넣지 않는
- * 이유는 위와 같다 — 쓰는 사람이 배너마다 두 번 잡아야 하기 때문이다.
  */
 @Schema(name = "BannerContent", description = "화면에서 꾸민 배너의 내용")
 public record BannerContent(
@@ -83,8 +80,26 @@ public record BannerContent(
             String href,
 
             @Schema(description = "버튼 모양", example = "GOLD")
-            ButtonLook look
+            ButtonLook look,
+
+            @Schema(description = "글자 크기(px). 비우면 역할의 기본 크기", example = "48")
+            Integer size,
+
+            @Schema(description = "굵게. 비우면 역할의 기본 굵기")
+            Boolean bold,
+
+            @Schema(description = "가로 자리(%). y 와 함께 있을 때만 쓴다. 비우면 쌓인다")
+            Integer x,
+
+            @Schema(description = "세로 자리(%). x 와 함께 있을 때만 쓴다. 비우면 쌓인다")
+            Integer y
     ) {
+
+        /** 자리·크기를 안 쓰던 때의 생김새. 쌓이는 블록을 만들 때 쓴다. */
+        public Block(String id, BlockType type, TextStyle style, String text, String color,
+                     String href, ButtonLook look) {
+            this(id, type, style, text, color, href, look, null, null, null, null);
+        }
     }
 
     /**
@@ -111,9 +126,9 @@ public record BannerContent(
     /**
      * 글자의 역할.
      *
-     * <p>크기를 px 로 받지 않는다. 받으면 PC 에서 고른 48px 이 휴대폰에서도 48px 이라
-     * 제목 한 줄이 배너를 덮는다. 역할만 고르면 두 폭의 크기는 CSS 가 들고 있다 —
-     * 지금 기본 배너가 쓰는 바로 그 값이다.
+     * <p>크기·굵기·색의 <b>기본값</b>이다. 블록이 {@code size}·{@code bold}·{@code color}
+     * 를 들고 있으면 그것이 이긴다. 역할만 두면 두 폭의 크기는 CSS 가 들고 있고,
+     * px 로 고른 크기는 좁은 화면에서 비율대로 줄어든다 (0.6배).
      */
     public enum TextStyle { EYEBROW, TITLE, HIGHLIGHT, DESC }
 

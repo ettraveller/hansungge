@@ -1787,10 +1787,8 @@ a.hint:hover {
   position: sticky;
   top: 0;
   z-index: 3;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  gap: 6px;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-bottom: 0;
@@ -1798,10 +1796,23 @@ a.hint:hover {
   background: #fff;
 }
 
+.designBarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 두 줄 사이. 「고른 것」과 「배너 전체」가 한 덩이로 읽히지 않게 */
+.designBarRow + .designBarRow {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
 /* 띠 안의 셀렉트는 폼 칸이 아니라 단추에 가깝다. 폭을 내용만큼만 잡는다. */
 .designBar select {
   width: auto;
-  min-width: 120px;
+  min-width: 92px;
   max-width: 260px;
   height: 30px;
   padding: 0 26px 0 8px;
@@ -1847,6 +1858,36 @@ a.hint:hover {
 .pick,
 .pickOn {
   display: inline-block;
+}
+
+.pickOn {
+  position: relative;
+}
+
+/* 끌어서 옮기는 손잡이. 글자 자체를 끌게 하면 글자를 고르려고 그은 손짓과
+   옮기려고 그은 손짓을 구분할 수 없다 — PPT 가 상자 테두리를 따로 두는 이유다. */
+.dragHandle {
+  position: absolute;
+  top: -12px;
+  left: -14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--gold-500);
+  color: var(--ink-900);
+  font-size: 12px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 1px 6px rgba(8, 10, 12, 0.45);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
 }
 
 .pickOn .editable {
