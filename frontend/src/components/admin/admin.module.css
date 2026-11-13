@@ -1983,6 +1983,39 @@ a.hint:hover {
   cursor: default;
 }
 
+/* --- 사진 효과 판 ---
+   색판과 같은 상자(.palette·.palettePop)를 쓰고 안쪽만 다르다. 한 줄에 한 효과,
+   고른 것 하나가 눌린 채로 남는다. */
+.effectRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.effectChip,
+.effectChipOn {
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--ink-600);
+  white-space: nowrap;
+}
+
+.effectChip:hover {
+  border-color: var(--gold-500);
+}
+
+.effectChipOn {
+  border-color: var(--ink-900);
+  background: var(--ink-900);
+  color: #fff;
+}
+
 /* 띠 안의 글자 칸. 폼의 .input 은 폭을 다 먹어서 띠 한 줄을 통째로 밀어낸다. */
 .designBarText {
   width: auto;

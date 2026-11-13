@@ -188,7 +188,7 @@ class BannerContentValidatorTest {
         private BannerContent.Block block(Integer size, Integer x, Integer y) {
             return new BannerContent.Block("b1", BannerContent.BlockType.TEXT,
                     BannerContent.TextStyle.TITLE, "제목", null, null, null, size, true, x, y,
-                    null);
+                    null, null);
         }
 
         private BannerContent.Block normalized(BannerContent.Block raw) {
@@ -230,7 +230,7 @@ class BannerContentValidatorTest {
         void appliesToButtons() {
             BannerContent.Block raw = new BannerContent.Block("b1",
                     BannerContent.BlockType.BUTTON, null, "보러가기", null, "/shop",
-                    BannerContent.ButtonLook.GOLD, 20, false, 70, 80, null);
+                    BannerContent.ButtonLook.GOLD, 20, false, 70, 80, null, null);
 
             BannerContent.Block out = validator.normalize(of(null, raw)).blocks().get(0);
             assertThat(out.size()).isEqualTo(20);
@@ -251,8 +251,13 @@ class BannerContentValidatorTest {
     class ImageBlock {
 
         private BannerContent.Block image(String key, String alt, Integer width) {
+            return image(key, alt, width, null);
+        }
+
+        private BannerContent.Block image(String key, String alt, Integer width,
+                                          BannerContent.ImageEffect effect) {
             return new BannerContent.Block("b1", BannerContent.BlockType.IMAGE, null, alt,
-                    null, null, null, width, null, null, null, key);
+                    null, null, null, width, null, null, null, key, effect);
         }
 
         @Test
@@ -280,6 +285,34 @@ class BannerContentValidatorTest {
             assertThatThrownBy(() -> validator
                     .normalize(of(null, image("https://evil.example/a.png", "사진", 240))))
                     .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("효과의 모르는 값은 그 칸만 기본으로 되돌린다")
+        void clampsEffect() {
+            BannerContent.ImageEffect raw = new BannerContent.ImageEffect(
+                    BannerContent.FadeEdge.STRONG, 9999, 0, null, null);
+
+            BannerContent.ImageEffect out = validator
+                    .normalize(of(null, image("banners/a.webp", "사진", 240, raw)))
+                    .blocks().get(0).effect();
+
+            assertThat(out.fade()).isEqualTo(BannerContent.FadeEdge.STRONG);
+            assertThat(out.blur()).isZero();
+            assertThat(out.opacity()).isEqualTo(100);
+            assertThat(out.radius()).isEqualTo(BannerContent.Radius.SMALL);
+            assertThat(out.shadow()).isEqualTo(BannerContent.Shadow.NONE);
+        }
+
+        @Test
+        @DisplayName("글자 블록이 들고 온 사진 효과는 버린다")
+        void dropsEffectOnText() {
+            BannerContent.Block raw = new BannerContent.Block("b1",
+                    BannerContent.BlockType.TEXT, BannerContent.TextStyle.TITLE, "제목",
+                    null, null, null, null, null, null, null, null,
+                    new BannerContent.ImageEffect(BannerContent.FadeEdge.SOFT, 8, 70, null, null));
+
+            assertThat(validator.normalize(of(null, raw)).blocks().get(0).effect()).isNull();
         }
 
         @Test

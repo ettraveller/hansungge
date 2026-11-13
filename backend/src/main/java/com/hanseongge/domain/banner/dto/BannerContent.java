@@ -95,14 +95,45 @@ public record BannerContent(
             Integer y,
 
             @Schema(description = "IMAGE 가 보여줄 업로드된 사진 키. 그때는 text 가 대체 텍스트다")
-            String imageKey
+            String imageKey,
+
+            @Schema(description = "IMAGE 에만 걸리는 효과. 비우면 사진 그대로")
+            ImageEffect effect
     ) {
 
         /** 자리·크기·사진을 안 쓰던 때의 생김새. 쌓이는 글자 블록을 만들 때 쓴다. */
         public Block(String id, BlockType type, TextStyle style, String text, String color,
                      String href, ButtonLook look) {
-            this(id, type, style, text, color, href, look, null, null, null, null, null);
+            this(id, type, style, text, color, href, look, null, null, null, null, null, null);
         }
+    }
+
+    /**
+     * 사진 블록에 거는 효과.
+     *
+     * <p>어두운 배너 위에 올린 사진은 저 혼자 또렷해서 "얹어 둔 것" 처럼 보인다.
+     * 가장자리를 녹이거나 흐리게 하거나 비치게 해서 배경에 스며들게 한다. 전부
+     * <b>정해진 값</b>이다 — 자유 숫자를 받으면 {@code blur(9999px)} 한 줄로 화면이
+     * 지워지고, 자유 문자열을 받으면 {@code mask-image} 가 바깥 주소를 연다.
+     */
+    @Schema(name = "BannerImageEffect")
+    public record ImageEffect(
+
+            @Schema(description = "가장자리 녹이기", example = "SOFT")
+            FadeEdge fade,
+
+            @Schema(description = "흐림. 0·4·8·16 중 하나", example = "0")
+            Integer blur,
+
+            @Schema(description = "투명도(%). 100·85·70·50 중 하나", example = "100")
+            Integer opacity,
+
+            @Schema(description = "모서리 둥글기", example = "SMALL")
+            Radius radius,
+
+            @Schema(description = "그림자", example = "NONE")
+            Shadow shadow
+    ) {
     }
 
     /**
@@ -145,4 +176,12 @@ public record BannerContent(
     public enum ButtonLook { GOLD, OUTLINE, SOLID }
 
     public enum Overlay { GRADIENT, SOLID, NONE }
+
+    /** 사진 가장자리를 배경으로 녹이는 정도. */
+    public enum FadeEdge { NONE, SOFT, STRONG }
+
+    /** 사진 모서리 둥글기. 비우면 SMALL — 효과를 쓰기 전의 모양이 그것이다. */
+    public enum Radius { NONE, SMALL, LARGE }
+
+    public enum Shadow { NONE, SOFT }
 }

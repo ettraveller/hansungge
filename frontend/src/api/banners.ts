@@ -13,6 +13,27 @@ export type BannerTextStyle = 'EYEBROW' | 'TITLE' | 'HIGHLIGHT' | 'DESC';
 export type BannerButtonLook = 'GOLD' | 'OUTLINE' | 'SOLID';
 export type BannerOverlay = 'GRADIENT' | 'SOLID' | 'NONE';
 
+export type BannerImageFade = 'NONE' | 'SOFT' | 'STRONG';
+export type BannerImageRadius = 'NONE' | 'SMALL' | 'LARGE';
+export type BannerImageShadow = 'NONE' | 'SOFT';
+
+/**
+ * 사진 블록에 거는 효과.
+ *
+ * <p>어두운 배너 위의 사진은 저 혼자 또렷해서 "얹어 둔 것" 처럼 보인다. 가장자리를
+ * 녹이거나 흐리게 하거나 비치게 해서 배경에 스며들게 한다. 비어 있으면 사진 그대로다.
+ */
+export interface BannerImageEffect {
+  /** 가장자리 녹이기 */
+  fade?: BannerImageFade | null;
+  /** 0 · 4 · 8 · 16 */
+  blur?: number | null;
+  /** 100 · 85 · 70 · 50 */
+  opacity?: number | null;
+  radius?: BannerImageRadius | null;
+  shadow?: BannerImageShadow | null;
+}
+
 export interface BannerBlock {
   id: string;
   /**
@@ -32,6 +53,8 @@ export interface BannerBlock {
   look?: BannerButtonLook | null;
   /** IMAGE 가 보여줄 업로드된 사진 키 */
   imageKey?: string | null;
+  /** IMAGE 에만 걸리는 효과. 비우면 사진 그대로 */
+  effect?: BannerImageEffect | null;
   /** 글자 크기(px) — IMAGE 면 너비(px). 좁은 화면에서는 0.6 배로 줄어든다 */
   size?: number | null;
   bold?: boolean | null;

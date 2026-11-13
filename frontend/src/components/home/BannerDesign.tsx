@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import type { BannerContent } from '@/api/banners';
+import type { BannerContent, BannerImageEffect } from '@/api/banners';
 import { mediaUrl } from '@/utils/media';
 import styles from './HeroSlider.module.css';
 
@@ -27,6 +27,37 @@ const MAX_SIZE = 120;
 /** 사진 너비(px) 의 위아래 끝. 글자와 달리 배너 폭의 절반까지는 쓸 일이 있다. */
 const MIN_IMAGE = 20;
 const MAX_IMAGE = 800;
+
+/** 고를 수 있는 투명도(%). 0 을 그리면 "사진이 사라졌다" 가 된다. */
+const OPACITY_STEPS = [100, 85, 70, 50];
+
+const FADE_CLASS: Record<string, string> = {
+  SOFT: styles.dFadeSoft,
+  STRONG: styles.dFadeStrong,
+};
+
+const RADIUS_VALUE: Record<string, string> = {
+  NONE: '0',
+  SMALL: 'var(--radius-sm)',
+  LARGE: '24px',
+};
+
+/**
+ * 사진 효과 → CSS 변수.
+ *
+ * <p>서버가 이미 걸렀다. 여기서 다시 보는 이유는 색과 같다 — 이 값이 {@code style} 로
+ * 들어가므로, 앞 문이 한 겹 뚫렸을 때 두 번째 문이 있어야 한다.
+ */
+function effectCss(effect: BannerImageEffect | null | undefined): React.CSSProperties {
+  if (!effect) return {};
+  const blur = BLUR_STEPS.includes(effect.blur ?? 0) ? effect.blur ?? 0 : 0;
+  const opacity = OPACITY_STEPS.includes(effect.opacity ?? 100) ? effect.opacity ?? 100 : 100;
+  return {
+    '--bimgblur': `${blur}px`,
+    '--bimgop': `${opacity / 100}`,
+    '--bimgr': RADIUS_VALUE[effect.radius ?? 'SMALL'] ?? RADIUS_VALUE.SMALL,
+  } as React.CSSProperties;
+}
 
 /** 좁은 화면에서 px 크기를 줄이는 비율. PC 제목 48px → 휴대폰 29px. */
 const MOBILE_SCALE = 0.6;
@@ -160,14 +191,20 @@ export function BannerDesign({
             if (image) {
               const src = mediaUrl(block.imageKey);
               if (!src) return null;
+
+              const fade = FADE_CLASS[block.effect?.fade ?? 'NONE'] ?? '';
+              const shadow = block.effect?.shadow === 'SOFT' ? styles.dImgShadow : '';
+
               return (
                 // 사진은 자식을 가질 수 없어서 상자로 한 번 싼다. 손잡이(편집기)가
                 // 걸릴 자리이면서, 너비를 px 로 받는 자리이기도 하다.
                 <span
                   key={block.id}
                   data-block={block.id}
-                  className={`${styles.dImage}${extra}`}
-                  style={css}
+                  className={`${styles.dImage}${extra}${fade ? ` ${fade}` : ''}${
+                    shadow ? ` ${shadow}` : ''
+                  }`}
+                  style={{ ...css, ...effectCss(block.effect) }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt={block.text} />

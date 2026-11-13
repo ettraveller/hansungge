@@ -14,6 +14,7 @@ import { ImageUploader } from '../ImageUploader';
 import { LinkTargetPicker } from '../LinkTargetPicker';
 import { Panel } from '../Panel';
 import { ColorPalette } from './ColorPalette';
+import { ImageEffectPicker } from './ImageEffectPicker';
 import { EditableText } from './EditableText';
 import styles from '../admin.module.css';
 
@@ -467,6 +468,10 @@ export function DesignBannerPanel({
                           <UploadButton
                             label="사진 교체"
                             onKey={(imageKey) => patchBlock(active.id, { imageKey })}
+                          />
+                          <ImageEffectPicker
+                            value={active.effect}
+                            onChange={(effect) => patchBlock(active.id, { effect })}
                           />
                         </>
                       ) : (

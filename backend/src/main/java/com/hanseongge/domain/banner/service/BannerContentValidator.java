@@ -45,6 +45,9 @@ public class BannerContentValidator {
     /** 고를 수 있는 흐림. 자유 숫자를 받으면 blur(9999px) 로 화면을 지울 수 있다. */
     private static final Set<Integer> BLUR_STEPS = Set.of(0, 4, 8, 16);
 
+    /** 고를 수 있는 투명도(%). 0 을 받으면 "저장했는데 사진이 사라졌다" 가 된다. */
+    private static final Set<Integer> OPACITY_STEPS = Set.of(100, 85, 70, 50);
+
     /**
      * 글자 크기(px) 의 위아래 끝.
      *
@@ -134,7 +137,8 @@ public class BannerContentValidator {
                 blocks.add(new BannerContent.Block(id, type, null,
                         cut(text, MAX_TEXT), null, null, null,
                         size(block.size(), type), null,
-                        percent(block.x(), block.y()), percent(block.y(), block.x()), key));
+                        percent(block.x(), block.y()), percent(block.y(), block.x()), key,
+                        effect(block.effect())));
                 continue;
             }
 
@@ -148,13 +152,15 @@ public class BannerContentValidator {
                         cut(text, MAX_BUTTON_TEXT), color(block.color()), href,
                         block.look() == null ? BannerContent.ButtonLook.GOLD : block.look(),
                         size(block.size(), type), block.bold(),
-                        percent(block.x(), block.y()), percent(block.y(), block.x()), null));
+                        percent(block.x(), block.y()), percent(block.y(), block.x()),
+                        null, null));
             } else {
                 blocks.add(new BannerContent.Block(id, type,
                         block.style() == null ? BannerContent.TextStyle.DESC : block.style(),
                         cut(text, MAX_TEXT), color(block.color()), null, null,
                         size(block.size(), type), block.bold(),
-                        percent(block.x(), block.y()), percent(block.y(), block.x()), null));
+                        percent(block.x(), block.y()), percent(block.y(), block.x()),
+                        null, null));
             }
         }
         return blocks;
@@ -187,6 +193,25 @@ public class BannerContentValidator {
         int min = image ? MIN_IMAGE : MIN_SIZE;
         int max = image ? MAX_IMAGE : MAX_SIZE;
         return Math.max(min, Math.min(max, raw));
+    }
+
+    /**
+     * 사진 효과. 모르는 값이 오면 그 칸만 기본값으로 되돌린다.
+     *
+     * <p>비어 있으면 비운 채로 둔다 — 효과를 쓰지 않은 사진과 "전부 기본값인 효과"를
+     * 굳이 다른 모양으로 저장할 이유가 없다.
+     */
+    private static BannerContent.ImageEffect effect(BannerContent.ImageEffect raw) {
+        if (raw == null) {
+            return null;
+        }
+        return new BannerContent.ImageEffect(
+                raw.fade() == null ? BannerContent.FadeEdge.NONE : raw.fade(),
+                raw.blur() != null && BLUR_STEPS.contains(raw.blur()) ? raw.blur() : 0,
+                raw.opacity() != null && OPACITY_STEPS.contains(raw.opacity())
+                        ? raw.opacity() : 100,
+                raw.radius() == null ? BannerContent.Radius.SMALL : raw.radius(),
+                raw.shadow() == null ? BannerContent.Shadow.NONE : raw.shadow());
     }
 
     /**
