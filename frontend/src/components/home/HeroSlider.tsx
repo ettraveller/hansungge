@@ -70,7 +70,6 @@ export function HeroSlider({
   slides,
   banners,
   renderText,
-  trailing,
 }: {
   slides: Slide[];
   banners?: BannerSlide[];
@@ -82,14 +81,6 @@ export function HeroSlider({
    * 모양" 과 "손님이 보는 모양" 이 어긋난다.
    */
   renderText?: (bannerId: number, blockId: string, value: string) => React.ReactNode;
-  /**
-   * 꾸민 배너의 쌓인 것들 맨 아래에 끼워 넣을 것.
-   *
-   * <p>편집기가 「+ 글자 · + 버튼」을 여기에 둔다 — 목록을 따로 두지 않고 <b>쌓일
-   * 그 자리에서</b> 더하게 하기 위함이다. 편집기는 배너를 한 장만 그리므로 장마다
-   * 나누지 않는다.
-   */
-  trailing?: React.ReactNode;
 }) {
   // 관리자가 올린 배너가 있으면 그것만 쓴다. 섞지 않는다 — 글자가 밖에 있는 슬라이드와
   // 이미지 한 장짜리가 번갈아 나오면 같은 배너의 두 가지 모양처럼 보인다.
@@ -187,7 +178,6 @@ export function HeroSlider({
                     ? (blockId, value) => renderText(banner.id, blockId, value)
                     : undefined
                 }
-                trailing={trailing}
               />
             )}
 

@@ -1953,32 +1953,28 @@ a.hint:hover {
   outline-offset: 2px;
 }
 
-/* --- 배너 안에서 더하기 ---
-   쌓인 것들 맨 아래에 그대로 붙는다. 누르면 바로 그 자리에 생긴다. */
-.designAddOnStage {
-  display: flex;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.designAddChip {
-  padding: 4px 10px;
-  border: 1px dashed rgba(255, 255, 255, 0.6);
-  border-radius: 999px;
-  background: rgba(15, 27, 45, 0.55);
-  color: #fff;
+/* --- 더하기 ---
+   띠에 둔다. 무대 위에 두면 배너의 일부처럼 보이고, 끌어다 둔 블록이 그 위에
+   겹치는 순간 눌릴 수조차 없다. */
+.designAddBtn {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-xs);
+  background: #fff;
   font-size: var(--text-xs);
-  line-height: 1.6;
-  backdrop-filter: blur(2px);
+  line-height: 1;
+  color: var(--ink-600);
 }
 
-.designAddChip:hover:not(:disabled) {
-  border-color: var(--gold-400);
-  color: var(--gold-300);
+.designAddBtn:hover:not(:disabled) {
+  border-color: var(--gold-500);
+  color: var(--ink-900);
 }
 
-.designAddChip:disabled {
-  opacity: 0.4;
+.designAddBtn:disabled {
+  opacity: 0.35;
   cursor: default;
 }
 

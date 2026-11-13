@@ -245,10 +245,8 @@ export function DesignBannerPanel({
     const grabY = e.clientY - start.top;
     const { width, height } = start;
 
-    // 붙을 수 있는 줄. 「더하기」 줄과 끄는 자기 자신은 뺀다.
-    const others = Array.from(stack.children).filter(
-      (el) => el !== self && !el.hasAttribute('data-add'),
-    );
+    // 붙을 수 있는 줄. 끄는 자기 자신은 뺀다.
+    const others = Array.from(stack.children).filter((el) => el !== self);
     const linesV = [box.left + box.width / 2];
     const linesH = [box.top + box.height / 2];
     for (const el of others) {
@@ -429,6 +427,25 @@ export function DesignBannerPanel({
                     흐림·어둠막을 아래 폼에 두면 한 칸 올릴 때마다 결과를 보려고
                     화면을 위로 굴려야 한다. 결과가 보이는 자리에 둔다. */}
                 <div className={styles.designBarRow}>
+                  {/* 더하기는 띠에 둔다. 무대 위에 두면 배너의 일부처럼 보이고,
+                      끌어다 둔 블록이 그 위에 겹치면 눌릴 수조차 없다. */}
+                  <button
+                    type="button"
+                    className={styles.designAddBtn}
+                    disabled={row.content.blocks.length >= MAX_BLOCKS}
+                    onClick={() => addBlock('TEXT')}
+                  >
+                    + 글자
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.designAddBtn}
+                    disabled={row.content.blocks.length >= MAX_BLOCKS}
+                    onClick={() => addBlock('BUTTON')}
+                  >
+                    + 버튼
+                  </button>
+
                   <ColorPalette
                     value={row.content.background.color ?? DEFAULT_BG}
                     label="배경색"
@@ -502,6 +519,12 @@ export function DesignBannerPanel({
               // <a> 를 집으면 브라우저가 링크 끌어다 놓기를 시작한다. 그러면 우리
               // pointermove 가 끊겨서 버튼 블록만 끌리지 않는다.
               onDragStartCapture={(e) => e.preventDefault()}
+              // 블록 아무 데나 누르면 그것이 골라진다. 글자 칸에만 걸어 두면 버튼은
+              // 금색 안쪽 여백이 넓어서 "눌렀는데 아무 일도 없다" — 손잡이도 안 뜬다.
+              onPointerDownCapture={(e) => {
+                const block = (e.target as HTMLElement).closest<HTMLElement>('[data-block]');
+                if (block?.dataset.block) setActiveId(block.dataset.block);
+              }}
             >
               {/* PPT 의 맞춤선. 끄는 동안에만 뜬다 */}
               {(guides.v.length > 0 || guides.h.length > 0) && (
@@ -524,7 +547,6 @@ export function DesignBannerPanel({
                         <span
                           className={blockId === activeId ? styles.pickOn : styles.pick}
                           onFocusCapture={() => setActiveId(blockId)}
-                          onPointerDownCapture={() => setActiveId(blockId)}
                         >
                           <EditableText
                             value={value}
@@ -567,28 +589,6 @@ export function DesignBannerPanel({
                         </span>
                       )
                     : undefined
-                }
-                trailing={
-                  canEdit ? (
-                    <span data-add className={styles.designAddOnStage} contentEditable={false}>
-                      <button
-                        type="button"
-                        className={styles.designAddChip}
-                        disabled={row.content.blocks.length >= MAX_BLOCKS}
-                        onClick={() => addBlock('TEXT')}
-                      >
-                        + 글자
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.designAddChip}
-                        disabled={row.content.blocks.length >= MAX_BLOCKS}
-                        onClick={() => addBlock('BUTTON')}
-                      >
-                        + 버튼
-                      </button>
-                    </span>
-                  ) : undefined
                 }
               />
             </div>
