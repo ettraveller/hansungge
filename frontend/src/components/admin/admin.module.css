@@ -1890,6 +1890,61 @@ a.hint:hover {
   cursor: grabbing;
 }
 
+/* 지우기는 지울 것에 붙어 있어야 한다. 띠에 두면 "무엇이 지워지는지" 를
+   매번 눈으로 맞춰 봐야 한다. */
+.killHandle {
+  position: absolute;
+  top: -12px;
+  right: -14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-900);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 6px rgba(8, 10, 12, 0.45);
+}
+
+.killHandle:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+/* --- 맞춤선 ---
+   끄는 동안 다른 블록과 줄이 맞으면 그 줄을 띄운다. 눈대중으로 맞춘 1px
+   어긋남은 저장하고 나서야 보인다. */
+.guideLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.guideV,
+.guideH {
+  position: absolute;
+  background: var(--gold-400);
+  box-shadow: 0 0 0 1px rgba(8, 10, 12, 0.35);
+}
+
+.guideV {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.guideH {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
 .pickOn .editable {
   outline: 2px solid var(--gold-500);
   outline-offset: 2px;

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+
 import type { BannerBlock, BannerContent, BannerTextStyle } from '@/api/banners';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { Button } from '../Button';
@@ -93,6 +94,42 @@ function nextId(blocks: BannerBlock[]): string {
 const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
 /**
+ * 줄이 맞았다고 볼 거리(px).
+ *
+ * <p>좁게 잡으면 맞추려고 손을 떨게 되고, 넓게 잡으면 맞출 생각이 없었는데 자꾸
+ * 끌려간다. PPT·피그마가 쓰는 값이 대체로 이 언저리다.
+ */
+const SNAP = 6;
+
+/** 끄는 동안 띄울 줄. 무대 왼쪽 위에서의 px 다. */
+interface Guides {
+  v: number[];
+  h: number[];
+}
+
+const NO_GUIDES: Guides = { v: [], h: [] };
+
+/**
+ * 한 축에서 가장 가까운 줄에 붙인다.
+ *
+ * @param edges  끄는 것의 변들 — 앞·가운데·끝
+ * @param lines  붙을 수 있는 줄들 (다른 블록의 변, 상자 가운데)
+ * @return 밀어야 할 거리와 걸린 줄. 아무 줄에도 닿지 않으면 거리 0.
+ */
+function snap(edges: number[], lines: number[]): { shift: number; hit: number | null } {
+  let best: { shift: number; hit: number } | null = null;
+  for (const edge of edges) {
+    for (const line of lines) {
+      const gap = line - edge;
+      if (Math.abs(gap) <= SNAP && (best === null || Math.abs(gap) < Math.abs(best.shift))) {
+        best = { shift: gap, hit: line };
+      }
+    }
+  }
+  return best ?? { shift: 0, hit: null };
+}
+
+/**
  * 화면에서 배너를 꾸민다.
  *
  * <h2>배너 위에서 고르고, 배너 위에서 더하고, 끌어서 놓는다</h2>
@@ -130,6 +167,8 @@ export function DesignBannerPanel({
   const [selected, setSelected] = useState(0);
   /** 배너 안에서 지금 고른 것. 띠에 뜨는 모든 단추가 이것 하나에 걸린다. */
   const [activeId, setActiveId] = useState<string | null>(null);
+  /** 끄는 동안만 보이는 줄 맞추기 선 */
+  const [guides, setGuides] = useState<Guides>(NO_GUIDES);
 
   const index = Math.min(selected, Math.max(rows.length - 1, 0));
   const row = rows[index];
@@ -172,28 +211,75 @@ export function DesignBannerPanel({
    * <p>자리는 끄는 상자({@code [data-stack]}) 안에서의 %다. px 로 담으면 창 폭이 바뀔
    * 때마다 글자가 배너 밖으로 밀려난다.
    *
+   * <h3>잡은 자리를 유지한다</h3>
+   * 포인터 자리를 그대로 좌표로 쓰면, 손잡이를 잡는 순간 블록의 왼쪽 위 모서리가
+   * 포인터 밑으로 <b>순간이동</b>한다. 잡은 지점과 모서리의 거리를 빼 두면 집은 자리가
+   * 손가락에 그대로 붙어 따라온다.
+   *
+   * <h3>줄 맞추기</h3>
+   * 다른 블록의 앞·가운데·끝, 그리고 상자의 한가운데에 6px 안으로 들어오면 그 줄에
+   * 붙이고 줄을 띄운다 — PPT 가 상자를 끌 때 보여주는 그 선이다. 눈대중으로 맞춘
+   * 1px 어긋남은 저장하고 나서야 보인다.
+   *
    * <p>포인터를 잡아 둔다({@code setPointerCapture}). 잡지 않으면 빠르게 끌 때 포인터가
    * 손잡이를 벗어나는 순간 {@code pointermove} 가 끊겨 글자가 중간에 멈춘다.
    */
   const startDrag = (blockId: string) => (e: React.PointerEvent<HTMLElement>) => {
-    // contentEditable 이 포커스를 가져가고 글자가 선택되는 것을 막는다.
+    // contentEditable 이 포커스를 가져가는 것과, <a> 안에서 시작되는 브라우저 기본
+    // 끌기(링크 끌어다 놓기)를 함께 막는다. 버튼 블록이 끌리지 않던 이유다.
     e.preventDefault();
     e.stopPropagation();
 
     const handle = e.currentTarget;
     const stack = handle.closest('[data-stack]');
-    if (!stack) return;
+    const self = handle.closest('[data-stack] > *');
+    const stage = handle.closest('[data-stage]');
+    if (!stack || !self || !stage) return;
 
     const box = stack.getBoundingClientRect();
+    const stageBox = stage.getBoundingClientRect();
+    const start = self.getBoundingClientRect();
+
+    // 집은 지점과 블록 왼쪽 위 모서리의 거리. 끄는 내내 이 거리를 유지한다.
+    const grabX = e.clientX - start.left;
+    const grabY = e.clientY - start.top;
+    const { width, height } = start;
+
+    // 붙을 수 있는 줄. 「더하기」 줄과 끄는 자기 자신은 뺀다.
+    const others = Array.from(stack.children).filter(
+      (el) => el !== self && !el.hasAttribute('data-add'),
+    );
+    const linesV = [box.left + box.width / 2];
+    const linesH = [box.top + box.height / 2];
+    for (const el of others) {
+      const r = el.getBoundingClientRect();
+      linesV.push(r.left, r.left + r.width / 2, r.right);
+      linesH.push(r.top, r.top + r.height / 2, r.bottom);
+    }
+
     handle.setPointerCapture(e.pointerId);
 
     const move = (ev: PointerEvent) => {
+      let left = ev.clientX - grabX;
+      let top = ev.clientY - grabY;
+
+      const sv = snap([left, left + width / 2, left + width], linesV);
+      const sh = snap([top, top + height / 2, top + height], linesH);
+      left += sv.shift;
+      top += sh.shift;
+
+      setGuides({
+        v: sv.hit === null ? [] : [sv.hit - stageBox.left],
+        h: sh.hit === null ? [] : [sh.hit - stageBox.top],
+      });
+
       patchBlock(blockId, {
-        x: pct(((ev.clientX - box.left) / box.width) * 100),
-        y: pct(((ev.clientY - box.top) / box.height) * 100),
+        x: pct(((left - box.left) / box.width) * 100),
+        y: pct(((top - box.top) / box.height) * 100),
       });
     };
     const stop = () => {
+      setGuides(NO_GUIDES);
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', stop);
       handle.removeEventListener('pointercancel', stop);
@@ -330,20 +416,11 @@ export function DesignBannerPanel({
                           자리 풀기
                         </button>
                       )}
-
-                      <button
-                        type="button"
-                        aria-label="삭제"
-                        title="삭제"
-                        className={styles.designIconBtn}
-                        onClick={() => removeBlock(active.id)}
-                      >
-                        ×
-                      </button>
                     </>
                   ) : (
                     <span className={styles.designBarHint}>
                       배너 안의 글자를 누르면 여기에서 크기·굵기·색을 바꿀 수 있습니다.
+                      고른 글자의 ✥ 를 끌어 옮기고, × 로 지웁니다.
                     </span>
                   )}
                 </div>
@@ -415,13 +492,29 @@ export function DesignBannerPanel({
             {/* 손님이 보는 그 컴포넌트다. 줄이지 않는다 — 줄이면 글자 크기가 실제와
                 달라져서, 제목이 두 줄로 접히는지를 여기서 확인할 수 없다. */}
             <div
+              data-stage
               className={styles.designStage}
               onClickCapture={(e) => {
                 // 배너 안의 버튼은 진짜 <a> 다. 고치는 중에 눌러서 화면이 넘어가면
                 // 저장하지 않은 것이 전부 사라진다.
                 if ((e.target as HTMLElement).closest('a')) e.preventDefault();
               }}
+              // <a> 를 집으면 브라우저가 링크 끌어다 놓기를 시작한다. 그러면 우리
+              // pointermove 가 끊겨서 버튼 블록만 끌리지 않는다.
+              onDragStartCapture={(e) => e.preventDefault()}
             >
+              {/* PPT 의 맞춤선. 끄는 동안에만 뜬다 */}
+              {(guides.v.length > 0 || guides.h.length > 0) && (
+                <div className={styles.guideLayer} aria-hidden="true">
+                  {guides.v.map((left) => (
+                    <i key={`v${left}`} className={styles.guideV} style={{ left }} />
+                  ))}
+                  {guides.h.map((top) => (
+                    <i key={`h${top}`} className={styles.guideH} style={{ top }} />
+                  ))}
+                </div>
+              )}
+
               <HeroSlider
                 slides={[]}
                 banners={[{ id: index, design: row.content, alt: row.altText }]}
@@ -440,18 +533,36 @@ export function DesignBannerPanel({
                             onChange={(text) => patchBlock(blockId, { text })}
                           />
                           {blockId === activeId && (
-                            // <a> 안에도 들어가므로 <button> 이 아니라 span 이다.
+                            // 둘 다 <a> 안에도 들어가므로 <button> 이 아니라 span 이다.
                             // 버튼 안의 버튼은 브라우저가 알아서 풀어 버린다.
-                            <span
-                              role="button"
-                              tabIndex={-1}
-                              aria-label="끌어서 옮기기"
-                              title="끌어서 옮기기"
-                              className={styles.dragHandle}
-                              onPointerDown={startDrag(blockId)}
-                            >
-                              ✥
-                            </span>
+                            <>
+                              <span
+                                role="button"
+                                tabIndex={-1}
+                                aria-label="끌어서 옮기기"
+                                title="끌어서 옮기기"
+                                className={styles.dragHandle}
+                                onPointerDown={startDrag(blockId)}
+                              >
+                                ✥
+                              </span>
+                              {/* 지우기는 지울 것에 붙어 있어야 한다. 띠에 두면
+                                  "무엇이 지워지는지"를 매번 눈으로 맞춰 봐야 한다. */}
+                              <span
+                                role="button"
+                                tabIndex={-1}
+                                aria-label="이 요소 삭제"
+                                title="삭제"
+                                className={styles.killHandle}
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeBlock(blockId);
+                                }}
+                              >
+                                ×
+                              </span>
+                            </>
                           )}
                         </span>
                       )
@@ -459,7 +570,7 @@ export function DesignBannerPanel({
                 }
                 trailing={
                   canEdit ? (
-                    <span className={styles.designAddOnStage} contentEditable={false}>
+                    <span data-add className={styles.designAddOnStage} contentEditable={false}>
                       <button
                         type="button"
                         className={styles.designAddChip}
