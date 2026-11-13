@@ -519,6 +519,14 @@
 .dImage {
   display: inline-block;
   max-width: 100%;
+  /* 상자 높이를 사진 높이로 못 박는다.
+     편집기는 이 안에 손잡이를 담는 <span> 을 하나 끼운다. 그 span 은 인라인이라
+     글자가 없어도 줄상자(line box)를 한 줄 만들고, 그 높이는 글자 크기를 따른다 —
+     px 로 크기를 고른 사진이면 .dSized 의 font-size 가 240px 이라 사진 아래로
+     그만큼 빈 자리가 생긴다. 크기 손잡이(오른쪽 아래)가 사진에서 한참 떨어져
+     보이던 것, 비율을 되돌려도 상자가 안 줄어들던 것이 모두 이 줄상자다. */
+  line-height: 0;
+  font-size: 0;
 }
 
 .dImage img {
@@ -603,6 +611,9 @@
 .dImage.dSized {
   width: var(--bs);
   max-width: 100%;
+  /* .dSized 의 font-size 를 다시 0 으로 — 위 줄상자 때문이다. 사진 상자 안에는
+     글자가 없다 (손잡이는 제 크기를 따로 들고 있다). */
+  font-size: 0;
 }
 
 .dAlignLeft {

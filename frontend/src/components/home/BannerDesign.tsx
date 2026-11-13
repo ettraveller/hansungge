@@ -73,9 +73,9 @@ function effectCss(effect: BannerImageEffect | null | undefined): React.CSSPrope
     '--bimgop': `${opacity / 100}`,
     '--bimgr': RADIUS_VALUE[effect.radius ?? 'SMALL'] ?? RADIUS_VALUE.SMALL,
     '--bimggray': effect.tone === 'GRAY' ? '1' : '0',
-    ...(CROP_RATIO[effect.crop ?? 'NONE']
-      ? { '--bimgar': CROP_RATIO[effect.crop as string] }
-      : {}),
+    // 원본일 때도 auto 를 적어 둔다. 칸을 아예 빼면 지우는 쪽을 브라우저·React 에
+    // 맡기게 되고, 비율을 되돌렸는데 전에 고른 비율이 남는 길이 생긴다.
+    '--bimgar': CROP_RATIO[effect.crop ?? 'NONE'] ?? 'auto',
   } as React.CSSProperties;
 }
 
