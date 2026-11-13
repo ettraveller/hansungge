@@ -2004,6 +2004,18 @@ a.hint:hover {
   cursor: default;
 }
 
+/* 주소 판. 셀렉트가 제 폭을 쓰게 둔다 — 띠에서는 260px 로 잘려 상품 이름이 끊긴다. */
+.linkPop {
+  width: 360px;
+  max-width: 86vw;
+}
+
+.linkPop select {
+  width: 100%;
+  max-width: none;
+  height: 32px;
+}
+
 /* 효과 판은 색판보다 넓고, 길면 안에서 굴린다.
    색판은 작은 네모가 다섯 칸씩 들어가 폭이 저절로 잡히지만, 효과 판은 글자 단추라
    폭을 안 주면 한 줄에 하나씩 서서 여덟 줄이 화면 아래로 넘어간다 — 넘어간 줄

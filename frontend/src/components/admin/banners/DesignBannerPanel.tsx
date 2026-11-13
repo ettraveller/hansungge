@@ -13,11 +13,11 @@ import { Field } from '../Field';
 import { Modal } from '../Modal';
 import { SelectInput, TextInput } from '../Field';
 import { ImageUploader } from '../ImageUploader';
-import { LinkTargetPicker } from '../LinkTargetPicker';
 import { Panel } from '../Panel';
 import { ColorPalette } from './ColorPalette';
 import { DesignPreviewModal } from './DesignPreviewModal';
 import { ImageEffectPicker } from './ImageEffectPicker';
+import { LinkPopover } from './LinkPopover';
 import { EditableText } from './EditableText';
 import styles from '../admin.module.css';
 
@@ -574,7 +574,7 @@ export function DesignBannerPanel({
                           />
 
                           {active.type === 'BUTTON' && (
-                            <LinkTargetPicker
+                            <LinkPopover
                               value={active.href ?? ''}
                               onChange={(href) => patchBlock(active.id, { href })}
                             />
