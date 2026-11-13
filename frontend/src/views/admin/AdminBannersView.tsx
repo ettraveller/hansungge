@@ -218,7 +218,11 @@ export function AdminBannersView() {
 
       <Panel
         title="배너 이미지"
-        note={`최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 홈페이지용에 올린 장수가 슬라이드 수다.`}
+        note={`최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 홈페이지용에 올린 장수가 슬라이드 수다.${
+          designs.length > 0
+            ? ` 번호는 꾸민 배너 ${designs.length}장 다음인 ${designs.length + 1}번부터 이어진다.`
+            : ''
+        }`}
         actions={
           <>
             {/* 저장하지 않아도 눌린다 — 저장한 뒤에만 볼 수 있으면 "일단 저장하고
@@ -268,6 +272,7 @@ export function AdminBannersView() {
                 disabled={!canEdit}
                 emptyLabel="홈페이지 배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
                 preview="tall"
+                numberFrom={designs.length + 1}
               />
             </Field>
 
@@ -286,6 +291,7 @@ export function AdminBannersView() {
                 disabled={!canEdit}
                 emptyLabel="휴대폰 배너 이미지를 끌어다 놓거나 클릭해서 선택하세요"
                 preview="tall"
+                numberFrom={designs.length + 1}
               />
             </Field>
 
@@ -316,7 +322,8 @@ export function AdminBannersView() {
           <ul className={styles.bannerRows}>
             {rows.map((row, index) => (
               <li key={row.imageKey} className={styles.bannerRow}>
-                <span className={styles.bannerNo}>{index + 1}</span>
+                {/* 꾸민 배너 뒤에 이어 센다 — 화면에 걸리는 차례가 그 차례다 */}
+                <span className={styles.bannerNo}>{designs.length + index + 1}</span>
                 {/* 관리자 화면이고 수가 적다. next/image 로 최적화할 것이 없다. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={styles.bannerThumb} src={mediaUrl(row.imageKey) ?? ''} alt="" />
