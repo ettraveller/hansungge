@@ -132,7 +132,16 @@ public record BannerContent(
             Radius radius,
 
             @Schema(description = "그림자", example = "NONE")
-            Shadow shadow
+            Shadow shadow,
+
+            @Schema(description = "사진 위 어둠막. 배경 사진이 쓰는 그것과 같다", example = "NONE")
+            Overlay veil,
+
+            @Schema(description = "비율 맞춰 잘라내기", example = "NONE")
+            Crop crop,
+
+            @Schema(description = "색조", example = "NONE")
+            Tone tone
     ) {
     }
 
@@ -177,8 +186,19 @@ public record BannerContent(
 
     public enum Overlay { GRADIENT, SOLID, NONE }
 
-    /** 사진 가장자리를 배경으로 녹이는 정도. */
-    public enum FadeEdge { NONE, SOFT, STRONG }
+    /**
+     * 사진 가장자리를 배경으로 녹이는 방식.
+     *
+     * <p>{@code SOFT}·{@code STRONG} 은 사방을, 나머지는 그 한쪽을 녹인다. 한쪽
+     * 녹이기는 히어로 사진이 쓰던 그 그라데이션이다 ({@code .bg::before}).
+     */
+    public enum FadeEdge { NONE, SOFT, STRONG, LEFT, RIGHT, TOP, BOTTOM }
+
+    /** 비율 맞춰 잘라내기. 상품 사진이 쓰는 그것과 같다 (object-fit: cover). */
+    public enum Crop { NONE, SQUARE, WIDE, BANNER }
+
+    /** 색조. 흑백은 배너 색이 사진 색과 싸울 때 쓴다. */
+    public enum Tone { NONE, GRAY }
 
     /** 사진 모서리 둥글기. 비우면 SMALL — 효과를 쓰기 전의 모양이 그것이다. */
     public enum Radius { NONE, SMALL, LARGE }

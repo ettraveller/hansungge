@@ -211,7 +211,10 @@ public class BannerContentValidator {
                 raw.opacity() != null && OPACITY_STEPS.contains(raw.opacity())
                         ? raw.opacity() : 100,
                 raw.radius() == null ? BannerContent.Radius.SMALL : raw.radius(),
-                raw.shadow() == null ? BannerContent.Shadow.NONE : raw.shadow());
+                raw.shadow() == null ? BannerContent.Shadow.NONE : raw.shadow(),
+                raw.veil() == null ? BannerContent.Overlay.NONE : raw.veil(),
+                raw.crop() == null ? BannerContent.Crop.NONE : raw.crop(),
+                raw.tone() == null ? BannerContent.Tone.NONE : raw.tone());
     }
 
     /**

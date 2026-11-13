@@ -527,8 +527,11 @@
   height: auto;
   /* 효과는 전부 변수로 들어온다. 안 걸면 쓰던 그 모양 그대로다. */
   border-radius: var(--bimgr, var(--radius-sm));
-  filter: blur(var(--bimgblur, 0px));
+  filter: grayscale(var(--bimggray, 0)) blur(var(--bimgblur, 0px));
   opacity: var(--bimgop, 1);
+  /* 비율을 고르면 그 비율에 맞춰 잘라낸다 — 상품 사진이 쓰는 그것과 같다 */
+  aspect-ratio: var(--bimgar, auto);
+  object-fit: cover;
 }
 
 /* 가장자리 녹이기 — 사진 끝을 배경으로 흘려보낸다. 어두운 배너 위에 올린 사진이
@@ -542,6 +545,54 @@
 .dFadeStrong img {
   -webkit-mask-image: radial-gradient(ellipse at center, #000 28%, transparent 86%);
   mask-image: radial-gradient(ellipse at center, #000 28%, transparent 86%);
+}
+
+/* 한쪽으로 사라지기 — 히어로 사진이 쓰던 그 그라데이션이다 (.bg::before).
+   글자가 붙는 쪽을 녹여 두면 사진 위로 글자가 올라가도 읽힌다. */
+.dFadeLeft img {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 42%);
+}
+
+.dFadeRight img {
+  -webkit-mask-image: linear-gradient(90deg, #000 58%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 58%, transparent 100%);
+}
+
+.dFadeTop img {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 42%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 42%);
+}
+
+.dFadeBottom img {
+  -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
+}
+
+/* 사진 위 어둠막 — 배경 사진이 쓰는 그것(.dVeilGradient·.dVeilSolid)과 같은 값이다.
+   사진이 아니라 상자에 깐다. 사진에 깔면 흐림·흑백이 막까지 함께 먹는다. */
+.dImgVeilGradient::after,
+.dImgVeilSolid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--bimgr, var(--radius-sm));
+  pointer-events: none;
+}
+
+.dImgVeilGradient::after {
+  background: linear-gradient(
+    92deg,
+    rgba(13, 16, 19, 0.96) 0%,
+    rgba(13, 16, 19, 0.92) 26%,
+    rgba(13, 16, 19, 0.66) 48%,
+    rgba(13, 16, 19, 0.22) 68%,
+    rgba(13, 16, 19, 0) 84%
+  );
+}
+
+.dImgVeilSolid::after {
+  background: rgba(13, 16, 19, 0.55);
 }
 
 /* 그림자는 사진에 건다. 상자에 걸면 둥근 모서리를 따라가지 않는다. */

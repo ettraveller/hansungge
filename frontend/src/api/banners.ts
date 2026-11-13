@@ -13,7 +13,10 @@ export type BannerTextStyle = 'EYEBROW' | 'TITLE' | 'HIGHLIGHT' | 'DESC';
 export type BannerButtonLook = 'GOLD' | 'OUTLINE' | 'SOLID';
 export type BannerOverlay = 'GRADIENT' | 'SOLID' | 'NONE';
 
-export type BannerImageFade = 'NONE' | 'SOFT' | 'STRONG';
+/** SOFT·STRONG 은 사방을, 나머지는 그 한쪽을 녹인다 */
+export type BannerImageFade = 'NONE' | 'SOFT' | 'STRONG' | 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM';
+export type BannerImageCrop = 'NONE' | 'SQUARE' | 'WIDE' | 'BANNER';
+export type BannerImageTone = 'NONE' | 'GRAY';
 export type BannerImageRadius = 'NONE' | 'SMALL' | 'LARGE';
 export type BannerImageShadow = 'NONE' | 'SOFT';
 
@@ -32,6 +35,11 @@ export interface BannerImageEffect {
   opacity?: number | null;
   radius?: BannerImageRadius | null;
   shadow?: BannerImageShadow | null;
+  /** 사진 위 어둠막. 배경 사진이 쓰는 그것과 같다 */
+  veil?: BannerOverlay | null;
+  /** 비율 맞춰 잘라내기 (object-fit: cover) */
+  crop?: BannerImageCrop | null;
+  tone?: BannerImageTone | null;
 }
 
 export interface BannerBlock {

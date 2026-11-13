@@ -7,13 +7,16 @@ import { uploadMedia } from '@/api/admin/media';
 import type { BannerBlock, BannerContent, BannerTextStyle } from '@/api/banners';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { ApiError } from '@/types/api';
+import { DRAFT_KEY } from '@/app/banner-draft-preview/DraftHero';
 import { Button } from '../Button';
 import { Field } from '../Field';
+import { Modal } from '../Modal';
 import { SelectInput, TextInput } from '../Field';
 import { ImageUploader } from '../ImageUploader';
 import { LinkTargetPicker } from '../LinkTargetPicker';
 import { Panel } from '../Panel';
 import { ColorPalette } from './ColorPalette';
+import { DesignPreviewModal } from './DesignPreviewModal';
 import { ImageEffectPicker } from './ImageEffectPicker';
 import { EditableText } from './EditableText';
 import styles from '../admin.module.css';
@@ -55,8 +58,12 @@ const ALIGNS = [
  * <p>「두껍게」단추가 눌린 상태를 여기서 가져온다. 이것 없이 {@code bold ?? false} 로
  * 두면 제목은 두껍게 보이는데 단추는 꺼져 있어서, 한 번 눌러야 비로소 꺼진다.
  */
-/** 고를 수 있는 사진 너비(px). 서버도 20~800 으로 당긴다. */
+/** 고를 수 있는 사진 너비(px). 모서리를 끌면 그 사이의 값도 나온다. */
 const IMG_SIZES = [60, 80, 100, 120, 160, 200, 240, 300, 360, 440, 520, 640];
+
+/** 사진 너비의 위아래 끝. 서버도 같은 값으로 당긴다. */
+const MIN_IMAGE = 20;
+const MAX_IMAGE = 800;
 
 const KIND_LABEL: Record<BannerBlock['type'], string> = {
   TEXT: '글자',
@@ -233,6 +240,9 @@ export function DesignBannerPanel({
   const [activeId, setActiveId] = useState<string | null>(null);
   /** 끄는 동안만 보이는 줄 맞추기 선 */
   const [guides, setGuides] = useState<Guides>(NO_GUIDES);
+  /** 배경 사진 올리는 창. 두 칸이 화면을 반쯤 먹어서 창으로 뺐다. */
+  const [bgOpen, setBgOpen] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const index = Math.min(selected, Math.max(rows.length - 1, 0));
   const row = rows[index];
@@ -363,6 +373,40 @@ export function DesignBannerPanel({
     handle.addEventListener('pointercancel', stop);
   };
 
+  /**
+   * 끌어서 사진 크기 바꾸기.
+   *
+   * <p>너비만 바꾼다 — 높이는 사진 비율이 정한다. 가로로 끈 만큼 그대로 넓어지므로
+   * 잡은 모서리가 포인터를 따라온다. 끝은 서버와 같은 값으로 당긴다.
+   */
+  const startResize = (blockId: string) => (e: React.PointerEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const handle = e.currentTarget;
+    const self = handle.closest('[data-stack] > *');
+    if (!self) return;
+
+    const startX = e.clientX;
+    const startWidth = self.getBoundingClientRect().width;
+
+    handle.setPointerCapture(e.pointerId);
+
+    const move = (ev: PointerEvent) => {
+      const width = Math.round(startWidth + (ev.clientX - startX));
+      patchBlock(blockId, { size: Math.max(MIN_IMAGE, Math.min(MAX_IMAGE, width)) });
+    };
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', stop);
+      handle.removeEventListener('pointercancel', stop);
+    };
+
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+  };
+
   const addBanner = () => {
     onChange([...rows, emptyBanner()]);
     setSelected(rows.length);
@@ -378,7 +422,6 @@ export function DesignBannerPanel({
   const active = row ? row.content.blocks.find((b) => b.id === activeId) ?? null : null;
   const activeBold =
     active?.bold ?? (active ? ROLE_BOLD[active.style ?? 'DESC'] ?? false : false);
-  const placed = active?.x != null && active?.y != null;
 
   return (
     <Panel
@@ -418,11 +461,41 @@ export function DesignBannerPanel({
                 </button>
               ))}
             </div>
-            {canEdit && (
-              <button type="button" className={styles.designClearColor} onClick={removeBanner}>
-                이 배너 삭제
+            <span className={styles.designTabActions}>
+              <button
+                type="button"
+                className={styles.designAddBtn}
+                onClick={() => {
+                  // 담아 두고 연다. 창이 열린 뒤에 담으면 iframe 이 먼저 읽어서
+                  // 한 발 늦은 내용을 그린다.
+                  try {
+                    sessionStorage.setItem(
+                      DRAFT_KEY,
+                      JSON.stringify(
+                        rows.map((r, i) => ({
+                          id: i,
+                          kind: 'DESIGN',
+                          content: r.content,
+                          altText: r.altText,
+                          sort: i,
+                          active: true,
+                        })),
+                      ),
+                    );
+                  } catch {
+                    // 담아 두지 못해도 창은 연다 — 안에서 "배너가 없습니다" 가 보인다.
+                  }
+                  setPreviewing(true);
+                }}
+              >
+                미리보기
               </button>
-            )}
+              {canEdit && (
+                <button type="button" className={styles.designClearColor} onClick={removeBanner}>
+                  이 배너 삭제
+                </button>
+              )}
+            </span>
           </div>
 
           <div className={styles.designEditor}>
@@ -446,6 +519,12 @@ export function DesignBannerPanel({
                         <option value="">
                           {active.type === 'IMAGE' ? '원래 너비' : '기본 크기'}
                         </option>
+                        {/* 모서리를 끌면 목록에 없는 값이 나온다. 그 값을 칸에
+                            넣어 두지 않으면 끌 때마다 칸이 「원래 너비」로 보인다. */}
+                        {active.size != null &&
+                          !(active.type === 'IMAGE' ? IMG_SIZES : SIZES).includes(active.size) && (
+                            <option value={active.size}>{active.size}px</option>
+                          )}
                         {(active.type === 'IMAGE' ? IMG_SIZES : SIZES).map((s) => (
                           <option key={s} value={s}>
                             {s}px
@@ -503,17 +582,6 @@ export function DesignBannerPanel({
                         </>
                       )}
 
-                      {/* 끌어다 둔 자리를 물린다. 이것이 없으면 한 번 끈 글자를
-                          다시 줄 맞춰 세울 방법이 없다. */}
-                      {placed && (
-                        <button
-                          type="button"
-                          className={styles.designClearColor}
-                          onClick={() => patchBlock(active.id, { x: null, y: null })}
-                        >
-                          자리 풀기
-                        </button>
-                      )}
                     </>
                   ) : (
                     <span className={styles.designBarHint}>
@@ -555,6 +623,16 @@ export function DesignBannerPanel({
                     value={row.content.background.color ?? DEFAULT_BG}
                     label="배경색"
                     onChange={(color) => patchBackground({ color: color ?? DEFAULT_BG })}
+                    footer={
+                      <button
+                        type="button"
+                        className={styles.paletteAttach}
+                        onClick={() => setBgOpen(true)}
+                      >
+                        이미지로 첨부
+                        {row.content.background.imageKey ? ' • 걸려 있음' : ''}
+                      </button>
+                    }
                   />
 
                   <SelectInput
@@ -680,6 +758,18 @@ export function DesignBannerPanel({
                               >
                                 ✥
                               </span>
+                              {image && (
+                                <span
+                                  role="button"
+                                  tabIndex={-1}
+                                  aria-label="끌어서 크기 바꾸기"
+                                  title="끌어서 크기 바꾸기"
+                                  className={styles.sizeHandle}
+                                  onPointerDown={startResize(blockId)}
+                                >
+                                  ↘
+                                </span>
+                              )}
                               {/* 지우기는 지울 것에 붙어 있어야 한다. 띠에 두면
                                   "무엇이 지워지는지"를 매번 눈으로 맞춰 봐야 한다. */}
                               <span
@@ -707,12 +797,16 @@ export function DesignBannerPanel({
             </div>
           </div>
 
-          {/* ---------- 배경 사진 ----------
-              색·흐림·어둠막과 달리 사진은 올리는 데 자리가 필요하다. 띠에 넣으면
-              띠가 배너만큼 두꺼워진다. */}
-          <section className={styles.designGroup}>
-            <h3 className={styles.designGroupTitle}>배경 사진</h3>
+          <p className={styles.hint}>
+            끌어다 둔 자리와 px 크기는 <strong>넓은 화면에서만</strong> 쓰입니다. 휴대폰에서는
+            다시 위에서 아래로 쌓이고 글자는 0.6 배로 줄어듭니다 — 배너 비율이 폭에 따라
+            뒤집혀서, PC 에서 오른쪽 끝에 둔 글자는 휴대폰에서 화면 밖이기 때문입니다.
+          </p>
 
+          {/* ---------- 배경 사진 ----------
+              끌어다 놓는 칸 둘이 화면을 반쯤 먹는다. 사진은 배너 한 장에 한 번 고르고
+              마는 것이라, 늘 펼쳐 둘 이유가 없다 — 배경색 판에서 열어 쓴다. */}
+          <Modal open={bgOpen} title="배경 사진" width="wide" onClose={() => setBgOpen(false)}>
             <Field
               label="배경 사진"
               hint="권장 2560 × 1120 px. 비우면 색만 쓴다. 글자가 위에 올라가므로 가운데가 비어 있는 사진이 좋다."
@@ -746,13 +840,9 @@ export function DesignBannerPanel({
                 preview="tall"
               />
             </Field>
+          </Modal>
 
-            <p className={styles.hint}>
-              끌어다 둔 자리와 px 크기는 <strong>넓은 화면에서만</strong> 쓰입니다. 휴대폰에서는
-              다시 위에서 아래로 쌓이고 글자는 0.6 배로 줄어듭니다 — 배너 비율이 폭에 따라
-              뒤집혀서, PC 에서 오른쪽 끝에 둔 글자는 휴대폰에서 화면 밖이기 때문입니다.
-            </p>
-          </section>
+          <DesignPreviewModal open={previewing} onClose={() => setPreviewing(false)} />
         </>
       )}
     </Panel>

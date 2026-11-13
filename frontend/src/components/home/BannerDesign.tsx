@@ -34,6 +34,22 @@ const OPACITY_STEPS = [100, 85, 70, 50];
 const FADE_CLASS: Record<string, string> = {
   SOFT: styles.dFadeSoft,
   STRONG: styles.dFadeStrong,
+  LEFT: styles.dFadeLeft,
+  RIGHT: styles.dFadeRight,
+  TOP: styles.dFadeTop,
+  BOTTOM: styles.dFadeBottom,
+};
+
+const VEIL_CLASS: Record<string, string> = {
+  GRADIENT: styles.dImgVeilGradient,
+  SOLID: styles.dImgVeilSolid,
+};
+
+/** 비율 맞춰 잘라내기. 상품 사진이 쓰는 그것과 같다. */
+const CROP_RATIO: Record<string, string> = {
+  SQUARE: '1 / 1',
+  WIDE: '16 / 9',
+  BANNER: '16 / 7',
 };
 
 const RADIUS_VALUE: Record<string, string> = {
@@ -56,6 +72,10 @@ function effectCss(effect: BannerImageEffect | null | undefined): React.CSSPrope
     '--bimgblur': `${blur}px`,
     '--bimgop': `${opacity / 100}`,
     '--bimgr': RADIUS_VALUE[effect.radius ?? 'SMALL'] ?? RADIUS_VALUE.SMALL,
+    '--bimggray': effect.tone === 'GRAY' ? '1' : '0',
+    ...(CROP_RATIO[effect.crop ?? 'NONE']
+      ? { '--bimgar': CROP_RATIO[effect.crop as string] }
+      : {}),
   } as React.CSSProperties;
 }
 
@@ -193,6 +213,7 @@ export function BannerDesign({
               if (!src) return null;
 
               const fade = FADE_CLASS[block.effect?.fade ?? 'NONE'] ?? '';
+              const veil = VEIL_CLASS[block.effect?.veil ?? 'NONE'] ?? '';
               const shadow = block.effect?.shadow === 'SOFT' ? styles.dImgShadow : '';
 
               return (
@@ -202,8 +223,8 @@ export function BannerDesign({
                   key={block.id}
                   data-block={block.id}
                   className={`${styles.dImage}${extra}${fade ? ` ${fade}` : ''}${
-                    shadow ? ` ${shadow}` : ''
-                  }`}
+                    veil ? ` ${veil}` : ''
+                  }${shadow ? ` ${shadow}` : ''}`}
                   style={{ ...css, ...effectCss(block.effect) }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}

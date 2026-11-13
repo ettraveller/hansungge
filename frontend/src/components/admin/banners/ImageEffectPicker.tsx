@@ -22,8 +22,39 @@ const ROWS: {
     title: '가장자리 녹이기',
     options: [
       { value: 'NONE', label: '없음' },
-      { value: 'SOFT', label: '조금' },
-      { value: 'STRONG', label: '많이' },
+      { value: 'SOFT', label: '사방 조금' },
+      { value: 'STRONG', label: '사방 많이' },
+      { value: 'LEFT', label: '왼쪽' },
+      { value: 'RIGHT', label: '오른쪽' },
+      { value: 'TOP', label: '위' },
+      { value: 'BOTTOM', label: '아래' },
+    ],
+  },
+  {
+    key: 'veil',
+    title: '어둠막',
+    options: [
+      { value: 'NONE', label: '없음' },
+      { value: 'GRADIENT', label: '왼쪽부터' },
+      { value: 'SOLID', label: '고르게' },
+    ],
+  },
+  {
+    key: 'crop',
+    title: '비율 맞춰 자르기',
+    options: [
+      { value: 'NONE', label: '원본' },
+      { value: 'SQUARE', label: '1:1' },
+      { value: 'WIDE', label: '16:9' },
+      { value: 'BANNER', label: '16:7' },
+    ],
+  },
+  {
+    key: 'tone',
+    title: '색조',
+    options: [
+      { value: 'NONE', label: '원본' },
+      { value: 'GRAY', label: '흑백' },
     ],
   },
   {
@@ -72,6 +103,9 @@ const DEFAULTS: Required<BannerImageEffect> = {
   opacity: 100,
   radius: 'SMALL',
   shadow: 'NONE',
+  veil: 'NONE',
+  crop: 'NONE',
+  tone: 'NONE',
 };
 
 /**

@@ -291,7 +291,7 @@ class BannerContentValidatorTest {
         @DisplayName("효과의 모르는 값은 그 칸만 기본으로 되돌린다")
         void clampsEffect() {
             BannerContent.ImageEffect raw = new BannerContent.ImageEffect(
-                    BannerContent.FadeEdge.STRONG, 9999, 0, null, null);
+                    BannerContent.FadeEdge.STRONG, 9999, 0, null, null, null, null, null);
 
             BannerContent.ImageEffect out = validator
                     .normalize(of(null, image("banners/a.webp", "사진", 240, raw)))
@@ -302,6 +302,9 @@ class BannerContentValidatorTest {
             assertThat(out.opacity()).isEqualTo(100);
             assertThat(out.radius()).isEqualTo(BannerContent.Radius.SMALL);
             assertThat(out.shadow()).isEqualTo(BannerContent.Shadow.NONE);
+            assertThat(out.veil()).isEqualTo(BannerContent.Overlay.NONE);
+            assertThat(out.crop()).isEqualTo(BannerContent.Crop.NONE);
+            assertThat(out.tone()).isEqualTo(BannerContent.Tone.NONE);
         }
 
         @Test
@@ -310,7 +313,8 @@ class BannerContentValidatorTest {
             BannerContent.Block raw = new BannerContent.Block("b1",
                     BannerContent.BlockType.TEXT, BannerContent.TextStyle.TITLE, "제목",
                     null, null, null, null, null, null, null, null,
-                    new BannerContent.ImageEffect(BannerContent.FadeEdge.SOFT, 8, 70, null, null));
+                    new BannerContent.ImageEffect(BannerContent.FadeEdge.SOFT, 8, 70,
+                            null, null, null, null, null));
 
             assertThat(validator.normalize(of(null, raw)).blocks().get(0).effect()).isNull();
         }

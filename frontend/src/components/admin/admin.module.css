@@ -1919,6 +1919,27 @@ a.hint:hover {
   color: #fff;
 }
 
+/* 사진만 갖는 손잡이. 오른쪽 아래 모서리를 끌면 너비가 바뀐다 — PPT 와 같은 자리다. */
+.sizeHandle {
+  position: absolute;
+  bottom: -12px;
+  right: -14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--gold-500);
+  color: var(--ink-900);
+  font-size: 12px;
+  line-height: 1;
+  cursor: nwse-resize;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 1px 6px rgba(8, 10, 12, 0.45);
+}
+
 /* --- 맞춤선 ---
    끄는 동안 다른 블록과 줄이 맞으면 그 줄을 띄운다. 눈대중으로 맞춘 1px
    어긋남은 저장하고 나서야 보인다. */
@@ -2014,6 +2035,34 @@ a.hint:hover {
   border-color: var(--ink-900);
   background: var(--ink-900);
   color: #fff;
+}
+
+/* 색판 맨 아래 칸. 배경 사진을 여는 자리다 — 색과 사진은 "배경을 무엇으로 채우나"
+   라는 한 가지 질문이라 한 판에 둔다. */
+.paletteAttach {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-xs);
+  background: #fff;
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--ink-600);
+  text-align: center;
+}
+
+.paletteAttach:hover {
+  border-color: var(--gold-500);
+  color: var(--ink-900);
+}
+
+/* 배너 탭 줄 오른쪽 단추들 */
+.designTabActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* 띠 안의 글자 칸. 폼의 .input 은 폭을 다 먹어서 띠 한 줄을 통째로 밀어낸다. */

@@ -40,6 +40,8 @@ interface Props {
   /** 「기본색으로」를 띄울지. 배경색처럼 비울 수 없는 자리는 false. */
   clearable?: boolean;
   disabled?: boolean;
+  /** 판 맨 아래에 덧붙일 것. 배경색 판이 「이미지로 첨부」를 여기에 둔다. */
+  footer?: React.ReactNode;
   onChange: (color: string | null) => void;
 }
 
@@ -56,7 +58,7 @@ interface Props {
  * 고를 수 있는 모양이 곧 서버가 받는 모양이라 어긋날 자리가 없다 — 이 값은 손님
  * 화면에서 {@code style} 로 들어가므로, 자유 문자열을 받으면 CSS 한 줄이 섞인다.
  */
-export function ColorPalette({ value, label, clearable, disabled, onChange }: Props) {
+export function ColorPalette({ value, label, clearable, disabled, footer, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -148,6 +150,8 @@ export function ColorPalette({ value, label, clearable, disabled, onChange }: Pr
               </button>
             )}
           </div>
+
+          {footer}
         </div>
       )}
     </div>
