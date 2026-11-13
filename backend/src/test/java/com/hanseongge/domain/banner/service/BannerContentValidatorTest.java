@@ -1,0 +1,176 @@
+package com.hanseongge.domain.banner.service;
+
+import com.hanseongge.domain.banner.dto.BannerContent;
+import com.hanseongge.global.error.BusinessException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * 꾸민 배너의 내용이 손님 화면에 들어가기 전에 무엇을 걸러내는지.
+ *
+ * <p>이 값은 손님 화면의 {@code style} 로 들어간다. 색을 글자 그대로 받으면
+ * {@code url(https://남의서버/…)} 한 줄로 우리 화면을 연 사람의 접속이 밖으로 나간다.
+ * 관리자 화면에서 고르게 만들어 두어도 요청은 화면을 거치지 않고 올 수 있으므로,
+ * 여기가 마지막 문이다.
+ */
+class BannerContentValidatorTest {
+
+    private final BannerContentValidator validator = new BannerContentValidator();
+
+    private static BannerContent.Block text(String value) {
+        return new BannerContent.Block(null, BannerContent.BlockType.TEXT,
+                BannerContent.TextStyle.TITLE, value, null, null, null);
+    }
+
+    private static BannerContent of(BannerContent.Background background,
+                                    BannerContent.Block... blocks) {
+        return new BannerContent(background, null, List.of(blocks), null);
+    }
+
+    @Nested
+    @DisplayName("색")
+    class Colors {
+
+        @Test
+        @DisplayName("#rrggbb 만 통과한다")
+        void onlyHex() {
+            BannerContent.Block block = new BannerContent.Block(null, BannerContent.BlockType.TEXT,
+                    BannerContent.TextStyle.TITLE, "제목", "#C6A15B", null, null);
+
+            assertThat(validator.normalize(of(null, block)).blocks().get(0).color())
+                    .isEqualTo("#c6a15b");
+        }
+
+        @Test
+        @DisplayName("CSS 를 색인 척 끼워 넣으면 그 칸만 비운다")
+        void dropsCssInjection() {
+            String[] attacks = {
+                    "red; background: url(https://evil.example/collect)",
+                    "url(https://evil.example/x.png)",
+                    "var(--anything)",
+                    "rgb(1,2,3)",
+                    "#12345",
+            };
+
+            for (String attack : attacks) {
+                BannerContent.Block block = new BannerContent.Block(null,
+                        BannerContent.BlockType.TEXT, BannerContent.TextStyle.TITLE,
+                        "제목", attack, null, null);
+
+                assertThat(validator.normalize(of(null, block)).blocks().get(0).color())
+                        .as("색으로 받아들이면 안 된다: %s", attack)
+                        .isNull();
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("배경")
+    class Background {
+
+        @Test
+        @DisplayName("흐림은 정해진 단계만. 자유 숫자를 받으면 화면을 지울 수 있다")
+        void blurSteps() {
+            assertThat(background(16).blur()).isEqualTo(16);
+            assertThat(background(9999).blur()).isZero();
+            assertThat(background(-4).blur()).isZero();
+        }
+
+        @Test
+        @DisplayName("바깥 주소를 사진 키로 넣지 못한다")
+        void rejectsExternalImage() {
+            BannerContent.Background raw = new BannerContent.Background(
+                    null, "https://evil.example/x.png", "../../etc/passwd", 0, null);
+
+            BannerContent.Background clean = validator
+                    .normalize(of(raw, text("제목"))).background();
+
+            assertThat(clean.imageKey()).isNull();
+            assertThat(clean.mobileImageKey()).isNull();
+        }
+
+        private BannerContent.Background background(int blur) {
+            return validator
+                    .normalize(of(new BannerContent.Background("#0f1b2d", null, null, blur, null),
+                            text("제목")))
+                    .background();
+        }
+    }
+
+    @Nested
+    @DisplayName("버튼")
+    class Buttons {
+
+        @Test
+        @DisplayName("우리 화면 안의 주소만 받는다")
+        void internalOnly() {
+            assertThat(button("/shop?categoryId=1").href()).isEqualTo("/shop?categoryId=1");
+
+            // // 는 프로토콜을 생략한 바깥 주소다. / 로 시작하는지만 보면 통과한다.
+            for (String outside : new String[] {"https://evil.example", "//evil.example", "shop"}) {
+                assertThatThrownBy(() -> button(outside))
+                        .as("바깥 주소: %s", outside)
+                        .isInstanceOf(BusinessException.class);
+            }
+        }
+
+        @Test
+        @DisplayName("갈 곳이 없으면 거절한다 — 조용히 지우면 버튼이 사라진 줄 모른다")
+        void needsHref() {
+            assertThatThrownBy(() -> button(null)).isInstanceOf(BusinessException.class);
+        }
+
+        private BannerContent.Block button(String href) {
+            BannerContent.Block raw = new BannerContent.Block(null,
+                    BannerContent.BlockType.BUTTON, null, "보러가기", null, href, null);
+            return validator.normalize(of(null, raw)).blocks().get(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("블록")
+    class Blocks {
+
+        @Test
+        @DisplayName("겹치거나 빈 id 는 자리 번호로 다시 매긴다 — 엉뚱한 블록이 숨겨진다")
+        void rewritesIds() {
+            BannerContent.Block a = new BannerContent.Block("same", BannerContent.BlockType.TEXT,
+                    BannerContent.TextStyle.TITLE, "하나", null, null, null);
+            BannerContent.Block b = new BannerContent.Block("same", BannerContent.BlockType.TEXT,
+                    BannerContent.TextStyle.DESC, "둘", null, null, null);
+
+            List<BannerContent.Block> blocks = validator.normalize(of(null, a, b)).blocks();
+
+            assertThat(blocks).extracting(BannerContent.Block::id).doesNotHaveDuplicates();
+        }
+
+        @Test
+        @DisplayName("없는 블록을 숨기라는 지시는 걷어낸다")
+        void dropsDanglingHide() {
+            BannerContent raw = new BannerContent(null, null, List.of(text("제목")),
+                    new BannerContent.Mobile(null, List.of("b1", "사라진것")));
+
+            assertThat(validator.normalize(raw).mobile().hide()).containsExactly("b1");
+        }
+
+        @Test
+        @DisplayName("글자 없는 글자 블록은 거절한다")
+        void needsText() {
+            assertThatThrownBy(() -> validator.normalize(of(null, text("   "))))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("배경도 내용도 없으면 검은 상자만 남는다 — 거절한다")
+        void needsSomething() {
+            assertThatThrownBy(() -> validator.normalize(new BannerContent(null, null, List.of(), null)))
+                    .isInstanceOf(BusinessException.class);
+        }
+    }
+}

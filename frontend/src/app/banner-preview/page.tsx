@@ -123,9 +123,20 @@ export default async function BannerPreviewPage({
   const mobileKeys = parseKeys(typeof params.m === 'string' ? params.m : undefined);
   const hrefs = parseHrefs(typeof params.h === 'string' ? params.h : undefined);
 
+  /**
+   * 저장돼 있는 꾸민 배너.
+   *
+   * <p>지금 관리자 화면이 고치는 것은 사진 배너뿐이라, 꾸민 배너는 저장된 것을
+   * 그대로 앞에 둔다 — 빼면 사진 한 장을 올려 보는 동안 꾸민 배너가 사라진 것처럼
+   * 보인다. 저장할 때의 차례와 같다 (꾸민 배너 먼저, 사진 배너 나중).
+   */
+  const designs = data.banners.filter((banner) => banner.kind === 'DESIGN');
+
   const banners: HeroBanner[] = wideKeys
     .map((imageKey, index) => ({
-      id: index,
+      // 저장된 배너의 id 와 겹치지 않게 음수로 둔다 — 겹치면 React 가 둘을 한 칸으로 본다
+      id: -(index + 1),
+      kind: 'IMAGE' as const,
       imageKey,
       mobileImageKey: mobileKeys[index] || null,
       // 손님 화면과 같이 눌리게 둔다 — 고른 목적지가 맞는지는 눌러 봐야 안다.
@@ -138,13 +149,15 @@ export default async function BannerPreviewPage({
     // 거른 뒤에 짝을 맞춘다 — 먼저 걸러내면 휴대폰용이 한 칸씩 당겨져 엉뚱한 배너에 붙는다.
     .filter((banner) => banner.imageKey !== '');
 
+  const all = [...designs, ...banners];
+
   return (
     <>
       <SiteHeader nav={buildNav(data.categories)} />
 
       <main id="main" className={styles.main}>
         {/* 배너가 없으면 HomeView 가 기본 배너로 돌아간다 — 메인에서 일어나는 일과 같다. */}
-        <HomeView {...data} banners={banners} />
+        <HomeView {...data} banners={all} />
       </main>
 
       <MobileTabBar />

@@ -32,7 +32,7 @@ public class AdminHeroBannerController {
     @GetMapping
     public ResponseEntity<List<HeroBannerResponse>> list() {
         return ResponseEntity.ok(bannerService.findAll().stream()
-                .map(HeroBannerResponse::from)
+                .map(banner -> HeroBannerResponse.from(banner, bannerService.contentOf(banner)))
                 .toList());
     }
 
@@ -46,7 +46,7 @@ public class AdminHeroBannerController {
             @AuthenticationPrincipal AdminPrincipal actor) {
 
         return ResponseEntity.ok(bannerService.replace(request, actor.loginId()).stream()
-                .map(HeroBannerResponse::from)
+                .map(banner -> HeroBannerResponse.from(banner, bannerService.contentOf(banner)))
                 .toList());
     }
 }

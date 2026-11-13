@@ -25,7 +25,7 @@ public class PublicHeroBannerController {
     @GetMapping
     public ResponseEntity<List<HeroBannerResponse>> banners() {
         return ResponseEntity.ok(bannerService.findActive().stream()
-                .map(HeroBannerResponse::from)
+                .map(banner -> HeroBannerResponse.from(banner, bannerService.contentOf(banner)))
                 .toList());
     }
 }

@@ -1,8 +1,8 @@
 package com.hanseongge.domain.banner.dto;
 
+import com.hanseongge.domain.banner.entity.BannerKind;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -29,8 +29,13 @@ public record HeroBannerReplaceRequest(
 
     @Schema(name = "HeroBannerItem")
     public record Item(
-            @Schema(description = "업로드한 이미지 키", requiredMode = Schema.RequiredMode.REQUIRED)
-            @NotBlank(message = "이미지가 필요합니다.")
+            @Schema(description = "IMAGE=사진 한 장, DESIGN=화면에서 꾸민 배너. 비우면 IMAGE")
+            BannerKind kind,
+
+            @Schema(description = "DESIGN 일 때의 내용. 서버가 다듬어 저장한다")
+            BannerContent content,
+
+            @Schema(description = "IMAGE 일 때 올린 이미지 키")
             @Size(max = 300)
             String imageKey,
 

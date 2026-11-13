@@ -63,7 +63,10 @@ export function HomeView({ prices, histories, groups, notices, banners }: Props)
         slides={HERO_SLIDES}
         banners={banners.map((b) => ({
           id: b.id,
-          image: mediaUrl(b.imageKey) ?? '',
+          // 꾸민 배너는 내용을 그대로 넘긴다. 사진 자리를 비워 두면 슬라이더가
+          // 배경을 그리지 않고 BannerDesign 이 그 자리를 맡는다.
+          design: b.kind === 'DESIGN' ? b.content : null,
+          image: mediaUrl(b.imageKey),
           mobileImage: mediaUrl(b.mobileImageKey),
           href: b.linkHref,
           alt: b.altText,

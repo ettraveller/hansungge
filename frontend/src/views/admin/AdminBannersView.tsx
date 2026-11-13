@@ -8,10 +8,9 @@ import { Field, TextInput } from '@/components/admin/Field';
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
+import { DesignBannerPanel } from '@/components/admin/banners/DesignBannerPanel';
 import { FooterPanel } from '@/components/admin/banners/FooterPanel';
 import type { FooterInfo } from '@/api/footer';
-import { HeroSlider } from '@/components/home/HeroSlider';
-import { HERO_SLIDES } from '@/views/home-content';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
@@ -84,17 +83,29 @@ export function AdminBannersView() {
    */
   const [footerDraft, setFooterDraft] = useState<FooterInfo | null>(null);
 
+  /**
+   * 화면에서 꾸민 배너.
+   *
+   * <p>아직 고치는 화면이 없다(2단계). 그래도 <b>들고 있다가 저장할 때 그대로
+   * 돌려보내야</b> 한다 — 저장은 보낸 것이 곧 전체라서, 빠뜨리면 사진 한 장을
+   * 올리는 순간 꾸민 배너가 전부 지워진다.
+   */
+  const designs = (data ?? []).filter((b) => b.kind === 'DESIGN');
+
+  /** 사진 배너만 아래 업로더가 다룬다. */
+  const images = (data ?? []).filter((b) => b.kind !== 'DESIGN');
+
   const rows: Row[] =
     draft ??
-    (data ?? []).map((b) => ({
-      imageKey: b.imageKey,
+    images.map((b) => ({
+      imageKey: b.imageKey ?? '',
       linkHref: b.linkHref ?? '',
       altText: b.altText ?? '',
     }));
 
   /** 휴대폰용 목록. 자리로 짝을 맞춘다 — n번째가 n번째 배너의 휴대폰 사진이다. */
   const [mobileDraft, setMobileDraft] = useState<string[] | null>(null);
-  const mobileKeys: string[] = mobileDraft ?? (data ?? []).map((b) => b.mobileImageKey ?? '');
+  const mobileKeys: string[] = mobileDraft ?? images.map((b) => b.mobileImageKey ?? '');
 
   /**
    * 사진 목록이 바뀌었다 — 순서를 바꿨거나, 넣었거나, 뺐다.
@@ -123,12 +134,21 @@ export function AdminBannersView() {
   const save = () => {
     setSaved(false);
     replace.mutate(
-      rows.map((r, index) => ({
-        imageKey: r.imageKey,
-        mobileImageKey: mobileKeys[index] || null,
-        linkHref: r.linkHref.trim() || null,
-        altText: r.altText.trim() || null,
-      })),
+      [
+        // 꾸민 배너를 앞에 그대로 둔다. 빼면 저장하는 순간 지워진다.
+        ...designs.map((b) => ({
+          kind: 'DESIGN' as const,
+          content: b.content,
+          altText: b.altText ?? null,
+        })),
+        ...rows.map((r, index) => ({
+          kind: 'IMAGE' as const,
+          imageKey: r.imageKey,
+          mobileImageKey: mobileKeys[index] || null,
+          linkHref: r.linkHref.trim() || null,
+          altText: r.altText.trim() || null,
+        })),
+      ],
       {
         onSuccess: () => {
           setDraft(null);
@@ -173,6 +193,8 @@ export function AdminBannersView() {
         </Alert>
       )}
 
+      <DesignBannerPanel banners={designs} />
+
       <Panel
         title="배너 이미지"
         note={`최대 ${MAX_BANNERS}장. 왼쪽부터 차례로 돌아간다. 홈페이지용에 올린 장수가 슬라이드 수다.`}
@@ -208,25 +230,6 @@ export function AdminBannersView() {
           문구와 버튼까지 이미지 안에 들어갑니다 — 글자를 따로 넣는 칸은 없고,{' '}
           <strong>같은 문구를 두 장에 각각</strong> 넣으셔야 합니다.
         </Alert>
-
-        {/* 올린 배너가 없으면 손님 화면에는 코드에 들어 있는 기본 배너가 나간다.
-            그 사실을 여기 적지 않으면 "관리자 화면은 비어 있는데 메인에는 배너가
-            돌아간다" 가 되고, 어디서 고치는 것인지 찾을 길이 없다. 기본 배너는
-            사진 한 장이 아니라 글자와 버튼이 붙은 슬라이드라 이 칸에 올려 둘 수 없다 —
-            사진을 한 장이라도 올리면 그 자리를 통째로 넘겨받는다. */}
-        {!isLoading && rows.length === 0 && (
-          <Alert tone="info" title="지금 메인에 나가고 있는 배너">
-            아직 올린 사진이 없어서 코드에 들어 있는 기본 배너가 돌아갑니다. 사진을 한
-            장이라도 올려 저장하면 이 자리를 넘겨받습니다.
-            {/* 글로 적어 두면 그 글이 낡는다 — 기본 배너가 바뀌어도 설명은 그대로 남는다.
-                손님 화면과 같은 컴포넌트를 그대로 그려 줄여 보여준다. 늘 지금 것이다. */}
-            <div className={styles.heroThumb}>
-              <div className={styles.heroThumbInner}>
-                <HeroSlider slides={HERO_SLIDES} />
-              </div>
-            </div>
-          </Alert>
-        )}
 
         {isLoading ? (
           <p className={styles.hint}>불러오는 중…</p>

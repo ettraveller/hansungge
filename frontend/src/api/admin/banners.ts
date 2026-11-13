@@ -1,9 +1,13 @@
 import { adminApi } from '@/api/admin/client';
+import type { BannerContent, BannerKind } from '@/api/banners';
 
-/** 메인 배너 한 장. 문구·버튼까지 이미지 안에 들어 있다. */
+/** 메인 배너 한 장. 사진 한 장이거나(IMAGE), 화면에서 꾸민 것이다(DESIGN). */
 export interface AdminHeroBanner {
   id: number;
-  imageKey: string;
+  kind: BannerKind;
+  /** DESIGN 일 때의 내용 */
+  content?: BannerContent | null;
+  imageKey?: string | null;
   mobileImageKey?: string | null;
   linkHref?: string | null;
   altText?: string | null;
@@ -12,7 +16,11 @@ export interface AdminHeroBanner {
 }
 
 export interface HeroBannerInput {
-  imageKey: string;
+  /** 비우면 IMAGE 로 본다 */
+  kind?: BannerKind;
+  /** DESIGN 일 때 보낸다. 서버가 다듬어 저장한다 */
+  content?: BannerContent | null;
+  imageKey?: string | null;
   mobileImageKey?: string | null;
   linkHref?: string | null;
   altText?: string | null;

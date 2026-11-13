@@ -4,11 +4,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 
@@ -32,7 +36,28 @@ public class HeroBanner {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "image_key", length = 300, nullable = false)
+    /**
+     * 사진 한 장짜리 배너인가, 화면에서 꾸민 배너인가 (V45).
+     *
+     * <p>DESIGN 은 {@link #content} 에 배경과 쌓을 요소들을 담는다. 글자 한 줄을
+     * 고치자고 사진을 다시 받아야 하던 것이 이 갈래가 생긴 이유다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kind", length = 20, nullable = false)
+    private BannerKind kind;
+
+    /**
+     * DESIGN 배너의 내용 (V45). 모양은 {@code BannerContent}.
+     *
+     * <p>문자열로 들고 있다 — 이 프로젝트의 다른 JSON 칸(감사로그·결제 응답)과 같은
+     * 방식이다. 서버에서 읽을 일이 없고, 넣기 전에 {@code BannerContentValidator} 가
+     * 이미 다듬은 값이라 엔티티가 모양을 다시 알 필요가 없다.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "content")
+    private String content;
+
+    @Column(name = "image_key", length = 300)
     private String imageKey;
 
     /**
@@ -70,10 +95,12 @@ public class HeroBanner {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    private HeroBanner(String imageKey, String mobileImageKey, String linkHref, String altText,
-                       int sort, String by) {
-        this.imageKey = imageKey;
+    private HeroBanner(BannerKind kind, String imageKey, String mobileImageKey, String content,
+                       String linkHref, String altText, int sort, String by) {
+        this.kind = kind;
+        this.imageKey = blankToNull(imageKey);
         this.mobileImageKey = blankToNull(mobileImageKey);
+        this.content = blankToNull(content);
         this.linkHref = blankToNull(linkHref);
         this.altText = blankToNull(altText);
         this.sort = sort;
@@ -84,9 +111,25 @@ public class HeroBanner {
         this.updatedAt = OffsetDateTime.now();
     }
 
-    public static HeroBanner of(String imageKey, String mobileImageKey, String linkHref,
-                                String altText, int sort, String by) {
-        return new HeroBanner(imageKey, mobileImageKey, linkHref, altText, sort, by);
+    /** 사진 한 장짜리 배너. */
+    public static HeroBanner ofImage(String imageKey, String mobileImageKey, String linkHref,
+                                     String altText, int sort, String by) {
+        return new HeroBanner(BannerKind.IMAGE, imageKey, mobileImageKey, null,
+                linkHref, altText, sort, by);
+    }
+
+    /**
+     * 화면에서 꾸민 배너.
+     *
+     * <p>{@code content} 는 {@code BannerContentValidator} 를 통과한 JSON 이어야 한다.
+     * 다듬지 않은 값을 그대로 넣으면 손님 화면의 {@code style} 에 그대로 들어간다.
+     *
+     * <p>누르면 갈 곳을 따로 받지 않는다 — 꾸민 배너는 <b>안에 있는 버튼</b>이 그 일을
+     * 한다. 배너 전체를 덮는 링크를 함께 두면 버튼을 피해 누른 손가락이 엉뚱한 곳으로
+     * 가고, 버튼이 여러 개일 때는 어느 쪽이 이기는지 알 수 없다.
+     */
+    public static HeroBanner ofDesign(String content, String altText, int sort, String by) {
+        return new HeroBanner(BannerKind.DESIGN, null, null, content, null, altText, sort, by);
     }
 
     private static String blankToNull(String value) {

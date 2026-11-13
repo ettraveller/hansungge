@@ -1,10 +1,16 @@
 package com.hanseongge.domain.banner.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanseongge.domain.banner.dto.BannerContent;
 import com.hanseongge.domain.banner.dto.HeroBannerReplaceRequest;
+import com.hanseongge.domain.banner.entity.BannerKind;
 import com.hanseongge.domain.banner.entity.HeroBanner;
 import com.hanseongge.domain.banner.repository.HeroBannerRepository;
 import com.hanseongge.global.audit.AuditActions;
 import com.hanseongge.global.audit.AuditLog;
+import com.hanseongge.global.error.BusinessException;
+import com.hanseongge.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +36,8 @@ import java.util.List;
 public class HeroBannerService {
 
     private final HeroBannerRepository bannerRepository;
+    private final BannerContentValidator contentValidator;
+    private final ObjectMapper objectMapper;
 
     /** 손님 화면용. 내걸린 것만, 정해진 차례로. */
     @Transactional(readOnly = true)
@@ -54,12 +62,52 @@ public class HeroBannerService {
         List<HeroBannerReplaceRequest.Item> items = request.banners();
         for (int position = 0; position < items.size(); position++) {
             HeroBannerReplaceRequest.Item item = items.get(position);
-            saved.add(HeroBanner.of(item.imageKey(), item.mobileImageKey(), item.linkHref(),
-                    item.altText(), position, adminLoginId));
+            saved.add(toBanner(item, position, adminLoginId));
         }
         bannerRepository.saveAll(saved);
 
         log.info("[BANNER] 메인 배너 {}장으로 교체. by={}", saved.size(), adminLoginId);
         return saved;
+    }
+
+    /**
+     * 꾸민 배너의 내용을 돌려준다. 사진 배너면 {@code null}.
+     *
+     * <p>읽다 실패해도 터지지 않는다 — DB 의 JSON 이 손으로 고쳐졌을 때 배너 한 장
+     * 때문에 메인 전체가 500 으로 떨어지면, 정작 고쳐야 할 사람이 관리자 화면에도
+     * 들어가지 못한다. 그 배너만 조용히 빠진다.
+     */
+    public BannerContent contentOf(HeroBanner banner) {
+        if (banner.getKind() != BannerKind.DESIGN || banner.getContent() == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(banner.getContent(), BannerContent.class);
+        } catch (JsonProcessingException e) {
+            log.error("[BANNER] 배너 내용을 읽지 못했습니다. id={}", banner.getId(), e);
+            return null;
+        }
+    }
+
+    private HeroBanner toBanner(HeroBannerReplaceRequest.Item item, int position, String by) {
+        if (item.kind() == BannerKind.DESIGN) {
+            // 다듬은 값만 저장한다. 받은 그대로 넣으면 손님 화면의 style 로 그대로 나간다.
+            BannerContent content = contentValidator.normalize(item.content());
+            return HeroBanner.ofDesign(write(content), item.altText(), position, by);
+        }
+        if (item.imageKey() == null || item.imageKey().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    (position + 1) + "번째 배너에 이미지가 없습니다.");
+        }
+        return HeroBanner.ofImage(item.imageKey(), item.mobileImageKey(), item.linkHref(),
+                item.altText(), position, by);
+    }
+
+    private String write(BannerContent content) {
+        try {
+            return objectMapper.writeValueAsString(content);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "배너 내용을 저장하지 못했습니다.");
+        }
     }
 }

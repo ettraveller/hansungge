@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+
+import type { BannerContent } from '@/api/banners';
+import { BannerDesign } from './BannerDesign';
 import styles from './HeroSlider.module.css';
 
 export interface Slide {
@@ -24,7 +27,15 @@ export interface Slide {
  */
 export interface BannerSlide {
   id: number;
-  image: string;
+  /**
+   * 꾸민 배너의 내용. 있으면 이것을 그리고 아래 {@link image} 는 쓰지 않는다.
+   *
+   * <p>사진 배너와 꾸민 배너가 <b>같은 목록에서 번갈아</b> 나온다. 목록을 둘로 나누면
+   * 순서를 두 목록에 걸쳐 매겨야 하는데, 메인 맨 위에서 돌아가는 자리는 하나다.
+   */
+  design?: BannerContent | null;
+  /** IMAGE 배너의 사진 */
+  image?: string | null;
   /** 휴대폰용 이미지. 없으면 {@link image} 한 장이 두 폭을 다 맡는다 */
   mobileImage?: string | null;
   /** 누르면 갈 곳. 없으면 누를 수 없는 배너다 */
@@ -144,20 +155,24 @@ export function HeroSlider({ slides, banners }: { slides: Slide[]; banners?: Ban
             className={i === index ? styles.slideOn : styles.slide}
             aria-hidden={i !== index}
           >
+            {banner.design && <BannerDesign content={banner.design} />}
+
             {/* 글자가 이미지 안에 있으므로 화면 전체를 덮는다. 오른쪽만 덮는 .bg 와
                 달리 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다.
 
                 휴대폰용이 따로 올라온 배너는 폭에 따라 한쪽만 보인다 (.bgWide/.bgNarrow).
                 안 쓰는 쪽은 display:none 이라 브라우저가 내려받지도 않는다. 휴대폰용이
                 없으면 가로용 한 장이 두 폭을 다 맡는다. */}
-            <div
-              className={
-                banner.mobileImage ? `${styles.bgFull} ${styles.bgWide}` : styles.bgFull
-              }
-              style={{ backgroundImage: `url(${banner.image})` }}
-              role="img"
-              aria-label={banner.alt ?? ''}
-            />
+            {banner.image && (
+              <div
+                className={
+                  banner.mobileImage ? `${styles.bgFull} ${styles.bgWide}` : styles.bgFull
+                }
+                style={{ backgroundImage: `url(${banner.image})` }}
+                role="img"
+                aria-label={banner.alt ?? ''}
+              />
+            )}
             {banner.mobileImage && (
               <div
                 className={`${styles.bgFull} ${styles.bgNarrow}`}
@@ -168,7 +183,9 @@ export function HeroSlider({ slides, banners }: { slides: Slide[]; banners?: Ban
             )}
             {/* 주소가 없으면 누를 수 없는 배너다. 빈 링크를 두면 눌리는데 아무 일도
                 일어나지 않아, 쓰는 사람은 고장으로 읽는다. */}
-            {banner.href && (
+            {/* 꾸민 배너는 안에 있는 버튼이 그 일을 한다. 배너 전체를 덮는 링크를
+                함께 두면 버튼을 피해 누른 손가락이 엉뚱한 곳으로 간다. */}
+            {banner.href && !banner.design && (
               <Link
                 href={banner.href}
                 className={styles.bannerLink}
