@@ -1832,6 +1832,9 @@ a.hint:hover {
 
 .designStage {
   position: relative;
+  /* 쌓임 맥락을 연다. 열지 않으면 히어로 안의 z-index:5 (글자·버튼) 가 위 띠와
+     같은 맥락에서 겨뤄 색판을 덮는다 — 색을 고르는 동안 정작 그 색판이 안 보인다. */
+  z-index: 0;
   border: 1px solid var(--line);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   /* 히어로가 모서리를 넘어 칠해지지 않게 */
