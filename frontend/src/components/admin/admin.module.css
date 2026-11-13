@@ -2009,10 +2009,25 @@ a.hint:hover {
    폭을 안 주면 한 줄에 하나씩 서서 여덟 줄이 화면 아래로 넘어간다 — 넘어간 줄
    (흐리게·투명도·모서리·그림자)은 누를 수조차 없었다. */
 .effectPop {
-  width: 300px;
+  width: 460px;
+  /* 두 열. 여덟 줄을 한 열로 세우면 판이 화면보다 길어진다. */
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14px;
   max-height: min(70vh, 540px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* 첫 줄(가장자리 녹이기)만 일곱 칸이라 한 열에 들어가면 세 줄로 접힌다. 통째로 쓴다. */
+.effectPop > div:first-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .effectPop {
+    width: min(300px, 86vw);
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --- 사진 효과 판 ---
