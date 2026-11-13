@@ -58,9 +58,12 @@ const LOOK_CLASS: Record<string, string> = {
 export function BannerDesign({
   content,
   renderText,
+  trailing,
 }: {
   content: BannerContent;
   renderText?: (blockId: string, value: string) => React.ReactNode;
+  /** 쌓인 것들 맨 아래에 끼워 넣을 것. 편집기가 「+ 글자 · + 버튼」을 여기에 둔다. */
+  trailing?: React.ReactNode;
 }) {
   const { background, align, blocks, mobile } = content;
 
@@ -134,6 +137,7 @@ export function BannerDesign({
               </p>
             );
           })}
+          {trailing}
         </div>
       </div>
     </>
