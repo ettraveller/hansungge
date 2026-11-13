@@ -170,7 +170,11 @@ export function ImageEffectPicker({
       </button>
 
       {open && (
-        <div className={styles.palettePop} role="dialog" aria-label="사진 효과">
+        <div
+          className={`${styles.palettePop} ${styles.effectPop}`}
+          role="dialog"
+          aria-label="사진 효과"
+        >
           {ROWS.map(({ key, title, options }) => (
             <div key={key}>
               <p className={styles.paletteTitle}>{title}</p>

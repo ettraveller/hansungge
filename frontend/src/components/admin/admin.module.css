@@ -2004,6 +2004,17 @@ a.hint:hover {
   cursor: default;
 }
 
+/* 효과 판은 색판보다 넓고, 길면 안에서 굴린다.
+   색판은 작은 네모가 다섯 칸씩 들어가 폭이 저절로 잡히지만, 효과 판은 글자 단추라
+   폭을 안 주면 한 줄에 하나씩 서서 여덟 줄이 화면 아래로 넘어간다 — 넘어간 줄
+   (흐리게·투명도·모서리·그림자)은 누를 수조차 없었다. */
+.effectPop {
+  width: 300px;
+  max-height: min(70vh, 540px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* --- 사진 효과 판 ---
    색판과 같은 상자(.palette·.palettePop)를 쓰고 안쪽만 다르다. 한 줄에 한 효과,
    고른 것 하나가 눌린 채로 남는다. */
