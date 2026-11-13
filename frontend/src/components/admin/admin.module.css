@@ -1860,8 +1860,11 @@ a.hint:hover {
   display: inline-block;
 }
 
+/* 손잡이는 글자 상자가 아니라 <b>블록</b> 모서리에 건다. 글자 상자에 걸면
+   버튼 안쪽 여백 속으로 들어가 글자 위에 겹친다 — 무엇을 누르는 것인지
+   헷갈린다. 블록 쪽은 HeroSlider 의 .dStack > * 가 자리를 열어 둔다. */
 .pickOn {
-  position: relative;
+  position: static;
 }
 
 /* 끌어서 옮기는 손잡이. 글자 자체를 끌게 하면 글자를 고르려고 그은 손짓과
