@@ -106,13 +106,18 @@
   --warn-soft: #f7f2e6;
 
   /* ------------------------------------------------------------------
-     4. 어두운 영역 (히어로·시세바·푸터)
+     4. 어두운 영역 (헤더·히어로·시세바·푸터)
+
+     2026-11-15 — 남색(#0f1b2d)에서 팬톤 208C(#861f41, 버건디)로. 한성 요청.
+     ⚠️ 바뀌는 것은 <b>어두운 면</b>뿐이다. 잉크 램프(글자·주요 동작 버튼)는
+     남색 그대로다 — 제목 글자까지 버건디가 되면 본문이 경고문처럼 읽힌다.
+     금색 강조는 버건디 위에서도 산다 (금이 사는 것은 어두운 반대색 위다).
      ------------------------------------------------------------------ */
-  --hero-bg: #0f1b2d;
-  --strip-bg: #0f1b2d;
-  --strip-line: #22314a;
-  --footer-bg: var(--ink-900);
-  --footer-line: #22314a;
+  --hero-bg: #861f41; /* PANTONE 208 C */
+  --strip-bg: #861f41;
+  --strip-line: #9e3a5e;
+  --footer-bg: #861f41;
+  --footer-line: #9e3a5e;
 
   /* ------------------------------------------------------------------
      5. 그림자 — 검정이 아니라 배경의 색을 띤다. 그리고 얕다.
@@ -271,7 +276,7 @@
       rgba(198, 161, 91, 0.07) 0%,
       transparent 54%
     ),
-    linear-gradient(172deg, #16233a 0%, var(--hero-bg) 64%);
+    linear-gradient(172deg, #97294e 0%, var(--hero-bg) 64%);
 
   /* 필름 그레인 — 완전한 평면에서 오는 인쇄물 같은 어색함을 걷어낸다 */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
