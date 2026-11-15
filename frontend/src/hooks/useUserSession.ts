@@ -234,7 +234,10 @@ export function useSignOut() {
     },
     onSettled: () => {
       signOut();
-      queryClient.removeQueries({ queryKey: userKeys.all });
+      // 통째로 비운다. 회원 키만 골라 지우다 장바구니 캐시를 남겨서, 로그아웃한
+      // 화면의 머리띠에 개수가 그대로 떠 있었다 (2026-11-17). 401 만료 같은 다른
+      // 로그아웃 경로는 SessionBootstrap 의 감시가 같은 일을 한다.
+      queryClient.clear();
     },
   });
 }
