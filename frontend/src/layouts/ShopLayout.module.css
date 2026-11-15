@@ -402,6 +402,14 @@
   flex-wrap: wrap;
 }
 
+/* 로고와 에스크로 마크가 나란히 선다 — 국제표준금거래소 푸터와 같은 자리다. */
+.footBrandRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
 .footLogo {
   height: 34px;
   width: auto;
@@ -409,6 +417,23 @@
   /* 다크 배경에 컬러 로고를 얹으면 대비가 떨어진다. 밝기를 올려 흰 글씨처럼 보이게 한다 */
   filter: brightness(0) invert(1);
   opacity: 0.85;
+}
+
+/* KB 에스크로 마크. 원본이 흰 바탕이라 흰 칩으로 싸서, 어두운 푸터 위에
+   일부러 올린 패처럼 보이게 한다 — 바탕을 안 싸면 흰 모서리만 어색하게 남는다. */
+.escrowMark {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  line-height: 0;
+}
+
+.escrowMark img {
+  height: 48px;
+  width: auto;
+  display: block;
 }
 
 .footInfo p {

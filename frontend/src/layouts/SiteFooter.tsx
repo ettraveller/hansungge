@@ -6,6 +6,15 @@ import type { ReactNode } from 'react';
 import type { FooterInfo } from '@/api/footer';
 import styles from './ShopLayout.module.css';
 
+/**
+ * KB 에스크로 판매자 확인정보 주소.
+ *
+ * <p>KB 가 가맹점마다 발급하는 「KB에스크로 이체 바로가기」 링크다. 아직 받지
+ * 못해 null — 그동안 마크는 링크 없이 그림으로만 선다. 주소를 받으면 여기만
+ * 채우면 된다.
+ */
+const ESCROW_CONFIRM_URL: string | null = null;
+
 interface Props {
   info: FooterInfo;
   /**
@@ -61,14 +70,44 @@ export function SiteFooter({ info, renderText }: Props) {
     <div className={styles.footMain}>
       <div className="wrap">
         <div className={styles.footInfo}>
-          {/* 푸터는 검정 바탕이다. 여기가 logo-dark(밝은 글자)를 쓸 자리다 */}
-          <Image
-            src="/logo-dark.svg"
-            alt="한성금거래소"
-            width={560}
-            height={104}
-            className={styles.footLogo}
-          />
+          <div className={styles.footBrandRow}>
+            {/* 푸터는 검정 바탕이다. 여기가 logo-dark(밝은 글자)를 쓸 자리다 */}
+            <Image
+              src="/logo-dark.svg"
+              alt="한성금거래소"
+              width={560}
+              height={104}
+              className={styles.footLogo}
+            />
+            {/* KB 에스크로 마크 (2026-11-12 판매자 등록). 확인 주소가 있으면 눌러서
+                KB 의 판매자 확인정보 창을 연다 — 마크는 "이 가게가 등록된 판매자"라는
+                주장이고, 고객이 그 주장을 은행에서 확인할 수 있어야 마크가 일을 한다. */}
+            {ESCROW_CONFIRM_URL ? (
+              <a
+                href={ESCROW_CONFIRM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.escrowMark}
+                title="KB에스크로 이체 판매자 확인정보 (새 창)"
+              >
+                <Image
+                  src="/escrow-kb.png"
+                  alt="KB국민은행 에스크로이체 가맹 — 매매보호의 기준"
+                  width={164}
+                  height={144}
+                />
+              </a>
+            ) : (
+              <span className={styles.escrowMark} title="KB국민은행 에스크로이체 가맹">
+                <Image
+                  src="/escrow-kb.png"
+                  alt="KB국민은행 에스크로이체 가맹 — 매매보호의 기준"
+                  width={164}
+                  height={144}
+                />
+              </span>
+            )}
+          </div>
           {/* 글자는 관리자 › 메인 배너 & 푸터에서 고친다. 기본값은 data/company.ts.
 
               상호는 법인명(주식회사 금한성)이다. 로고의 「한성금거래소」는 브랜드명이라
