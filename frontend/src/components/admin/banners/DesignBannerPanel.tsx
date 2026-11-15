@@ -426,7 +426,10 @@ export function DesignBannerPanel({
     e.stopPropagation();
 
     const handle = e.currentTarget;
-    const self = handle.closest<HTMLElement>('[data-stack] > *');
+    // ⚠️ 재는 것은 블록(<p>)이 아니라 글자를 꼭 맞게 감싼 고름 상자(손잡이의 부모)다.
+    // <p> 는 블록 요소라 폭이 배너 전체여서, 그걸 기준으로 삼으면 한참 끌어도
+    // 비율이 거의 1 — 글자가 1px 쯤 변하고 말아 "안 되는" 것처럼 보인다.
+    const self = handle.parentElement;
     if (!self) return;
 
     const startX = e.clientX;
