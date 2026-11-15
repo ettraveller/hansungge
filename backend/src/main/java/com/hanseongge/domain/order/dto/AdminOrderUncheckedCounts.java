@@ -20,6 +20,14 @@ public record AdminOrderUncheckedCounts(
         @Schema(description = "결제완료 탭") long paid,
         @Schema(description = "배송중 탭") long shipped,
         @Schema(description = "배송완료 탭") long delivered,
-        @Schema(description = "취소 탭") long cancelled
+        @Schema(description = "취소 탭") long cancelled,
+
+        /**
+         * 미확인 주문에 담긴 품목 줄 수 — 사이드바 「주문관리」 배지가 쓴다.
+         *
+         * <p>주문 건수가 아니라 품목 수인 이유: 한 주문에 상품이 셋이면 챙길 것도
+         * 셋이라는 운영진의 셈법을 그대로 따른다 (2026-11-16 요청).
+         */
+        @Schema(description = "미확인 주문의 품목 수") long items
 ) {
 }

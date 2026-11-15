@@ -48,6 +48,8 @@ export interface AdminOrderUncheckedCounts {
   shipped: number;
   delivered: number;
   cancelled: number;
+  /** 미확인 주문에 담긴 품목 수 — 사이드바 「주문관리」 배지가 쓴다 (주문 건수가 아니다) */
+  items: number;
 }
 
 export interface AdminOrderSearch {

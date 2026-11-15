@@ -131,6 +131,24 @@
   transform: translateX(2px);
 }
 
+/* 메뉴에 얹는 미확인 숫자. 하단 탭바의 배지와 같은 생김새 —
+   "빨간 숫자 = 아직 안 본 것"이 관리자 화면 전체에서 한 가지 뜻이어야 한다. */
+.navBadge {
+  display: inline-block;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: 1px;
+}
+
 .body {
   flex: 1;
   display: flex;
