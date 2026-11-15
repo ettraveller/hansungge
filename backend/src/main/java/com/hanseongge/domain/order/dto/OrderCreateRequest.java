@@ -2,7 +2,10 @@ package com.hanseongge.domain.order.dto;
 
 import com.hanseongge.domain.order.entity.PaymentMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -89,6 +92,30 @@ public record OrderCreateRequest(
          */
         @Schema(description = "입금자명 (무통장입금일 때 필수)", example = "홍길동")
         @Size(max = 60, message = "입금자명은 60자까지 입력할 수 있습니다.")
-        String depositorName
+        String depositorName,
+
+        /**
+         * 바로 구매 품목. 보내면 <b>장바구니를 읽지 않고</b> 이 한 품목만 주문한다.
+         *
+         * <p>상세 화면의 「바로 구매」가 쓴다. 전에는 바로 구매도 장바구니에 담고 전체를
+         * 주문서로 만들었는데, 그러면 상세를 오가며 누를 때마다 주문이 불어났다 —
+         * "이거 하나 사러 가자"가 "지금까지 담은 것 전부"가 되는 것이다.
+         *
+         * <p>가격은 여기서도 받지 않는다. 무엇을 사는지(상품·옵션·수량)만 받고,
+         * 얼마인지는 서버가 그 시점 시세로 계산한다 (원칙 P1).
+         */
+        @Schema(description = "바로 구매 품목. 비우면 장바구니 전체를 주문한다")
+        @Valid
+        DirectItem directItem
 ) {
+
+    public record DirectItem(
+            @Schema(description = "상품 id") @NotNull Long productId,
+            @Schema(description = "옵션 id") Long optionId,
+            @Schema(description = "수량", example = "1")
+            @Min(value = 1, message = "수량은 1개 이상이어야 합니다.")
+            @Max(value = 99, message = "수량은 99개까지 주문할 수 있습니다.")
+            int quantity
+    ) {
+    }
 }

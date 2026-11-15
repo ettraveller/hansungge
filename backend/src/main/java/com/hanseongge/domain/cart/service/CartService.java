@@ -112,6 +112,30 @@ public class CartService {
         return CartResponse.of(lines, subtotal, orderService.shippingFeeFor(subtotal));
     }
 
+    /**
+     * 바로 구매 미리보기 — 장바구니를 거치지 않는 한 품목짜리 주문서 화면용.
+     *
+     * <p>모양이 장바구니 조회({@link #view})와 같아야 주문서가 두 흐름(장바구니 전체 /
+     * 바로 구매 한 품목)을 한 코드로 그린다. 배송비도 같은 계산을 지난다.
+     */
+    @Transactional(readOnly = true)
+    public CartResponse directPreview(Long productId, Long optionId, int quantity) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND,
+                        "상품 없음: " + productId));
+        requireOnSale(product);
+
+        ProductOption option = resolveOption(product, optionId);
+        PriceQuote quote = priceCalculationService.quote(product.getId(), option.getId());
+        CartItemResponse line = CartItemResponse.preview(
+                product, option, quote, quantity, option.getStock());
+
+        BigDecimal subtotal = line.orderable() && line.lineAmount() != null
+                ? line.lineAmount()
+                : BigDecimal.ZERO;
+        return CartResponse.of(List.of(line), subtotal, orderService.shippingFeeFor(subtotal));
+    }
+
     /** 헤더 배지용. 줄 수만 필요할 때 가격 계산까지 돌리지 않는다. */
     @Transactional(readOnly = true)
     public int count(Long userId) {

@@ -95,6 +95,45 @@ public record CartItemResponse(
                 product.isCardPayable());
     }
 
+    /**
+     * 바로 구매 미리보기 줄 — 장바구니 행 없이 만든다.
+     *
+     * <p>주문서가 장바구니 흐름과 <b>같은 모양</b>으로 그리기 위한 것이다. 담은 시점이
+     * 없으므로 id 는 null 이고 가격 변동 표시(담을 때 대비)는 전부 비활성이다 —
+     * 지금 단가가 곧 기준이다.
+     */
+    public static CartItemResponse preview(Product product, ProductOption option,
+                                           PriceQuote quote, int quantity, int currentStock) {
+        boolean hasPrice = quote.status().hasPrice() && quote.finalUnitPrice() != null;
+        BigDecimal unitPrice = hasPrice ? quote.finalUnitPrice().value() : null;
+        BigDecimal lineAmount = hasPrice
+                ? quote.finalUnitPrice().multiply(quantity).value()
+                : null;
+        boolean shortage = currentStock < quantity;
+
+        return new CartItemResponse(
+                null,
+                product.getId(),
+                option.getId(),
+                product.getName(),
+                option.getName(),
+                product.getThumbnailKey(),
+                product.getMetalType(),
+                option.getWeightG() != null ? option.getWeightG() : product.getWeightG(),
+                quantity,
+                unitPrice,
+                lineAmount,
+                hasPrice ? unitPrice.toPlainString() : INQUIRY_TEXT,
+                unitPrice,
+                false,
+                null,
+                quote.status().isOrderable() && !shortage,
+                reasonOf(quote.status(), shortage, quote.unavailableReason()),
+                shortage,
+                shortage ? currentStock : null,
+                product.isCardPayable());
+    }
+
     private static String reasonOf(PriceStatus status, boolean shortage, String quoteReason) {
         if (shortage) {
             return "재고가 부족합니다. 수량을 줄이거나 삭제해 주세요.";

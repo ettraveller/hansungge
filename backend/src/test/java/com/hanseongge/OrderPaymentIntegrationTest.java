@@ -115,6 +115,83 @@ class OrderPaymentIntegrationTest extends EmbeddedPostgresSupport {
         assertThat(order.get("orderNo").asText()).startsWith("HS");
     }
 
+    @Test
+    @DisplayName("바로 구매는 장바구니를 읽지 않는다 — 무엇이 담겨 있든 그 한 품목만 주문된다")
+    void directOrderIgnoresCart() throws Exception {
+        // 장바구니에는 다른 상품이 2개 담겨 있다.
+        onlyInCart(optionId, 2);
+
+        long directOption = seedProduct("GOLD_18K", "FIXED", "500000");
+        long directProduct = productIdOf(directOption);
+
+        MvcResult result = createDirectOrderRaw(directProduct, directOption, 1);
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+
+        JsonNode order = read(result);
+        assertThat(order.get("items").size()).isEqualTo(1);
+        assertThat(order.get("items").get(0).get("productId").asLong()).isEqualTo(directProduct);
+        assertThat(order.get("itemsAmount").decimalValue()).isEqualByComparingTo("500000");
+
+        // 장바구니는 건드리지 않았다 — 담아 둔 줄이 그대로 있다.
+        Integer cartLines = jdbc.queryForObject("SELECT count(*) FROM cart_items", Integer.class);
+        assertThat(cartLines).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("바로 구매도 결제수단 규칙은 같다 — 순금은 카드로 주문할 수 없다")
+    void directOrderKeepsCardRules() throws Exception {
+        long gold24k = seedProduct("GOLD_24K", "FIXED", "600000");
+        MvcResult result = createDirectOrderRaw(productIdOf(gold24k), gold24k, 1);
+        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+    }
+
+    @Test
+    @DisplayName("바로 구매 미리보기는 장바구니 조회와 같은 모양이다 — 주문서가 한 코드로 그린다")
+    void directPreviewLooksLikeCart() throws Exception {
+        long option = seedProduct("GOLD_18K", "FIXED", "500000");
+        long product = productIdOf(option);
+
+        JsonNode preview = read(mockMvc.perform(
+                        get("/api/v1/orders/direct-preview")
+                                .param("productId", String.valueOf(product))
+                                .param("optionId", String.valueOf(option))
+                                .param("quantity", "2")
+                                .header("Authorization", "Bearer " + accessToken))
+                .andReturn());
+
+        assertThat(preview.get("items").size()).isEqualTo(1);
+        assertThat(preview.get("items").get(0).get("quantity").asInt()).isEqualTo(2);
+        assertThat(preview.get("payableTotal").decimalValue()).isEqualByComparingTo("1000000");
+        assertThat(preview.get("cardPayable").asBoolean()).isTrue();
+    }
+
+    /** 바로 구매 주문 — 카드(EASY_PAY)로. 장바구니와 무관해야 한다. */
+    private MvcResult createDirectOrderRaw(long productId, long optionId, int quantity)
+            throws Exception {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of(
+                "receiverName", "홍길동",
+                "receiverPhone", "010-1234-5678",
+                "zipcode", "03187",
+                "address1", "서울특별시 종로구 돈화문로 00",
+                "withdrawalConsent", true,
+                "refundPolicyId", currentRefundPolicyId(),
+                "paymentMethod", "EASY_PAY"));
+        body.put("directItem", Map.of(
+                "productId", productId, "optionId", optionId, "quantity", quantity));
+        return mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andReturn();
+    }
+
+    private long productIdOf(long optionIdValue) {
+        Long productId = jdbc.queryForObject(
+                "SELECT product_id FROM product_options WHERE id = ?", Long.class, optionIdValue);
+        assertThat(productId).isNotNull();
+        return productId;
+    }
+
     // =================================================================
     // 결제수단 — 토스 입점 심사(2026-11-03)가 카드에서 제외한 품목
     //

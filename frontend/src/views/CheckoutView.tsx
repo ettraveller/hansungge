@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Notice } from '@/components/auth/Notice';
@@ -17,8 +17,9 @@ import { RefundPolicyConsent } from '@/components/checkout/RefundPolicyConsent';
 import { useCart } from '@/hooks/useCart';
 import { policyKeys, useRefundPolicy } from '@/hooks/usePolicy';
 import { useAddresses, useCreateAddress } from '@/hooks/useAddresses';
-import { useCreateOrder, usePaymentConfig } from '@/hooks/useOrder';
+import { useCreateOrder, useDirectPreview, usePaymentConfig } from '@/hooks/useOrder';
 import { useUserSession } from '@/hooks/useUserSession';
+import { clearDirectDraft, readDirectDraft, type DirectOrderDraft } from '@/api/order';
 import { ApiError } from '@/types/api';
 import type { PaymentMethod } from '@/types/order';
 import { Reveal } from '@/components/ui/Reveal';
@@ -44,7 +45,27 @@ const STAGGER_MAX = 5;
 export function CheckoutView() {
   const router = useRouter();
   const { user } = useUserSession();
-  const { data: cart, isLoading } = useCart();
+
+  /**
+   * 바로 구매 모드 — 상세의 「바로 구매」가 sessionStorage 에 남긴 품목.
+   *
+   * <p>undefined 는 "아직 안 읽었다"다. sessionStorage 는 서버 렌더링에 없으므로
+   * 마운트 뒤에 읽는다 — 첫 렌더에서 읽으면 서버와 클라이언트가 다른 화면을 그려
+   * 하이드레이션이 어긋난다.
+   */
+  const [direct, setDirect] = useState<DirectOrderDraft | null | undefined>(undefined);
+  useEffect(() => {
+    const wantsDirect = new URLSearchParams(window.location.search).get('direct') === '1';
+    setDirect(wantsDirect ? readDirectDraft() : null);
+  }, []);
+
+  const cartQuery = useCart();
+  const preview = useDirectPreview(direct ?? null);
+  // 두 흐름이 같은 모양(CartResponse)이라 이 아래 코드는 어느 쪽인지 모른 채 그린다.
+  const cart = direct ? preview.data : cartQuery.data;
+  const isLoading =
+    direct === undefined || (direct ? preview.isLoading : cartQuery.isLoading);
+
   const createOrder = useCreateOrder();
   const createAddress = useCreateAddress();
   const queryClient = useQueryClient();
@@ -149,8 +170,11 @@ export function CheckoutView() {
     return (
       <div className={styles.empty}>
         <p>주문할 수 있는 상품이 없습니다.</p>
-        <Link className={styles.emptyLink} href="/cart">
-          장바구니로 돌아가기
+        <Link
+          className={styles.emptyLink}
+          href={direct ? `/shop/product/${direct.productId}` : '/cart'}
+        >
+          {direct ? '상품으로 돌아가기' : '장바구니로 돌아가기'}
         </Link>
       </div>
     );
@@ -160,6 +184,7 @@ export function CheckoutView() {
     if (!canSubmit || !refundPolicy.data) return;
     createOrder.mutate(
       {
+        directItem: direct ?? undefined,
         refundPolicyId: refundPolicy.data.id,
         receiverName: address.receiverName.trim(),
         receiverPhone: address.receiverPhone.trim(),
@@ -188,6 +213,9 @@ export function CheckoutView() {
           // 무통장은 결제창이 없다. 주문 상세로 보낸다 — 거기에 계좌 안내가 있고,
           // 고객은 입금하러 갔다가 계좌번호를 다시 보러 돌아온다. 전용 완료 화면을
           // 따로 만들면 같은 안내가 두 곳에 생기고, 돌아올 길은 결국 주문 상세다.
+          // 주문이 됐으니 바로 구매 품목은 소진됐다. 남겨 두면 다음에 ?direct=1 로
+          // 들어온 화면이 옛 품목을 그린다.
+          clearDirectDraft();
           router.push(
             isBankTransfer
               ? `/mypage/orders/${order.orderNo}?placed=1`
@@ -224,7 +252,8 @@ export function CheckoutView() {
         }
       }}
     >
-      <Steps />
+      <Steps backHref={direct ? `/shop/product/${direct.productId}` : '/cart'}
+             backLabel={direct ? '상품' : '장바구니'} />
 
       <div className={styles.layout}>
         <div className={styles.main}>
@@ -496,8 +525,9 @@ export function CheckoutView() {
  * <p>번호는 {@code ol} 이 이미 매기고 있으므로 동그라미 안의 숫자는 장식이다 —
  * 스크린리더에 두 번 읽히지 않게 가린다.
  */
-function Steps() {
-  const steps = ['장바구니', '주문/결제', '주문완료'];
+/** 첫 단계는 온 길에 따라 다르다 — 장바구니에서 왔으면 장바구니, 바로 구매면 상품. */
+function Steps({ backHref, backLabel }: { backHref: string; backLabel: string }) {
+  const steps = [backLabel, '주문/결제', '주문완료'];
   return (
     <ol className={styles.steps} aria-label="주문 단계">
       {steps.map((label, index) => {
@@ -512,7 +542,7 @@ function Steps() {
               {index + 1}
             </span>
             {/* 지나온 단계만 돌아갈 수 있다. 아직 안 만든 주문의 완료 화면은 주소가 없다 */}
-            {index === 0 ? <Link href="/cart">{label}</Link> : label}
+            {index === 0 ? <Link href={backHref}>{label}</Link> : label}
           </li>
         );
       })}

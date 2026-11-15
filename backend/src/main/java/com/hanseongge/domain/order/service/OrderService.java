@@ -98,16 +98,25 @@ public class OrderService {
                             + " current=" + currentPolicyId);
         }
 
-        List<CartItem> cartItems = cartItemsOf(userId);
-        if (cartItems.isEmpty()) {
-            throw new BusinessException(ErrorCode.ORDER_NOTHING_TO_ORDER);
+        List<Priced> priced;
+        if (request.directItem() != null) {
+            // 바로 구매 — 장바구니를 읽지 않는다. 장바구니에 무엇이 담겨 있든 이 주문과
+            // 무관하다. 상세에서 「바로 구매」를 몇 번 오가도 주문은 늘 이 한 품목이다.
+            OrderCreateRequest.DirectItem direct = request.directItem();
+            priced = List.of(price(direct.productId(), direct.optionId(), direct.quantity()));
+        } else {
+            List<CartItem> cartItems = cartItemsOf(userId);
+            if (cartItems.isEmpty()) {
+                throw new BusinessException(ErrorCode.ORDER_NOTHING_TO_ORDER);
+            }
+            priced = new ArrayList<>(cartItems.size());
+            for (CartItem cartItem : cartItems) {
+                priced.add(price(cartItem));
+            }
         }
 
         BigDecimal itemsTotal = BigDecimal.ZERO;
-        List<Priced> priced = new ArrayList<>(cartItems.size());
-        for (CartItem cartItem : cartItems) {
-            Priced line = price(cartItem);
-            priced.add(line);
+        for (Priced line : priced) {
             itemsTotal = itemsTotal.add(line.quote().totalFor(line.quantity()).value());
         }
 
@@ -173,20 +182,28 @@ public class OrderService {
 
     /** 장바구니 한 줄을 주문 가능 여부까지 확인하며 값매김한다. */
     private Priced price(CartItem cartItem) {
-        Product product = productRepository.findById(cartItem.getProductId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_UNAVAILABLE));
-        ProductOption option = optionRepository.findById(cartItem.getOptionId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_UNAVAILABLE));
+        return price(cartItem.getProductId(), cartItem.getOptionId(), cartItem.getQuantity());
+    }
+
+    /** 한 품목을 주문 가능 여부까지 확인하며 값매김한다. 장바구니 줄과 바로 구매가 함께 쓴다. */
+    private Priced price(Long productId, Long optionId, int quantity) {
+        Product product = productId == null ? null
+                : productRepository.findById(productId).orElse(null);
+        ProductOption option = product == null || optionId == null ? null
+                : optionRepository.findById(optionId).orElse(null);
+        if (product == null || option == null) {
+            throw new BusinessException(ErrorCode.ORDER_ITEM_UNAVAILABLE);
+        }
 
         PriceQuote quote = priceCalculationService.quote(product.getId(), option.getId());
         if (!quote.status().isOrderable() || quote.finalUnitPrice() == null) {
             // 시세문의 상태의 상품은 금액을 정할 수 없다. 0 원으로 내보내면 안 된다.
             throw new BusinessException(ErrorCode.ORDER_ITEM_UNAVAILABLE);
         }
-        if (option.getStock() < cartItem.getQuantity()) {
+        if (option.getStock() < quantity) {
             throw new BusinessException(ErrorCode.OUT_OF_STOCK);
         }
-        return new Priced(product, option, quote, cartItem.getQuantity());
+        return new Priced(product, option, quote, quantity);
     }
 
     private record Priced(Product product, ProductOption option, PriceQuote quote, int quantity) {

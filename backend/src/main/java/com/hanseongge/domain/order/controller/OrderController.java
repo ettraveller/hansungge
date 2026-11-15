@@ -1,5 +1,7 @@
 package com.hanseongge.domain.order.controller;
 
+import com.hanseongge.domain.cart.dto.CartResponse;
+import com.hanseongge.domain.cart.service.CartService;
 import com.hanseongge.domain.order.dto.OrderCreateRequest;
 import com.hanseongge.domain.order.dto.OrderResponse;
 import com.hanseongge.domain.order.dto.OrderStatusGroup;
@@ -10,12 +12,15 @@ import com.hanseongge.global.auth.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,21 +41,35 @@ import java.time.OffsetDateTime;
 @RestController
 @RequestMapping("/api/v1/orders")
 @RequiredArgsConstructor
+@Validated // 쿼리 파라미터의 @Min·@Max 가 동작하려면 클래스에 걸어야 한다
 public class OrderController {
 
     private static final int MAX_SIZE = 50;
 
     private final OrderService orderService;
     private final ShipmentService shipmentService;
+    private final CartService cartService;
 
     @Operation(summary = "주문서 작성",
-            description = "장바구니 전체를 주문으로 만든다. 금액과 상품은 받지 않는다 — "
-                    + "서버가 장바구니를 읽고 그 시점 시세로 다시 계산한다.")
+            description = "장바구니 전체를 주문으로 만든다. directItem 을 보내면 장바구니를 "
+                    + "읽지 않고 그 한 품목만 주문한다(바로 구매). 금액은 받지 않는다 — "
+                    + "서버가 그 시점 시세로 다시 계산한다.")
     @PostMapping
     public ResponseEntity<OrderResponse> create(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody OrderCreateRequest request) {
         return ResponseEntity.ok(orderService.createFromCart(principal.id(), request));
+    }
+
+    @Operation(summary = "바로 구매 미리보기",
+            description = "장바구니를 거치지 않는 한 품목짜리 주문서 화면용. 모양은 장바구니 "
+                    + "조회와 같다 — 주문서가 두 흐름을 한 코드로 그린다.")
+    @GetMapping("/direct-preview")
+    public ResponseEntity<CartResponse> directPreview(
+            @RequestParam Long productId,
+            @RequestParam(required = false) Long optionId,
+            @RequestParam @Min(1) @Max(99) int quantity) {
+        return ResponseEntity.ok(cartService.directPreview(productId, optionId, quantity));
     }
 
     @Operation(summary = "내 주문 목록",
