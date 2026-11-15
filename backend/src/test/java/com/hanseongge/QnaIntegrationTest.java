@@ -398,6 +398,35 @@ class QnaIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
+        @DisplayName("미답변 건수를 게시판별로 센다 — 답하면 그 게시판 숫자만 줄어든다")
+        void unansweredCountsPerBoard() throws Exception {
+            JsonNode before = unansweredCounts();
+
+            long generalQna = write(authorToken, "GENERAL", "배송 문의", false, null);
+            write(authorToken, "PRODUCT", "순도 문의", false, insertProduct());
+
+            JsonNode piled = unansweredCounts();
+            assertThat(piled.get("general").asLong()).isEqualTo(before.get("general").asLong() + 1);
+            assertThat(piled.get("product").asLong()).isEqualTo(before.get("product").asLong() + 1);
+            assertThat(piled.get("all").asLong()).isEqualTo(before.get("all").asLong() + 2);
+
+            answer(generalQna, "3일 걸립니다.");
+
+            JsonNode after = unansweredCounts();
+            assertThat(after.get("general").asLong()).isEqualTo(before.get("general").asLong());
+            assertThat(after.get("product").asLong()).isEqualTo(before.get("product").asLong() + 1);
+            assertThat(after.get("all").asLong()).isEqualTo(before.get("all").asLong() + 1);
+        }
+
+        private JsonNode unansweredCounts() throws Exception {
+            MvcResult result = mockMvc.perform(get("/api/admin/qnas/unanswered-counts")
+                            .header("Authorization", bearer(managerToken)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            return read(result);
+        }
+
+        @Test
         @DisplayName("토큰 없이 답변할 수 없다")
         void answerRequiresAdmin() throws Exception {
             long id = write(authorToken, "GENERAL", "배송 문의", false, null);

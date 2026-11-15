@@ -1,6 +1,7 @@
 package com.hanseongge.domain.board.controller;
 
 import com.hanseongge.domain.board.dto.AdminQnaResponse;
+import com.hanseongge.domain.board.dto.AdminQnaUnansweredCounts;
 import com.hanseongge.domain.board.dto.QnaAnswerRequest;
 import com.hanseongge.domain.board.entity.Qna;
 import com.hanseongge.domain.board.entity.QnaBoardType;
@@ -62,6 +63,14 @@ public class AdminQnaController {
     @GetMapping("/unanswered-count")
     public ResponseEntity<Map<String, Long>> unansweredCount() {
         return ResponseEntity.ok(Map.of("count", qnaService.countUnanswered()));
+    }
+
+    @Operation(summary = "게시판별 미답변 건수",
+            description = "문의 관리 화면의 게시판 탭 배지용. 내린 글은 세지 않는다 — "
+                    + "대시보드 미답변 건수와 같은 기준이다.")
+    @GetMapping("/unanswered-counts")
+    public ResponseEntity<AdminQnaUnansweredCounts> unansweredCounts() {
+        return ResponseEntity.ok(qnaService.countUnansweredByBoard());
     }
 
     @Operation(summary = "문의 상세")

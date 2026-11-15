@@ -55,6 +55,8 @@ export const adminKeys = {
   qnas: () => [...adminKeys.all, 'qnas'] as const,
   qnaList: (search: AdminQnaSearch) => [...adminKeys.qnas(), 'list', search] as const,
   qnaUnansweredCount: () => [...adminKeys.qnas(), 'unanswered-count'] as const,
+  /** 게시판 탭별 미답변 건수. 문의 관리 화면의 탭 배지에 쓴다 */
+  qnaUnansweredCounts: () => [...adminKeys.qnas(), 'unanswered-counts'] as const,
 
   policies: () => [...adminKeys.all, 'policies'] as const,
   refundPolicy: () => [...adminKeys.policies(), 'refund'] as const,

@@ -27,6 +27,20 @@ export function useUnansweredQnaCount() {
   });
 }
 
+/**
+ * 게시판 탭별 미답변 건수 — 문의 관리 화면의 탭 배지.
+ *
+ * <p>총건수(위)와 달리 staleTime 0 이다. 배지를 보며 답변하는 화면이라,
+ * 답을 달고 돌아왔는데 숫자가 30초 전 것이면 한 번 더 누르게 된다.
+ */
+export function useUnansweredQnaCounts() {
+  return useQuery({
+    queryKey: adminKeys.qnaUnansweredCounts(),
+    queryFn: qnasApi.unansweredCounts,
+    staleTime: 0,
+  });
+}
+
 export function useAnswerQna() {
   const queryClient = useQueryClient();
   return useMutation({
