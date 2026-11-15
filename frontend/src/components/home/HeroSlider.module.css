@@ -295,33 +295,35 @@
   gap: var(--space-2);
 }
 
-.dot,
-.dotOn {
-  height: 3px;
-  border: none;
+/* 이전·다음 화살표. 어두운 사진 위에 뜨므로 테두리 원으로 자리를 잡는다. */
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
   padding: 0;
-  border-radius: var(--radius-pill);
+  background: rgba(13, 16, 19, 0.35);
+  color: #fff;
+  font-size: 20px;
+  /* ‹ › 글리프가 글꼴 기준선 때문에 아래로 처진다. 줄높이 1로 가운데를 맞춘다. */
+  line-height: 1;
+  cursor: pointer;
   transition:
-    width var(--dur-slow) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
     background var(--dur) var(--ease-out);
 }
 
-.dot {
-  width: 18px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.dot:hover {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.dotOn {
-  width: 46px;
-  background: var(--gold-400);
+.navBtn:hover {
+  border-color: var(--gold-400);
+  background: rgba(13, 16, 19, 0.6);
+  color: var(--gold-400);
 }
 
 .counter {
-  margin-left: var(--space-3);
+  margin: 0 var(--space-2);
   font-size: var(--text-xs);
   font-weight: 500;
   color: #8d949d;

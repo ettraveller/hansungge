@@ -266,24 +266,28 @@ export function HeroSlider({
 
       {count > 1 && (
         <div className={`wrap ${styles.dotsWrap}`}>
-          <div className={styles.dots} role="tablist" aria-label="배너 선택">
-            {/* 점은 몇 장이든 장수만큼 생긴다. 어느 쪽을 쓰든 같은 수를 센다. */}
-            {Array.from({ length: count }, (_, i) => (
-              <button
-                key={useUploaded ? uploaded[i].id : slides[i].title}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`${i + 1}번 배너${
-                  useUploaded ? '' : `: ${slides[i].title}`
-                }`}
-                className={i === index ? styles.dotOn : styles.dot}
-                onClick={() => setIndex(i)}
-              />
-            ))}
-            <span className={styles.counter}>
+          {/* 장수만큼 점을 늘어놓는 대신 화살표 둘 + 몇 장째인지만 둔다. 배너가
+              늘어도 조작부가 길어지지 않고, 누를 자리도 점보다 훨씬 크다. */}
+          <div className={styles.dots} aria-label="배너 넘기기">
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="이전 배너"
+              onClick={() => go(-1)}
+            >
+              ‹
+            </button>
+            <span className={styles.counter} aria-live="polite">
               <b>{index + 1}</b> / {count}
             </span>
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="다음 배너"
+              onClick={() => go(1)}
+            >
+              ›
+            </button>
           </div>
         </div>
       )}
