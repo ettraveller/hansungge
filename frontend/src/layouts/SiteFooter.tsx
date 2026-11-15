@@ -4,6 +4,15 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import type { FooterInfo } from '@/api/footer';
+/*
+ * public/ 이 아니라 정적 import 다 — 이유가 둘이다.
+ * ① next/image 는 문자열 src 에 basePath 를 붙여 주지 않아서, "/escrow-kb.png" 로
+ *   두면 QA(/qa)에서 운영 루트를 바라본다.
+ * ② QA 처럼 basePath 가 있으면 이미지 최적화기가 로컬 public 파일을 basePath 없이
+ *   가져오려다 404 HTML 을 받고 "not a valid image" 400 을 낸다 (2026-11-15 확인).
+ * 정적 import 는 번들러가 basePath 를 올바르게 붙인 /_next/static 주소를 만든다.
+ */
+import escrowMark from './escrow-kb.png';
 import styles from './ShopLayout.module.css';
 
 /**
@@ -90,20 +99,20 @@ export function SiteFooter({ info, renderText }: Props) {
                 className={styles.escrowMark}
                 title="KB에스크로 이체 판매자 확인정보 (새 창)"
               >
+                {/* 48px 로 그리는 17KB 마크다. 최적화기를 태울 이유가 없고,
+                    태우면 basePath 문제(위 import 주석)로 깨진다. */}
                 <Image
-                  src="/escrow-kb.png"
+                  src={escrowMark}
                   alt="KB국민은행 에스크로이체 가맹 — 매매보호의 기준"
-                  width={164}
-                  height={144}
+                  unoptimized
                 />
               </a>
             ) : (
               <span className={styles.escrowMark} title="KB국민은행 에스크로이체 가맹">
                 <Image
-                  src="/escrow-kb.png"
+                  src={escrowMark}
                   alt="KB국민은행 에스크로이체 가맹 — 매매보호의 기준"
-                  width={164}
-                  height={144}
+                  unoptimized
                 />
               </span>
             )}
