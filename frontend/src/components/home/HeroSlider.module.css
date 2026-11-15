@@ -509,13 +509,6 @@
   max-width: min(92%, 40rem);
 }
 
-/* px 로 크기를 고른 글자. 역할이 들고 있던 폭 제한을 글 단 폭으로 되돌린다 —
-   .dDesc 의 42ch 가 48px 짜리 제목에 걸리면 한 글자씩 접힌다. */
-.dSized {
-  font-size: var(--bs);
-  max-width: 40rem;
-}
-
 /* 배너 안에 얹은 사진 한 장. 사진은 자식을 가질 수 없어서 상자로 싸 두었고,
    너비는 그 상자가 받는다 — 높이는 사진 비율이 정한다. */
 .dImage {
@@ -678,6 +671,18 @@
   max-width: 42ch;
   margin-top: var(--space-4);
   text-wrap: pretty;
+}
+
+/* px 로 크기를 고른 글자. 역할이 들고 있던 폭 제한을 글 단 폭으로 되돌린다 —
+   .dDesc 의 42ch 가 48px 짜리 제목에 걸리면 한 글자씩 접힌다.
+
+   ⚠️ 반드시 역할 클래스(.dEyebrow·.dTitle·.dHighlight·.dDesc) 뒤에 선다.
+   특이도가 같아서 순서가 승부를 가른다 — 앞에 두면 역할의 font-size 가 이겨서,
+   고른 크기가 편집 띠의 px 값만 바꾸고 화면에는 전혀 적용되지 않는다
+   (2026-11-15 실제로 있었던 버그다). */
+.dSized {
+  font-size: var(--bs);
+  max-width: 40rem;
 }
 
 /* 버튼 앞에만 간격을 벌린다. 글자끼리는 붙여 읽히는 편이 낫다.
