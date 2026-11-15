@@ -1,5 +1,6 @@
 package com.hanseongge.domain.board.service;
 
+import com.hanseongge.domain.board.dto.AdminQnaUnansweredCounts;
 import com.hanseongge.domain.board.entity.Qna;
 import com.hanseongge.domain.board.entity.QnaBoardType;
 import com.hanseongge.domain.board.repository.QnaRepository;
@@ -77,6 +78,18 @@ public class QnaService {
     @Transactional(readOnly = true)
     public long countUnanswered() {
         return qnaRepository.countByAnsweredAtIsNullAndActiveTrue();
+    }
+
+    /** 게시판 탭별 미답변 건수. 전체는 둘의 합이다 — 따로 세면 어긋날 수 있는 숫자다. */
+    @Transactional(readOnly = true)
+    public AdminQnaUnansweredCounts countUnansweredByBoard() {
+        Map<QnaBoardType, Long> byBoard = qnaRepository.countUnansweredByBoard().stream()
+                .collect(Collectors.toMap(
+                        row -> (QnaBoardType) row[0],
+                        row -> (Long) row[1]));
+        long general = byBoard.getOrDefault(QnaBoardType.GENERAL, 0L);
+        long product = byBoard.getOrDefault(QnaBoardType.PRODUCT, 0L);
+        return new AdminQnaUnansweredCounts(general + product, general, product);
     }
 
     /**

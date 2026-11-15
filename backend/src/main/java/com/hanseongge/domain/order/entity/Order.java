@@ -125,6 +125,18 @@ public class Order {
     @Column(name = "deposit_due_at")
     private OffsetDateTime depositDueAt;
 
+    /**
+     * 관리자가 상세를 처음 연 시각 (V47). NULL 이면 <b>미확인 주문</b>이다.
+     *
+     * <p>주문 관리 화면의 상태 탭마다 미확인 건수를 배지로 보여 주는 데 쓴다. 한 번
+     * 확인한 주문도 <b>관리자 모르게 일어난 일</b> — 카드 결제 도착({@link #markPaid}),
+     * 고객·시스템 취소({@link #cancel}) — 이 생기면 NULL 로 돌아가 배지에 다시 잡힌다.
+     * 관리자가 스스로 한 일(입금 확인·배송 처리)은 되돌리지 않는다 — 자기가 한 일을
+     * 자기에게 알릴 이유가 없다.
+     */
+    @Column(name = "admin_checked_at")
+    private OffsetDateTime adminCheckedAt;
+
     @Column(name = "ordered_at", nullable = false)
     private OffsetDateTime orderedAt;
 
@@ -196,6 +208,9 @@ public class Order {
             throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
         this.status = OrderStatus.PAID;
+        // 결제는 관리자 모르게 도착한다. 결제 전에 열어본 주문이어도 다시 미확인으로 —
+        // 이제부터 할 일(발송)이 생겼다.
+        this.adminCheckedAt = null;
         this.updatedAt = OffsetDateTime.now();
     }
 
@@ -226,6 +241,8 @@ public class Order {
             throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
         }
         this.status = OrderStatus.PAID;
+        // 입금 확인은 관리자가 스스로 누른 것이다. 확인한 것으로 친다.
+        this.adminCheckedAt = OffsetDateTime.now();
         this.updatedAt = OffsetDateTime.now();
     }
 
@@ -239,7 +256,21 @@ public class Order {
             throw new BusinessException(ErrorCode.ORDER_STATUS_INVALID);
         }
         this.status = OrderStatus.CANCELLED;
+        // 고객이나 시스템(방치 주문 정리)이 접은 것이다. 관리자가 알아야 하니 미확인으로.
+        this.adminCheckedAt = null;
         this.updatedAt = OffsetDateTime.now();
+    }
+
+    /**
+     * 관리자가 상세를 열었다 — 확인한 것으로 기록한다.
+     *
+     * <p>처음 연 시각만 남긴다. 열 때마다 덮어쓰면 "언제 처음 봤나"가 사라지고,
+     * 매 조회가 UPDATE 가 된다.
+     */
+    public void markAdminChecked() {
+        if (adminCheckedAt == null) {
+            this.adminCheckedAt = OffsetDateTime.now();
+        }
     }
 
     // =================================================================

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface QnaRepository extends JpaRepository<Qna, Long> {
@@ -66,4 +67,17 @@ public interface QnaRepository extends JpaRepository<Qna, Long> {
 
     /** 관리자 대시보드용 미답변 건수. */
     long countByAnsweredAtIsNullAndActiveTrue();
+
+    /**
+     * 게시판별 미답변 건수 — [boardType, count] 행.
+     *
+     * <p>내린 글은 세지 않는다. 총건수({@link #countByAnsweredAtIsNullAndActiveTrue})와
+     * 기준이 다르면 탭 배지의 합과 대시보드 숫자가 어긋난다.
+     */
+    @Query("""
+            SELECT q.boardType, COUNT(q) FROM Qna q
+            WHERE q.answeredAt IS NULL AND q.active = true
+            GROUP BY q.boardType
+            """)
+    List<Object[]> countUnansweredByBoard();
 }

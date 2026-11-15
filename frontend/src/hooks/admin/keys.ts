@@ -44,6 +44,8 @@ export const adminKeys = {
   orderShipment: (id: number) => [...adminKeys.orders(), id, 'shipment'] as const,
   /** 발송 대기 건수. 목록 상단에 늘 보인다 */
   orderAwaitingCount: () => [...adminKeys.orders(), 'awaiting-count'] as const,
+  /** 상태 탭별 미확인 건수. 탭 배지에 쓴다 */
+  orderUncheckedCounts: () => [...adminKeys.orders(), 'unchecked-counts'] as const,
 
   categories: () => [...adminKeys.all, 'categories'] as const,
 
@@ -53,6 +55,8 @@ export const adminKeys = {
   qnas: () => [...adminKeys.all, 'qnas'] as const,
   qnaList: (search: AdminQnaSearch) => [...adminKeys.qnas(), 'list', search] as const,
   qnaUnansweredCount: () => [...adminKeys.qnas(), 'unanswered-count'] as const,
+  /** 게시판 탭별 미답변 건수. 문의 관리 화면의 탭 배지에 쓴다 */
+  qnaUnansweredCounts: () => [...adminKeys.qnas(), 'unanswered-counts'] as const,
 
   policies: () => [...adminKeys.all, 'policies'] as const,
   refundPolicy: () => [...adminKeys.policies(), 'refund'] as const,

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { SUPPORT_HOURS, SUPPORT_TEL, SUPPORT_TEL_HREF } from '@/data/company';
+import { hoursLine, telHref } from '@/data/company';
 import { SectionHead } from '@/components/ui/SectionHead';
 import styles from './SupportView.module.css';
 
@@ -39,8 +39,21 @@ const DESKS = [
  *
  * <p>그래서 이 페이지의 첫 번째 일은 <b>전화번호를 보여주는 것</b>이다. 게시판은 로그인이
  * 필요하지만 전화는 아니다.
+ *
+ * <h2>번호는 푸터와 같은 값이다</h2>
+ * 관리자 설정값({@code GET /api/v1/footer})을 페이지가 받아 넘긴다. 코드에 따로
+ * 박으면 관리자가 푸터에서 번호를 바꾼 날 <b>같은 화면 안에서 두 번호가 어긋난다</b> —
+ * 전에 실제로 그랬다.
  */
-export function SupportView() {
+export function SupportView({
+  tel,
+  hours,
+  holiday,
+}: {
+  tel: string;
+  hours: string;
+  holiday: string;
+}) {
   return (
     <div className={styles.page}>
       <div className="wrap">
@@ -55,11 +68,11 @@ export function SupportView() {
             {/* 대표전화다. 전에는 「번호가 있는 첫 지점」을 집어 올렸는데, 그래서
                 다산점 휴대폰 번호(010-5901-4979)가 대표번호 자리에 떴다 — 같은 화면
                 푸터에는 02-743-4176 이 적혀 있었으니 한 페이지 안에서 두 번호가
-                어긋나 있었다. 지점 번호와 대표번호는 다른 것이다 (data/company.ts). */}
-            <p className={`${styles.callNumber} tabular`}>{SUPPORT_TEL}</p>
-            <p className={styles.callHours}>{SUPPORT_HOURS}</p>
+                어긋나 있었다. 지점 번호와 대표번호는 다른 것이다. */}
+            <p className={`${styles.callNumber} tabular`}>{tel}</p>
+            <p className={styles.callHours}>{hoursLine(hours, holiday)}</p>
           </div>
-          <a className={styles.callBtn} href={SUPPORT_TEL_HREF}>
+          <a className={styles.callBtn} href={telHref(tel)}>
             전화 걸기
           </a>
         </section>

@@ -52,6 +52,21 @@ export function unansweredCount() {
   return adminApi.get<{ count: number }>('/api/admin/qnas/unanswered-count');
 }
 
+/**
+ * 게시판 탭별 미답변 건수. 필드가 탭 구성(전체·문의게시판·제품문의)과 1:1 이다.
+ *
+ * 내린 글은 세지 않는다 — 대시보드 배지와 같은 기준이어야 두 숫자가 어긋나지 않는다.
+ */
+export interface AdminQnaUnansweredCounts {
+  all: number;
+  general: number;
+  product: number;
+}
+
+export function unansweredCounts() {
+  return adminApi.get<AdminQnaUnansweredCounts>('/api/admin/qnas/unanswered-counts');
+}
+
 /** 답변은 문의당 하나다. 다시 부르면 덮어쓴다 (백엔드가 PUT 인 이유). */
 export function answerQna(id: number, answer: string) {
   return adminApi.put<AdminQna>(`/api/admin/qnas/${id}/answer`, { body: { answer } });

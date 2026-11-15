@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 
-import { SUPPORT_TEL } from '@/data/company';
+import Link from 'next/link';
+
 import { usePaymentConfig } from '@/hooks/useOrder';
 import type { Order } from '@/types/order';
 import { formatDateTime, formatKrw } from '@/utils/format';
@@ -106,8 +107,16 @@ export function DepositGuide({ order, justPlaced }: { order: Order; justPlaced?:
       ) : (
         // 계좌 설정이 비었다. 주문을 받을 때 막고 있으므로 보통 오지 않는 자리지만,
         // 주문 뒤에 설정이 지워졌을 수 있다. 빈 칸 대신 연락할 곳을 준다.
+        // 번호를 여기 적지 않는다. 대표전화는 관리자가 바꾸는 값이고, 이 화면은
+        // 클라이언트 컴포넌트라 그 값을 받으려면 주문 화면 전체에 프롭을 꿰어야 한다.
+        // 고객센터 화면이 그 번호를 들고 있으니 거기로 보낸다 — 번호가 바뀌어도
+        // 어긋날 자리가 없다.
         <p className={styles.noAccount}>
-          입금 계좌 안내를 불러오지 못했습니다. 고객센터({SUPPORT_TEL})로 문의해 주세요.
+          입금 계좌 안내를 불러오지 못했습니다.{' '}
+          <Link href="/support" className={styles.noAccountLink}>
+            고객센터
+          </Link>
+          로 문의해 주세요.
         </p>
       )}
 

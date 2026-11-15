@@ -27,8 +27,24 @@ interface Props {
 export function ProductListView({ categories, products, selectedCategoryId }: Props) {
   const page = products.data;
   const items = page?.content ?? [];
-  const currentName =
-    categories.data?.find((c) => c.id === selectedCategoryId)?.name ?? null;
+  const all = categories.data ?? [];
+  const current = all.find((c) => c.id === selectedCategoryId) ?? null;
+  const currentName = current?.name ?? null;
+
+  /**
+   * 1단 메뉴. 자식은 여기 세우지 않는다 — 평평하게 늘어놓으면 「골드바」와
+   * 「선물 골드바」가 같은 줄에 나란히 서서, 하나가 다른 하나 안에 든 것이 보이지 않는다.
+   */
+  const roots = all.filter((c) => c.parentId == null);
+
+  /**
+   * 2단 메뉴. 지금 보고 있는 분류의 형제들이다.
+   *
+   * <p>부모를 골랐으면 그 자식들을, 자식을 골랐으면 같은 부모의 자식들을 세운다.
+   * 자식을 고른 뒤에 2단이 사라지면 옆 분류로 건너갈 길이 없어져, 뒤로 가기만 남는다.
+   */
+  const branchId = current?.parentId ?? selectedCategoryId;
+  const children = branchId == null ? [] : all.filter((c) => c.parentId === branchId);
 
   return (
     <section className={styles.section}>
@@ -39,16 +55,38 @@ export function ProductListView({ categories, products, selectedCategoryId }: Pr
           desc="가격은 현재 고시 시세 기준으로 계산되어 표시됩니다"
         />
 
-        {categories.data && categories.data.length > 0 && (
+        {roots.length > 0 && (
           <nav className={styles.tabs} aria-label="카테고리">
             <Link href="/shop" className={selectedCategoryId === null ? styles.tabOn : styles.tab}>
               전체
             </Link>
-            {categories.data.map((category) => (
+            {roots.map((category) => (
               <Link
                 key={category.id}
                 href={`/shop?categoryId=${category.id}`}
-                className={selectedCategoryId === category.id ? styles.tabOn : styles.tab}
+                // 자식을 보고 있어도 부모가 눌린 채로 둔다. 안 그러면 「골드바」 안에
+                // 있는데 1단에는 아무것도 눌려 있지 않아, 어디에 와 있는지 사라진다.
+                className={branchId === category.id ? styles.tabOn : styles.tab}
+              >
+                {category.name}
+              </Link>
+            ))}
+          </nav>
+        )}
+
+        {children.length > 0 && (
+          <nav className={styles.subTabs} aria-label={`${currentName ?? ''} 하위 분류`}>
+            <Link
+              href={`/shop?categoryId=${branchId}`}
+              className={selectedCategoryId === branchId ? styles.subTabOn : styles.subTab}
+            >
+              전체
+            </Link>
+            {children.map((category) => (
+              <Link
+                key={category.id}
+                href={`/shop?categoryId=${category.id}`}
+                className={selectedCategoryId === category.id ? styles.subTabOn : styles.subTab}
               >
                 {category.name}
               </Link>

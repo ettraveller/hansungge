@@ -131,7 +131,6 @@ export function ShipmentPanel({ orderId, canEdit }: { orderId: number; canEdit: 
               value={trackingNo}
               inputMode="numeric"
               maxLength={20}
-              placeholder="6012345678901"
               onChange={(e) => setTrackingNo(e.target.value)}
             />
           </Field>

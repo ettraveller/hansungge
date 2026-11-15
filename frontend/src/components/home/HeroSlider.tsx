@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+
+import type { BannerContent } from '@/api/banners';
+import { BannerDesign } from './BannerDesign';
 import styles from './HeroSlider.module.css';
 
 export interface Slide {
@@ -13,6 +16,32 @@ export interface Slide {
   cta: string;
   /** 배경 이미지 경로. 없으면 그라데이션만 */
   image?: string;
+}
+
+/**
+ * 관리자가 올린 배너 한 장.
+ *
+ * <p>문구·버튼까지 이미지 안에 들어간다. 그래서 {@link Slide} 처럼 글자를 받지 않고
+ * 화면 전체를 사진으로 덮는다 — 글자를 밖에 두면 사진의 어느 자리에 글이 올라갈지를
+ * 화면 코드가 정하게 되고, 사진이 바뀔 때마다 그 자리가 어긋난다.
+ */
+export interface BannerSlide {
+  id: number;
+  /**
+   * 꾸민 배너의 내용. 있으면 이것을 그리고 아래 {@link image} 는 쓰지 않는다.
+   *
+   * <p>사진 배너와 꾸민 배너가 <b>같은 목록에서 번갈아</b> 나온다. 목록을 둘로 나누면
+   * 순서를 두 목록에 걸쳐 매겨야 하는데, 메인 맨 위에서 돌아가는 자리는 하나다.
+   */
+  design?: BannerContent | null;
+  /** IMAGE 배너의 사진 */
+  image?: string | null;
+  /** 휴대폰용 이미지. 없으면 {@link image} 한 장이 두 폭을 다 맡는다 */
+  mobileImage?: string | null;
+  /** 누르면 갈 곳. 없으면 누를 수 없는 배너다 */
+  href?: string | null;
+  /** 화면 낭독기가 읽을 설명. 이미지 안의 글자는 읽히지 않는다 */
+  alt?: string | null;
 }
 
 const AUTOPLAY_MS = 6000;
@@ -37,23 +66,44 @@ const SWIPE_MIN_PX = 40;
  * 사용자가 방금 본 것을 다시 찾아야 한다. {@code prefers-reduced-motion} 을 켠 사용자는
  * 자동 넘김 자체를 하지 않는다 — 움직임이 불편해서 끈 설정이다.
  */
-export function HeroSlider({ slides }: { slides: Slide[] }) {
+export function HeroSlider({
+  slides,
+  banners,
+  renderText,
+}: {
+  slides: Slide[];
+  banners?: BannerSlide[];
+  /**
+   * 꾸민 배너의 글자 자리를 대신 그린다.
+   *
+   * <p>관리자 편집기가 이 자리에 <b>그 자리에서 고치는 입력칸</b>을 꽂는다. 편집용
+   * 배너를 따로 그리지 않는 이유는 푸터와 같다 — 모양이 두 벌이 되면 "고칠 때 본
+   * 모양" 과 "손님이 보는 모양" 이 어긋난다.
+   */
+  renderText?: (bannerId: number, blockId: string, value: string) => React.ReactNode;
+}) {
+  // 관리자가 올린 배너가 있으면 그것만 쓴다. 섞지 않는다 — 글자가 밖에 있는 슬라이드와
+  // 이미지 한 장짜리가 번갈아 나오면 같은 배너의 두 가지 모양처럼 보인다.
+  const uploaded = banners ?? [];
+  const useUploaded = uploaded.length > 0;
+  const count = useUploaded ? uploaded.length : slides.length;
+
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (paused || slides.length <= 1) return;
+    if (paused || count <= 1) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     timer.current = setInterval(() => {
-      setIndex((i) => (i + 1) % slides.length);
+      setIndex((i) => (i + 1) % count);
     }, AUTOPLAY_MS);
 
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [paused, slides.length]);
+  }, [paused, count]);
 
   /**
    * 손짓 넘김.
@@ -70,7 +120,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
   const swiped = useRef(false);
 
   const go = (delta: number) =>
-    setIndex((i) => (i + delta + slides.length) % slides.length);
+    setIndex((i) => (i + delta + count) % count);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -81,7 +131,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
   const onPointerUp = (e: React.PointerEvent) => {
     const from = start.current;
     start.current = null;
-    if (!from || slides.length <= 1) return;
+    if (!from || count <= 1) return;
 
     const dx = e.clientX - from.x;
     const dy = e.clientY - from.y;
@@ -113,7 +163,65 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
       aria-roledescription="carousel"
       aria-label="메인 배너"
     >
-      {slides.map((slide, i) => (
+      {useUploaded &&
+        uploaded.map((banner, i) => (
+          <div
+            key={banner.id}
+            className={i === index ? styles.slideOn : styles.slide}
+            aria-hidden={i !== index}
+          >
+            {banner.design && (
+              <BannerDesign
+                content={banner.design}
+                renderText={
+                  renderText
+                    ? (blockId, value) => renderText(banner.id, blockId, value)
+                    : undefined
+                }
+              />
+            )}
+
+            {/* 글자가 이미지 안에 있으므로 화면 전체를 덮는다. 오른쪽만 덮는 .bg 와
+                달리 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다.
+
+                휴대폰용이 따로 올라온 배너는 폭에 따라 한쪽만 보인다 (.bgWide/.bgNarrow).
+                안 쓰는 쪽은 display:none 이라 브라우저가 내려받지도 않는다. 휴대폰용이
+                없으면 가로용 한 장이 두 폭을 다 맡는다. */}
+            {banner.image && (
+              <div
+                className={
+                  banner.mobileImage ? `${styles.bgFull} ${styles.bgWide}` : styles.bgFull
+                }
+                style={{ backgroundImage: `url(${banner.image})` }}
+                role="img"
+                aria-label={banner.alt ?? ''}
+              />
+            )}
+            {banner.mobileImage && (
+              <div
+                className={`${styles.bgFull} ${styles.bgNarrow}`}
+                style={{ backgroundImage: `url(${banner.mobileImage})` }}
+                role="img"
+                aria-label={banner.alt ?? ''}
+              />
+            )}
+            {/* 주소가 없으면 누를 수 없는 배너다. 빈 링크를 두면 눌리는데 아무 일도
+                일어나지 않아, 쓰는 사람은 고장으로 읽는다. */}
+            {/* 꾸민 배너는 안에 있는 버튼이 그 일을 한다. 배너 전체를 덮는 링크를
+                함께 두면 버튼을 피해 누른 손가락이 엉뚱한 곳으로 간다. */}
+            {banner.href && !banner.design && (
+              <Link
+                href={banner.href}
+                className={styles.bannerLink}
+                tabIndex={i === index ? 0 : -1}
+                aria-label={banner.alt ?? '배너 바로가기'}
+              />
+            )}
+          </div>
+        ))}
+
+      {!useUploaded &&
+        slides.map((slide, i) => (
         <div
           key={slide.title}
           className={i === index ? styles.slideOn : styles.slide}
@@ -156,23 +264,30 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
         </div>
       ))}
 
-      {slides.length > 1 && (
+      {count > 1 && (
         <div className={`wrap ${styles.dotsWrap}`}>
-          <div className={styles.dots} role="tablist" aria-label="배너 선택">
-            {slides.map((slide, i) => (
-              <button
-                key={slide.title}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`${i + 1}번 배너: ${slide.title}`}
-                className={i === index ? styles.dotOn : styles.dot}
-                onClick={() => setIndex(i)}
-              />
-            ))}
-            <span className={styles.counter}>
-              <b>{index + 1}</b> / {slides.length}
+          {/* 장수만큼 점을 늘어놓는 대신 화살표 둘 + 몇 장째인지만 둔다. 배너가
+              늘어도 조작부가 길어지지 않고, 누를 자리도 점보다 훨씬 크다. */}
+          <div className={styles.dots} aria-label="배너 넘기기">
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="이전 배너"
+              onClick={() => go(-1)}
+            >
+              ‹
+            </button>
+            <span className={styles.counter} aria-live="polite">
+              <b>{index + 1}</b> / {count}
             </span>
+            <button
+              type="button"
+              className={styles.navBtn}
+              aria-label="다음 배너"
+              onClick={() => go(1)}
+            >
+              ›
+            </button>
           </div>
         </div>
       )}

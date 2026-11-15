@@ -1,4 +1,9 @@
-import { formatDateTime, formatKrw } from '@/utils/format';
+import {
+  AGENCY_PRICE_NOTE,
+  formatDateTime,
+  formatKrw,
+  VAT_INCLUDED_NOTE,
+} from '@/utils/format';
 import styles from './PriceHistoryTable.module.css';
 
 /** 한 시점의 고시 — 살 때와 팔 때를 짝지은 줄. */
@@ -41,8 +46,12 @@ export function PriceHistoryTable({ rows, metalName }: Props) {
           <th scope="col" className={styles.colDate}>
             고시일시
           </th>
-          <th scope="col">내가 살 때</th>
-          <th scope="col">내가 팔 때</th>
+          <th scope="col">
+            내가 살 때 <span className={styles.vatNote}>{VAT_INCLUDED_NOTE}</span>
+          </th>
+          <th scope="col">
+            내가 팔 때 <span className={styles.vatNote}>{AGENCY_PRICE_NOTE}</span>
+          </th>
         </tr>
       </thead>
       <tbody>

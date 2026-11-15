@@ -32,6 +32,7 @@ export function ImageUploader({
   disabled,
   emptyLabel = '사진을 끌어다 놓거나 클릭해서 선택하세요',
   preview = 'square',
+  numberFrom = 1,
 }: {
   value: string[];
   onChange: (keys: string[]) => void;
@@ -40,6 +41,14 @@ export function ImageUploader({
   max?: number;
   disabled?: boolean;
   emptyLabel?: string;
+  /**
+   * 첫 장에 붙일 번호.
+   *
+   * <p>메인 배너는 꾸민 배너가 먼저 걸리고 사진 배너가 그 뒤에 붙는다. 사진 쪽이
+   * 1번부터 다시 세면 화면에 세 번째로 걸린 배너가 여기서는 1번이라, 「2번 배너를
+   * 내려 달라」가 어느 것을 말하는지 매번 세어 봐야 한다.
+   */
+  numberFrom?: number;
   /**
    * 미리보기 모양.
    *
@@ -252,7 +261,7 @@ export function ImageUploader({
                     >
                       ←
                     </button>
-                    <span className={styles.order}>{index + 1}</span>
+                    <span className={styles.order}>{numberFrom + index}</span>
                     <button
                       type="button"
                       className={styles.iconButton}

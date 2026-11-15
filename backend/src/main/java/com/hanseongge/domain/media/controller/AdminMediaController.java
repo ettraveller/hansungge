@@ -52,7 +52,7 @@ public class AdminMediaController {
      * {@code LocalFileMediaStorage} 도 같은 검사를 하지만, 거기서 걸리면 500 이 나고
      * 여기서 걸리면 이유가 담긴 400 이 나간다.
      */
-    private static final Set<String> ALLOWED_FOLDERS = Set.of("products", "events", "notices");
+    private static final Set<String> ALLOWED_FOLDERS = Set.of("products", "events", "notices", "banners");
 
     private final MediaStorage storage;
     private final AppProperties properties;

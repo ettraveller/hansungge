@@ -295,33 +295,35 @@
   gap: var(--space-2);
 }
 
-.dot,
-.dotOn {
-  height: 3px;
-  border: none;
+/* 이전·다음 화살표. 어두운 사진 위에 뜨므로 테두리 원으로 자리를 잡는다. */
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
   padding: 0;
-  border-radius: var(--radius-pill);
+  background: rgba(13, 16, 19, 0.35);
+  color: #fff;
+  font-size: 20px;
+  /* ‹ › 글리프가 글꼴 기준선 때문에 아래로 처진다. 줄높이 1로 가운데를 맞춘다. */
+  line-height: 1;
+  cursor: pointer;
   transition:
-    width var(--dur-slow) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
     background var(--dur) var(--ease-out);
 }
 
-.dot {
-  width: 18px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.dot:hover {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.dotOn {
-  width: 46px;
-  background: var(--gold-400);
+.navBtn:hover {
+  border-color: var(--gold-400);
+  background: rgba(13, 16, 19, 0.6);
+  color: var(--gold-400);
 }
 
 .counter {
-  margin-left: var(--space-3);
+  margin: 0 var(--space-2);
   font-size: var(--text-xs);
   font-weight: 500;
   color: #8d949d;
@@ -366,5 +368,397 @@
     display: flex;
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* ---------- 관리자가 올린 배너 ----------
+   문구·버튼까지 이미지 안에 들어 있다. 그래서 오른쪽 58%만 덮는 .bg 와 달리 전체를
+   덮고, 어둠도 깔지 않는다 — 깔면 디자인한 색이 그대로 나오지 않는다. */
+
+.bgFull {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 배너 전체가 누르는 자리다. 안에 글자를 두지 않는다 — 이미지가 이미 들고 있다. */
+.bannerLink {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* 키보드로 왔을 때 어디에 와 있는지 보여야 한다. 테두리를 안쪽에 그려
+   배너 밖으로 삐져나가지 않게 한다. */
+.bannerLink:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
+}
+
+/* 휴대폰용 이미지를 따로 올린 배너는 폭에 따라 한쪽만 나온다.
+
+   히어로의 비율이 폭에 따라 뒤집히기 때문이다 — 데스크톱은 1280×560(가로로 긴
+   2.3:1), 휴대폰은 390×460(세로로 긴 0.85:1). 한 장으로 둘 다 덮으면 cover 가
+   가로를 3분의 2쯤 잘라내고, 이미지 안에 넣은 문구가 화면 밖으로 밀린다.
+
+   display:none 이면 브라우저가 그 배경 사진을 내려받지 않는다 — 안 쓰는 장이
+   전송되지 않고, 접근성 트리에서도 빠지므로 같은 배너가 두 번 읽히지 않는다.
+   경계는 .bg 가 전체 폭으로 바뀌는 지점(960px)과 같게 둔다. */
+@media (max-width: 960px) {
+  .bgWide {
+    display: none;
+  }
+}
+
+@media (min-width: 961px) {
+  .bgNarrow {
+    display: none;
+  }
+}
+
+/* =====================================================================
+   화면에서 꾸민 배너 (V45)
+
+   사진 한 장짜리 배너와 같은 자리에 선다. 글자 크기·색·그림자는 위 기본
+   배너가 쓰던 값을 그대로 쓴다 — 관리자가 만든 배너가 기본 배너와 같은
+   질감으로 보여야, 둘이 섞여 돌 때 한 쇼핑몰의 화면으로 읽힌다.
+
+   요소는 위에서 아래로 쌓기만 한다. 좌표를 두지 않는 이유는 배너의 비율이
+   폭에 따라 뒤집히기 때문이다 — PC 에서 오른쪽 끝에 둔 글자가 휴대폰에서는
+   화면 밖이라, 좌표를 받으면 배너마다 배치를 두 번 잡아야 한다.
+   ===================================================================== */
+
+/* 배경 — 색 위에 사진, 사진 위에 어둠막. 글자는 이 위(z-index:3)에 뜬다 */
+.dCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.dBg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* 사진 위 글자가 읽히게 왼쪽에서 오른쪽으로 어둠을 깐다.
+   기본 배너의 .bg::before 와 같은 값이다 — 같은 그림이어야 한다. */
+.dVeilGradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    92deg,
+    rgba(13, 16, 19, 0.96) 0%,
+    rgba(13, 16, 19, 0.92) 26%,
+    rgba(13, 16, 19, 0.66) 48%,
+    rgba(13, 16, 19, 0.22) 68%,
+    rgba(13, 16, 19, 0) 84%
+  );
+}
+
+/* 가운데 정렬이거나 사진이 밝을 때. 고르게 덮는다 */
+.dVeilSolid {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 16, 19, 0.55);
+}
+
+/* 꾸민 배너는 상자 세로를 전부 쓴다 — 자리(%)가 이 높이에 걸리기 때문이다.
+   .slideOn 이 align-items:center 라서 늘어나라고 따로 말해 줘야 한다. */
+.dWrap {
+  align-self: stretch;
+  display: flex;
+}
+
+/* 쌓이는 자리. 기본 배너의 .copy 와 같은 폭 제한을 쓴다 */
+.dStack {
+  position: relative;
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* 자리(%)가 걸리는 상자다. 40rem 으로 좁혀 두면 x=100% 가 화면 오른쪽이 아니라
+   글 단 오른쪽이라, 배너 오른쪽 절반에는 아무것도 끌어다 놓을 수 없다.
+   줄바꿈을 잡던 그 40rem 은 아래 글자 쪽으로 옮겼다. */
+.dWrap .dStack {
+  flex: 1 1 auto;
+  justify-content: center;
+  max-width: none;
+}
+
+/* 편집기가 손잡이(✥ ×)를 블록 <b>바깥</b> 모서리에 붙일 수 있도록 자리를 연다.
+   손잡이를 글자 상자에 걸면 버튼 안쪽 여백에 들어가 글자 위에 겹친다.
+   손님 화면에서는 달라지는 것이 없다 — static 과 같은 자리에 선다.
+   아래 .dPlaced(0,2,0)가 이 규칙(0,1,0)을 이겨서 절대 위치는 그대로다. */
+.dStack > * {
+  position: relative;
+}
+
+/* 끌어다 둔 블록. 쌓임에서 빠져 그 자리에 선다.
+   margin 을 지우는 이유는 .dTitle/.dDesc/.dStack>a 가 들고 있는 위 여백이
+   top 에 그대로 더해져서, 놓은 자리보다 늘 조금 아래에 서기 때문이다. */
+.dStack > .dPlaced {
+  position: absolute;
+  margin: 0;
+  max-width: min(92%, 40rem);
+}
+
+/* 배너 안에 얹은 사진 한 장. 사진은 자식을 가질 수 없어서 상자로 싸 두었고,
+   너비는 그 상자가 받는다 — 높이는 사진 비율이 정한다. */
+.dImage {
+  display: inline-block;
+  max-width: 100%;
+  /* 상자 높이를 사진 높이로 못 박는다.
+     편집기는 이 안에 손잡이를 담는 <span> 을 하나 끼운다. 그 span 은 인라인이라
+     글자가 없어도 줄상자(line box)를 한 줄 만들고, 그 높이는 글자 크기를 따른다 —
+     px 로 크기를 고른 사진이면 .dSized 의 font-size 가 240px 이라 사진 아래로
+     그만큼 빈 자리가 생긴다. 크기 손잡이(오른쪽 아래)가 사진에서 한참 떨어져
+     보이던 것, 비율을 되돌려도 상자가 안 줄어들던 것이 모두 이 줄상자다. */
+  line-height: 0;
+  font-size: 0;
+}
+
+.dImage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 효과는 전부 변수로 들어온다. 안 걸면 쓰던 그 모양 그대로다. */
+  border-radius: var(--bimgr, var(--radius-sm));
+  filter: grayscale(var(--bimggray, 0)) blur(var(--bimgblur, 0px));
+  opacity: var(--bimgop, 1);
+  /* 비율을 고르면 그 비율에 맞춰 잘라낸다 — 상품 사진이 쓰는 그것과 같다 */
+  aspect-ratio: var(--bimgar, auto);
+  object-fit: cover;
+}
+
+/* 가장자리 녹이기 — 사진 끝을 배경으로 흘려보낸다. 어두운 배너 위에 올린 사진이
+   저 혼자 또렷해서 "얹어 둔 것" 처럼 보이는 것을 지운다. 배경이 무슨 색이든
+   맞으므로, 색을 맞춘 테두리를 그리는 것보다 낫다. */
+.dFadeSoft img {
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 58%, transparent 100%);
+}
+
+.dFadeStrong img {
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 28%, transparent 86%);
+  mask-image: radial-gradient(ellipse at center, #000 28%, transparent 86%);
+}
+
+/* 한쪽으로 사라지기 — 히어로 사진이 쓰던 그 그라데이션이다 (.bg::before).
+   글자가 붙는 쪽을 녹여 두면 사진 위로 글자가 올라가도 읽힌다. */
+.dFadeLeft img {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 42%);
+}
+
+.dFadeRight img {
+  -webkit-mask-image: linear-gradient(90deg, #000 58%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 58%, transparent 100%);
+}
+
+.dFadeTop img {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 42%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 42%);
+}
+
+.dFadeBottom img {
+  -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
+}
+
+/* 사진 위 어둠막 — 배경 사진이 쓰는 그것(.dVeilGradient·.dVeilSolid)과 같은 값이다.
+   사진이 아니라 상자에 깐다. 사진에 깔면 흐림·흑백이 막까지 함께 먹는다. */
+.dImgVeilGradient::after,
+.dImgVeilSolid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--bimgr, var(--radius-sm));
+  pointer-events: none;
+}
+
+.dImgVeilGradient::after {
+  background: linear-gradient(
+    92deg,
+    rgba(13, 16, 19, 0.96) 0%,
+    rgba(13, 16, 19, 0.92) 26%,
+    rgba(13, 16, 19, 0.66) 48%,
+    rgba(13, 16, 19, 0.22) 68%,
+    rgba(13, 16, 19, 0) 84%
+  );
+}
+
+.dImgVeilSolid::after {
+  background: rgba(13, 16, 19, 0.55);
+}
+
+/* 그림자는 사진에 건다. 상자에 걸면 둥근 모서리를 따라가지 않는다. */
+.dImgShadow img {
+  box-shadow: 0 18px 40px rgba(8, 10, 12, 0.45);
+}
+
+.dImage.dSized {
+  width: var(--bs);
+  max-width: 100%;
+  /* .dSized 의 font-size 를 다시 0 으로 — 위 줄상자 때문이다. 사진 상자 안에는
+     글자가 없다 (손잡이는 제 크기를 따로 들고 있다). */
+  font-size: 0;
+}
+
+.dAlignLeft {
+  text-align: left;
+  align-items: flex-start;
+}
+
+/* 가운데·오른쪽은 폭 제한을 풀어 자리에 붙인다. 40rem 상자 안에서만
+   가운데로 가면 화면 왼쪽에 치우친 "가운데"가 된다. */
+.dAlignCenter {
+  max-width: none;
+  text-align: center;
+  align-items: center;
+}
+
+.dAlignRight {
+  max-width: none;
+  text-align: right;
+  align-items: flex-end;
+}
+
+/* --- 글자 — 기본 배너의 값을 그대로 쓴다 --- */
+.dEyebrow {
+  color: var(--gold-300);
+  letter-spacing: var(--tracking-label);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.dTitle,
+.dHighlight {
+  /* 줄바꿈을 잡는 폭. 예전에는 .dStack 이 들고 있었는데, 거기가 자리(%)의
+     기준 상자가 되면서 글자 쪽으로 내려왔다. */
+  max-width: 40rem;
+  font-size: var(--text-4xl);
+  line-height: 1.16;
+  font-weight: 800;
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+  color: #fff;
+  /* 사진의 밝은 부분과 겹쳐도 글자 가장자리가 살아 있게 */
+  text-shadow: 0 2px 18px rgba(8, 10, 12, 0.62);
+}
+
+.dTitle {
+  margin-top: var(--space-4);
+}
+
+/* 강조어는 단색 금색 한 톤. 그라데이션 글자는 읽는 속도를 떨어뜨리고,
+   금융 화면에서는 장식이 앞선 인상을 준다. */
+.dHighlight {
+  color: var(--gold-300);
+}
+
+.dDesc {
+  color: #b9c0c7;
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  max-width: 42ch;
+  margin-top: var(--space-4);
+  text-wrap: pretty;
+}
+
+/* px 로 크기를 고른 글자. 역할이 들고 있던 폭 제한을 글 단 폭으로 되돌린다 —
+   .dDesc 의 42ch 가 48px 짜리 제목에 걸리면 한 글자씩 접힌다.
+
+   ⚠️ 반드시 역할 클래스(.dEyebrow·.dTitle·.dHighlight·.dDesc) 뒤에 선다.
+   특이도가 같아서 순서가 승부를 가른다 — 앞에 두면 역할의 font-size 가 이겨서,
+   고른 크기가 편집 띠의 px 값만 바꾸고 화면에는 전혀 적용되지 않는다
+   (2026-11-15 실제로 있었던 버그다). */
+.dSized {
+  font-size: var(--bs);
+  max-width: 40rem;
+}
+
+/* 버튼 앞에만 간격을 벌린다. 글자끼리는 붙여 읽히는 편이 낫다.
+   끌어다 둔 버튼은 뺀다 — 절대 위치에 margin-top 이 더해지면 놓은 자리보다
+   늘 24px 아래에 서서, 끄는 동안 포인터를 그만큼 뒤따라오는 것처럼 보인다. */
+.dStack > a:not(.dPlaced) {
+  margin-top: var(--space-6);
+}
+
+.dCtaOutline {
+  background: transparent;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.dCtaOutline:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dCtaSolid {
+  background: var(--ink-900);
+  color: #fff;
+}
+
+.dCtaSolid:hover {
+  background: var(--ink-700);
+}
+
+/* 좁은 화면에서만 숨긴다. DOM 에는 남겨 둔다 — 창을 넓히면 바로 나타나야 하고,
+   초기 HTML 에서 빠지면 검색엔진이 읽지 못한다. */
+@media (max-width: 960px) {
+  .dHideOnMobile {
+    display: none;
+  }
+
+  .dmLEFT {
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .dmCENTER {
+    max-width: none;
+    text-align: center;
+    align-items: center;
+  }
+
+  .dmRIGHT {
+    max-width: none;
+    text-align: right;
+    align-items: flex-end;
+  }
+
+  /* 좁은 화면에서는 제목이 배너를 덮는다. 한 단계 줄인다 */
+  .dTitle,
+  .dHighlight {
+    font-size: var(--text-3xl);
+  }
+
+  .dDesc {
+    font-size: var(--text-md);
+  }
+
+  /* 좁은 화면에서는 좌표를 버리고 다시 쌓는다. PC 에서 오른쪽 끝에 둔 글자가
+     여기서는 화면 밖이다 — 배치를 두 벌 잡게 하는 대신 흐름에 돌려준다. */
+  .dStack > .dPlaced {
+    position: static;
+    margin-top: var(--space-4);
+    max-width: 100%;
+  }
+
+  /* px 로 고른 크기도 폭에 맞춰 줄인다 (0.6배) */
+  .dSized {
+    font-size: var(--bsm, var(--bs));
+  }
+
+  .dImage.dSized {
+    width: var(--bsm, var(--bs));
   }
 }

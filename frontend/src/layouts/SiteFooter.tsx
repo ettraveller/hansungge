@@ -1,0 +1,155 @@
+import Image from 'next/image';
+import Link from 'next/link';
+
+import type { ReactNode } from 'react';
+
+import type { FooterInfo } from '@/api/footer';
+/*
+ * public/ 이 아니라 정적 import 다 — 이유가 둘이다.
+ * ① next/image 는 문자열 src 에 basePath 를 붙여 주지 않아서, "/escrow-kb.png" 로
+ *   두면 QA(/qa)에서 운영 루트를 바라본다.
+ * ② QA 처럼 basePath 가 있으면 이미지 최적화기가 로컬 public 파일을 basePath 없이
+ *   가져오려다 404 HTML 을 받고 "not a valid image" 400 을 낸다 (2026-11-15 확인).
+ * 정적 import 는 번들러가 basePath 를 올바르게 붙인 /_next/static 주소를 만든다.
+ */
+import escrowMark from './escrow-kb.png';
+import styles from './ShopLayout.module.css';
+
+/**
+ * KB 에스크로 판매자 확인정보 주소.
+ *
+ * <p>KB 가 가맹점마다 발급하는 「KB에스크로 이체 바로가기」 링크다. 아직 받지
+ * 못해 null — 그동안 마크는 링크 없이 그림으로만 선다. 주소를 받으면 여기만
+ * 채우면 된다.
+ */
+const ESCROW_CONFIRM_URL: string | null = null;
+
+interface Props {
+  info: FooterInfo;
+  /**
+   * 글자 한 칸을 대신 그린다.
+   *
+   * <p>관리자 화면이 이 자리에 <b>그 자리에서 고치는 입력칸</b>을 꽂는다. 손님 화면은
+   * 넘기지 않으므로 글자 그대로 나간다.
+   *
+   * <p>편집용 푸터를 따로 만들지 않는 이유 — 모양을 두 벌로 두면 바탕색·줄 간격·
+   * 줄바꿈이 조금씩 달라지고, 결국 "고칠 때 본 모양"과 "손님이 보는 모양"이 달라진다.
+   * 고치는 자리가 곧 손님이 보는 자리여야 한다.
+   */
+  renderText?: (name: keyof FooterInfo, value: string) => ReactNode;
+}
+
+/**
+ * 쇼핑몰 푸터.
+ *
+ * <h2>글자는 관리자가 고친다</h2>
+ * 상호·주소·대표전화·운영시간은 {@code GET /api/v1/footer} 가 준다 (관리자 › 메인
+ * 배너 & 푸터). 주소나 영업시간은 가게 사정으로 바뀌는 값이라, 바꿀 때 배포가
+ * 필요하면 안 된다. 기본값은 {@code data/company.ts} 에 있다.
+ *
+ * <p>⚠️ 사업장 소재지는 개인정보처리방침 §13 · 이용약관과 한 쌍이다. 이 칸만 고치면
+ * 같은 회사 주소가 화면마다 달라진다.
+ *
+ * <h2>왜 레이아웃에서 떼어 놓았는가</h2>
+ * 배너 미리보기가 저장하지 않은 푸터까지 보여 줘야 한다. 레이아웃은 쿼리를 읽지
+ * 못하므로, 미리보기는 레이아웃 밖에서 이 컴포넌트에 <b>고치는 중인 값</b>을 넣어
+ * 그린다 — 손님이 보는 것과 같은 코드다.
+ */
+export function SiteFooter({ info, renderText }: Props) {
+  /** 글자 한 칸. 고치는 중이면 그 자리를 편집기에 내준다. */
+  const t = (name: keyof FooterInfo) =>
+    renderText ? renderText(name, info[name]) : info[name];
+
+  /** 비어 있으면 손님 화면에서는 줄을 그리지 않지만, 고치는 중에는 그려야 적을 수 있다. */
+  const show = (name: keyof FooterInfo) => Boolean(renderText) || Boolean(info[name]);
+
+  return (
+  <footer className={styles.footer}>
+    <div className={styles.footTop}>
+      <div className="wrap">
+        <Link href="/about">회사소개</Link>
+        <Link href="/terms">이용약관</Link>
+        <Link href="/privacy">개인정보처리방침</Link>
+        <Link href="/guide">이용안내</Link>
+        <Link href="/refund">교환·반품·환불</Link>
+        <Link href="/store">지점안내</Link>
+      </div>
+    </div>
+
+    <div className={styles.footMain}>
+      <div className="wrap">
+        <div className={styles.footInfo}>
+          <div className={styles.footBrandRow}>
+            {/* 푸터는 검정 바탕이다. 여기가 logo-dark(밝은 글자)를 쓸 자리다 */}
+            <Image
+              src="/logo-dark.svg"
+              alt="한성금거래소"
+              width={560}
+              height={104}
+              className={styles.footLogo}
+            />
+            {/* KB 에스크로 마크 (2026-11-12 판매자 등록). 확인 주소가 있으면 눌러서
+                KB 의 판매자 확인정보 창을 연다 — 마크는 "이 가게가 등록된 판매자"라는
+                주장이고, 고객이 그 주장을 은행에서 확인할 수 있어야 마크가 일을 한다. */}
+            {ESCROW_CONFIRM_URL ? (
+              <a
+                href={ESCROW_CONFIRM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.escrowMark}
+                title="KB에스크로 이체 판매자 확인정보 (새 창)"
+              >
+                {/* 48px 로 그리는 17KB 마크다. 최적화기를 태울 이유가 없고,
+                    태우면 basePath 문제(위 import 주석)로 깨진다. */}
+                <Image
+                  src={escrowMark}
+                  alt="KB국민은행 에스크로이체 가맹 — 매매보호의 기준"
+                  unoptimized
+                />
+              </a>
+            ) : (
+              <span className={styles.escrowMark} title="KB국민은행 에스크로이체 가맹">
+                <Image
+                  src={escrowMark}
+                  alt="KB국민은행 에스크로이체 가맹 — 매매보호의 기준"
+                  unoptimized
+                />
+              </span>
+            )}
+          </div>
+          {/* 글자는 관리자 › 메인 배너 & 푸터에서 고친다. 기본값은 data/company.ts.
+
+              상호는 법인명(주식회사 금한성)이다. 로고의 「한성금거래소」는 브랜드명이라
+              법적 표시가 되지 않는다 — 전자상거래법상 표시해야 하는 것은 상호다.
+
+              ⚠️ 사업장 소재지는 개인정보처리방침 §13 · 이용약관과 한 쌍이다. 이 칸만
+              고치면 같은 회사 주소가 화면마다 달라진다. */}
+          <p>
+            상호 : {t('companyName')} &nbsp;|&nbsp; 대표자 : {t('ceo')}
+          </p>
+          <p>사업자등록번호 : {t('bizNo')}</p>
+          {/* 통신판매업신고번호는 아직 받지 못했다 (TODO A-12). 비어 있으면 줄 자체를
+              그리지 않는다 — 고객이 읽는 자리에 틀린 신고번호를 두는 것이 비워 두는
+              것보다 나쁘다. 받는 날 관리자 화면에 적으면 되고, 배포가 필요 없다. */}
+          {show('mailOrderNo') && <p>통신판매업신고번호 : {t('mailOrderNo')}</p>}
+          <p>본사 : {t('address')}</p>
+          <p>이메일 : {t('email')}</p>
+          {show('tagline') && <p className={styles.footNote}>{t('tagline')}</p>}
+        </div>
+
+        <div className={styles.footCs}>
+          <p className={styles.csLabel}>대표전화</p>
+          <p>{t('tel')}</p>
+          <p className={styles.csLabel}>운영시간</p>
+          <p>{t('hours')}</p>
+          {show('holiday') && <p>{t('holiday')}</p>}
+        </div>
+      </div>
+    </div>
+
+    <div className={styles.copyright}>
+      COPYRIGHT © HANSEONG GOLD EXCHANGE. ALL RIGHTS RESERVED.
+    </div>
+  </footer>
+  );
+}

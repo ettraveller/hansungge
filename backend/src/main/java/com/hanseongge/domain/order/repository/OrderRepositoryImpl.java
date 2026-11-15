@@ -1,6 +1,7 @@
 package com.hanseongge.domain.order.repository;
 
 import com.hanseongge.domain.order.dto.AdminOrderSearchCondition;
+import com.hanseongge.domain.order.dto.AdminOrderUncheckedCounts;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderStatus;
 import com.hanseongge.domain.order.entity.QOrder;
@@ -17,6 +18,8 @@ import org.springframework.data.support.PageableExecutionUtils;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 관리자 주문 검색 (QueryDSL).
@@ -74,6 +77,46 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
                 .where(awaitingShipment(order))
                 .fetchOne();
         return count == null ? 0 : count;
+    }
+
+    /**
+     * 상태 탭별 미확인 건수.
+     *
+     * <p>상태별 집계 한 번 + 발송 대기 한 번, 두 쿼리로 끝낸다. 탭마다 COUNT 를 따로
+     * 보내면 탭 수만큼 질의가 나가고, 그 사이 주문이 들어오면 탭끼리 다른 시점을 센다.
+     * 「발송 대기」만은 상태 집계로 만들 수 없어(송장번호 유무가 끼므로) 따로 센다 —
+     * 판정은 {@link #awaitingShipment}, 목록 필터와 같은 한 곳이다.
+     */
+    @Override
+    public AdminOrderUncheckedCounts countUnchecked() {
+        QOrder order = QOrder.order;
+
+        Map<OrderStatus, Long> byStatus = queryFactory
+                .select(order.status, order.count())
+                .from(order)
+                .where(order.adminCheckedAt.isNull())
+                .groupBy(order.status)
+                .fetch().stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(order.status),
+                        tuple -> {
+                            Long count = tuple.get(order.count());
+                            return count == null ? 0L : count;
+                        }));
+
+        Long awaiting = queryFactory
+                .select(order.count())
+                .from(order)
+                .where(order.adminCheckedAt.isNull().and(awaitingShipment(order)))
+                .fetchOne();
+
+        return new AdminOrderUncheckedCounts(
+                awaiting == null ? 0 : awaiting,
+                byStatus.values().stream().mapToLong(Long::longValue).sum(),
+                byStatus.getOrDefault(OrderStatus.PAID, 0L),
+                byStatus.getOrDefault(OrderStatus.SHIPPED, 0L),
+                byStatus.getOrDefault(OrderStatus.DELIVERED, 0L),
+                byStatus.getOrDefault(OrderStatus.CANCELLED, 0L));
     }
 
     private BooleanBuilder buildWhere(AdminOrderSearchCondition c, QOrder order) {

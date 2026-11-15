@@ -1,6 +1,8 @@
 import type { Loaded } from '@/api/server';
 import { BoardList, type BoardPost } from '@/components/home/BoardList';
 import { HeroSlider } from '@/components/home/HeroSlider';
+import type { HeroBanner } from '@/api/banners';
+import { mediaUrl } from '@/utils/media';
 import { ProductTabs, type CategoryProducts } from '@/components/home/ProductTabs';
 import { StoreLocator } from '@/components/home/StoreLocator';
 import { MarketPriceBoard } from '@/components/price/MarketPriceBoard';
@@ -20,6 +22,8 @@ interface Props {
   histories: Partial<Record<MetalType, PriceHistoryPoint[]>>;
   groups: CategoryProducts[];
   notices: Loaded<PageResponse<NoticeSummary>>;
+  /** 관리자가 올린 메인 배너. 비어 있으면 화면이 기본 배너를 쓴다 */
+  banners: HeroBanner[];
 }
 
 /**
@@ -47,13 +51,27 @@ interface Props {
  * <h2>백엔드가 내려가도 페이지는 뜬다</h2>
  * 실패한 영역만 안내 문구로 바뀐다.
  */
-export function HomeView({ prices, histories, groups, notices }: Props) {
+export function HomeView({ prices, histories, groups, notices, banners }: Props) {
   const rows = toMetalRows(prices.data ?? [], histories);
   const quotedAt = latestQuotedAt(prices.data);
 
   return (
     <>
-      <HeroSlider slides={HERO_SLIDES} />
+      {/* 관리자가 올린 배너가 있으면 그것만 나간다. 없을 때만 기본 배너로 돌아간다 —
+          비워 두면 메인 맨 위가 통째로 사라진다. */}
+      <HeroSlider
+        slides={HERO_SLIDES}
+        banners={banners.map((b) => ({
+          id: b.id,
+          // 꾸민 배너는 내용을 그대로 넘긴다. 사진 자리를 비워 두면 슬라이더가
+          // 배경을 그리지 않고 BannerDesign 이 그 자리를 맡는다.
+          design: b.kind === 'DESIGN' ? b.content : null,
+          image: mediaUrl(b.imageKey),
+          mobileImage: mediaUrl(b.mobileImageKey),
+          href: b.linkHref,
+          alt: b.altText,
+        }))}
+      />
 
       {/*
         ---------- 오늘의 고시 시세 ----------

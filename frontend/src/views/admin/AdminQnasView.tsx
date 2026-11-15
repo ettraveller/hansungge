@@ -10,8 +10,13 @@ import { Pagination } from '@/components/admin/Pagination';
 import { Panel } from '@/components/admin/Panel';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
-import { useAdminQnas, useAnswerQna, useHideQna } from '@/hooks/admin/useQnas';
-import type { AdminQna } from '@/api/admin/qnas';
+import {
+  useAdminQnas,
+  useAnswerQna,
+  useHideQna,
+  useUnansweredQnaCounts,
+} from '@/hooks/admin/useQnas';
+import type { AdminQna, AdminQnaUnansweredCounts } from '@/api/admin/qnas';
 import { ApiError } from '@/types/api';
 import type { QnaBoardType } from '@/types/board';
 import { formatDateTime } from '@/utils/format';
@@ -23,6 +28,12 @@ const BOARD_LABEL: Record<QnaBoardType, string> = {
   GENERAL: '문의게시판',
   PRODUCT: '제품문의',
 };
+
+const BOARD_TABS: { key: BoardFilter; label: string; countKey: keyof AdminQnaUnansweredCounts }[] = [
+  { key: 'ALL', label: '전체 게시판', countKey: 'all' },
+  { key: 'GENERAL', label: BOARD_LABEL.GENERAL, countKey: 'general' },
+  { key: 'PRODUCT', label: BOARD_LABEL.PRODUCT, countKey: 'product' },
+];
 
 /**
  * 문의 관리 — 답변을 다는 곳.
@@ -52,6 +63,7 @@ export function AdminQnasView() {
     unansweredOnly,
     page,
   });
+  const unanswered = useUnansweredQnaCounts();
 
   const rows = data?.content ?? [];
 
@@ -84,16 +96,28 @@ export function AdminQnasView() {
         note="비밀글도 여기서는 본문이 보입니다 — 답하려면 질문을 읽어야 합니다."
         actions={
           <div className={styles.filters}>
-            <select
-              className={styles.select}
-              value={board}
-              onChange={(e) => changeFilter(() => setBoard(e.target.value as BoardFilter))}
-              aria-label="게시판"
-            >
-              <option value="ALL">전체 게시판</option>
-              <option value="GENERAL">{BOARD_LABEL.GENERAL}</option>
-              <option value="PRODUCT">{BOARD_LABEL.PRODUCT}</option>
-            </select>
+            {/* 주문 관리의 상태 탭과 같은 생김새 — 빨간 숫자는 그 게시판의 미답변 수다. */}
+            <div className={styles.statusTabs} role="group" aria-label="게시판 필터">
+              {BOARD_TABS.map(({ key, label, countKey }) => {
+                const badge = unanswered.data?.[countKey] ?? 0;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={key === board ? styles.statusTabOn : styles.statusTab}
+                    aria-pressed={key === board}
+                    onClick={() => changeFilter(() => setBoard(key))}
+                  >
+                    {label}
+                    {badge > 0 && (
+                      <span className={styles.tabCount} aria-label={`미답변 ${badge}건`}>
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
             <label className={styles.checkRow}>
               <input
                 type="checkbox"

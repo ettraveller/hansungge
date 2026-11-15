@@ -164,6 +164,40 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
         }
 
         @Test
+        @DisplayName("미확인 건수는 탭 필터와 같은 기준으로 세고, 상세를 열면 그 주문은 빠진다")
+        void uncheckedCountsFollowTabFilters() throws Exception {
+            long paid = insertOrder("HS-UC-PAID", "PAID", "김미확인");
+            insertOrder("HS-UC-SHIP", "SHIPPED", "이미확인");
+
+            mockMvc.perform(get("/api/admin/orders/unchecked-counts").header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.all").value(2))
+                    .andExpect(jsonPath("$.awaiting").value(1))
+                    .andExpect(jsonPath("$.paid").value(1))
+                    .andExpect(jsonPath("$.shipped").value(1))
+                    .andExpect(jsonPath("$.delivered").value(0));
+
+            // 목록 줄에도 같은 기준의 표시가 실려 온다 — 배지와 줄이 어긋나면 안 된다.
+            var row = objectMapper.readTree(search("HS-UC-PAID").getResponse().getContentAsString())
+                    .get("content").get(0);
+            assertThat(row.get("checked").asBoolean()).isFalse();
+
+            // 상세를 열면 확인한 것으로 친다.
+            mockMvc.perform(get("/api/admin/orders/" + paid).header("Authorization", bearer()))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get("/api/admin/orders/unchecked-counts").header("Authorization", bearer()))
+                    .andExpect(jsonPath("$.all").value(1))
+                    .andExpect(jsonPath("$.awaiting").value(0))
+                    .andExpect(jsonPath("$.paid").value(0))
+                    .andExpect(jsonPath("$.shipped").value(1));
+
+            row = objectMapper.readTree(search("HS-UC-PAID").getResponse().getContentAsString())
+                    .get("content").get(0);
+            assertThat(row.get("checked").asBoolean()).isTrue();
+        }
+
+        @Test
         @DisplayName("목록에 대표 상품명과 품목 수가 함께 온다")
         void showsOrderName() throws Exception {
             long id = insertOrder("HS-ITEMS", "PAID", "김상품");
