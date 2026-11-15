@@ -58,6 +58,10 @@ const ALIGNS = [
  * <p>「두껍게」단추가 눌린 상태를 여기서 가져온다. 이것 없이 {@code bold ?? false} 로
  * 두면 제목은 두껍게 보이는데 단추는 꺼져 있어서, 한 번 눌러야 비로소 꺼진다.
  */
+/** 글자 크기(px)의 위아래 끝. 서버·손님 화면(BannerDesign)과 같은 값이다. */
+const MIN_TEXT = 10;
+const MAX_TEXT = 120;
+
 /** 고를 수 있는 사진 너비(px). 모서리를 끌면 그 사이의 값도 나온다. */
 const IMG_SIZES = [60, 80, 100, 120, 160, 200, 240, 300, 360, 440, 520, 640];
 
@@ -409,6 +413,45 @@ export function DesignBannerPanel({
     handle.addEventListener('pointercancel', stop);
   };
 
+  /**
+   * 끌어서 글자·버튼 크기 바꾸기.
+   *
+   * <p>글자 상자의 너비는 글자가 정하므로, 사진처럼 너비를 받지 않고 <b>끈 비율만큼
+   * 글자 크기(px)를 키운다</b> — 상자를 1.5배로 끌면 글자가 1.5배가 된다. 시작 크기는
+   * 화면에 실제로 그려진 크기에서 읽는다. 크기를 고른 적 없는 블록(역할 기본 크기)도
+   * 그 지점부터 자연스럽게 이어진다. 끝은 서버와 같은 값으로 당긴다.
+   */
+  const startTextResize = (blockId: string) => (e: React.PointerEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const handle = e.currentTarget;
+    const self = handle.closest<HTMLElement>('[data-stack] > *');
+    if (!self) return;
+
+    const startX = e.clientX;
+    const startWidth = self.getBoundingClientRect().width;
+    const startSize = Number.parseFloat(getComputedStyle(self).fontSize) || 16;
+    if (startWidth <= 0) return;
+
+    handle.setPointerCapture(e.pointerId);
+
+    const move = (ev: PointerEvent) => {
+      const ratio = (startWidth + (ev.clientX - startX)) / startWidth;
+      const size = Math.round(startSize * ratio);
+      patchBlock(blockId, { size: Math.max(MIN_TEXT, Math.min(MAX_TEXT, size)) });
+    };
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', stop);
+      handle.removeEventListener('pointercancel', stop);
+    };
+
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+  };
+
   const addBanner = () => {
     onChange([...rows, emptyBanner()]);
     setSelected(rows.length);
@@ -428,7 +471,7 @@ export function DesignBannerPanel({
   return (
     <Panel
       title="꾸민 배너"
-      note="배너 안의 글자를 눌러 고르고, 바로 위 띠에서 크기·색·배경을 바꾼다. 고른 글자의 ✥ 를 끌면 그 자리에 선다."
+      note="배너 안의 글자를 눌러 고르고, 바로 위 띠에서 크기·색·배경을 바꾼다. 고른 글자의 ✥ 를 끌면 그 자리에 서고, ↘ 를 끌면 크기가 바뀐다."
       actions={
         canEdit && (
           <Button onClick={addBanner} disabled={rows.length >= 10}>
@@ -590,7 +633,7 @@ export function DesignBannerPanel({
                   ) : (
                     <span className={styles.designBarHint}>
                       배너 안의 글자·버튼·사진을 누르면 여기에서 크기·색을 바꿀 수
-                      있습니다. 고른 것의 ✥ 를 끌어 옮기고, × 로 지웁니다.
+                      있습니다. 고른 것의 ✥ 를 끌어 옮기고, ↘ 를 끌어 키우고, × 로 지웁니다.
                     </span>
                   )}
                 </div>
@@ -786,18 +829,19 @@ export function DesignBannerPanel({
                                   🔗
                                 </span>
                               )}
-                              {image && (
-                                <span
-                                  role="button"
-                                  tabIndex={-1}
-                                  aria-label="끌어서 크기 바꾸기"
-                                  title="끌어서 크기 바꾸기"
-                                  className={styles.sizeHandle}
-                                  onPointerDown={startResize(blockId)}
-                                >
-                                  ↘
-                                </span>
-                              )}
+                              {/* 사진은 너비를, 글자·버튼은 글자 크기를 끈 만큼 바꾼다 */}
+                              <span
+                                role="button"
+                                tabIndex={-1}
+                                aria-label="끌어서 크기 바꾸기"
+                                title="끌어서 크기 바꾸기"
+                                className={styles.sizeHandle}
+                                onPointerDown={
+                                  image ? startResize(blockId) : startTextResize(blockId)
+                                }
+                              >
+                                ↘
+                              </span>
                               {/* 지우기는 지울 것에 붙어 있어야 한다. 띠에 두면
                                   "무엇이 지워지는지"를 매번 눈으로 맞춰 봐야 한다. */}
                               <span

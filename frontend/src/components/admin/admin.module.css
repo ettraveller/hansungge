@@ -1971,7 +1971,8 @@ a.hint:hover {
   background: var(--gold-500);
 }
 
-/* 사진만 갖는 손잡이. 오른쪽 아래 모서리를 끌면 너비가 바뀐다 — PPT 와 같은 자리다. */
+/* 크기 손잡이. 오른쪽 아래 모서리를 끌면 사진은 너비가, 글자·버튼은 글자 크기가
+   바뀐다 — PPT 와 같은 자리다. */
 .sizeHandle {
   position: absolute;
   bottom: -12px;
