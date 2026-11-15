@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
   // 상품 이미지는 NCP Object Storage 에서 온다. 도메인 확정 후 여기에 추가한다.
   images: {
     remotePatterns: [],
+    // Next 16 부터 필수다. 없으면 /_next/image 가 전부 400 을 돌려줘서
+    // next/image 를 지나는 래스터 이미지(푸터 에스크로 마크가 처음이었다)가
+    // 통째로 깨진다. 75 는 next/image 의 기본 품질값이다.
+    qualities: [75],
   },
 
   // 서버 정보 노출 최소화
