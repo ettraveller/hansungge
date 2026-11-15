@@ -295,31 +295,60 @@
   gap: var(--space-2);
 }
 
-/* 이전·다음 화살표. 어두운 사진 위에 뜨므로 테두리 원으로 자리를 잡는다. */
-.navBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
+/* 이전·다음 화살표 — 배너 양옆 세로 중앙의 큰 판 (2026-11-18).
+   작은 원 버튼을 아래 구석에 두던 것을 옮겼다. 회전식 배너에서 손이 먼저 가는
+   자리는 양옆 가운데다 — 참고로 받은 레퍼런스들도 전부 이 자리다. */
+.sideNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 44px;
+  height: 72px;
+  border: none;
   padding: 0;
   background: rgba(13, 16, 19, 0.35);
   color: #fff;
-  font-size: 20px;
-  /* ‹ › 글리프가 글꼴 기준선 때문에 아래로 처진다. 줄높이 1로 가운데를 맞춘다. */
-  line-height: 1;
+  font-size: 32px;
+  /* ‹ › 글리프가 글꼴 기준선 때문에 아래로 처진다. 줄높이로 가운데를 맞춘다. */
+  line-height: 68px;
+  text-align: center;
   cursor: pointer;
+  border-radius: var(--radius-sm);
   transition:
-    border-color var(--dur) var(--ease-out),
-    background var(--dur) var(--ease-out);
+    background var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
 }
 
-.navBtn:hover {
-  border-color: var(--gold-400);
+.sideNav:hover {
   background: rgba(13, 16, 19, 0.6);
-  color: var(--gold-400);
+  color: var(--gold-300);
+}
+
+.sideNavLeft {
+  left: 14px;
+}
+
+.sideNavRight {
+  right: 14px;
+}
+
+@media (max-width: 960px) {
+  /* 좁은 화면에서는 손짓(스와이프)이 주 조작이다. 화살표는 글자를 가리지 않게 줄인다. */
+  .sideNav {
+    width: 32px;
+    height: 52px;
+    font-size: 24px;
+    line-height: 50px;
+  }
+
+  .sideNavLeft {
+    left: 6px;
+  }
+
+  .sideNavRight {
+    right: 6px;
+  }
 }
 
 .counter {

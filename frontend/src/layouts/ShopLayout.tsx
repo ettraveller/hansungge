@@ -4,6 +4,7 @@ import { load } from '@/api/server';
 import { footerApi } from '@/api/footer';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { SiteFooter } from '@/layouts/SiteFooter';
+import { TopBar } from '@/layouts/TopBar';
 import { SiteHeader } from '@/layouts/SiteHeader';
 import { buildNav } from '@/layouts/navigation';
 import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
@@ -53,6 +54,7 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <TopBar info={footer.data ?? FOOTER_DEFAULTS} />
       <SiteHeader nav={buildNav(categories.data)} />
 
       <main id="main" className={styles.main}>

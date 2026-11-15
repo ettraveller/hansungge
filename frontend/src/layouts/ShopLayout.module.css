@@ -8,6 +8,44 @@
   flex: 1 0 auto;
 }
 
+/* ---------- 상단 유틸 띠 ----------
+   헤더 위의 가는 줄. 대표전화·스마트스토어처럼 "본문도 메뉴도 아닌" 연락 정보가
+   서는 자리다 — 헤더 안에 끼우면 로고·검색과 자리를 다툰다. */
+.topbar {
+  background: var(--strip-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.topbarRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  height: var(--topbar-h);
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.topbarItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbarTel {
+  color: #fff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.topbarStore {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.topbarStore:hover,
+.topbarTel:hover {
+  color: var(--gold-300);
+}
+
 /* ---------- 헤더 ---------- */
 
 /* 헤더는 어두운 브랜드 판이다 (2026-10-01 남색 → 2026-11-15 팬톤 208C 버건디).

@@ -52,7 +52,16 @@ public enum FooterField {
     TAGLINE("tagline", "FOOTER_TAGLINE", "정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.", 200),
     TEL("tel", "FOOTER_TEL", "02-743-4176", 40),
     HOURS("hours", "FOOTER_HOURS", "월-토 10:00 ~ 19:00", 80),
-    HOLIDAY("holiday", "FOOTER_HOLIDAY", "일요일·공휴일 휴무", 80);
+    HOLIDAY("holiday", "FOOTER_HOLIDAY", "일요일·공휴일 휴무", 80),
+
+    /**
+     * 스마트스토어 주소 — 상단 유틸 띠의 「스마트스토어」 링크가 쓴다 (2026-11-18).
+     *
+     * <p>푸터가 아니라 상단 띠의 값이지만 이 목록에 둔다 — 관리자 「메인 배너 & 푸터」
+     * 한 화면에서 같이 고치는 글자들이고, 저장·조회 길도 같다. 비우면 링크를 그리지
+     * 않는다.
+     */
+    STORE_URL("storeUrl", "FOOTER_STORE_URL", "", 300);
 
     private final String name;
     private final String settingKey;
