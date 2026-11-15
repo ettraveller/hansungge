@@ -419,20 +419,22 @@
   opacity: 0.85;
 }
 
-/* KB 에스크로 마크. 원본이 흰 바탕이라 흰 칩으로 싸서, 어두운 푸터 위에
-   일부러 올린 패처럼 보이게 한다 — 바탕을 안 싸면 흰 모서리만 어색하게 남는다. */
+/* KB 에스크로 마크 — 둥근 뱃지 그대로.
+   원본 PNG 는 뱃지 둘레가 흰 바탕이다(104×104 로 잘라 두었다). 원으로 클리핑하면
+   네모난 흰 상자 없이 뱃지가 스티커처럼 푸터 위에 앉는다 — 남는 흰 기운은 뱃지를
+   두르는 얇은 흰 테가 된다. */
 .escrowMark {
   display: inline-block;
   margin-bottom: 14px;
-  padding: 5px 9px;
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
+  overflow: hidden;
   background: #fff;
   line-height: 0;
 }
 
 .escrowMark img {
-  height: 48px;
-  width: auto;
+  width: 58px;
+  height: 58px;
   display: block;
 }
 
