@@ -219,6 +219,51 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     // =================================================================
+    // 결제 내역
+    // =================================================================
+
+    @Nested
+    @DisplayName("결제 내역")
+    class Payments {
+
+        @Test
+        @DisplayName("상태와 주문번호로 거른다 — 줄의 단위는 주문이 아니라 결제 시도다")
+        void listsAndFilters() throws Exception {
+            long paid = insertOrder("HS-PAY-1", "PAID", "김결제");
+            long cancelled = insertOrder("HS-PAY-2", "CANCELLED", "이실패");
+            insertPayment(paid, "APPROVED", "카드");
+            insertPayment(cancelled, "FAILED", null);
+
+            mockMvc.perform(get("/api/admin/payments").header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.length()").value(2));
+
+            mockMvc.perform(get("/api/admin/payments")
+                            .param("status", "APPROVED")
+                            .header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].orderNo").value("HS-PAY-1"))
+                    .andExpect(jsonPath("$.content[0].statusLabel").value("승인"))
+                    .andExpect(jsonPath("$.content[0].orderId").value(paid));
+
+            mockMvc.perform(get("/api/admin/payments")
+                            .param("keyword", "PAY-2")
+                            .header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].orderNo").value("HS-PAY-2"));
+        }
+
+        private void insertPayment(long orderId, String status, String method) {
+            jdbcTemplate.update("""
+                    INSERT INTO payments (order_id, provider, method, status, amount)
+                    VALUES (?, 'TOSS', ?, ?, 662300)
+                    """, orderId, method, status);
+        }
+    }
+
+    // =================================================================
     // 발송
     // =================================================================
 
