@@ -2,7 +2,13 @@ import { adminApi } from '@/api/admin/client';
 import type { PageResponse } from '@/types/api';
 
 /** 결제 상태 — 백엔드 PaymentStatus 와 같은 값이다. */
-export type PaymentStatus = 'READY' | 'APPROVED' | 'FAILED' | 'CANCELLED';
+export type PaymentStatus =
+  | 'READY'
+  | 'APPROVED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'PARTIAL_REFUNDED'
+  | 'REFUNDED';
 
 /**
  * 관리자 결제 내역 한 줄. 주문이 아니라 <b>결제 시도</b>가 단위다 —

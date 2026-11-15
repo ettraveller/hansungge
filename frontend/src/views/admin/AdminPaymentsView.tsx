@@ -198,8 +198,9 @@ function methodLabel(method: string | null): string {
  */
 function toneOf(status: PaymentStatus): StatusTone {
   if (status === 'APPROVED') return 'success';
-  if (status === 'FAILED' || status === 'CANCELLED') return 'danger';
-  return 'neutral';
+  if (status === 'READY') return 'neutral';
+  // 실패·취소·환불 계열 전부 — 돈이 안 들어왔거나 되돌아간 줄이다.
+  return 'danger';
 }
 
 type TabKey = 'ALL' | 'APPROVED' | 'READY' | 'FAILED' | 'CANCELLED';

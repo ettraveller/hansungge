@@ -52,6 +52,8 @@ public record AdminPaymentSummaryResponse(
             case APPROVED -> "승인";
             case FAILED -> "실패";
             case CANCELLED -> "취소";
+            case PARTIAL_REFUNDED -> "부분환불";
+            case REFUNDED -> "환불";
         };
     }
 }
