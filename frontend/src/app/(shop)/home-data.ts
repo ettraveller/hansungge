@@ -4,7 +4,10 @@ import { productApi } from '@/api/products';
 import { load, type Loaded } from '@/api/server';
 import type { HeroBanner } from '@/api/banners';
 import { bannerApi } from '@/api/banners';
-import { ALL_PRODUCTS_TAB, type CategoryProducts } from '@/components/home/ProductTabs';
+// ⚠️ ALL_PRODUCTS_TAB 을 ProductTabs('use client')에서 가져오면 안 된다 — 서버 코드가
+// 클라이언트 모듈의 값을 import 하면 프록시가 와서 id·name 이 undefined 가 된다.
+import { ALL_PRODUCTS_TAB } from '@/components/home/allProductsTab';
+import type { CategoryProducts } from '@/components/home/ProductTabs';
 import type { PageResponse } from '@/types/api';
 import type { NoticeSummary } from '@/types/board';
 import type { Category } from '@/types/product';

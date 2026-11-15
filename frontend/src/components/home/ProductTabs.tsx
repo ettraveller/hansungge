@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { ALL_PRODUCTS_TAB } from '@/components/home/allProductsTab';
 import { ProductCard } from '@/components/product/ProductCard';
 import { Reveal } from '@/components/ui/Reveal';
 import type { ProductSummary } from '@/types/product';
@@ -20,19 +21,6 @@ export interface CategoryProducts {
   name: string;
   products: ProductSummary[];
 }
-
-/**
- * 맨 앞에 서는 「전체상품」 탭 (2026-11-05).
- *
- * <p>전에는 첫 카테고리(골드바)가 열린 채로 메인이 떴다. 처음 온 사람에게 그것은
- * <b>"이 가게는 골드바를 판다"</b>로 읽힌다 — 돌선물·주얼리를 보러 온 사람은 탭이
- * 있다는 것을 알아차리기 전에 지나간다. 무엇을 파는지 먼저 보이고 나서 고르게 한다.
- *
- * <p>{@code id} 는 0 이다. 카테고리 식별자가 아니라 <b>카테고리 없음</b>을 뜻한다 —
- * 상품 목록 API 에 {@code categoryId} 를 빼고 부른 결과이고, 「전체보기」도
- * {@code /shop} 으로 간다. 실제 카테고리 id 는 1부터라 겹치지 않는다.
- */
-export const ALL_PRODUCTS_TAB = { id: 0, name: '전체상품' } as const;
 
 /**
  * 카테고리 탭 상품 목록 (레퍼런스의 제품 소개 섹션).
