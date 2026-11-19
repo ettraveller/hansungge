@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import type { FooterInfo } from '@/api/footer';
 import type { TopLink } from '@/api/topLinks';
@@ -45,13 +45,8 @@ export function TopBar({
   const withIcon = links.filter((link) => mediaUrl(link.iconKey) != null);
   const textOnly = links.filter((link) => mediaUrl(link.iconKey) == null);
 
-  // 글자색은 관리자 설정값이다. 서버가 #rrggbb 만 내보내지만(FooterField), 조회가
-  // 실패해 기본값이 왔거나 값이 비었으면 꽂지 않는다 — CSS 의 기본색(흰색)이 쓰인다.
-  const color = /^#[0-9a-f]{6}$/i.test(info.topbarColor ?? '') ? info.topbarColor : null;
-  const style = color ? ({ '--topbar-fg': color } as CSSProperties) : undefined;
-
   return (
-    <div className={styles.topbar} style={style}>
+    <div className={styles.topbar}>
       <div className={`wrap ${styles.topbarRow}`}>
        <div className={styles.topbarScroll}>
         <span className={styles.topbarItem}>

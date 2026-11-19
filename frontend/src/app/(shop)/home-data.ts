@@ -4,6 +4,7 @@ import { productApi } from '@/api/products';
 import { load, type Loaded } from '@/api/server';
 import type { HeroBanner } from '@/api/banners';
 import { bannerApi } from '@/api/banners';
+import { normalizeDesign, siteDesignApi, type SiteDesign } from '@/api/siteDesign';
 // ⚠️ ALL_PRODUCTS_TAB 을 ProductTabs('use client')에서 가져오면 안 된다 — 서버 코드가
 // 클라이언트 모듈의 값을 import 하면 프록시가 와서 id·name 이 undefined 가 된다.
 import { ALL_PRODUCTS_TAB } from '@/components/home/allProductsTab';
@@ -36,6 +37,8 @@ export interface HomeData {
    * 이미 받아 둔 것이라 요청이 늘지 않는다.
    */
   categories: Category[];
+  /** 구역의 차례·제목과 색 (화면 꾸미기) */
+  design: SiteDesign;
 }
 
 /**
@@ -48,13 +51,15 @@ export interface HomeData {
  * <p>전부 병렬이다. 순차로 부르면 느린 쪽이 빠른 쪽을 기다린다.
  */
 export async function loadHomeData(): Promise<HomeData> {
-  const [prices, categories, histories, notices, banners] = await Promise.all([
+  const [prices, categories, histories, notices, banners, design] = await Promise.all([
     load(() => priceApi.current(), '메인 시세'),
     load(() => productApi.categories(), '메인 카테고리'),
     loadHistories(),
     load(() => noticeApi.list({ size: HOME_NOTICES }), '메인 공지'),
     // 배너는 없을 수 있다. 실패해도 메인을 멈추지 않는다 — 화면이 기본 배너로 돌아간다.
     load(() => bannerApi.list(), '메인 배너'),
+    // 실패하면 기본 차례로 그린다. 구성 설정 때문에 메인이 멈출 이유가 없다.
+    load(() => siteDesignApi.get(), '화면 구성'),
   ]);
 
   return {
@@ -64,6 +69,8 @@ export async function loadHomeData(): Promise<HomeData> {
     groups: await loadProductGroups(categories.data),
     banners: banners.data ?? [],
     categories: categories.data ?? [],
+    // 조회가 실패했으면(null) 기본 모양이 나온다
+    design: normalizeDesign(design.data),
   };
 }
 

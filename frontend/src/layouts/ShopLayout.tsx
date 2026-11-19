@@ -4,6 +4,7 @@ import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { footerApi } from '@/api/footer';
+import { normalizeDesign, siteDesignApi, themeCss } from '@/api/siteDesign';
 import { topLinksApi } from '@/api/topLinks';
 import { HeaderAuth } from '@/layouts/HeaderAuth';
 import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
@@ -51,17 +52,24 @@ import styles from './ShopLayout.module.css';
  * 그리는 사이에 고시가 끼어도 놓치지 않게 한다.
  */
 export async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [categories, priceVersion, footer, topLinks] = await Promise.all([
+  const [categories, priceVersion, footer, topLinks, design] = await Promise.all([
     load(() => productApi.categories(), 'GNB 카테고리'),
     load(() => priceApi.version(), '시세 버전'),
     // 실패해도 화면을 멈추지 않는다 — 코드의 기본값으로 푸터를 그린다.
     load(() => footerApi.get(), '푸터 정보'),
     // 실패하면 링크 없이 대표전화만 건다. 띠 때문에 화면 전체가 멈출 이유가 없다.
     load(() => topLinksApi.get(), '상단 띠 링크'),
+    // 실패하면 기본색으로 그린다.
+    load(() => siteDesignApi.get(), '화면 색'),
   ]);
+
+  // 관리자가 고른 색. tokens.css 의 변수를 :root 에서 덮어쓴다. 값은 normalizeDesign 이
+  // #rrggbb 만 남긴 뒤라 style 에 그대로 넣어도 된다.
+  const theme = themeCss(normalizeDesign(design.data).colors);
 
   return (
     <>
+      {theme && <style>{theme}</style>}
       <TopBar
         info={footer.data ?? FOOTER_DEFAULTS}
         links={topLinks.data ?? []}

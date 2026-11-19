@@ -60,6 +60,4 @@ export const FOOTER_DEFAULTS = {
   tel: '02-743-4176',
   hours: '월-토 10:00 ~ 19:00',
   holiday: '일요일·공휴일 휴무',
-  // 상단 띠 글자색. 비우면 기본색(흰색)
-  topbarColor: '',
 } as const;

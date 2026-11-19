@@ -31,16 +31,19 @@
      그림 등)은 아래 --metal-* 를 쓴다.
      ⚠️ 500 이상은 버건디 바탕(헤더·히어로·푸터) 위에서 보이지 않는다.
      어두운 면 위의 강조는 --on-dark-accent 를 쓴다. */
-  --gold-50: #fbf5f7;
-  --gold-100: #f6e9ee;
-  --gold-200: #ecd0da;
-  --gold-300: #e0aebf;
-  --gold-400: #b9597a;
+  /* 2026-11-19 — 500 하나에서 나머지를 섞어 만든다. 관리자가 「화면 꾸미기」에서
+     강조색을 고르면 :root 의 --gold-500 만 덮어쓰고(themeCss), 옅은 면·짙은 글자가
+     전부 따라온다. 단계마다 값을 박아 두면 강조색을 바꿔도 옅은 면만 버건디로 남는다. */
   --gold-500: #861f41; /* PANTONE 208 C */
-  --gold-600: #741a38;
-  --gold-700: #5f152e;
-  --gold-800: #471022;
-  --gold-900: #300b17;
+  --gold-50: color-mix(in srgb, var(--gold-500) 4%, #fff);
+  --gold-100: color-mix(in srgb, var(--gold-500) 9%, #fff);
+  --gold-200: color-mix(in srgb, var(--gold-500) 20%, #fff);
+  --gold-300: color-mix(in srgb, var(--gold-500) 36%, #fff);
+  --gold-400: color-mix(in srgb, var(--gold-500) 70%, #fff);
+  --gold-600: color-mix(in srgb, var(--gold-500) 86%, #000);
+  --gold-700: color-mix(in srgb, var(--gold-500) 71%, #000);
+  --gold-800: color-mix(in srgb, var(--gold-500) 53%, #000);
+  --gold-900: color-mix(in srgb, var(--gold-500) 36%, #000);
 
   /* 진짜 금 — 로고(logo.svg #C6A15B)와 골드바 그림에만 쓴다. */
   --metal-gold-light: #dcc89d;
@@ -49,8 +52,8 @@
 
   /* 어두운 면(버건디·남색) 위의 강조. 브랜드 색을 옅게 푼 장밋빛이다 —
      #861f41 위에서 6.4:1. 흰 글자와 구별되면서 바탕과 같은 계열로 읽힌다. */
-  --on-dark-accent: #f4cdd8;
-  --on-dark-accent-glow: rgba(244, 205, 216, 0.25);
+  --on-dark-accent: color-mix(in srgb, var(--gold-500) 22%, #fff);
+  --on-dark-accent-glow: color-mix(in srgb, var(--on-dark-accent) 25%, transparent);
 
   /* 기존 이름 — 램프 위에 다시 얹는다.
      ⚠️ --gold 를 <b>면으로 칠하지 않는다.</b> 버튼 바탕을 금색으로 채우면 화면이 싸 보이고,
@@ -113,7 +116,8 @@
      그래서 주요 동작은 먹으로 칠한다. 금은 선·기색·작은 뱃지에만 남긴다.
      ------------------------------------------------------------------ */
   --action: var(--ink-900);
-  --action-hover: var(--ink-700);
+  /* 버튼색도 관리자가 고를 수 있다. 올렸을 때의 색은 고른 색에서 만든다. */
+  --action-hover: color-mix(in srgb, var(--action) 84%, #fff);
   --on-action: #ffffff;
 
   --ok: #3a6b52;
@@ -129,11 +133,18 @@
      남색 그대로다 — 제목 글자까지 버건디가 되면 본문이 경고문처럼 읽힌다.
      금색 강조는 버건디 위에서도 산다 (금이 사는 것은 어두운 반대색 위다).
      ------------------------------------------------------------------ */
-  --hero-bg: #861f41; /* PANTONE 208 C */
-  --strip-bg: #861f41;
-  --strip-line: #9e3a5e;
-  --footer-bg: #861f41;
-  --footer-line: #9e3a5e;
+  /* 2026-11-19 — 값을 박지 않고 강조색을 따른다. 띠·푸터 바탕, 헤더 바탕·글자,
+     시세 제목은 「화면 꾸미기」에서 따로 고를 수 있다 (themeCss 가 :root 에 덮어쓴다). */
+  --hero-bg: var(--gold-500);
+  --strip-bg: var(--gold-500);
+  --strip-line: color-mix(in srgb, var(--strip-bg) 82%, #fff);
+  --footer-bg: var(--gold-500);
+  --footer-line: color-mix(in srgb, var(--footer-fg) 16%, transparent);
+  --topbar-fg: #fff;
+  --footer-fg: #fff;
+  --header-bg: #fff;
+  --header-fg: var(--ink-900);
+  --price-title: var(--gold-500);
 
   /* ------------------------------------------------------------------
      5. 그림자 — 검정이 아니라 배경의 색을 띤다. 그리고 얕다.
@@ -289,10 +300,10 @@
   );
   --sheen-dark: radial-gradient(
       110% 80% at 22% 4%,
-      rgba(244, 205, 216, 0.07) 0%,
+      color-mix(in srgb, var(--on-dark-accent) 7%, transparent) 0%,
       transparent 54%
     ),
-    linear-gradient(172deg, #97294e 0%, var(--hero-bg) 64%);
+    linear-gradient(172deg, color-mix(in srgb, var(--hero-bg) 90%, #fff) 0%, var(--hero-bg) 64%);
 
   /* 필름 그레인 — 완전한 평면에서 오는 인쇄물 같은 어색함을 걷어낸다 */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");

@@ -24,7 +24,7 @@
   font-size: var(--text-xs);
   /* 글자색은 관리자가 고른다 (TOPBAR_TEXT_COLOR). 고르지 않았으면 흰색이다.
      값은 TopBar 가 --topbar-fg 로 꽂는다 — 띠 안의 글자가 전부 이것을 따른다. */
-  color: var(--topbar-fg, #fff);
+  color: var(--topbar-fg);
 }
 
 /* 왼쪽 묶음 — 대표전화와 링크. 좁은 화면에서는 이 안에서만 옆으로 민다. */
@@ -176,8 +176,8 @@ a.topbarLink:hover {
   min-width: 16px;
   height: 16px;
   border-radius: 8px;
-  background: #fff;
-  color: var(--gold-500);
+  background: var(--topbar-fg);
+  color: var(--strip-bg);
   font-size: 10px;
   font-weight: 700;
   display: inline-flex;
@@ -196,7 +196,7 @@ a.topbarLink:hover {
    쓰는 브라우저에서는 아래 rgba 가 거의 불투명한 흰색이라 그대로 읽힌다. */
 .header {
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--header-bg) 94%, transparent);
   backdrop-filter: blur(12px) saturate(1.4);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   position: sticky;
@@ -243,13 +243,13 @@ a.topbarLink:hover {
 .search input {
   width: 100%;
   height: 40px;
-  border: 1.5px solid var(--dark);
+  border: 1.5px solid var(--header-fg);
   border-radius: var(--radius-pill);
   padding: 0 18px 0 42px;
   font-size: var(--text-base);
   outline: none;
-  color: var(--dark);
-  background: #fff;
+  color: var(--header-fg);
+  background: transparent;
   transition:
     border-color var(--dur) var(--ease-out),
     box-shadow var(--dur) var(--ease-out);
@@ -257,11 +257,11 @@ a.topbarLink:hover {
 
 .search input:focus {
   border-color: var(--gold-500);
-  box-shadow: 0 0 0 3px rgba(134, 31, 65, 0.14);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold-500) 14%, transparent);
 }
 
 .search input::placeholder {
-  color: var(--ink-400);
+  color: color-mix(in srgb, var(--header-fg) 45%, transparent);
 }
 
 .searchIcon {
@@ -269,7 +269,7 @@ a.topbarLink:hover {
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--dark);
+  color: var(--header-fg);
   pointer-events: none;
 }
 
@@ -371,7 +371,7 @@ a.topbarLink:hover {
   font-size: var(--text-lg);
   font-weight: 600;
   letter-spacing: var(--tracking-snug);
-  color: var(--dark);
+  color: var(--header-fg);
   transition: color var(--dur-fast) var(--ease-out);
 }
 
@@ -462,7 +462,9 @@ a.topbarLink:hover {
 
 .footer {
   background: var(--footer-bg);
-  color: #999;
+  /* 글자는 전부 --footer-fg 한 색을 진하기만 달리해서 쓴다. 바탕색을 관리자가
+     고르므로, 회색을 박아 두면 밝은 바탕에서 글자가 사라진다. */
+  color: color-mix(in srgb, var(--footer-fg) 62%, transparent);
   font-size: 13px;
 }
 
@@ -487,7 +489,7 @@ a.topbarLink:hover {
   align-items: center;
   min-height: 44px;
   padding: 0 14px;
-  color: #ccc;
+  color: color-mix(in srgb, var(--footer-fg) 82%, transparent);
   font-weight: 600;
 }
 
@@ -497,7 +499,7 @@ a.topbarLink:hover {
 }
 
 .footTop a:hover {
-  color: var(--on-dark-accent);
+  color: var(--footer-fg);
 }
 
 .footMain :global(.wrap) {
@@ -551,12 +553,12 @@ a.topbarLink:hover {
 
 .footNote {
   margin-top: 12px;
-  color: #777;
+  color: color-mix(in srgb, var(--footer-fg) 48%, transparent);
 }
 
 .csLabel {
   font-size: 12px;
-  color: #999;
+  color: color-mix(in srgb, var(--footer-fg) 62%, transparent);
   letter-spacing: 2px;
 }
 
@@ -566,7 +568,7 @@ a.topbarLink:hover {
 
 .tel {
   font-size: 26px;
-  color: var(--gold-bright);
+  color: var(--footer-fg);
   font-weight: 800;
 }
 
@@ -578,7 +580,7 @@ a.topbarLink:hover {
   border-top: 1px solid var(--footer-line);
   text-align: center;
   padding: 16px;
-  color: #666;
+  color: color-mix(in srgb, var(--footer-fg) 42%, transparent);
   font-size: 12px;
 }
 

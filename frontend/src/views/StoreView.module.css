@@ -188,7 +188,7 @@
 .itemOn {
   border-color: var(--gold);
   background: var(--ink-50);
-  box-shadow: 0 0 0 3px rgba(134, 31, 65, 0.14);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold-500) 14%, transparent);
 }
 
 .itemRegion {

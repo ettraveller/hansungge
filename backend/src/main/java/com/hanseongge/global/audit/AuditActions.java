@@ -68,6 +68,8 @@ public final class AuditActions {
     public static final String HERO_BANNER_REPLACE = "HERO_BANNER_REPLACE";
     /** 상단 유틸 띠 링크 전체 교체 (V48) */
     public static final String TOP_LINK_REPLACE = "TOP_LINK_REPLACE";
+    /** 화면 꾸미기 저장 — 메인 구역 차례와 구역별 색 */
+    public static final String SITE_DESIGN_SAVE = "SITE_DESIGN_SAVE";
 
     // --- 주문 · 배송 ---
     //
@@ -118,6 +120,7 @@ public final class AuditActions {
     public static final String TARGET_CATEGORY = "CATEGORY";
     public static final String TARGET_HERO_BANNER = "HERO_BANNER";
     public static final String TARGET_TOP_LINK = "TOP_LINK";
+    public static final String TARGET_SITE_DESIGN = "SITE_DESIGN";
     public static final String TARGET_PRODUCT = "PRODUCT";
     public static final String TARGET_PRODUCT_OPTION = "PRODUCT_OPTION";
     public static final String TARGET_ORDER = "ORDER";

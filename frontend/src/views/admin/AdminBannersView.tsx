@@ -2,6 +2,13 @@
 
 import { useState } from 'react';
 
+import { normalizeDesign, type SiteDesign } from '@/api/siteDesign';
+import type { TopLink } from '@/api/topLinks';
+import { ColorsPanel } from '@/components/admin/design/ColorsPanel';
+import { LayoutPanel } from '@/components/admin/design/LayoutPanel';
+import { LivePreview } from '@/components/admin/design/LivePreview';
+import { useSaveSiteDesign, useSiteDesign } from '@/hooks/admin/useSiteDesign';
+
 import { Alert } from '@/components/admin/Alert';
 import { Button } from '@/components/admin/Button';
 import { Field, TextInput } from '@/components/admin/Field';
@@ -64,6 +71,16 @@ interface Row {
  * 않는 이유는, 봄 배너를 여름 배너로 바꾸는 동안 반쯤 섞인 배너가 손님 화면에
  * 걸리지 않게 하기 위해서다.
  */
+const TABS = [
+  { key: 'layout', label: '구성' },
+  { key: 'colors', label: '색' },
+  { key: 'banners', label: '배너' },
+  { key: 'topbar', label: '상단 띠' },
+  { key: 'footer', label: '푸터' },
+] as const;
+
+type TabKey = (typeof TABS)[number]['key'];
+
 export function AdminBannersView() {
   const { can } = useAdminSession();
   const canEdit = can('MANAGER');
@@ -83,6 +100,44 @@ export function AdminBannersView() {
    * 보여 줘야 하고, 그 창은 패널의 형제다. 패널 안에 갇힌 값은 거기까지 가지 못한다.
    */
   const [footerDraft, setFooterDraft] = useState<FooterInfo | null>(null);
+
+  /** 지금 보고 있는 탭. 미리보기가 그 탭이 고치는 자리로 따라간다 */
+  const [tab, setTab] = useState<TabKey>('layout');
+
+  // ---- 구성 · 색 (한 덩어리로 저장된다) ----
+  const siteDesign = useSiteDesign();
+  const saveDesign = useSaveSiteDesign();
+  const [configDraft, setConfigDraft] = useState<SiteDesign | null>(null);
+  const [configSaved, setConfigSaved] = useState(false);
+  const config = configDraft ?? normalizeDesign(siteDesign.data);
+
+  const changeConfig = (next: SiteDesign) => {
+    setConfigDraft(next);
+    setConfigSaved(false);
+  };
+
+  const saveConfig = () => {
+    if (!configDraft) return;
+    saveDesign.mutate(configDraft, {
+      onSuccess: () => {
+        setConfigDraft(null);
+        setConfigSaved(true);
+      },
+    });
+  };
+
+  const configActions = canEdit && (
+    <Button
+      variant="gold"
+      onClick={saveConfig}
+      disabled={configDraft == null || saveDesign.isPending}
+    >
+      {saveDesign.isPending ? '저장 중…' : '저장'}
+    </Button>
+  );
+
+  /** 상단 띠 패널이 고치는 중인 링크. 패널이 알려 준다 — 미리보기에 넘기려는 것이다 */
+  const [topLinksDraft, setTopLinksDraft] = useState<TopLink[] | null>(null);
 
   /**
    * 화면에서 꾸민 배너.
@@ -178,17 +233,87 @@ export function AdminBannersView() {
   /** 휴대폰용을 올리긴 했는데 장수가 모자란 경우. 뒤쪽 배너는 홈페이지용으로 버틴다. */
   const shortOnMobile = mobileKeys.length > 0 && mobileKeys.length < rows.length;
 
+  // 옆 미리보기의 주소. 저장하지 않은 것까지 전부 싣는다.
+  const previewQuery = new URLSearchParams({
+    w: rows.map((r) => r.imageKey).join(','),
+    m: rows.map((_, index) => mobileKeys[index] ?? '').join(','),
+    h: rows.map((r) => encodeURIComponent(r.linkHref)).join(','),
+    d: JSON.stringify(config),
+    at: tab,
+  });
+  if (topLinksDraft) previewQuery.set('tl', JSON.stringify(topLinksDraft));
+  if (footerDraft) {
+    for (const [name, value] of Object.entries(footerDraft)) previewQuery.set(name, value);
+  }
+  const previewSrc = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/banner-preview?${previewQuery.toString()}`;
+
   return (
-    <div className={styles.page}>
+    <div className={styles.designPage}>
       <header className={styles.head}>
         <div>
-          <h1 className={styles.title}>메인 배너 &amp; 푸터</h1>
+          <h1 className={styles.title}>화면 꾸미기</h1>
           <p className={styles.subtitle}>
-            손님 화면의 맨 위(배너·상단 띠)와 맨 아래(푸터)다. 「미리보기」로 메인 한
-            화면을 그대로 띄워 배너와 푸터를 함께 확인할 수 있다.
+            손님 화면의 구성과 색, 배너, 상단 띠, 푸터를 고친다. 오른쪽 미리보기에 고치는
+            대로 비치고, 탭마다 「저장」을 눌러야 손님 화면에 걸린다.
           </p>
         </div>
       </header>
+
+      <div className={styles.designShell}>
+        <div className={styles.designEditor}>
+          <div className={styles.designTabs} role="tablist" aria-label="고칠 곳">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={t.key === tab}
+                className={t.key === tab ? styles.designTabOn : styles.designTab}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {(tab === 'layout' || tab === 'colors') && (
+            <>
+              {(siteDesign.error || saveDesign.error) && (
+                <Alert
+                  tone="danger"
+                  title={saveDesign.error ? '저장하지 못했습니다' : '불러오지 못했습니다'}
+                >
+                  {(saveDesign.error ?? siteDesign.error) instanceof ApiError
+                    ? ((saveDesign.error ?? siteDesign.error) as ApiError).message
+                    : '잠시 후 다시 시도해 주세요.'}
+                </Alert>
+              )}
+              {configSaved && configDraft == null && (
+                <Alert tone="success" title="저장했습니다">
+                  손님 화면에 바로 반영됩니다.
+                </Alert>
+              )}
+              {tab === 'layout' ? (
+                <LayoutPanel
+                  design={config}
+                  disabled={!canEdit}
+                  actions={configActions}
+                  onChange={changeConfig}
+                />
+              ) : (
+                <ColorsPanel
+                  design={config}
+                  disabled={!canEdit}
+                  actions={configActions}
+                  onChange={changeConfig}
+                />
+              )}
+            </>
+          )}
+
+          {/* 아래 세 탭은 감추기만 한다(hidden). 탭을 옮길 때 지우면 저장하지 않은
+              배너·링크가 함께 사라진다. */}
+          <div className={styles.designPane} hidden={tab !== 'banners'}>
 
       {error && (
         <Alert tone="danger" title="불러오지 못했습니다">
@@ -306,14 +431,6 @@ export function AdminBannersView() {
         )}
       </Panel>
 
-      <BannerPreviewModal
-        open={previewing}
-        onClose={() => setPreviewing(false)}
-        imageKeys={rows.map((r) => r.imageKey)}
-        mobileImageKeys={rows.map((_, index) => mobileKeys[index] ?? '')}
-        linkHrefs={rows.map((r) => r.linkHref)}
-        footer={footerDraft}
-      />
 
       {rows.length > 0 && (
         <Panel
@@ -361,13 +478,34 @@ export function AdminBannersView() {
         </Panel>
       )}
 
-      {/* 헤더 위의 가는 띠 — 대표전화와 바로가기 링크(V48). 대표전화는 푸터와 한
-          값이라 고치는 중인 푸터 값을 같이 넘긴다. */}
-      <TopBarPanel footerDraft={footerDraft} onFooterDraftChange={setFooterDraft} />
+          </div>
 
-      {/* 배너와 같은 화면에 둔다 — 둘 다 손님 화면에 그대로 나가는 겉모습이고,
-          미리보기가 메인 한 화면을 통째로 띄우니 같은 그림 안에 있다. */}
-      <FooterPanel draft={footerDraft} onDraftChange={setFooterDraft} />
+          <div className={styles.designPane} hidden={tab !== 'topbar'}>
+            {/* 헤더 위의 가는 띠 — 대표전화와 바로가기 링크(V48). 대표전화는 푸터와 한
+                값이라 고치는 중인 푸터 값을 같이 넘긴다. */}
+            <TopBarPanel
+              footerDraft={footerDraft}
+              onFooterDraftChange={setFooterDraft}
+              onLinksDraftChange={setTopLinksDraft}
+            />
+          </div>
+
+          <div className={styles.designPane} hidden={tab !== 'footer'}>
+            <FooterPanel draft={footerDraft} onDraftChange={setFooterDraft} />
+          </div>
+        </div>
+
+        <LivePreview src={previewSrc} />
+      </div>
+
+      <BannerPreviewModal
+        open={previewing}
+        onClose={() => setPreviewing(false)}
+        imageKeys={rows.map((r) => r.imageKey)}
+        mobileImageKeys={rows.map((_, index) => mobileKeys[index] ?? '')}
+        linkHrefs={rows.map((r) => r.linkHref)}
+        footer={footerDraft}
+      />
     </div>
   );
 }

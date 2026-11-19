@@ -25,7 +25,7 @@
   font-size: var(--text-2xl);
   font-weight: 750;
   letter-spacing: var(--tracking-tight);
-  color: var(--gold-500);
+  color: var(--price-title);
 }
 
 .title span {

@@ -2,6 +2,7 @@ import type { Loaded } from '@/api/server';
 import { BoardList, type BoardPost } from '@/components/home/BoardList';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import type { HeroBanner } from '@/api/banners';
+import { DEFAULT_DESIGN, SECTION_META, type SiteDesign } from '@/api/siteDesign';
 import { mediaUrl } from '@/utils/media';
 import { ProductTabs, type CategoryProducts } from '@/components/home/ProductTabs';
 import { StoreLocator } from '@/components/home/StoreLocator';
@@ -24,6 +25,8 @@ interface Props {
   notices: Loaded<PageResponse<NoticeSummary>>;
   /** 관리자가 올린 메인 배너. 비어 있으면 화면이 기본 배너를 쓴다 */
   banners: HeroBanner[];
+  /** 구역의 차례·제목. 없으면 기본 차례다 */
+  design?: SiteDesign;
 }
 
 /**
@@ -51,7 +54,7 @@ interface Props {
  * <h2>백엔드가 내려가도 페이지는 뜬다</h2>
  * 실패한 영역만 안내 문구로 바뀐다.
  */
-export function HomeView({ prices, histories, groups, notices, banners }: Props) {
+export function HomeView({ prices, histories, groups, notices, banners, design }: Props) {
   const rows = toMetalRows(prices.data ?? [], histories);
   const quotedAt = latestQuotedAt(prices.data);
 
@@ -73,69 +76,82 @@ export function HomeView({ prices, histories, groups, notices, banners }: Props)
         }))}
       />
 
-      {/*
-        ---------- 오늘의 고시 시세 ----------
+      {/* 구역은 관리자가 정한 차례로 쌓인다 (화면 꾸미기 › 구성). 끈 구역은 그리지 않는다. */}
+      {(design ?? DEFAULT_DESIGN).sections
+        .filter((section) => section.on)
+        .map((text) => {
+          const meta = SECTION_META[text.key];
+          switch (text.key) {
+            case 'PRICE':
+              /*
+                ⚠️ 시세에는 등장 효과를 걸지 않는다.
 
-        ⚠️ 여기에는 등장 효과를 걸지 않는다.
-
-        이 화면의 주인공이고, 히어로 바로 아래라 대부분 스크롤하기 전에 이미
-        보인다. 그리고 <b>금액이 떠오르며 나타나면 값이 방금 바뀐 것처럼</b>
-        읽힌다 — 시세를 보러 온 사람에게 그 한 순간의 착각이 제일 나쁘다.
-        돈이 적힌 자리는 처음부터 거기 있어야 한다.
-      */}
-      <div className={styles.priceSection} id="quote">
-        {prices.data ? (
-          <MarketPriceBoard rows={rows} quotedAt={quotedAt} />
-        ) : (
-          <p className={styles.loadError}>
-            시세 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.
-          </p>
-        )}
-      </div>
-
-      {/* ---------- 시세 연동 상품 ---------- */}
-      <section className={styles.section} id="products">
-        <div className="wrap">
-          <SectionHead
-            title="시세 연동 상품"
-            desc="시세가 바뀌면 가격도 함께 바뀝니다"
-            moreHref="/shop"
-            moreLabel="전체 보기"
-          />
-          {/* 여기는 Reveal 로 싸지 않는다 — 카드가 저마다 차례로 올라온다
-              (ProductTabs). 겹쳐 싸면 같은 움직임이 두 번 돈다. */}
-          <ProductTabs groups={groups} />
-        </div>
-      </section>
-
-      {/* ---------- 전국 지점 안내 ---------- */}
-      <section className={styles.sectionTinted}>
-        <div className="wrap">
-          <SectionHead
-            title="전국 지점 안내"
-            desc="가까운 지점에서 실물 확인과 매입 상담을 받으실 수 있습니다"
-            moreHref="/store"
-            moreLabel="전체 지점 보기"
-          />
-          <Reveal rise="lg" delay={120}>
-            <StoreLocator regions={REGIONS} />
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ---------- 공지사항 ---------- */}
-      <section className={styles.section}>
-        <div className={`wrap ${styles.boards}`}>
-          <Reveal>
-            <BoardList
-              title="공지사항"
-              moreHref="/notice"
-              basePath="/notice"
-              posts={toBoardPosts(notices.data?.content)}
-            />
-          </Reveal>
-        </div>
-      </section>
+                이 화면의 주인공이고, <b>금액이 떠오르며 나타나면 값이 방금 바뀐
+                것처럼</b> 읽힌다 — 시세를 보러 온 사람에게 그 한 순간의 착각이 제일
+                나쁘다. 돈이 적힌 자리는 처음부터 거기 있어야 한다.
+              */
+              return (
+              <div key="PRICE" className={styles.priceSection} id="quote">
+                {prices.data ? (
+                  <MarketPriceBoard rows={rows} quotedAt={quotedAt} title={text.title || undefined} />
+                ) : (
+                  <p className={styles.loadError}>
+                    시세 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.
+                  </p>
+                )}
+              </div>
+              );
+            case 'PRODUCTS':
+              return (
+              <section key="PRODUCTS" className={styles.section} id="products">
+                <div className="wrap">
+                  <SectionHead
+                    title={text.title || meta.title}
+                    desc={text.desc || meta.desc || undefined}
+                    moreHref="/shop"
+                    moreLabel="전체 보기"
+                  />
+                  {/* 여기는 Reveal 로 싸지 않는다 — 카드가 저마다 차례로 올라온다
+                      (ProductTabs). 겹쳐 싸면 같은 움직임이 두 번 돈다. */}
+                  <ProductTabs groups={groups} />
+                </div>
+              </section>
+              );
+            case 'STORES':
+              return (
+              <section key="STORES" className={styles.sectionTinted}>
+                <div className="wrap">
+                  <SectionHead
+                    title={text.title || meta.title}
+                    desc={text.desc || meta.desc || undefined}
+                    moreHref="/store"
+                    moreLabel="전체 지점 보기"
+                  />
+                  <Reveal rise="lg" delay={120}>
+                    <StoreLocator regions={REGIONS} />
+                  </Reveal>
+                </div>
+              </section>
+              );
+            case 'NOTICES':
+              return (
+              <section key="NOTICES" className={styles.section}>
+                <div className={`wrap ${styles.boards}`}>
+                  <Reveal>
+                    <BoardList
+                      title={text.title || meta.title}
+                      moreHref="/notice"
+                      basePath="/notice"
+                      posts={toBoardPosts(notices.data?.content)}
+                    />
+                  </Reveal>
+                </div>
+              </section>
+              );
+            default:
+              return null;
+          }
+        })}
     </>
   );
 }

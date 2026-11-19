@@ -24,6 +24,8 @@ interface Props {
   rows: MetalRow[];
   /** 시세표에 실린 값 중 가장 최근 기준시각. 없으면 null */
   quotedAt: string | null;
+  /** 관리자가 고친 제목. 없으면 기본 제목(상호 + 「오늘의 시세」)이다 */
+  title?: string;
 }
 
 /** 주력 금속. 이 값이 기본으로 큰 카드에 뜬다. */
@@ -68,7 +70,7 @@ const PURITY: Record<MetalType, string> = {
  * <h2>금액을 계산하지 않는다</h2>
  * 단가·변동액·변동률 전부 서버가 준 값을 포맷만 한다 (설계서 원칙 P1).
  */
-export function MarketPriceBoard({ rows, quotedAt }: Props) {
+export function MarketPriceBoard({ rows, quotedAt, title }: Props) {
   const [hovered, setHovered] = useState<MetalType | null>(null);
 
   const byMetal = new Map(rows.map((r) => [r.metalType, r]));
@@ -81,7 +83,11 @@ export function MarketPriceBoard({ rows, quotedAt }: Props) {
     <section className={styles.board} aria-labelledby="today-price">
       <header className={styles.head}>
         <h2 id="today-price" className={styles.title}>
-          한성금거래소 <span>오늘의 시세</span>
+          {title ?? (
+            <>
+              한성금거래소 <span>오늘의 시세</span>
+            </>
+          )}
         </h2>
         <p className={styles.meta}>
           {quotedAt ? `${quotedAt} 기준` : '고시 대기'} · 1돈(3.75g)

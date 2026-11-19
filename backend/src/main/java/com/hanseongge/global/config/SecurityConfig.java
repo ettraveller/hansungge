@@ -129,6 +129,8 @@ public class SecurityConfig {
                                 "/api/v1/footer",
                                 // 상단 띠 링크. 푸터와 같은 이유로 열어 둔다 — 모든 화면에 있다
                                 "/api/v1/top-links",
+                                // 화면 꾸미기(구역 차례·색). 모든 화면이 그릴 때 읽는다
+                                "/api/v1/site-design",
                                 "/api/v1/stores/**",
                                 // 환불규정 등 정책 문서. 주문서의 동의 구역이 읽는다.
                                 "/api/v1/policies/**",

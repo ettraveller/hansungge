@@ -23,7 +23,7 @@
   display: block;
   height: 2.5px;
   /* 헤더가 흰 판이다 (2026-11-19) */
-  background: var(--dark);
+  background: var(--header-fg);
   border-radius: 2px;
 }
 
