@@ -81,7 +81,7 @@ export function MarketPriceBoard({ rows, quotedAt }: Props) {
     <section className={styles.board} aria-labelledby="today-price">
       <header className={styles.head}>
         <h2 id="today-price" className={styles.title}>
-          오늘의 고시 시세
+          한성금거래소 <span>오늘의 시세</span>
         </h2>
         <p className={styles.meta}>
           {quotedAt ? `${quotedAt} 기준` : '고시 대기'} · 1돈(3.75g)
@@ -256,7 +256,7 @@ function PriceTable({
     <div className={styles.tableWrap}>
       <table className={styles.table}>
         <caption className="sr-only">
-          오늘의 고시 시세 — 금속별 매수가와 매도가. 줄에 마우스를 올리면 위 카드가 해당
+          오늘의 시세 — 금속별 매수가와 매도가. 줄에 마우스를 올리면 위 카드가 해당
           금속으로 바뀝니다.
         </caption>
         <thead>

@@ -1,8 +1,12 @@
+import Link from 'next/link';
+
 import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { footerApi } from '@/api/footer';
 import { topLinksApi } from '@/api/topLinks';
+import { HeaderAuth } from '@/layouts/HeaderAuth';
+import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { SiteFooter } from '@/layouts/SiteFooter';
 import { TopBar } from '@/layouts/TopBar';
@@ -16,7 +20,8 @@ import styles from './ShopLayout.module.css';
  * 쇼핑몰 공통 레이아웃.
  *
  * <pre>
- * 헤더 (sticky) — [햄버거] 로고 · 검색 · 로그인/장바구니
+ * 띠 — 대표전화 · 링크 …… 로그인 · 회원가입 · 장바구니
+ * 헤더 (sticky) — [햄버거] 로고(가운데) · 검색(오른쪽)
  * GNB — 카테고리 드롭다운 (모바일에서는 햄버거 드로어가 대신한다)
  * [ 본문 ]
  * 푸터 (다크)
@@ -57,7 +62,20 @@ export async function ShopLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <TopBar info={footer.data ?? FOOTER_DEFAULTS} links={topLinks.data ?? []} />
+      <TopBar
+        info={footer.data ?? FOOTER_DEFAULTS}
+        links={topLinks.data ?? []}
+        util={
+          <>
+            {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
+            <HeaderAuth />
+            <Link href="/cart" className={styles.cartLink}>
+              장바구니
+              <HeaderCartBadge />
+            </Link>
+          </>
+        }
+      />
       <SiteHeader nav={buildNav(categories.data)} />
 
       <main id="main" className={styles.main}>

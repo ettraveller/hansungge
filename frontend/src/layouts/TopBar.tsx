@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import type { FooterInfo } from '@/api/footer';
 import type { TopLink } from '@/api/topLinks';
@@ -8,7 +8,8 @@ import { mediaUrl } from '@/utils/media';
 import styles from './ShopLayout.module.css';
 
 /**
- * 헤더 위의 가는 유틸 띠 — 좌측부터 대표전화 · 아이콘 링크 · 글자 링크.
+ * 헤더 위의 가는 유틸 띠 — 좌측부터 대표전화 · 아이콘 링크 · 글자 링크,
+ * 오른쪽 끝에 로그인 · 회원가입 · 장바구니 (2026-11-19 헤더에서 올라왔다).
  *
  * <h2>값은 전부 관리자 설정이다</h2>
  * 대표전화는 푸터와 같은 값({@code GET /api/v1/footer})이라 한쪽에서 고치면 둘 다
@@ -29,10 +30,13 @@ import styles from './ShopLayout.module.css';
 export function TopBar({
   info,
   links,
+  util,
   renderText,
 }: {
   info: FooterInfo;
   links: TopLink[];
+  /** 띠 오른쪽 끝 — 로그인·회원가입·장바구니. 쇼핑몰은 진짜를, 편집기는 모양만 넣는다 */
+  util?: ReactNode;
   renderText?: (name: keyof FooterInfo, value: string) => ReactNode;
 }) {
   const editing = Boolean(renderText);
@@ -41,9 +45,15 @@ export function TopBar({
   const withIcon = links.filter((link) => mediaUrl(link.iconKey) != null);
   const textOnly = links.filter((link) => mediaUrl(link.iconKey) == null);
 
+  // 글자색은 관리자 설정값이다. 서버가 #rrggbb 만 내보내지만(FooterField), 조회가
+  // 실패해 기본값이 왔거나 값이 비었으면 꽂지 않는다 — CSS 의 기본색(흰색)이 쓰인다.
+  const color = /^#[0-9a-f]{6}$/i.test(info.topbarColor ?? '') ? info.topbarColor : null;
+  const style = color ? ({ '--topbar-fg': color } as CSSProperties) : undefined;
+
   return (
-    <div className={styles.topbar}>
+    <div className={styles.topbar} style={style}>
       <div className={`wrap ${styles.topbarRow}`}>
+       <div className={styles.topbarScroll}>
         <span className={styles.topbarItem}>
           대표전화{' '}
           {renderText ? (
@@ -86,6 +96,9 @@ export function TopBar({
             ))}
           </ul>
         )}
+       </div>
+
+        {util && <div className={styles.topbarUtil}>{util}</div>}
       </div>
     </div>
   );

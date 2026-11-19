@@ -13,13 +13,17 @@
   justify-content: center;
   gap: 5px;
   padding: 8px;
+  /* 헤더의 세 칸 중 첫 칸 (ShopLayout.module.css 의 .headerMain) */
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
 }
 
 .hamburger span {
   display: block;
   height: 2.5px;
-  /* 헤더가 남색 판이다 (2026-10-01). #333 은 거기서 보이지 않았다. */
-  background: #fff;
+  /* 헤더가 흰 판이다 (2026-11-19) */
+  background: var(--dark);
   border-radius: 2px;
 }
 

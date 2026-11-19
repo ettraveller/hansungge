@@ -153,7 +153,7 @@ export function GlobalPriceWidgets() {
       <p className={styles.disclaimer}>
         국제 시세는 서버로의 데이터 처리 및 시간차로 인해 다소 차이가 발생할 수 있습니다. 위
         그래프는 국제 현물 시세이며, 당사 고시 시세와는 다릅니다. 실제 거래는 위 &lsquo;오늘의
-        고시 시세&rsquo;를 기준으로 합니다.
+        시세&rsquo;를 기준으로 합니다.
       </p>
     </div>
   );

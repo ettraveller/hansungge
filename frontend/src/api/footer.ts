@@ -19,6 +19,13 @@ export interface FooterInfo {
   tel: string;
   hours: string;
   holiday: string;
+  /**
+   * 상단 띠의 글자색 ({@code #rrggbb}). 비어 있으면 기본색(흰색)이다.
+   *
+   * <p>푸터 값은 아니지만 띠의 대표전화가 이미 이 묶음에서 오고, 같은 화면에서
+   * 같이 저장된다. 길을 하나 더 내지 않고 여기에 싣는다.
+   */
+  topbarColor: string;
 }
 
 export const footerApi = {

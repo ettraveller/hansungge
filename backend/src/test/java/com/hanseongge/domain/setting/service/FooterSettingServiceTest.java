@@ -99,6 +99,20 @@ class FooterSettingServiceTest {
     }
 
     @Test
+    @DisplayName("띠 글자색은 #rrggbb 만 받는다 — 손님 화면의 style 에 그대로 들어가는 값이다")
+    void topbarColorAcceptsOnlyHex() {
+        footer.save(Map.of("topbarColor", " #F4CDD8 "), "tester");
+        assertThat(settings.written.get(FooterField.TOPBAR_COLOR.settingKey())).isEqualTo("#f4cdd8");
+
+        for (String unsafe : new String[] {"red", "#fff", "#12345g", "#ffffff;position:fixed",
+                "rgb(0,0,0)", "url(javascript:alert(1))", "#ffffff00"}) {
+            footer.save(Map.of("topbarColor", unsafe), "tester");
+            assertThat(settings.written.get(FooterField.TOPBAR_COLOR.settingKey()))
+                    .as(unsafe).isEmpty();
+        }
+    }
+
+    @Test
     @DisplayName("저장된 적 없는 칸은 코드의 기본값이 나간다")
     void fallsBackToDefaults() {
         Map<String, String> current = footer.current();

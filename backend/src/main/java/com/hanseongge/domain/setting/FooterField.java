@@ -2,8 +2,10 @@ package com.hanseongge.domain.setting;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * 푸터에 들어가는 글자들.
@@ -52,14 +54,33 @@ public enum FooterField {
     TAGLINE("tagline", "FOOTER_TAGLINE", "정직과 신뢰를 바탕으로 고객의 투자를 함께 설계합니다.", 200),
     TEL("tel", "FOOTER_TEL", "02-743-4176", 40),
     HOURS("hours", "FOOTER_HOURS", "월-토 10:00 ~ 19:00", 80),
-    HOLIDAY("holiday", "FOOTER_HOLIDAY", "일요일·공휴일 휴무", 80);
+    HOLIDAY("holiday", "FOOTER_HOLIDAY", "일요일·공휴일 휴무", 80),
+
+    /**
+     * 상단 띠의 글자색. 비어 있으면 화면이 기본색(흰색)을 쓴다.
+     *
+     * <p>푸터 값은 아니지만 띠의 대표전화({@link #TEL})가 이미 이 묶음에서 나가고,
+     * 관리자 화면에서 같이 저장된다. 색 하나 때문에 조회·저장 길을 하나 더 내지 않는다.
+     *
+     * <p>⚠️ 이 값은 손님 화면의 {@code style} 에 그대로 들어간다. 그래서 다른 칸처럼
+     * 자르기만 하지 않고 <b>{@code #rrggbb} 가 아니면 비운다</b> — {@code red;position:fixed}
+     * 같은 값이 저장되면 모든 화면 맨 위에 그대로 꽂힌다.
+     */
+    TOPBAR_COLOR("topbarColor", "TOPBAR_TEXT_COLOR", "", 7, Pattern.compile("^#[0-9a-fA-F]{6}$"));
 
     private final String name;
     private final String settingKey;
     private final String defaultValue;
     private final int maxLength;
+    /** 이 모양이 아니면 빈 값으로 저장한다. null 이면 모양을 따지지 않는다. */
+    private final Pattern shape;
 
     FooterField(String name, String settingKey, String defaultValue, int maxLength) {
+        this(name, settingKey, defaultValue, maxLength, null);
+    }
+
+    FooterField(String name, String settingKey, String defaultValue, int maxLength, Pattern shape) {
+        this.shape = shape;
         this.name = name;
         this.settingKey = settingKey;
         this.defaultValue = defaultValue;
@@ -97,6 +118,10 @@ public enum FooterField {
             return "";
         }
         String trimmed = raw.trim();
+        if (shape != null) {
+            // 모양이 정해진 칸은 자르지 않는다 — 잘린 색 값은 다른 색이거나 색이 아니다.
+            return shape.matcher(trimmed).matches() ? trimmed.toLowerCase(Locale.ROOT) : "";
+        }
         return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 

@@ -33,6 +33,8 @@ const FIELD_META: Record<keyof FooterInfo, { label: string; max: number }> = {
   tel: { label: '대표전화', max: 40 },
   hours: { label: '운영시간', max: 80 },
   holiday: { label: '휴무', max: 80 },
+  // 푸터에 그려지는 칸은 아니다 — 「상단 띠」 패널이 색판으로 고친다.
+  topbarColor: { label: '상단 띠 글자색', max: 7 },
 };
 
 /**

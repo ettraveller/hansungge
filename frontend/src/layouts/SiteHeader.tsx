@@ -1,16 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { HeaderAuth } from '@/layouts/HeaderAuth';
-import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
-import { CartIcon, SearchIcon } from '@/layouts/icons';
+import { SearchIcon } from '@/layouts/icons';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
 import { StickyHeader } from '@/layouts/StickyHeader';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './ShopLayout.module.css';
 
 /**
- * 쇼핑몰 머리띠 — 로고·검색·로그인/장바구니 + GNB.
+ * 쇼핑몰 머리띠 — 로고(가운데)·검색(오른쪽) + GNB.
+ * 로그인·장바구니는 그 위의 띠({@code TopBar})로 올라갔다 (2026-11-19).
  *
  * <h2>왜 레이아웃에서 떼어 놓았는가</h2>
  * 배너 미리보기가 <b>손님이 보는 그 화면 그대로</b>를 띄워야 하는데, 그 화면은
@@ -33,27 +32,18 @@ export function SiteHeader({ nav }: { nav: NavItem[] }) {
       {/* 햄버거는 모바일에서만 보인다. 로고 왼쪽이 엄지가 닿는 자리다 */}
       <MobileDrawer nav={nav} />
 
-      {/* 헤더가 남색 판이 되었다 (2026-10-01). 밝은 글자 쪽(logo-dark.svg)을 쓴다.
-          logo.svg 는 글자가 남색이라 여기 두면 바탕에 묻힌다. */}
+      {/* 헤더가 흰 판이다 (2026-11-19). 글자까지 금색인 logo-gold.svg 를 쓴다 —
+          logo-dark.svg 는 영문 한 줄이 흰색에 가까워 흰 바탕에서 사라진다. */}
       <Link href="/" className={styles.logo} aria-label="한성금거래소 홈">
-        <Image src="/logo-dark.svg" alt="한성금거래소" width={560} height={104} priority />
+        <Image src="/logo-gold.svg" alt="한성금거래소" width={560} height={104} priority />
       </Link>
 
       <form className={styles.search} action="/shop" role="search">
         <SearchIcon size={17} className={styles.searchIcon} />
-        <input type="text" name="keyword" placeholder="찾으시는 상품을 검색해 보세요" />
+        <input type="text" name="keyword" placeholder="상품 검색" aria-label="상품 검색" />
         <button type="submit">검색</button>
       </form>
 
-      <div className={styles.headerUtil}>
-        {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
-        <HeaderAuth />
-        <Link href="/cart" className={styles.cartLink}>
-          <CartIcon size={18} />
-          <span className={styles.cartText}>장바구니</span>
-          <HeaderCartBadge />
-        </Link>
-      </div>
     </div>
 
     {/* ---------- GNB (CSS 드롭다운) ---------- */}
