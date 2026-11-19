@@ -65,9 +65,37 @@ fi
 #
 # 끊지 않으면 QA 에서 가입 한 번 할 때마다 본인확인 요금이 나가고, 시험용
 # 주문이 진짜 결제창을 연다. QA 는 안에서만 돌아야 한다.
+# (결제는 끊지 않고 테스트 키로 돌린다 — 바로 아래.)
 # ---------------------------------------------------------------------
 echo "==> ${QA_ENV}"
-grep -vE '^(DB_URL|SERVER_PORT|MANAGEMENT_PORT|IDENTITY_PROVIDER|IDENTITY_MID|IDENTITY_API_KEY|IDENTITY_NOTI_URL|IDENTITY_CALLBACK_URL|IDENTITY_RETURN_PAGE_URL|UPLOAD_DIR|UPLOAD_PUBLIC_BASE_URL|CORS_ALLOWED_ORIGINS)=' \
+
+# 결제 키는 운영에서 베끼지 않는다 (2026-11-19).
+#
+# 전에는 아래 grep 이 PAYMENT_TOSS_* 를 걸러내지 않아 운영의 라이브 키가 QA 로
+# 그대로 넘어왔다. 손으로 테스트 키로 바꿔 둬도, 이 스크립트를 다시 돌리면
+# 파일을 새로 쓰면서 라이브 키로 되돌아갔다 — 그 상태의 시험 주문은 진짜 결제다.
+#
+# 그래서 QA 에 이미 적혀 있는 값을 먼저 집어 두었다가 그대로 다시 적는다.
+# 없으면 비워 둔다 (QA 에서 결제만 꺼진다).
+qa_value() {
+  [ -f "$QA_ENV" ] || return 0
+  { grep -E "^$1=" "$QA_ENV" || true; } | tail -n 1 | cut -d= -f2-
+}
+QA_TOSS_CLIENT_KEY="$(qa_value PAYMENT_TOSS_CLIENT_KEY)"
+QA_TOSS_SECRET_KEY="$(qa_value PAYMENT_TOSS_SECRET_KEY)"
+
+# 라이브 키는 QA 에 두지 않는다. 값은 찍지 않는다 — 어느 칸인지만 알린다.
+for name in QA_TOSS_CLIENT_KEY QA_TOSS_SECRET_KEY; do
+  case "${!name}" in
+    live_*)
+      echo "오류: ${QA_ENV} 의 PAYMENT_${name#QA_} 가 라이브 키(live_)다." >&2
+      echo "      QA 에는 테스트 키(test_)만 둔다. 그 줄을 테스트 키로 바꾸거나 지운 뒤 다시 돌린다." >&2
+      exit 1
+      ;;
+  esac
+done
+
+grep -vE '^(PAYMENT_TOSS_CLIENT_KEY|PAYMENT_TOSS_SECRET_KEY|DB_URL|SERVER_PORT|MANAGEMENT_PORT|IDENTITY_PROVIDER|IDENTITY_MID|IDENTITY_API_KEY|IDENTITY_NOTI_URL|IDENTITY_CALLBACK_URL|IDENTITY_RETURN_PAGE_URL|UPLOAD_DIR|UPLOAD_PUBLIC_BASE_URL|CORS_ALLOWED_ORIGINS)=' \
   "$PROD_ENV" > "$QA_ENV"
 
 cat >> "$QA_ENV" <<'EOF'
@@ -97,6 +125,21 @@ IDENTITY_RETURN_PAGE_URL=https://hanseongge.com/qa/auth/identity
 UPLOAD_DIR=/var/lib/hanseongge/uploads-qa
 UPLOAD_PUBLIC_BASE_URL=https://hanseongge.com/qa-api/media
 EOF
+
+# 결제 키 — 위에서 집어 둔 QA 의 값. 여기만 변수를 풀어야 해서 따로 붙인다.
+{
+  echo
+  echo "# 결제는 테스트 키(test_)만. 운영 키를 베끼지 않는다 — 비어 있으면 QA 결제가 꺼진다."
+  echo "PAYMENT_TOSS_CLIENT_KEY=${QA_TOSS_CLIENT_KEY}"
+  echo "PAYMENT_TOSS_SECRET_KEY=${QA_TOSS_SECRET_KEY}"
+} >> "$QA_ENV"
+
+if [ -z "$QA_TOSS_CLIENT_KEY" ] || [ -z "$QA_TOSS_SECRET_KEY" ]; then
+  echo "  ⚠️ 결제 키가 비어 있다 — QA 에서 결제가 꺼진다."
+  echo "     ${QA_ENV} 의 PAYMENT_TOSS_CLIENT_KEY / PAYMENT_TOSS_SECRET_KEY 에 테스트 키(test_)를 채운다."
+else
+  echo "  결제 키: QA 에 있던 테스트 키를 그대로 둔다"
+fi
 
 chown root:hanseongge "$QA_ENV"
 chmod 640 "$QA_ENV"
