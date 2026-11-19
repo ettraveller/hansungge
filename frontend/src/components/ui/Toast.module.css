@@ -50,14 +50,14 @@
 /* 금색은 어두운 바탕 위에서만 쓴다 — 여기가 그 자리다 (7.1:1) */
 .action {
   flex-shrink: 0;
-  color: var(--gold-500);
+  color: var(--on-dark-accent);
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .action:hover {
-  color: var(--gold-400);
+  color: #fff;
 }
 
 /* 모바일 하단 탭바(MobileTabBar) 위로 띄운다 */

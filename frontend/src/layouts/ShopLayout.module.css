@@ -38,7 +38,7 @@
 }
 
 .topbarTel:hover {
-  color: var(--gold-300);
+  color: var(--on-dark-accent);
 }
 
 /* 띠의 링크 (V48). 관리자가 건 만큼 늘어난다.
@@ -93,7 +93,7 @@
 }
 
 a.topbarLink:hover {
-  color: var(--gold-300);
+  color: var(--on-dark-accent);
 }
 
 /* 좁은 화면 — 띠는 한 줄(34px)이다. 접히면 헤더가 그만큼 밀려 내려가므로 접지 않고
@@ -194,9 +194,9 @@ a.topbarLink:hover {
 
 /* 눌러 넣을 때만 바탕이 밝아진다 — 지금 여기에 쓰고 있다는 신호 */
 .search input:focus {
-  border-color: var(--gold-500);
+  border-color: var(--on-dark-accent);
   background: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.25);
+  box-shadow: 0 0 0 3px var(--on-dark-accent-glow);
 }
 
 .search input::placeholder {
@@ -253,11 +253,11 @@ a.topbarLink:hover {
   padding: 0 9px;
 }
 
-/* ⚠️ 남색 위에서는 --gold-deep(#8a6a2f)이 어두워 묻힌다. 흰 바탕 글자용과
-   어두운 바탕 글자용은 다른 값이다. 여기서는 램프의 밝은 쪽을 쓴다. */
+/* ⚠️ 버건디 바탕 위에서는 --gold-* (버건디)가 묻힌다. 어두운 면 위의 강조는
+   --on-dark-accent 다. */
 .headerUtil a:hover,
 .headerUtil button:hover {
-  color: var(--gold-400);
+  color: var(--on-dark-accent);
 }
 
 /* 장바구니는 좁은 화면에서 아이콘만 남아 18x18px 이 된다. 위 규칙이 세로를
@@ -282,8 +282,8 @@ a.topbarLink:hover {
   min-width: 16px;
   height: 16px;
   border-radius: 8px;
-  background: var(--maroon);
-  color: #fff;
+  background: #fff;
+  color: var(--gold-500);
   font-size: 10px;
   font-weight: 700;
   display: flex;
@@ -387,7 +387,7 @@ a.topbarLink:hover {
   bottom: 0;
   height: 3px;
   border-radius: var(--radius-pill) var(--radius-pill) 0 0;
-  background: var(--gold-500);
+  background: var(--on-dark-accent);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform var(--dur) var(--ease-out);
@@ -395,7 +395,7 @@ a.topbarLink:hover {
 
 .gnbItem:hover > .gnbLink,
 .gnbItem:focus-within > .gnbLink {
-  color: var(--gold-400);
+  color: var(--on-dark-accent);
 }
 
 .gnbItem:hover > .gnbLink::after,
@@ -499,7 +499,7 @@ a.topbarLink:hover {
 }
 
 .footTop a:hover {
-  color: var(--gold);
+  color: var(--on-dark-accent);
 }
 
 .footMain :global(.wrap) {
@@ -663,7 +663,7 @@ a.topbarLink:hover {
 /* 이 클래스를 쓰는 곳은 헤더의 HeaderAuth 하나다. 헤더가 남색 판이므로
    흰 바탕용 금(--gold-deep)이 아니라 램프의 밝은 쪽을 쓴다. */
 .linkButton:hover:not(:disabled) {
-  color: var(--gold-400);
+  color: var(--on-dark-accent);
 }
 
 .linkButton:disabled {

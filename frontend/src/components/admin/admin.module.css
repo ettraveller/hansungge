@@ -246,7 +246,7 @@
   border-color: var(--gold-500);
   box-shadow:
     inset 0 1px 2px rgba(25, 20, 16, 0.04),
-    0 0 0 3px rgba(198, 161, 91, 0.18);
+    0 0 0 3px rgba(134, 31, 65, 0.18);
 }
 
 .input:disabled,
@@ -1063,7 +1063,7 @@
 .choiceOn {
   border-color: var(--gold-500);
   background: var(--gold-50);
-  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.14);
+  box-shadow: 0 0 0 3px rgba(134, 31, 65, 0.14);
 }
 
 /* 라디오는 남겨 둔다 — 지우면 키보드 이동과 스크린리더가 이 선택을 읽지 못한다 */
@@ -1702,7 +1702,7 @@ a.hint:hover {
 }
 
 .editable:focus {
-  outline: 2px solid var(--gold-500);
+  outline: 2px solid var(--metal-gold);
   outline-offset: 2px;
   background: rgba(255, 255, 255, 0.08);
 }
@@ -1908,7 +1908,7 @@ a.hint:hover {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: var(--gold-500);
+  background: var(--metal-gold);
   color: var(--ink-900);
   font-size: 12px;
   line-height: 1;
@@ -1968,7 +1968,7 @@ a.hint:hover {
 }
 
 .linkHandle:hover {
-  background: var(--gold-500);
+  background: var(--metal-gold);
 }
 
 /* 크기 손잡이. 오른쪽 아래 모서리를 끌면 사진은 너비가, 글자·버튼은 글자 크기가
@@ -1983,7 +1983,7 @@ a.hint:hover {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: var(--gold-500);
+  background: var(--metal-gold);
   color: var(--ink-900);
   font-size: 12px;
   line-height: 1;
@@ -2006,7 +2006,7 @@ a.hint:hover {
 .guideV,
 .guideH {
   position: absolute;
-  background: var(--gold-400);
+  background: var(--metal-gold-light);
   box-shadow: 0 0 0 1px rgba(8, 10, 12, 0.35);
 }
 
@@ -2023,7 +2023,7 @@ a.hint:hover {
 }
 
 .pickOn .editable {
-  outline: 2px solid var(--gold-500);
+  outline: 2px solid var(--metal-gold);
   outline-offset: 2px;
 }
 
