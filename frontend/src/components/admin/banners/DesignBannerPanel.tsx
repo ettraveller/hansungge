@@ -82,8 +82,8 @@ const ROLE_BOLD: Record<BannerTextStyle, boolean> = {
   DESC: false,
 };
 
-/** 배경색을 고르지 않은 배너의 바탕. 손님 화면의 히어로 바탕과 같은 값이다. */
-const DEFAULT_BG = '#0f1b2d';
+/** 배경색을 고르지 않은 배너의 바탕. 손님 화면의 히어로 바탕(--hero-bg)과 같은 값이다. */
+const DEFAULT_BG = '#861f41';
 
 export interface DesignRow {
   content: BannerContent;
