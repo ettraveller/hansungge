@@ -2257,3 +2257,99 @@ a.hint:hover {
   color: var(--ink-600);
   cursor: pointer;
 }
+
+/* ---------- 상단 띠 링크 (V48) ---------- */
+
+.topLinkRows {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topLinkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.topLinkIconCol {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 104px;
+}
+
+/* 띠와 같은 어두운 바탕. 흰 바탕에 두면 흰 아이콘이 보이지 않는다. */
+.topLinkIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  background: var(--strip-bg);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.topLinkIconBox img {
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+}
+
+.topLinkIconActions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.topLinkFields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topLinkFields .hint {
+  margin: 0;
+}
+
+.topLinkOrder {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.topLinkAdd {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.topLinkAdd .hint {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .topLinkRow {
+    flex-wrap: wrap;
+  }
+
+  .topLinkFields {
+    flex-basis: 100%;
+    order: 3;
+  }
+}

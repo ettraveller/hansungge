@@ -19,8 +19,6 @@ export interface FooterInfo {
   tel: string;
   hours: string;
   holiday: string;
-  /** 스마트스토어 주소 — 상단 유틸 띠의 링크. 비우면 링크를 그리지 않는다 */
-  storeUrl: string;
 }
 
 export const footerApi = {

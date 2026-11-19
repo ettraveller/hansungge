@@ -8,7 +8,6 @@ import { Panel } from '../Panel';
 import { EditableText } from './EditableText';
 import type { FooterInfo } from '@/api/footer';
 import { SiteFooter } from '@/layouts/SiteFooter';
-import { TopBar } from '@/layouts/TopBar';
 import { useFooterInfo, useSaveFooter } from '@/hooks/admin/useFooter';
 import { useAdminSession } from '@/hooks/admin/useAdminSession';
 import { ApiError } from '@/types/api';
@@ -34,7 +33,6 @@ const FIELD_META: Record<keyof FooterInfo, { label: string; max: number }> = {
   tel: { label: '대표전화', max: 40 },
   hours: { label: '운영시간', max: 80 },
   holiday: { label: '휴무', max: 80 },
-  storeUrl: { label: 'https://smartstore.naver.com/…', max: 300 },
 };
 
 /**
@@ -126,26 +124,6 @@ export function FooterPanel({
           </p>
 
           <div className={styles.footerCanvas}>
-            {/* 헤더 위의 유틸 띠도 같은 설정을 쓴다 — 여기서 같이 고친다.
-                대표전화는 푸터와 한 값이라 어느 쪽에서 고쳐도 둘 다 바뀐다. */}
-            <TopBar
-              info={info}
-              renderText={
-                canEdit
-                  ? (name, value) => (
-                      <EditableText
-                        value={value}
-                        label={FIELD_META[name].label}
-                        maxLength={FIELD_META[name].max}
-                        onChange={(next) => {
-                          onDraftChange({ ...info, [name]: next });
-                          setSaved(false);
-                        }}
-                      />
-                    )
-                  : undefined
-              }
-            />
             <SiteFooter
               info={info}
               renderText={

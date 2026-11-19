@@ -127,6 +127,8 @@ public class SecurityConfig {
                                 // 막으면 첫 화면의 푸터가 통째로 빈다. 담긴 것은 상호·주소·
                                 // 대표전화처럼 가게가 내거는 공개 정보뿐이다.
                                 "/api/v1/footer",
+                                // 상단 띠 링크. 푸터와 같은 이유로 열어 둔다 — 모든 화면에 있다
+                                "/api/v1/top-links",
                                 "/api/v1/stores/**",
                                 // 환불규정 등 정책 문서. 주문서의 동의 구역이 읽는다.
                                 "/api/v1/policies/**",

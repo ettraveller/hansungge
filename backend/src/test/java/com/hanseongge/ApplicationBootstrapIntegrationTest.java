@@ -96,7 +96,8 @@ class ApplicationBootstrapIntegrationTest extends EmbeddedPostgresSupport {
         // 만들거나 지우면 걸려야 한다. 늘어난 것이 의도된 것이면 위 주석에 이유를
         // 한 줄 적고 이 숫자를 올린다.
         // V34 가 refund_policies 를, V37 이 popups 를, V43 이 hero_banners 를 더한다.
-        assertThat(tableCount).isEqualTo(48);
+        // V48 이 top_links 를 더한다 (상단 유틸 띠의 링크).
+        assertThat(tableCount).isEqualTo(49);
     }
 
     @Test
