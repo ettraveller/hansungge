@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { SearchIcon } from '@/layouts/icons';
+import logoGold from '@/layouts/logo-gold.svg';
 import { MobileDrawer } from '@/layouts/MobileDrawer';
 import { StickyHeader } from '@/layouts/StickyHeader';
 import type { NavItem } from '@/layouts/navigation';
@@ -33,9 +34,13 @@ export function SiteHeader({ nav }: { nav: NavItem[] }) {
       <MobileDrawer nav={nav} />
 
       {/* 헤더가 흰 판이다 (2026-11-19). 글자까지 금색인 logo-gold.svg 를 쓴다 —
-          logo-dark.svg 는 영문 한 줄이 흰색에 가까워 흰 바탕에서 사라진다. */}
+          logo-dark.svg 는 영문 한 줄이 흰색에 가까워 흰 바탕에서 사라진다.
+
+          ⚠️ 주소 문자열("/logo-gold.svg")로 쓰지 않고 import 한다. 문자열 주소에는
+          basePath 가 붙지 않아 QA(/qa)에서 그림이 깨졌다 (2026-11-19). import 한
+          파일은 빌드가 주소를 만들어 주므로 어느 자리에 올려도 맞는다. */}
       <Link href="/" className={styles.logo} aria-label="한성금거래소 홈">
-        <Image src="/logo-gold.svg" alt="한성금거래소" width={560} height={104} priority />
+        <Image src={logoGold} alt="한성금거래소" width={560} height={104} priority />
       </Link>
 
       <form className={styles.search} action="/shop" role="search">
