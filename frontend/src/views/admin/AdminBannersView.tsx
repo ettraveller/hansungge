@@ -10,6 +10,7 @@ import { LinkTargetPicker } from '@/components/admin/LinkTargetPicker';
 import { BannerPreviewModal } from '@/components/admin/banners/BannerPreviewModal';
 import { DesignBannerPanel, type DesignRow } from '@/components/admin/banners/DesignBannerPanel';
 import { FooterPanel } from '@/components/admin/banners/FooterPanel';
+import { TopBarPanel } from '@/components/admin/banners/TopBarPanel';
 import type { FooterInfo } from '@/api/footer';
 import { Panel } from '@/components/admin/Panel';
 import { useAdminBanners, useReplaceBanners } from '@/hooks/admin/useBanners';
@@ -183,8 +184,8 @@ export function AdminBannersView() {
         <div>
           <h1 className={styles.title}>메인 배너 &amp; 푸터</h1>
           <p className={styles.subtitle}>
-            손님 화면의 맨 위(배너)와 맨 아래(푸터)다. 「미리보기」로 메인 한 화면을
-            그대로 띄워 두 곳을 함께 확인할 수 있다.
+            손님 화면의 맨 위(배너·상단 띠)와 맨 아래(푸터)다. 「미리보기」로 메인 한
+            화면을 그대로 띄워 배너와 푸터를 함께 확인할 수 있다.
           </p>
         </div>
       </header>
@@ -359,6 +360,10 @@ export function AdminBannersView() {
           </ul>
         </Panel>
       )}
+
+      {/* 헤더 위의 가는 띠 — 대표전화와 바로가기 링크(V48). 대표전화는 푸터와 한
+          값이라 고치는 중인 푸터 값을 같이 넘긴다. */}
+      <TopBarPanel footerDraft={footerDraft} onFooterDraftChange={setFooterDraft} />
 
       {/* 배너와 같은 화면에 둔다 — 둘 다 손님 화면에 그대로 나가는 겉모습이고,
           미리보기가 메인 한 화면을 통째로 띄우니 같은 그림 안에 있다. */}

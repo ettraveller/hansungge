@@ -47,6 +47,9 @@ export const adminKeys = {
   /** 상태 탭별 미확인 건수. 탭 배지에 쓴다 */
   orderUncheckedCounts: () => [...adminKeys.orders(), 'unchecked-counts'] as const,
 
+  payments: () => [...adminKeys.all, 'payments'] as const,
+  paymentList: (search: unknown) => [...adminKeys.payments(), 'list', search] as const,
+
   categories: () => [...adminKeys.all, 'categories'] as const,
 
   settings: () => [...adminKeys.all, 'settings'] as const,

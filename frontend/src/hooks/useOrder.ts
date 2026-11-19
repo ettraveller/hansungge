@@ -18,8 +18,23 @@ export const orderKeys = {
   list: (query: OrderListQuery) => [...orderKeys.all, 'list', query] as const,
   detail: (orderNo: string) => [...orderKeys.all, 'detail', orderNo] as const,
   shipment: (orderNo: string) => [...orderKeys.all, 'shipment', orderNo] as const,
+  directPreview: (draft: unknown) => [...orderKeys.all, 'direct-preview', draft] as const,
   paymentConfig: ['payment-config'] as const,
 };
+
+/**
+ * 바로 구매 미리보기. draft 가 없으면(장바구니 흐름) 부르지 않는다.
+ *
+ * <p>시세 상품이라 금액이 계속 움직인다 — 장바구니 조회와 같은 이유로 staleTime 0.
+ */
+export function useDirectPreview(draft: orderApi.DirectOrderDraft | null) {
+  return useQuery({
+    queryKey: orderKeys.directPreview(draft),
+    queryFn: () => orderApi.fetchDirectPreview(draft as orderApi.DirectOrderDraft),
+    enabled: draft != null,
+    staleTime: 0,
+  });
+}
 
 export function useOrders(query: OrderListQuery = {}) {
   return useQuery({

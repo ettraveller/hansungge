@@ -167,7 +167,10 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
         @DisplayName("미확인 건수는 탭 필터와 같은 기준으로 세고, 상세를 열면 그 주문은 빠진다")
         void uncheckedCountsFollowTabFilters() throws Exception {
             long paid = insertOrder("HS-UC-PAID", "PAID", "김미확인");
-            insertOrder("HS-UC-SHIP", "SHIPPED", "이미확인");
+            long shipped = insertOrder("HS-UC-SHIP", "SHIPPED", "이미확인");
+            insertItem(paid, "순금 골드바 3.75g");
+            insertItem(paid, "18K 팔찌 12g");
+            insertItem(shipped, "실버바 100g");
 
             mockMvc.perform(get("/api/admin/orders/unchecked-counts").header("Authorization", bearer()))
                     .andExpect(status().isOk())
@@ -175,7 +178,9 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(jsonPath("$.awaiting").value(1))
                     .andExpect(jsonPath("$.paid").value(1))
                     .andExpect(jsonPath("$.shipped").value(1))
-                    .andExpect(jsonPath("$.delivered").value(0));
+                    .andExpect(jsonPath("$.delivered").value(0))
+                    // 사이드바 배지는 주문이 아니라 품목을 센다 — 2 + 1
+                    .andExpect(jsonPath("$.items").value(3));
 
             // 목록 줄에도 같은 기준의 표시가 실려 온다 — 배지와 줄이 어긋나면 안 된다.
             var row = objectMapper.readTree(search("HS-UC-PAID").getResponse().getContentAsString())
@@ -190,7 +195,8 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
                     .andExpect(jsonPath("$.all").value(1))
                     .andExpect(jsonPath("$.awaiting").value(0))
                     .andExpect(jsonPath("$.paid").value(0))
-                    .andExpect(jsonPath("$.shipped").value(1));
+                    .andExpect(jsonPath("$.shipped").value(1))
+                    .andExpect(jsonPath("$.items").value(1));
 
             row = objectMapper.readTree(search("HS-UC-PAID").getResponse().getContentAsString())
                     .get("content").get(0);
@@ -209,6 +215,51 @@ class AdminOrderShipmentIntegrationTest extends EmbeddedPostgresSupport {
                     .get("content").get(0);
             assertThat(row.get("orderName").asText()).isEqualTo("순금 골드바 3.75g 외 1건");
             assertThat(row.get("itemCount").asInt()).isEqualTo(2);
+        }
+    }
+
+    // =================================================================
+    // 결제 내역
+    // =================================================================
+
+    @Nested
+    @DisplayName("결제 내역")
+    class Payments {
+
+        @Test
+        @DisplayName("상태와 주문번호로 거른다 — 줄의 단위는 주문이 아니라 결제 시도다")
+        void listsAndFilters() throws Exception {
+            long paid = insertOrder("HS-PAY-1", "PAID", "김결제");
+            long cancelled = insertOrder("HS-PAY-2", "CANCELLED", "이실패");
+            insertPayment(paid, "APPROVED", "카드");
+            insertPayment(cancelled, "FAILED", null);
+
+            mockMvc.perform(get("/api/admin/payments").header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.length()").value(2));
+
+            mockMvc.perform(get("/api/admin/payments")
+                            .param("status", "APPROVED")
+                            .header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].orderNo").value("HS-PAY-1"))
+                    .andExpect(jsonPath("$.content[0].statusLabel").value("승인"))
+                    .andExpect(jsonPath("$.content[0].orderId").value(paid));
+
+            mockMvc.perform(get("/api/admin/payments")
+                            .param("keyword", "PAY-2")
+                            .header("Authorization", bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content.length()").value(1))
+                    .andExpect(jsonPath("$.content[0].orderNo").value("HS-PAY-2"));
+        }
+
+        private void insertPayment(long orderId, String status, String method) {
+            jdbcTemplate.update("""
+                    INSERT INTO payments (order_id, provider, method, status, amount)
+                    VALUES (?, 'TOSS', ?, ?, 662300)
+                    """, orderId, method, status);
         }
     }
 

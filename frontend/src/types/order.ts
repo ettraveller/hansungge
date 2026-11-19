@@ -205,6 +205,11 @@ export interface OrderCreateInput {
   paymentMethod: PaymentMethod;
   /** 입금자명. 무통장일 때 필수 */
   depositorName?: string;
+  /**
+   * 바로 구매 품목. 보내면 서버가 장바구니를 읽지 않고 이 한 품목만 주문한다.
+   * 가격은 여기도 없다 — 무엇을 사는지만 보내고, 얼마인지는 서버가 계산한다 (원칙 P1).
+   */
+  directItem?: { productId: number; optionId: number | null; quantity: number };
 }
 
 /**

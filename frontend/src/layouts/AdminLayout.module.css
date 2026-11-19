@@ -131,6 +131,24 @@
   transform: translateX(2px);
 }
 
+/* 메뉴에 얹는 미확인 숫자. 하단 탭바의 배지와 같은 생김새 —
+   "빨간 숫자 = 아직 안 본 것"이 관리자 화면 전체에서 한 가지 뜻이어야 한다. */
+.navBadge {
+  display: inline-block;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: 1px;
+}
+
 .body {
   flex: 1;
   display: flex;
@@ -231,8 +249,8 @@
 /* 지금 어디에 있는지 — 색만으로는 약하다. 왼쪽에 금색 손잡이를 붙여
    훑어볼 때 위치가 한눈에 잡히게 한다. */
 .nav a.navActive {
-  background: rgba(198, 161, 91, 0.16);
-  color: var(--gold-200);
+  background: rgba(244, 205, 216, 0.14);
+  color: var(--on-dark-accent);
   font-weight: 650;
 }
 
@@ -245,7 +263,7 @@
   width: 3px;
   height: 18px;
   border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
-  background: var(--gold-500);
+  background: var(--on-dark-accent);
 }
 
 .nav a.navActive:hover {

@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 
 import { AdminTabBar } from '@/layouts/AdminTabBar';
 import { useAdminLogout, useAdminSession } from '@/hooks/admin/useAdminSession';
+import { useUncheckedCounts } from '@/hooks/admin/useOrders';
+import { useUnansweredQnaCount } from '@/hooks/admin/useQnas';
 import { ADMIN_ROLE_LABEL, type AdminRole } from '@/types/admin';
 import styles from './AdminLayout.module.css';
 
@@ -22,6 +24,7 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
   { href: '/admin/prices', label: '시세관리', minRole: 'OPERATOR' },
   { href: '/admin/products', label: '상품관리', minRole: 'OPERATOR' },
   { href: '/admin/orders', label: '주문관리', minRole: 'OPERATOR' },
+  { href: '/admin/payments', label: '결제관리', minRole: 'OPERATOR' },
   { href: '/admin/categories', label: '카테고리', minRole: 'OPERATOR' },
   { href: '/admin/qnas', label: '문의 관리', minRole: 'OPERATOR' },
   { href: '/admin/notices', label: '공지 관리', minRole: 'OPERATOR' },
@@ -43,8 +46,10 @@ const MENU: { href: string; label: string; minRole: AdminRole }[] = [
  * <p>2026-10-30: 「주문관리」와 「배송관리」를 뺐다. 주문 목록·상세와 송장 입력이 생겨
  * 위 MENU 로 올라갔다. 배송은 주문 상세 안의 패널이라 메뉴를 따로 두지 않는다 —
  * 나누면 "어느 쪽에서 송장을 넣는가"를 매번 고르게 된다.
+ *
+ * <p>2026-11-17: 「결제관리」도 뺐다. 토스 라이브 전환과 함께 조회 화면이 생겼다.
  */
-const PLANNED = ['결제관리', '쿠폰'];
+const PLANNED = ['쿠폰'];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/admin') return pathname === '/admin';
@@ -62,6 +67,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { admin, hydrated, isAuthenticated, can } = useAdminSession();
   const logout = useAdminLogout();
+  const uncheckedOrders = useUncheckedCounts();
+  const unansweredQnas = useUnansweredQnaCount();
 
   /**
    * 좁은 화면에서 메뉴를 여닫는 상태.
@@ -112,6 +119,15 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const menu = MENU.filter((item) => can(item.minRole));
 
+  /*
+   * 메뉴에 얹는 미확인 숫자. 주문관리는 미확인 주문의 「품목 수」(한 주문에 상품
+   * 셋이면 셋), 문의 관리는 미답변 문의 수다 — 운영진이 세는 방식 그대로.
+   */
+  const sidebarBadges: Record<string, number> = {
+    '/admin/orders': uncheckedOrders.data?.items ?? 0,
+    '/admin/qnas': unansweredQnas.data?.count ?? 0,
+  };
+
   return (
     <div className={styles.root}>
       {/* 좁은 화면에서 메뉴가 열렸을 때만 뒤를 덮는다. 넓은 화면에서는 아예 안 보인다. */}
@@ -127,16 +143,24 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <span className={styles.badge}>ADMIN</span>
         </div>
         <nav className={styles.nav} aria-label="관리자 메뉴">
-          {menu.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={isActive(pathname, item.href) ? styles.navActive : undefined}
-              aria-current={isActive(pathname, item.href) ? 'page' : undefined}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {menu.map((item) => {
+            const badge = sidebarBadges[item.href] ?? 0;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={isActive(pathname, item.href) ? styles.navActive : undefined}
+                aria-current={isActive(pathname, item.href) ? 'page' : undefined}
+              >
+                {item.label}
+                {badge > 0 && (
+                  <span className={styles.navBadge} aria-label={`미확인 ${badge}건`}>
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
         <div className={styles.planned}>
           <span className={styles.plannedTitle}>준비 중</span>

@@ -66,6 +66,8 @@ public final class AuditActions {
     public static final String PRODUCT_REORDER = "PRODUCT_REORDER";
     /** 메인 배너 전체 교체 (V43) */
     public static final String HERO_BANNER_REPLACE = "HERO_BANNER_REPLACE";
+    /** 상단 유틸 띠 링크 전체 교체 (V48) */
+    public static final String TOP_LINK_REPLACE = "TOP_LINK_REPLACE";
 
     // --- 주문 · 배송 ---
     //
@@ -115,6 +117,7 @@ public final class AuditActions {
     public static final String TARGET_QNA = "QNA";
     public static final String TARGET_CATEGORY = "CATEGORY";
     public static final String TARGET_HERO_BANNER = "HERO_BANNER";
+    public static final String TARGET_TOP_LINK = "TOP_LINK";
     public static final String TARGET_PRODUCT = "PRODUCT";
     public static final String TARGET_PRODUCT_OPTION = "PRODUCT_OPTION";
     public static final String TARGET_ORDER = "ORDER";

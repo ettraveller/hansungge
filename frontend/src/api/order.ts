@@ -1,5 +1,6 @@
 import { authed } from '@/api/authedClient';
 import { request } from '@/api/client';
+import type { Cart } from '@/types/cart';
 import type {
   Order,
   OrderCreateInput,
@@ -17,9 +18,67 @@ import type {
  * 파라미터가 하나도 없다 — 결제 승인에서조차 없다.
  */
 
-/** 장바구니 전체를 주문서로 만든다. 받는 것은 배송지뿐이다. */
+/** 장바구니 전체를(directItem 이 있으면 그 한 품목만) 주문서로 만든다. */
 export function createOrder(input: OrderCreateInput) {
   return authed<Order>('/api/v1/orders', { method: 'POST', body: input });
+}
+
+/** 상세의 「바로 구매」가 남기고 주문서가 읽는 품목. */
+export interface DirectOrderDraft {
+  productId: number;
+  optionId: number | null;
+  quantity: number;
+}
+
+/**
+ * 바로 구매 품목을 sessionStorage 로 전달한다.
+ *
+ * <p>URL 쿼리에 싣지 않는 이유 — 주소를 복사해 보내거나 북마크하면 남의 브라우저에서
+ * 의미 없는 주문서가 열린다. 같은 탭에서 상세 → 주문서로 건너가는 한 걸음만 살면 된다.
+ */
+export const DIRECT_ORDER_KEY = 'hsg.direct-order';
+
+export function saveDirectDraft(draft: DirectOrderDraft): void {
+  try {
+    sessionStorage.setItem(DIRECT_ORDER_KEY, JSON.stringify(draft));
+  } catch {
+    // 시크릿 모드 등에서 막혀도 주문서가 장바구니 흐름으로 동작한다.
+  }
+}
+
+export function readDirectDraft(): DirectOrderDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DIRECT_ORDER_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as DirectOrderDraft;
+    return typeof draft?.productId === 'number' && typeof draft?.quantity === 'number'
+      ? draft
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDirectDraft(): void {
+  try {
+    sessionStorage.removeItem(DIRECT_ORDER_KEY);
+  } catch {
+    /* 지우지 못해도 다음 바로 구매가 덮어쓴다 */
+  }
+}
+
+/**
+ * 바로 구매 미리보기 — 장바구니 조회와 같은 모양으로 온다.
+ *
+ * <p>주문서가 두 흐름(장바구니 전체 / 바로 구매 한 품목)을 한 코드로 그리기 위한 것이다.
+ */
+export function fetchDirectPreview(draft: DirectOrderDraft) {
+  const params = new URLSearchParams({
+    productId: String(draft.productId),
+    quantity: String(draft.quantity),
+  });
+  if (draft.optionId != null) params.set('optionId', String(draft.optionId));
+  return authed<Cart>(`/api/v1/orders/direct-preview?${params.toString()}`);
 }
 
 /**

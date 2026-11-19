@@ -264,32 +264,34 @@ export function HeroSlider({
         </div>
       ))}
 
+      {/* 넘김 화살표는 배너 양옆 세로 중앙에 선다 (2026-11-18) — 회전식 배너에서
+          손이 기억하는 그 자리다. 아래에는 몇 장째인지만 남긴다. */}
       {count > 1 && (
-        <div className={`wrap ${styles.dotsWrap}`}>
-          {/* 장수만큼 점을 늘어놓는 대신 화살표 둘 + 몇 장째인지만 둔다. 배너가
-              늘어도 조작부가 길어지지 않고, 누를 자리도 점보다 훨씬 크다. */}
-          <div className={styles.dots} aria-label="배너 넘기기">
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label="이전 배너"
-              onClick={() => go(-1)}
-            >
-              ‹
-            </button>
-            <span className={styles.counter} aria-live="polite">
-              <b>{index + 1}</b> / {count}
-            </span>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label="다음 배너"
-              onClick={() => go(1)}
-            >
-              ›
-            </button>
+        <>
+          <button
+            type="button"
+            className={`${styles.sideNav} ${styles.sideNavLeft}`}
+            aria-label="이전 배너"
+            onClick={() => go(-1)}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className={`${styles.sideNav} ${styles.sideNavRight}`}
+            aria-label="다음 배너"
+            onClick={() => go(1)}
+          >
+            ›
+          </button>
+          <div className={`wrap ${styles.dotsWrap}`}>
+            <div className={styles.dots} aria-label="배너 자리">
+              <span className={styles.counter} aria-live="polite">
+                <b>{index + 1}</b> / {count}
+              </span>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </section>
   );

@@ -5,6 +5,7 @@ import com.hanseongge.domain.order.dto.AdminOrderUncheckedCounts;
 import com.hanseongge.domain.order.entity.Order;
 import com.hanseongge.domain.order.entity.OrderStatus;
 import com.hanseongge.domain.order.entity.QOrder;
+import com.hanseongge.domain.order.entity.QOrderItem;
 import com.hanseongge.domain.shipment.entity.QShipment;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.JPAExpressions;
@@ -110,13 +111,25 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
                 .where(order.adminCheckedAt.isNull().and(awaitingShipment(order)))
                 .fetchOne();
 
+        // 사이드바 배지는 주문이 아니라 품목을 센다 — 한 주문에 상품 셋이면 셋.
+        QOrderItem item = QOrderItem.orderItem;
+        Long items = queryFactory
+                .select(item.count())
+                .from(item)
+                .where(item.orderId.in(JPAExpressions
+                        .select(order.id)
+                        .from(order)
+                        .where(order.adminCheckedAt.isNull())))
+                .fetchOne();
+
         return new AdminOrderUncheckedCounts(
                 awaiting == null ? 0 : awaiting,
                 byStatus.values().stream().mapToLong(Long::longValue).sum(),
                 byStatus.getOrDefault(OrderStatus.PAID, 0L),
                 byStatus.getOrDefault(OrderStatus.SHIPPED, 0L),
                 byStatus.getOrDefault(OrderStatus.DELIVERED, 0L),
-                byStatus.getOrDefault(OrderStatus.CANCELLED, 0L));
+                byStatus.getOrDefault(OrderStatus.CANCELLED, 0L),
+                items == null ? 0 : items);
     }
 
     private BooleanBuilder buildWhere(AdminOrderSearchCondition c, QOrder order) {

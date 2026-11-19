@@ -2,8 +2,10 @@ import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { footerApi } from '@/api/footer';
+import { topLinksApi } from '@/api/topLinks';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { SiteFooter } from '@/layouts/SiteFooter';
+import { TopBar } from '@/layouts/TopBar';
 import { SiteHeader } from '@/layouts/SiteHeader';
 import { buildNav } from '@/layouts/navigation';
 import { PriceChangeWatcher } from '@/components/price/PriceChangeWatcher';
@@ -44,15 +46,18 @@ import styles from './ShopLayout.module.css';
  * 그리는 사이에 고시가 끼어도 놓치지 않게 한다.
  */
 export async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [categories, priceVersion, footer] = await Promise.all([
+  const [categories, priceVersion, footer, topLinks] = await Promise.all([
     load(() => productApi.categories(), 'GNB 카테고리'),
     load(() => priceApi.version(), '시세 버전'),
     // 실패해도 화면을 멈추지 않는다 — 코드의 기본값으로 푸터를 그린다.
     load(() => footerApi.get(), '푸터 정보'),
+    // 실패하면 링크 없이 대표전화만 건다. 띠 때문에 화면 전체가 멈출 이유가 없다.
+    load(() => topLinksApi.get(), '상단 띠 링크'),
   ]);
 
   return (
     <>
+      <TopBar info={footer.data ?? FOOTER_DEFAULTS} links={topLinks.data ?? []} />
       <SiteHeader nav={buildNav(categories.data)} />
 
       <main id="main" className={styles.main}>

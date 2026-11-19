@@ -8,6 +8,7 @@ import { Reveal } from '@/components/ui/Reveal';
 import { DeliveryTerms } from '@/components/product/DeliveryTerms';
 import { ProductTabs } from '@/components/product/ProductTabs';
 import { WishlistHeart } from '@/components/product/WishlistHeart';
+import { saveDirectDraft } from '@/api/order';
 import { useAddToCart, useCart } from '@/hooks/useCart';
 import { useMarkViewed } from '@/hooks/useInterest';
 import { useUserSession } from '@/hooks/useUserSession';
@@ -142,31 +143,22 @@ export function ProductDetailView({
   };
 
   /**
-   * 이 옵션이 이미 장바구니에 있는가.
+   * 이 옵션이 이미 장바구니에 있는가 — 담긴 개수 안내에 쓴다.
    *
-   * <p>「바로 구매」가 또 담지 않게 하려고 본다. 담기는 <b>기존 수량에 더하는</b>
-   * 동작이라({@code CartService.add}), 재고가 1개인 상품을 담아 둔 채로 바로 구매를
-   * 누르면 2개가 되어 "재고가 부족합니다"가 뜬다 — 재고는 멀쩡한데 못 사게 된다.
+   * <p>담기는 <b>기존 수량에 더하는</b> 동작이라({@code CartService.add}), 담아 둔 것을
+   * 잊고 또 담으면 개수가 불어난다. 그 사실을 버튼 옆에서 미리 알려 준다.
    */
   const cartLine = cart.data?.items.find(
     (line) => line.productId === product.id && line.optionId === (option?.id ?? null),
   );
-  const inCart = cartLine != null;
 
   /**
-   * 바로 구매 — 담고 주문서로 보낸다.
+   * 바로 구매 — 장바구니를 거치지 않고 이 품목만 주문서로 보낸다 (2026-11-17).
    *
-   * <p>⚠️ 주문서는 <b>장바구니 전체</b>를 주문으로 만든다. 그래서 장바구니에 다른
-   * 상품이 남아 있으면 그것도 함께 주문된다. 이 상품 하나만 사는 흐름은 서버에
-   * 별도 경로가 필요하다(지금 주문 API 는 금액·상품을 받지 않고 장바구니를 읽는다).
-   * 그때까지는 "담고 바로 주문서로" 다.
-   *
-   * <p><b>이미 담겨 있으면 또 담지 않는다.</b> 담기는 기존 수량에 더하는 동작이라,
-   * 재고가 1개인 상품을 담아 둔 채로 누르면 2개가 되어 "재고가 부족합니다"로 막힌다.
-   * 재고는 멀쩡한데 못 사게 되는 것이라, 고객 입장에서는 품절과 구분되지 않는다.
-   *
-   * <p>수량을 더 사고 싶으면 장바구니에서 늘린다. 「바로 구매」는 "이거 사러 가자"는
-   * 뜻이지 "하나 더"가 아니다.
+   * <p>전에는 담고 전체를 주문서로 만들었다. 그러면 상세를 오가며 누를 때마다 주문이
+   * 불어났다 — "이거 하나 사러 가자"가 "지금까지 담은 것 전부"가 되는 것이다. 지금은
+   * 품목을 sessionStorage 로 넘기고, 주문서가 그 한 품목만 그린다. 장바구니는 그대로
+   * 남고, 뒤로 가면 이 상품으로 돌아온다.
    */
   const handleBuyNow = () => {
     if (restored && !isAuthenticated) {
@@ -174,11 +166,8 @@ export function ProductDetailView({
       router.push(`/login?reason=required&next=${next}`);
       return;
     }
-    if (inCart) {
-      router.push('/checkout');
-      return;
-    }
-    handleAddToCart(() => router.push('/checkout'));
+    saveDirectDraft({ productId: product.id, optionId: option?.id ?? null, quantity: qty });
+    router.push('/checkout?direct=1');
   };
 
   return (
@@ -416,9 +405,9 @@ export function ProductDetailView({
           </div>
 
           {/*
-            이미 담겨 있다는 사실을 알린다. 「바로 구매」가 이때 <b>다시 담지 않고</b>
-            주문서로 넘어가기 때문이다 — 그 이유를 적어 두지 않으면 수량을 3으로 맞춰
-            눌렀는데 주문서에 1개가 떠 있는 것으로 보인다.
+            이미 담겨 있다는 사실을 알린다. 담기는 기존 수량에 더하는 동작이라,
+            담아 둔 것을 잊고 또 담으면 개수가 불어난다 — 그 전에 알려 준다.
+            (「바로 구매」는 장바구니와 무관하게 이 품목만 주문서로 간다.)
           */}
           {!preview && cartLine && (
             <p className={styles.inCart}>

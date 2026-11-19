@@ -250,6 +250,9 @@ table {
 :focus-visible {
   outline: 2px solid var(--gold-500);
   outline-offset: 2px;
+  /* 버건디 테두리는 버건디 바탕(헤더·푸터) 위에서 보이지 않는다. 테두리 안쪽
+     틈을 흰 띠로 채워 두면 어느 바탕에서든 둘 중 하나는 보인다. */
+  box-shadow: 0 0 0 2px #fff;
   border-radius: var(--radius-xs);
 }
 
