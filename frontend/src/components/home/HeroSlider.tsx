@@ -88,6 +88,18 @@ export function HeroSlider({
   const useUploaded = uploaded.length > 0;
   const count = useUploaded ? uploaded.length : slides.length;
 
+  /**
+   * 전부 사진 배너인가 — 그러면 영역이 <b>사진 비율을 그대로</b> 따른다.
+   *
+   * <p>고정 높이(560px)는 1280px 화면에서만 16:7 사진과 맞아떨어진다. 2560px
+   * 모니터에서는 사진이 두 배로 확대되며 위아래가 절반씩 잘렸다 — 문구와 버튼까지
+   * 사진 안에 있는 배너라, 잘리면 안내문이 통째로 사라진다 (2026-11-21).
+   * 비율을 따르면 어느 해상도에서도 사진이 통째로 보인다. 꾸민 배너·기본
+   * 슬라이드는 글자를 화면이 그리므로 지금 높이가 맞다.
+   */
+  const photoOnly =
+    useUploaded && uploaded.every((b) => !b.design && (b.image || b.mobileImage));
+
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -144,7 +156,7 @@ export function HeroSlider({
 
   return (
     <section
-      className={styles.hero}
+      className={photoOnly ? `${styles.hero} ${styles.heroPhoto}` : styles.hero}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
