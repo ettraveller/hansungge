@@ -35,6 +35,34 @@ function serverBaseUrl(): string {
   return BASE_URL;
 }
 
+/**
+ * 브라우저가 쓸 기준 주소.
+ *
+ * <p>운영의 <b>관리자 조회(GET)만</b> 공개 API 주소가 아니라 지금 보고 있는
+ * 주소(hanseongge.com)로 보낸다 — next.config 의 rewrites 가 같은 서버의 백엔드로
+ * 넘겨 준다. 도메인이 갈리면 Authorization 헤더 때문에 요청마다 사전확인(OPTIONS)이
+ * 붙어 요청 수가 2배가 되고, api 도메인의 속도 제한에 걸린 응답에는 CORS 헤더가
+ * 없어 화면에는 전부 「CORS 차단」으로 보였다 — 화면 꾸미기가 간헐적으로
+ * 「불러오지 못했습니다」가 되던 원인(2026-11-22).
+ *
+ * <p>GET 만인 이유 — 쓰기는 드물어 제한에 걸릴 일이 없고, 파일 올리기는 nginx 의
+ * 본문 크기 한도가 api 도메인(64m)과 쇼핑몰 도메인(20m)이 달라 프록시로 보내면
+ * 여러 장 올리기가 413 으로 끊긴다. 로그인도 그대로다(프록시가 로그인을 받지 않는다).
+ *
+ * <p>QA(hanseongge.com/qa-api)와 개발(localhost)은 이미 같은 주소거나 제한이 없어
+ * 해당 없음 — 조건이 운영 공개 주소일 때만 걸리는 이유다.
+ */
+function browserBaseUrl(path: string, method: string | undefined): string {
+  if (
+    (method ?? 'GET') === 'GET' &&
+    BASE_URL === 'https://api.hanseongge.com' &&
+    path.startsWith('/api/admin/')
+  ) {
+    return window.location.origin;
+  }
+  return BASE_URL;
+}
+
 const FALLBACK_MESSAGE = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
@@ -46,7 +74,7 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   next?: NextFetchRequestConfig;
 }
 
-function buildUrl(path: string, query?: RequestOptions['query']): string {
+function buildUrl(path: string, query: RequestOptions['query'], method?: string): string {
   // 기준 주소에 경로가 있으면 이어 붙인다.
   //
   // new URL('/api/v1/x', 'https://a.com/qa-api') 는 'https://a.com/api/v1/x' 다 —
@@ -55,7 +83,7 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   // 않았는데, QA(https://hanseongge.com/qa-api)를 띄우자 모든 호출이 운영 쪽
   // /api/... 로 갔다. 그런 경로가 없으니 전부 실패하고, 화면에는 "일시적인 오류"만
   // 떴다 (2026-11-09).
-  const raw = typeof window === 'undefined' ? serverBaseUrl() : BASE_URL;
+  const raw = typeof window === 'undefined' ? serverBaseUrl() : browserBaseUrl(path, method);
   const base = raw.replace(/\/+$/, '');
   const url = new URL(base + (path.startsWith('/') ? path : `/${path}`));
   if (query) {
@@ -79,11 +107,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   // 빠져서 서버가 본문을 파싱하지 못하고, 원인을 말해주지 않는 400 이 돌아온다.
   const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;
 
-  const response = await fetch(buildUrl(path, query), {
+  const response = await fetch(buildUrl(path, query, rest.method), {
     ...rest,
     next,
     headers: {
-      ...(isMultipart ? {} : { 'Content-Type': 'application/json' }),
+      // Content-Type 은 본문이 있을 때만 붙인다. 본문 없는 GET 에 JSON 타입을 붙이면
+      // "단순 요청"의 조건을 벗어나 교차 도메인 호출마다 사전확인(OPTIONS)이 하나씩
+      // 더 나간다 — 같은 내용을 두 번 요금 내는 셈이고, api 도메인의 속도 제한을
+      // 그만큼 빨리 소모한다.
+      ...(body == null || isMultipart ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     },
     // 관리자 토큰은 쿠키가 아니라 응답 본문으로 오고 Authorization 헤더로 되돌아간다
