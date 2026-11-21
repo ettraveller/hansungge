@@ -21,8 +21,13 @@ export const RANGES = [
 export const DEFAULT_DAYS = 30;
 export const DEFAULT_METAL: MetalType = 'GOLD_24K';
 
-/** 표에 한 번에 보여줄 줄 수. 넘으면 접고 "더 보기"로 편다. */
-const TABLE_ROWS = 20;
+/**
+ * 접었을 때 보여줄 구간 — 최신 1주일치. 그보다 오래된 줄은 「전체 보기」로 편다.
+ *
+ * <p>기준은 오늘이 아니라 <b>가장 최근 고시 시각</b>이다. 휴무 등으로 고시가 며칠
+ * 비어도 표가 통째로 접히지 않는다.
+ */
+const SHOWN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface Props {
   metal: MetalType;
@@ -56,8 +61,11 @@ export function PriceHistorySection({ metal, days, range, sell, buy, expanded }:
   const metalName = METAL_LABEL[metal];
 
   const rows = toRows(sell, buy);
-  const shown = expanded ? rows : rows.slice(0, TABLE_ROWS);
-  const hasMore = rows.length > TABLE_ROWS;
+  // rows 는 최신순이라 맨 앞이 가장 최근 고시다.
+  const cutoff = rows.length > 0 ? Date.parse(rows[0].at) - SHOWN_WINDOW_MS : 0;
+  const recent = rows.filter((r) => Date.parse(r.at) >= cutoff);
+  const shown = expanded ? rows : recent;
+  const hasMore = rows.length > recent.length;
 
   return (
     <section className={styles.section} aria-labelledby="price-history">
@@ -117,7 +125,12 @@ export function PriceHistorySection({ metal, days, range, sell, buy, expanded }:
 
           {hasMore && !expanded && (
             <Link href={hrefFor(metal, days, true)} className={styles.more} scroll={false}>
-              전체 {rows.length}건 보기
+              이전 고시 {rows.length - recent.length}건 더 보기 (전체 {rows.length}건)
+            </Link>
+          )}
+          {hasMore && expanded && (
+            <Link href={hrefFor(metal, days)} className={styles.more} scroll={false}>
+              최근 1주일치만 보기
             </Link>
           )}
         </div>
