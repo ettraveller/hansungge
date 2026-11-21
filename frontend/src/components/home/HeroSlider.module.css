@@ -44,6 +44,15 @@
   }
 }
 
+/* 사진 모드의 활성 판은 다른 판처럼 absolute 로 깐다.
+   .hero 가 aspect-ratio 로 높이를 직접 가지므로 활성 판이 흐름에서 높이를 만들
+   필요가 없다. relative 로 두면 min-height: 0(heroPhoto)을 물려받아 판이 0 으로
+   접히고, 사진(.bgFull)은 그 접힌 판 안의 absolute 라 통째로 사라진다 —
+   캔버스 색만 가득 차고 전환 때 이전 사진이 깜빡이던 원인 (2026-11-21). */
+.heroPhoto .slideOn {
+  position: absolute;
+}
+
 /* 왼쪽 위에서 들어오는 금빛 광원. 단색 검정 위에 글자만 얹으면
    배경이 '비어 있는' 것처럼 보인다. */
 .hero::before {
