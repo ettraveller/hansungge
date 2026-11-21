@@ -13,6 +13,28 @@ import { ApiError, type ErrorResponse } from '@/types/api';
  */
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
+/**
+ * 서버 렌더링이 쓸 기준 주소 — 같은 서버의 백엔드로 직결한다.
+ *
+ * <p>Next 서버에서 공개 주소(api.hanseongge.com)로 나가면 nginx 를 한 바퀴 돌아
+ * 자기 자신에게 온다. 그런데 그 길에는 IP 당 요청 속도 제한이 걸려 있고, 한 페이지
+ * 렌더링이 API 를 열 번 넘게 부르므로 <b>새로고침 몇 번이면 서버가 자기 IP 로
+ * 제한에 걸린다</b> — 시세·상품·배너·메뉴가 통째로 실패 폴백으로 그려지던 운영
+ * 장애(2026-11-21)가 이것이다. 루프백으로 직결하면 nginx 도 제한도 지나지 않고,
+ * 왕복도 빠르다.
+ *
+ * <p>주소 짝은 배포 구성(deploy.yml·deploy-qa.yml·systemd)이 정한 포트와 한 쌍이다.
+ * 런타임 환경변수 {@code API_INTERNAL_URL} 이 있으면 그것이 먼저다 — 구성이 바뀌는
+ * 날 코드 수정 없이 덮어쓰는 문이다. 브라우저는 여전히 공개 주소를 쓴다.
+ */
+function serverBaseUrl(): string {
+  const internal = process.env.API_INTERNAL_URL;
+  if (internal) return internal;
+  if (BASE_URL === 'https://hanseongge.com/qa-api') return 'http://127.0.0.1:8180';
+  if (BASE_URL === 'https://api.hanseongge.com') return 'http://127.0.0.1:8080';
+  return BASE_URL;
+}
+
 const FALLBACK_MESSAGE = '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
@@ -33,7 +55,8 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   // 않았는데, QA(https://hanseongge.com/qa-api)를 띄우자 모든 호출이 운영 쪽
   // /api/... 로 갔다. 그런 경로가 없으니 전부 실패하고, 화면에는 "일시적인 오류"만
   // 떴다 (2026-11-09).
-  const base = BASE_URL.replace(/\/+$/, '');
+  const raw = typeof window === 'undefined' ? serverBaseUrl() : BASE_URL;
+  const base = raw.replace(/\/+$/, '');
   const url = new URL(base + (path.startsWith('/') ? path : `/${path}`));
   if (query) {
     for (const [key, value] of Object.entries(query)) {
