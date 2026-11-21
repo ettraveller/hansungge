@@ -77,7 +77,10 @@ export function ProductCard({ product, flag }: Props) {
           ) : (
             <span className={styles.inquiry}>{PRICE_INQUIRY_LABEL}</span>
           )}
-          <small>{product.price != null ? '시세 반영가' : '고시 후 표시'}</small>
+          {/* 고정가 상품에는 아무 부연도 달지 않는다 — 「시세 반영가」는 시세 연동일 때만 참말이다. */}
+          {product.marketLinked && (
+            <small>{product.price != null ? '시세 반영가' : '고시 후 표시'}</small>
+          )}
         </div>
       </div>
       </Link>

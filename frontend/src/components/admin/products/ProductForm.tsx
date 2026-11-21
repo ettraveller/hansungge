@@ -66,8 +66,8 @@ const MODE_CHOICES: { mode: PriceMode; title: string; desc: string }[] = [
 ];
 
 const MODE_HINT: Record<PriceMode, string> = {
-  AUTO: '고시 시세가 바뀌면 판매가도 함께 바뀝니다. 고시가는 1돈(3.75g) 단위로 들어와 1g 으로 환산해 적용됩니다.',
-  MANUAL: '시세와 무관하게 정한 값으로 판매합니다. 시세가 없어도 주문할 수 있습니다.',
+  AUTO: '고시 시세가 바뀌면 판매가도 함께 바뀝니다. 고시가는 1돈(3.75g) 단위로 들어와 1g 으로 환산해 적용됩니다. 시세 연동 상품은 카드사 제한으로 무통장입금 전용입니다.',
+  MANUAL: '시세와 무관하게 정한 값으로 판매합니다. 시세가 없어도 주문할 수 있습니다. 금속 종류를 14K·18K 로 고르면 카드·간편결제도 열립니다.',
   INQUIRY: '가격을 표시하지 않고 "시세문의"로 안내합니다. 주문은 받지 않습니다. 중량·금속은 알면 적고 모르면 비워 둡니다.',
 };
 
@@ -131,7 +131,11 @@ export function ProductForm({
   const [priceType, setPriceType] = useState<ProductPriceType>(
     initial?.priceType ?? 'MARKET_PLUS',
   );
-  const [metalType, setMetalType] = useState<MetalType | ''>(initial?.metalType ?? 'GOLD_24K');
+  // 수정 모드에서 금속이 비어 있으면 빈 채로 보여 준다 — 임의로 24K 를 채워 두면
+  // 저장하는 순간 적지 않은 값이 기록된다. 새 상품의 기본값만 24K 다.
+  const [metalType, setMetalType] = useState<MetalType | ''>(
+    initial ? (initial.metalType ?? '') : 'GOLD_24K',
+  );
   const [weightG, setWeightG] = useState(initial?.weightG == null ? '' : String(initial.weightG));
   const [purity, setPurity] = useState(initial?.purity == null ? '' : String(initial.purity));
   const [laborCost, setLaborCost] = useState(String(initial?.laborCost ?? '0'));
@@ -172,7 +176,20 @@ export function ProductForm({
   const marketLinked = MARKET_LINKED.includes(priceType);
   const inquiryOnly = priceType === 'INQUIRY';
 
-  const weightInvalid = marketLinked && (weightG === '' || !DECIMAL.test(weightG) || Number(weightG) <= 0);
+  // 시세 연동이면 필수, 아니면 적을 때만 모양을 본다.
+  const weightInvalid = marketLinked
+    ? weightG === '' || !DECIMAL.test(weightG) || Number(weightG) <= 0
+    : weightG !== '' && (!DECIMAL.test(weightG) || Number(weightG) <= 0);
+
+  /**
+   * 이 설정이면 카드·간편결제가 열리는가 — 서버 판정(Product.isCardPayable)의 거울.
+   *
+   * <p>실제 판정은 저장할 때 서버가 금종·가격방식에서 파생시킨다. 여기서는 저장
+   * <b>전에</b> 결과를 보여 주기 위해서만 같은 규칙을 비춘다. 토스 심사(2026-11-03
+   * 회신)가 허용한 범위는 「14K·18K 를 고정 금액으로 파는 주얼리」뿐이다.
+   */
+  const cardOpen =
+    !marketLinked && !inquiryOnly && (metalType === 'GOLD_14K' || metalType === 'GOLD_18K');
   // 시세문의는 값을 내걸지 않으므로 판매가를 요구하지 않는다. 요구하면 등록하려고
   // 없는 값을 지어내게 되고, 그 순간 이 컬럼의 데이터는 믿을 수 없어진다.
   const fixedInvalid =
@@ -212,11 +229,13 @@ export function ProductForm({
       categoryId: Number(categoryId),
       name: name.trim(),
       description: description.trim() === '' ? null : description,
-      // 시세를 보지 않는 방식이면 금속·중량을 보내지 않는다. 남겨 보내면 화면과 실제
-      // 계산 근거가 어긋난 채로 저장된다.
-      metalType: marketLinked ? (metalType === '' ? null : metalType) : null,
+      // 금속·중량은 가격 방식과 무관하게 보낸다. 시세를 안 보는 상품이라도 금속
+      // 종류가 카드·간편결제 허용 판정의 재료다 — 전에는 고정가면 금속을 지워
+      // 보냈고, 그래서 18K 고정가 팔찌까지 전부 무통장 전용으로 떨어졌다
+      // (2026-11-22). 고정가 계산에는 여전히 쓰이지 않는다.
+      metalType: metalType === '' ? null : metalType,
       priceType,
-      weightG: marketLinked ? weightG : null,
+      weightG: weightG === '' ? null : weightG,
       purity: purity.trim() === '' ? null : purity.trim(),
       laborCost: laborCost === '' ? '0' : laborCost,
       multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',
@@ -421,6 +440,56 @@ export function ProductForm({
               value={fixedPrice}
               invalid={fixedInvalid}
               onValueChange={setFixedPrice}
+            />
+          </Field>
+        </div>
+      )}
+
+      {/* 시세를 안 보는 상품의 금속·중량. 가격 계산에는 안 쓰이지만 금속 종류가
+          카드·간편결제 허용 판정의 재료다 — 이 칸이 없던 동안 고정가 상품은 전부
+          무통장 전용으로 떨어졌다. 시세문의도 「알면 적는다」(V15 와 같은 태도). */}
+      {!marketLinked && (
+        <div className={styles.formGrid}>
+          <Field
+            label="금속 종류"
+            htmlFor="p-metal-manual"
+            hint={
+              inquiryOnly
+                ? '알면 적고 모르면 비워 둔다.'
+                : cardOpen
+                  ? '✅ 이 설정이면 카드·간편결제가 열립니다 (토스 허용 범위 — 14K·18K 고정 금액).'
+                  : '지금 설정은 무통장입금 전용입니다. 14K·18K 를 고르면 카드·간편결제가 열립니다 (토스 허용 범위).'
+            }
+            error={fieldError(error, 'metalType')}
+          >
+            <SelectInput
+              id="p-metal-manual"
+              value={metalType}
+              onChange={(e) => setMetalType(e.target.value as MetalType | '')}
+            >
+              <option value="">선택 안 함 (기타 상품)</option>
+              {METAL_ORDER.map((m) => (
+                <option key={m} value={m}>
+                  {METAL_LABEL[m]}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
+
+          <Field
+            label="중량 (g)"
+            htmlFor="p-weight-manual"
+            hint="상세페이지 표기용. 비워도 된다."
+            error={
+              weightInvalid ? '0보다 큰 숫자를 입력해 주세요.' : fieldError(error, 'weightG')
+            }
+          >
+            <DecimalInput
+              id="p-weight-manual"
+              value={weightG}
+              invalid={weightInvalid}
+              placeholder="7.5"
+              onChange={(e) => setWeightG(e.target.value)}
             />
           </Field>
         </div>
@@ -710,8 +779,8 @@ export function ProductForm({
           // 달라지면 미리보기 금액과 등록 후 금액이 갈린다.
           pricing: {
             priceType,
-            metalType: marketLinked ? (metalType === '' ? null : metalType) : null,
-            weightG: marketLinked ? weightG : null,
+            metalType: metalType === '' ? null : metalType,
+            weightG: weightG === '' ? null : weightG,
             purity: purity.trim() === '' ? null : purity.trim(),
             laborCost: laborCost === '' ? '0' : laborCost,
             multiplier: priceType === 'MARKET_MULTIPLIER' ? multiplier : '1',

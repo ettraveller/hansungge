@@ -51,6 +51,16 @@ public record ProductSummaryResponse(
         @Schema(description = "옵션이 여럿이라 '~' 표기가 필요한가", example = "true")
         boolean priceFrom,
 
+        /**
+         * 시세 연동 상품인가.
+         *
+         * <p>목록 카드의 「시세 반영가」 부연이 이 값으로 갈린다. 가격 유무로 때우면
+         * 고정가 상품에도 「시세 반영가」가 찍힌다 — 「시세 미반영」이라고 이름까지
+         * 적어 둔 상품에 그 글자가 붙어 있던 것이 이것이다 (2026-11-22).
+         */
+        @Schema(description = "시세 연동 상품인가. 고정가·시세문의는 false", example = "true")
+        boolean marketLinked,
+
         @Schema(description = "주문 가능 여부", example = "true")
         boolean orderable
 ) {
@@ -70,6 +80,7 @@ public record ProductSummaryResponse(
                 hasPrice ? quote.finalUnitPrice().value().toPlainString()
                          : PublicPriceQuoteResponse.INQUIRY_TEXT,
                 hasPrice && multipleOptions,
+                product.getPriceType().isMarketLinked(),
                 quote != null && quote.status().isOrderable());
     }
 }
