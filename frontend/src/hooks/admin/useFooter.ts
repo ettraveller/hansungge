@@ -15,7 +15,7 @@ const KEY = ['admin', 'footer'] as const;
  * 나가는 공개 정보다.
  */
 export function useFooterInfo() {
-  return useQuery({ queryKey: KEY, queryFn: footerApi.get, staleTime: 0 });
+  return useQuery({ queryKey: KEY, queryFn: footerApi.get, staleTime: 30_000 });
 }
 
 export function useSaveFooter() {

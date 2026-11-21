@@ -14,7 +14,7 @@ const KEY = ['admin', 'top-links'] as const;
  * 목록이 같다. 관리자용 조회를 따로 두면 같은 값을 주는 길이 두 벌이 된다.
  */
 export function useTopLinks() {
-  return useQuery({ queryKey: KEY, queryFn: topLinksApi.get, staleTime: 0 });
+  return useQuery({ queryKey: KEY, queryFn: topLinksApi.get, staleTime: 30_000 });
 }
 
 /** 보낸 것이 곧 전체이고, 보낸 차례가 띠에 나가는 차례다. */

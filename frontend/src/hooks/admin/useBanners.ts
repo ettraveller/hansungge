@@ -7,7 +7,7 @@ import * as bannersApi from '@/api/admin/banners';
 const KEY = ['admin', 'banners'] as const;
 
 export function useAdminBanners() {
-  return useQuery({ queryKey: KEY, queryFn: bannersApi.listBanners, staleTime: 0 });
+  return useQuery({ queryKey: KEY, queryFn: bannersApi.listBanners, staleTime: 30_000 });
 }
 
 export function useReplaceBanners() {
