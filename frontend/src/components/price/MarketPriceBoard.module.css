@@ -20,10 +20,16 @@
   margin-bottom: 22px;
 }
 
+/* 제목만 브랜드 색(팬톤 208 C)이다 — 한성 시안. 나머지 글자는 먹 그대로 둔다. */
 .title {
   font-size: var(--text-2xl);
   font-weight: 750;
   letter-spacing: var(--tracking-tight);
+  color: var(--price-title);
+}
+
+.title span {
+  font-weight: 600;
 }
 
 .meta {

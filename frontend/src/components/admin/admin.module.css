@@ -2353,3 +2353,233 @@ a.hint:hover {
     order: 3;
   }
 }
+
+/* =====================================================================
+   화면 꾸미기 — 왼쪽에 고치는 칸, 오른쪽에 손님 화면 미리보기
+   ===================================================================== */
+
+/* .page 의 1560px 상한을 쓰지 않는다. 미리보기는 넓을수록 실제에 가깝다. */
+.designPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.designShell {
+  display: grid;
+  grid-template-columns: minmax(380px, 540px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.designEditor,
+.designPane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* hidden 속성을 display:flex 가 이긴다 — 감춘 탭이 그대로 보인다. */
+.designPane[hidden] {
+  display: none;
+}
+
+.designTabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--ink-100);
+  border-radius: var(--radius);
+}
+
+.designTab,
+.designTabOn {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.designTab:hover {
+  color: var(--dark);
+}
+
+.designTabOn {
+  background: #fff;
+  color: var(--dark);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- 미리보기 ---- */
+
+.livePreview {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: calc(100vh - 32px);
+  min-width: 0;
+}
+
+.livePreviewBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.livePreviewBar .previewDevices {
+  margin-bottom: 0;
+}
+
+.livePreviewStage {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--light-gray);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.livePreviewFit {
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.livePreviewFrame {
+  display: block;
+  border: 0;
+  background: #fff;
+  transform-origin: 0 0;
+}
+
+/* 좁은 창에서는 위아래로 쌓는다. 옆에 둘 자리가 없으면 둘 다 못 쓰게 된다. */
+@media (max-width: 1180px) {
+  .designShell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .livePreview {
+    position: static;
+    height: 640px;
+  }
+}
+
+/* ---- 구성 ---- */
+
+.sectionRows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sectionRow,
+.sectionRowOff {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.sectionRowOff {
+  background: var(--ink-50);
+}
+
+.sectionRowOff .sectionRowName {
+  opacity: 0.55;
+}
+
+.sectionRowHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionRowName {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sectionToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sectionToggle input {
+  accent-color: var(--gold-600);
+}
+
+.sectionRowOrder {
+  display: flex;
+  gap: 4px;
+}
+
+.sectionRowFields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---- 색 ---- */
+
+.colorGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.colorGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.colorGroupTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--gray);
+}
+
+.colorRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.colorNow {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+}

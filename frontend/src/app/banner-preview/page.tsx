@@ -3,16 +3,20 @@ import type { Metadata } from 'next';
 import type { HeroBanner } from '@/api/banners';
 import { footerApi, type FooterInfo } from '@/api/footer';
 import { load } from '@/api/server';
+import { normalizeDesign, themeCss, type SiteDesign } from '@/api/siteDesign';
+import { topLinksApi, type TopLink } from '@/api/topLinks';
 import { FOOTER_DEFAULTS } from '@/data/company';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
 // ⚠️ 고객이 보는 바로 그 컴포넌트들이다. 관리자용으로 비슷하게 다시 그리지 않는다 —
 // 그러면 쇼핑몰 쪽이 바뀔 때 미리보기만 낡아서 "미리보기와 실제가 다르다"가 된다.
 import { SiteFooter } from '@/layouts/SiteFooter';
 import { SiteHeader } from '@/layouts/SiteHeader';
+import { TopBar } from '@/layouts/TopBar';
 import { buildNav } from '@/layouts/navigation';
 import styles from '@/layouts/ShopLayout.module.css';
 import { HomeView } from '@/views/HomeView';
 import { loadHomeData } from '../(shop)/home-data';
+import { ScrollKeeper } from './ScrollKeeper';
 
 export const metadata: Metadata = {
   title: '배너 미리보기',
@@ -87,6 +91,50 @@ function parseFooter(
 }
 
 /**
+ * 쿼리로 온 화면 설정 (구역 차례·색). 없거나 깨졌으면 저장된 것을 쓴다.
+ *
+ * <p>{@link normalizeDesign} 이 아는 구역·아는 색 자리만, 색은 {@code #rrggbb} 만
+ * 남긴다. 공개 경로라서 이 값은 누구나 만들 수 있고, 색은 {@code <style>} 에 들어간다.
+ */
+function parseDesign(value: string | string[] | undefined, saved: SiteDesign): SiteDesign {
+  if (typeof value !== 'string') return saved;
+  try {
+    return normalizeDesign(JSON.parse(value));
+  } catch {
+    return saved;
+  }
+}
+
+/** 띠에 걸 수 있는 주소 — 저장할 때 서버(TopLinkService)가 보는 것과 같은 규칙이다. */
+function isSafeHref(href: string): boolean {
+  return /^https?:\/\/[^\s/]+\S*$/i.test(href) || /^\/(?![/\\])\S*$/.test(href);
+}
+
+/**
+ * 쿼리로 온 상단 띠 링크. 없으면 저장된 것을 쓴다.
+ *
+ * <p>모양이 맞는 것만 남긴다 — 주소는 {@code javascript:} 같은 것이 섞이지 않게,
+ * 아이콘은 우리 저장소의 키만.
+ */
+function parseTopLinks(value: string | string[] | undefined, saved: TopLink[]): TopLink[] {
+  if (typeof value !== 'string') return saved;
+  try {
+    const raw: unknown = JSON.parse(value);
+    if (!Array.isArray(raw)) return saved;
+    return raw.slice(0, 12).flatMap((item) => {
+      const label = String(item?.label ?? '').slice(0, 40);
+      const href = String(item?.href ?? '');
+      const iconKey = typeof item?.iconKey === 'string' ? item.iconKey : '';
+      if (!label || !isSafeHref(href)) return [];
+      const safeIcon = KEY_PATTERN.test(iconKey) && !iconKey.includes('..') ? iconKey : null;
+      return [{ label, href, iconKey: safeIcon }];
+    });
+  } catch {
+    return saved;
+  }
+}
+
+/**
  * 배너 미리보기 (`/banner-preview`).
  *
  * <h2>손님 화면을 그대로 띄우고 고치는 중인 것만 갈아 끼운다</h2>
@@ -113,11 +161,19 @@ export default async function BannerPreviewPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [params, data, footer] = await Promise.all([
+  const [params, data, footer, savedLinks] = await Promise.all([
     searchParams,
     loadHomeData(),
     load(() => footerApi.get(), '미리보기 푸터'),
+    load(() => topLinksApi.get(), '미리보기 상단 띠'),
   ]);
+
+  // 고치는 중인 화면 설정·띠 링크가 왔으면 그것으로, 아니면 저장된 것으로 그린다.
+  const design = parseDesign(params.d, data.design);
+  const topLinks = parseTopLinks(params.tl, savedLinks.data ?? []);
+  const footerInfo = parseFooter(footer.data ?? FOOTER_DEFAULTS, params);
+  const theme = themeCss(design.colors);
+  const at = typeof params.at === 'string' ? params.at.slice(0, 20) : '';
 
   const wideKeys = parseKeys(typeof params.w === 'string' ? params.w : undefined);
   const mobileKeys = parseKeys(typeof params.m === 'string' ? params.m : undefined);
@@ -153,16 +209,29 @@ export default async function BannerPreviewPage({
 
   return (
     <>
+      {theme && <style>{theme}</style>}
+      <ScrollKeeper at={at} />
+      <TopBar
+        info={footerInfo}
+        links={topLinks}
+        util={
+          <>
+            <span>로그인</span>
+            <span>회원가입</span>
+            <span>장바구니</span>
+          </>
+        }
+      />
       <SiteHeader nav={buildNav(data.categories)} />
 
       <main id="main" className={styles.main}>
         {/* 배너가 없으면 HomeView 가 기본 배너로 돌아간다 — 메인에서 일어나는 일과 같다. */}
-        <HomeView {...data} banners={all} />
+        <HomeView {...data} banners={all} design={design} />
       </main>
 
       <MobileTabBar />
 
-      <SiteFooter info={parseFooter(footer.data ?? FOOTER_DEFAULTS, params)} />
+      <SiteFooter info={footerInfo} />
     </>
   );
 }

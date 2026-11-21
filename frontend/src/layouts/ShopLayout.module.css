@@ -19,26 +19,39 @@
 .topbarRow {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-4);
   height: var(--topbar-h);
   font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.72);
+  /* 글자색은 관리자가 고른다 (TOPBAR_TEXT_COLOR). 고르지 않았으면 흰색이다.
+     값은 TopBar 가 --topbar-fg 로 꽂는다 — 띠 안의 글자가 전부 이것을 따른다. */
+  color: var(--topbar-fg);
+}
+
+/* 왼쪽 묶음 — 대표전화와 링크. 좁은 화면에서는 이 안에서만 옆으로 민다. */
+.topbarScroll {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex: 1;
+  min-width: 0;
 }
 
 .topbarItem {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  opacity: 0.86;
 }
 
 .topbarTel {
-  color: #fff;
+  color: inherit;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .topbarTel:hover {
-  color: var(--on-dark-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* 띠의 링크 (V48). 관리자가 건 만큼 늘어난다.
@@ -64,7 +77,7 @@
    묶음 사이 간격(gap)의 한가운데에 서도록 왼쪽 안여백을 간격만큼 준다. */
 .topbarLinksDivided {
   padding-left: var(--space-5);
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  border-left: 1px solid color-mix(in srgb, currentColor 28%, transparent);
 }
 
 /* 아이콘은 높이만 맞춘다. 너비까지 묶으면 가로로 긴 로고가 찌그러진다. */
@@ -88,24 +101,29 @@
 }
 
 .topbarLink {
-  color: rgba(255, 255, 255, 0.85);
+  color: inherit;
+  opacity: 0.86;
   white-space: nowrap;
 }
 
+/* 글자색이 관리자 설정값이라 "더 밝은 색"으로 바꾸는 식의 강조는 쓸 수 없다 —
+   어떤 색이 올지 모른다. 밑줄과 진하기로만 알린다. */
 a.topbarLink:hover {
-  color: var(--on-dark-accent);
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* 좁은 화면 — 띠는 한 줄(34px)이다. 접히면 헤더가 그만큼 밀려 내려가므로 접지 않고
    옆으로 민다. 스크롤바는 숨긴다: 34px 띠에 스크롤바가 뜨면 띠의 절반이 그것이다. */
 @media (max-width: 960px) {
-  .topbarRow {
+  .topbarScroll {
     overflow-x: auto;
     white-space: nowrap;
     scrollbar-width: none;
   }
 
-  .topbarRow::-webkit-scrollbar {
+  .topbarScroll::-webkit-scrollbar {
     display: none;
   }
 
@@ -116,20 +134,69 @@ a.topbarLink:hover {
   }
 }
 
+/* ---------- 띠 오른쪽 — 로그인·회원가입·장바구니 ----------
+   2026-11-19 헤더에서 띠로 올렸다 (한성 시안). 헤더는 로고와 검색만 남는다. */
+.topbarUtil {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* 간격을 gap 이 아니라 각 항목의 padding 으로 만든다. 그래야 그 여백이 누를 수
+   있는 자리가 된다. 높이는 띠 전체다. */
+.topbarUtil > * {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--topbar-h);
+  padding: 0 9px;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.topbarUtil > *:last-child {
+  padding-right: 0;
+}
+
+.topbarUtil a:hover,
+.topbarUtil button:hover:not(:disabled) {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cartLink {
+  gap: 5px;
+  font-weight: 600;
+}
+
+/* 장바구니 글자 바로 뒤에 붙는 숫자. 띠가 34px 라 아이콘 위에 띄울 자리가 없다. */
+.cartBadge {
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--topbar-fg);
+  color: var(--strip-bg);
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
 /* ---------- 헤더 ---------- */
 
-/* 헤더는 어두운 브랜드 판이다 (2026-10-01 남색 → 2026-11-15 팬톤 208C 버건디).
-   헤더가 흰색이면 금색 로고만 따로 떠 보인다. 어두운 판 위에 얹어야 로고가
-   판에 녹아들고, 그 아래 흰 본문과 경계가 생겨 화면이 한 겹 더 있는 것처럼
-   보인다. 이 rgba 는 --strip-bg(#861f41)와 같은 색이어야 한다 — 토큰을 바꿀 때
-   여기도 함께 바꾼다 (rgba 라 var() 로 못 묶는다).
+/* 헤더는 흰 판이다 (2026-11-19, 한성 시안 IMG_8095).
+   남색(10-01) → 버건디(11-15)를 거쳐 흰색으로 왔다. 브랜드 색은 맨 위 띠가 맡고,
+   헤더는 로고를 가운데 두고 비워 둔다. 메뉴 글자는 먹, 강조만 브랜드 색이다.
 
    스크롤하면 아래 내용이 헤더 밑으로 비쳐 지나간다. backdrop-filter 를 못
-   쓰는 브라우저에서는 아래 rgba 가 거의 불투명한 단색이라 그대로 읽힌다 —
-   기능이 빠져도 깨지지 않는다. */
+   쓰는 브라우저에서는 아래 rgba 가 거의 불투명한 흰색이라 그대로 읽힌다. */
 .header {
-  border-bottom: 1px solid var(--strip-line);
-  background: rgba(134, 31, 65, 0.92);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--header-bg) 94%, transparent);
   backdrop-filter: blur(12px) saturate(1.4);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   position: sticky;
@@ -137,78 +204,72 @@ a.topbarLink:hover {
   z-index: var(--z-header);
 }
 
+/* 세 칸 — [햄버거(모바일)] [로고] [검색]. 양옆 칸이 같은 너비(1fr)라서 한쪽이
+   비어도 로고가 정확히 가운데에 선다. flex + margin:auto 로는 검색창 너비만큼
+   로고가 왼쪽으로 밀린다. */
 .headerMain {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 36px;
+  gap: 24px;
   height: var(--header-h);
 }
 
 /* 로고는 홈으로 가는 링크다. 이미지 높이만큼만 누를 수 있으면 좁은 화면에서
    30px 이 되어 손가락에 걸리지 않는다. 링크에 최소 높이를 준다. */
 .logo {
+  grid-column: 2;
+  grid-row: 1;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
 }
 
 .logo img {
-  height: 46px;
+  height: 54px;
   width: auto;
   display: block;
 }
 
 .search {
-  flex: 1;
-  max-width: 420px;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  width: 100%;
+  max-width: 300px;
   position: relative;
 }
 
-/* 유틸을 오른쪽 끝으로 민다. justify-content: space-between 대신 이 방식을 쓰는
-   이유는, 검색창이 없는 모바일에서도 유틸이 오른쪽에 붙어야 하기 때문이다. */
-.headerUtil {
-  margin-left: auto;
-}
-
-/* 금색 2px 테두리는 검색창을 페이지에서 가장 강한 요소로 만든다.
-   여기서 가장 강해야 할 것은 시세다. 검색창은 얇은 회색 테두리로 물러난다. */
 .search input {
   width: 100%;
-  height: 44px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  height: 40px;
+  border: 1.5px solid var(--header-fg);
   border-radius: var(--radius-pill);
-  padding: 0 20px 0 44px;
+  padding: 0 18px 0 42px;
   font-size: var(--text-base);
   outline: none;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--header-fg);
+  background: transparent;
   transition:
     border-color var(--dur) var(--ease-out),
-    background var(--dur) var(--ease-out),
     box-shadow var(--dur) var(--ease-out);
 }
 
-.search input:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-/* 눌러 넣을 때만 바탕이 밝아진다 — 지금 여기에 쓰고 있다는 신호 */
 .search input:focus {
-  border-color: var(--on-dark-accent);
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 0 3px var(--on-dark-accent-glow);
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold-500) 14%, transparent);
 }
 
 .search input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: color-mix(in srgb, var(--header-fg) 45%, transparent);
 }
 
 .searchIcon {
   position: absolute;
-  left: 18px;
+  left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--header-fg);
   pointer-events: none;
 }
 
@@ -226,76 +287,10 @@ a.topbarLink:hover {
   border: 0;
 }
 
-/* 헤더 오른쪽 유틸 — 아이콘을 세로로 쌓지 않고 한 줄로 둔다.
-   세로 배치는 헤더 높이를 키우기만 하고 읽는 속도를 높여주지 않는다. */
-.headerUtil {
-  display: flex;
-  align-items: center;
-  /* 간격을 여백으로 벌리지 않고 각 항목의 padding 으로 만든다.
-     그래야 그 여백이 누를 수 있는 자리가 된다 — gap 은 아무 데도 아니다. */
-  gap: 4px;
-  font-size: 13.5px;
-  color: rgba(255, 255, 255, 0.82);
-  white-space: nowrap;
-}
-
-/*
- * 누를 자리를 44px 로 맞춘다.
- *
- * "로그인" 글자는 32x19px 이다. 글자만큼만 누를 수 있으면 손가락으로는 거의
- * 못 누른다 — 실제로 재 보고 넣은 값이다. 글자 크기는 그대로 두고 padding 으로
- * 영역만 넓힌다. 보이는 모양은 바뀌지 않는다.
- */
-.headerUtil > * {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 9px;
-}
-
-/* ⚠️ 버건디 바탕 위에서는 --gold-* (버건디)가 묻힌다. 어두운 면 위의 강조는
-   --on-dark-accent 다. */
-.headerUtil a:hover,
-.headerUtil button:hover {
-  color: var(--on-dark-accent);
-}
-
-/* 장바구니는 좁은 화면에서 아이콘만 남아 18x18px 이 된다. 위 규칙이 세로를
-   맞춰 주고, 여기서 가로 최소폭을 준다. */
-.cartLink {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 44px;
-  color: #fff;
-  font-weight: 500;
-}
-
-/* 아이콘 오른쪽 위. 링크에 padding 이 붙었으므로 그만큼 안쪽으로 당긴다 —
-   left 를 고정값으로 두면 넓어진 영역 한가운데에 뜬다. */
-.cartBadge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  background: #fff;
-  color: var(--gold-500);
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-}
-
 /* ---------- GNB ---------- */
 
 .gnbNav {
-  border-top: 1px solid var(--strip-line);
+  border-top: 1px solid var(--line);
 }
 
 .gnb {
@@ -304,6 +299,9 @@ a.topbarLink:hover {
   flex-wrap: wrap;
   min-height: var(--gnb-h);
   gap: 6px;
+  /* 메뉴는 왼쪽부터 선다 (한성 시안). 너비를 주지 않으면 .gnbNav 가 grid 라서
+     이 줄이 내용 폭으로 줄고, .wrap 의 margin:auto 가 그것을 가운데로 민다. */
+  width: 100%;
 }
 
 /* ---------------------------------------------------------------------
@@ -373,7 +371,7 @@ a.topbarLink:hover {
   font-size: var(--text-lg);
   font-weight: 600;
   letter-spacing: var(--tracking-snug);
-  color: var(--ink-100);
+  color: var(--header-fg);
   transition: color var(--dur-fast) var(--ease-out);
 }
 
@@ -387,7 +385,7 @@ a.topbarLink:hover {
   bottom: 0;
   height: 3px;
   border-radius: var(--radius-pill) var(--radius-pill) 0 0;
-  background: var(--on-dark-accent);
+  background: var(--gold-500);
   transform: scaleX(0);
   transform-origin: center;
   transition: transform var(--dur) var(--ease-out);
@@ -395,7 +393,7 @@ a.topbarLink:hover {
 
 .gnbItem:hover > .gnbLink,
 .gnbItem:focus-within > .gnbLink {
-  color: var(--on-dark-accent);
+  color: var(--gold-500);
 }
 
 .gnbItem:hover > .gnbLink::after,
@@ -464,7 +462,9 @@ a.topbarLink:hover {
 
 .footer {
   background: var(--footer-bg);
-  color: #999;
+  /* 글자는 전부 --footer-fg 한 색을 진하기만 달리해서 쓴다. 바탕색을 관리자가
+     고르므로, 회색을 박아 두면 밝은 바탕에서 글자가 사라진다. */
+  color: color-mix(in srgb, var(--footer-fg) 62%, transparent);
   font-size: 13px;
 }
 
@@ -489,7 +489,7 @@ a.topbarLink:hover {
   align-items: center;
   min-height: 44px;
   padding: 0 14px;
-  color: #ccc;
+  color: color-mix(in srgb, var(--footer-fg) 82%, transparent);
   font-weight: 600;
 }
 
@@ -499,7 +499,7 @@ a.topbarLink:hover {
 }
 
 .footTop a:hover {
-  color: var(--on-dark-accent);
+  color: var(--footer-fg);
 }
 
 .footMain :global(.wrap) {
@@ -553,12 +553,12 @@ a.topbarLink:hover {
 
 .footNote {
   margin-top: 12px;
-  color: #777;
+  color: color-mix(in srgb, var(--footer-fg) 48%, transparent);
 }
 
 .csLabel {
   font-size: 12px;
-  color: #999;
+  color: color-mix(in srgb, var(--footer-fg) 62%, transparent);
   letter-spacing: 2px;
 }
 
@@ -568,7 +568,7 @@ a.topbarLink:hover {
 
 .tel {
   font-size: 26px;
-  color: var(--gold-bright);
+  color: var(--footer-fg);
   font-weight: 800;
 }
 
@@ -580,18 +580,11 @@ a.topbarLink:hover {
   border-top: 1px solid var(--footer-line);
   text-align: center;
   padding: 16px;
-  color: #666;
+  color: color-mix(in srgb, var(--footer-fg) 42%, transparent);
   font-size: 12px;
 }
 
 /* ---------- 반응형 (시안과 동일한 브레이크포인트) ---------- */
-
-@media (max-width: 1100px) {
-  .search {
-    max-width: 300px;
-    margin: 0 24px;
-  }
-}
 
 @media (max-width: 960px) {
   .search {
@@ -604,24 +597,14 @@ a.topbarLink:hover {
   }
 
   .logo img {
-    height: 30px;
+    height: 32px;
   }
 
-  /* 좁은 화면에서는 로그인·로그아웃 글자를 접고 장바구니 아이콘만 남긴다.
-     하단 탭바가 홈·시세·카테고리·장바구니·마이를 이미 맡고 있어, 헤더가 같은
-     링크를 또 늘어놓으면 폭만 먹는다. */
-  .headerUtil {
-    margin-left: auto;
-    gap: 0;
-    font-size: 12.5px;
+  /* 띠 오른쪽은 좁아도 남긴다 — 왼쪽 묶음만 옆으로 밀린다. 하단 탭바가 장바구니·
+     마이를 이미 맡고 있으므로 여기는 간격만 줄인다. */
+  .topbarUtil > * {
+    padding: 0 6px;
   }
-
-  .cartText {
-    display: none;
-  }
-
-  /* 넓은 화면에서는 "장바구니" 글자가 함께 있어 아이콘이 왼쪽에 치우친다.
-     좁은 화면은 아이콘만 남으므로 오른쪽 위 기본 위치가 그대로 맞다. */
 
   /* GNB 는 햄버거 드로어가 대신한다. 카테고리 링크 자체는 서버 HTML 에 남아
      있으므로(display:none 이지 조건부 렌더링이 아니다) SEO 에는 영향이 없다. */
@@ -660,11 +643,7 @@ a.topbarLink:hover {
   cursor: pointer;
 }
 
-/* 이 클래스를 쓰는 곳은 헤더의 HeaderAuth 하나다. 헤더가 남색 판이므로
-   흰 바탕용 금(--gold-deep)이 아니라 램프의 밝은 쪽을 쓴다. */
-.linkButton:hover:not(:disabled) {
-  color: var(--on-dark-accent);
-}
+/* 강조는 .topbarUtil 의 hover 규칙이 맡는다 (밑줄). */
 
 .linkButton:disabled {
   opacity: 0.6;

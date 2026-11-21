@@ -65,10 +65,19 @@
 .slide {
   opacity: 0;
   pointer-events: none;
+  z-index: 1;
+  /* 나가는 판은 새 판이 다 떠오른 뒤에야 사라진다.
+     둘이 같이 fade 하면 중간에 불투명도 합이 100% 가 못 되어 그 뒤의 캔버스
+     (브랜드색)가 비친다 — 바탕이 남색일 땐 안 보이다가 버건디가 되면서
+     장이 넘어갈 때마다 빨갛게 번쩍이던 것이 이것이다 (2026-11-21). 새 판이
+     위(z-index 2)에서 먼저 덮으므로, 뒤늦은 이 fade 는 눈에 보이지 않는다. */
+  transition-delay: var(--dur-slow);
 }
 
 .slideOn {
   opacity: 1;
+  z-index: 2;
+  transition-delay: 0s;
   position: relative;
   width: 100%;
   /* 슬라이드 안의 글이 짧아도 히어로 높이가 무너지지 않게 */

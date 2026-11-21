@@ -1,8 +1,13 @@
+import Link from 'next/link';
+
 import { priceApi } from '@/api/prices';
 import { productApi } from '@/api/products';
 import { load } from '@/api/server';
 import { footerApi } from '@/api/footer';
+import { normalizeDesign, siteDesignApi, themeCss } from '@/api/siteDesign';
 import { topLinksApi } from '@/api/topLinks';
+import { HeaderAuth } from '@/layouts/HeaderAuth';
+import { HeaderCartBadge } from '@/layouts/HeaderCartBadge';
 import { MobileTabBar } from '@/layouts/MobileTabBar';
 import { SiteFooter } from '@/layouts/SiteFooter';
 import { TopBar } from '@/layouts/TopBar';
@@ -16,7 +21,8 @@ import styles from './ShopLayout.module.css';
  * 쇼핑몰 공통 레이아웃.
  *
  * <pre>
- * 헤더 (sticky) — [햄버거] 로고 · 검색 · 로그인/장바구니
+ * 띠 — 대표전화 · 링크 …… 로그인 · 회원가입 · 장바구니
+ * 헤더 (sticky) — [햄버거] 로고(가운데) · 검색(오른쪽)
  * GNB — 카테고리 드롭다운 (모바일에서는 햄버거 드로어가 대신한다)
  * [ 본문 ]
  * 푸터 (다크)
@@ -46,18 +52,38 @@ import styles from './ShopLayout.module.css';
  * 그리는 사이에 고시가 끼어도 놓치지 않게 한다.
  */
 export async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [categories, priceVersion, footer, topLinks] = await Promise.all([
+  const [categories, priceVersion, footer, topLinks, design] = await Promise.all([
     load(() => productApi.categories(), 'GNB 카테고리'),
     load(() => priceApi.version(), '시세 버전'),
     // 실패해도 화면을 멈추지 않는다 — 코드의 기본값으로 푸터를 그린다.
     load(() => footerApi.get(), '푸터 정보'),
     // 실패하면 링크 없이 대표전화만 건다. 띠 때문에 화면 전체가 멈출 이유가 없다.
     load(() => topLinksApi.get(), '상단 띠 링크'),
+    // 실패하면 기본색으로 그린다.
+    load(() => siteDesignApi.get(), '화면 색'),
   ]);
+
+  // 관리자가 고른 색. tokens.css 의 변수를 :root 에서 덮어쓴다. 값은 normalizeDesign 이
+  // #rrggbb 만 남긴 뒤라 style 에 그대로 넣어도 된다.
+  const theme = themeCss(normalizeDesign(design.data).colors);
 
   return (
     <>
-      <TopBar info={footer.data ?? FOOTER_DEFAULTS} links={topLinks.data ?? []} />
+      {theme && <style>{theme}</style>}
+      <TopBar
+        info={footer.data ?? FOOTER_DEFAULTS}
+        links={topLinks.data ?? []}
+        util={
+          <>
+            {/* 로그인 여부에 따라 바뀌는 부분만 클라이언트 컴포넌트다 */}
+            <HeaderAuth />
+            <Link href="/cart" className={styles.cartLink}>
+              장바구니
+              <HeaderCartBadge />
+            </Link>
+          </>
+        }
+      />
       <SiteHeader nav={buildNav(categories.data)} />
 
       <main id="main" className={styles.main}>

@@ -108,10 +108,13 @@ function problemOf(rows: Row[]): string | null {
 export function TopBarPanel({
   footerDraft,
   onFooterDraftChange,
+  onLinksDraftChange,
 }: {
   /** 고치는 중인 푸터 값. 푸터 패널과 함께 쓴다 — 대표전화가 두 패널에 다 보인다 */
   footerDraft: FooterInfo | null;
   onFooterDraftChange: (draft: FooterInfo | null) => void;
+  /** 고치는 중인 링크를 밖에 알린다(옆 미리보기용). 저장하면 null */
+  onLinksDraftChange?: (links: TopLink[] | null) => void;
 }) {
   const { can } = useAdminSession();
   const canEdit = can('MANAGER');
@@ -137,6 +140,13 @@ export function TopBarPanel({
 
   const update = (next: Row[]) => {
     setDraft(next);
+    onLinksDraftChange?.(
+      next.map((row) => ({
+        label: row.label.trim() || '(이름 없음)',
+        href: row.href.trim(),
+        iconKey: row.iconKey || null,
+      })),
+    );
     setSaved(false);
     setProblem(null);
   };
@@ -168,6 +178,7 @@ export function TopBarPanel({
           })),
         );
         setDraft(null);
+        onLinksDraftChange?.(null);
       }
       // 대표전화를 고쳤으면 같이 저장한다. 푸터 패널에서 고치던 다른 칸도 이 값에
       // 함께 들어 있다 — 하나의 푸터를 두 번에 나눠 저장할 수는 없다.
@@ -187,7 +198,7 @@ export function TopBarPanel({
   return (
     <Panel
       title="상단 띠"
-      note="모든 화면 맨 위, 헤더 위에 걸리는 가는 띠다. 대표전화와 바로가기 링크가 들어간다."
+      note="모든 화면 맨 위, 헤더 위에 걸리는 가는 띠다. 대표전화와 바로가기 링크가 들어간다. 색은 「색」 탭에서 고른다."
       actions={
         canEdit && (
           <Button variant="gold" onClick={submit} disabled={!changed || pending}>
@@ -224,6 +235,13 @@ export function TopBarPanel({
           <div className={styles.footerCanvas}>
             <TopBar
               info={info}
+              util={
+                <>
+                  <span>로그인</span>
+                  <span>회원가입</span>
+                  <span>장바구니</span>
+                </>
+              }
               links={rows.map((row) => ({
                 label: row.label || '(이름 없음)',
                 href: row.href,

@@ -8,7 +8,8 @@ import { mediaUrl } from '@/utils/media';
 import styles from './ShopLayout.module.css';
 
 /**
- * 헤더 위의 가는 유틸 띠 — 좌측부터 대표전화 · 아이콘 링크 · 글자 링크.
+ * 헤더 위의 가는 유틸 띠 — 좌측부터 대표전화 · 아이콘 링크 · 글자 링크,
+ * 오른쪽 끝에 로그인 · 회원가입 · 장바구니 (2026-11-19 헤더에서 올라왔다).
  *
  * <h2>값은 전부 관리자 설정이다</h2>
  * 대표전화는 푸터와 같은 값({@code GET /api/v1/footer})이라 한쪽에서 고치면 둘 다
@@ -29,10 +30,13 @@ import styles from './ShopLayout.module.css';
 export function TopBar({
   info,
   links,
+  util,
   renderText,
 }: {
   info: FooterInfo;
   links: TopLink[];
+  /** 띠 오른쪽 끝 — 로그인·회원가입·장바구니. 쇼핑몰은 진짜를, 편집기는 모양만 넣는다 */
+  util?: ReactNode;
   renderText?: (name: keyof FooterInfo, value: string) => ReactNode;
 }) {
   const editing = Boolean(renderText);
@@ -44,6 +48,7 @@ export function TopBar({
   return (
     <div className={styles.topbar}>
       <div className={`wrap ${styles.topbarRow}`}>
+       <div className={styles.topbarScroll}>
         <span className={styles.topbarItem}>
           대표전화{' '}
           {renderText ? (
@@ -86,6 +91,9 @@ export function TopBar({
             ))}
           </ul>
         )}
+       </div>
+
+        {util && <div className={styles.topbarUtil}>{util}</div>}
       </div>
     </div>
   );
