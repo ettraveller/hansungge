@@ -68,6 +68,8 @@ export interface ProductSummary {
   price?: number | null;
   priceText: string;
   priceFrom: boolean;
+  /** 시세 연동 상품인가. 「시세 반영가」 부연은 이 값일 때만 붙는다 — 고정가에 붙으면 거짓말이다. */
+  marketLinked: boolean;
   orderable: boolean;
 }
 
