@@ -67,7 +67,8 @@ export function SiteFooter({ info, renderText }: Props) {
   <footer className={styles.footer}>
     <div className={styles.footTop}>
       <div className="wrap">
-        <Link href="/about">회사소개</Link>
+        {/* 「회사소개」는 페이지가 없어 내렸다 (2026-11-23 QA-009 — 모든 화면 푸터의
+            첫 링크가 404 였다). 소개 글이 준비되면 /about 을 만들고 되살린다. */}
         <Link href="/terms">이용약관</Link>
         <Link href="/privacy">개인정보처리방침</Link>
         <Link href="/guide">이용안내</Link>

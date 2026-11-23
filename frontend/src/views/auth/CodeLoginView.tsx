@@ -77,9 +77,8 @@ export function CodeLoginView() {
       <header className={styles.head}>
         <h1 className={styles.title}>인증번호 로그인</h1>
         <p className={styles.lead}>
-          {channels.length > 1
-            ? '가입한 휴대폰번호나 이메일로 받은 6자리 번호로 로그인합니다.'
-            : '가입한 휴대폰번호로 받은 6자리 번호로 로그인합니다.'}
+          {/* 쓸 수 있는 수단만 말한다 — 이메일만 켜져 있는데 「휴대폰번호」라고 하지 않는다 */}
+          {`가입한 ${channels.map((c) => (c === 'SMS' ? '휴대폰번호' : '이메일')).join('나 ')}로 받은 6자리 번호로 로그인합니다.`}
         </p>
       </header>
 

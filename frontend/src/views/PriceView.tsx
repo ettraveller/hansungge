@@ -135,8 +135,9 @@ export function PriceView({ prices, histories, metal, days, range, expanded, sel
               body={
                 <>
                   판매가는 고시 시세에 중량과 공임을 반영해 산정되며,{' '}
-                  <strong>주문하시는 시각의 시세로 확정</strong>됩니다. 화면에 보신 금액과
-                  결제 금액은 다르지 않습니다.
+                  <strong>주문서를 만드는 시각의 시세로 확정</strong>됩니다. 상품을 보는 사이에
+                  시세가 새로 고시되면 금액이 달라질 수 있으며, 결제 전에 확정 금액을 다시
+                  보여 드립니다. 확정된 뒤에는 그 금액 그대로 결제됩니다.
                 </>
               }
             />
@@ -156,7 +157,9 @@ export function PriceView({ prices, histories, metal, days, range, expanded, sel
           <p className={styles.notes}>
             <span>· 시세는 당사 기준이며, 시장 상황에 따라 변동될 수 있습니다.</span>
             <span>· 1돈은 3.75g 입니다.</span>
-            <span>· 표시 금액은 부가세가 포함되지 않은 금액입니다.</span>
+            {/* 위 ①과 같은 말이어야 한다. 전에는 「부가세가 포함되지 않은 금액」이라고
+                적혀 있어 같은 화면 안에서 서로 반대였다 (2026-11-23 QA-059). */}
+            <span>· 내가 살 때(판매가)는 부가세 포함, 내가 팔 때(매입가)는 부가세가 없는 금액입니다.</span>
           </p>
         </div>
       </section>

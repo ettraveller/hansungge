@@ -100,7 +100,7 @@ export function LoginView() {
           <div style={{ marginBottom: 16 }}>
             <Notice tone="error" title={loginErrorTitle(signInWithPassword.error)}>
               {signInWithPassword.error instanceof ApiError
-                ? signInWithPassword.error.message
+                ? loginErrorBody(signInWithPassword.error)
                 : '잠시 후 다시 시도해 주세요.'}
             </Notice>
           </div>
@@ -206,4 +206,17 @@ function loginErrorTitle(error: unknown): string {
     default:
       return '로그인하지 못했습니다';
   }
+}
+
+/**
+ * 실패 사유.
+ *
+ * <p>서버 문구는 「아이디 또는 비밀번호」다 — 관리자 로그인과 함께 쓰는 문구라
+ * 그렇다. 이 화면의 칸은 「휴대폰번호」이므로 같은 낱말로 바꿔 말한다
+ * (2026-11-23 QA-015).
+ */
+function loginErrorBody(error: ApiError): string {
+  return error.code === 'LOGIN_FAILED'
+    ? '휴대폰번호 또는 비밀번호가 올바르지 않습니다.'
+    : error.message;
 }
