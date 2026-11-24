@@ -1,0 +1,81 @@
+.box {
+  width: 100vw;
+  height: 100vh;
+  /* dialog 의 기본 상한(화면보다 조금 작다)을 푼다 */
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(10, 12, 16, 0.94);
+}
+
+.box[open] {
+  display: grid;
+  place-items: center;
+}
+
+.box::backdrop {
+  background: rgba(10, 12, 16, 0.94);
+}
+
+.photo {
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  /* 사진을 눌러도 닫히지 않게 — 바깥을 눌렀을 때만 닫는다 */
+  cursor: default;
+}
+
+.close,
+.nav {
+  position: fixed;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover,
+.nav:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.close {
+  top: 16px;
+  right: 16px;
+}
+
+.nav {
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 30px;
+}
+
+.prev {
+  left: 16px;
+}
+
+.next {
+  right: 16px;
+}
+
+.count {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}

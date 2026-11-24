@@ -45,15 +45,26 @@ const DESKS = [
  * 박으면 관리자가 푸터에서 번호를 바꾼 날 <b>같은 화면 안에서 두 번호가 어긋난다</b> —
  * 전에 실제로 그랬다.
  */
+/** 자주 묻는 질문. 문의하기 전에 먼저 보라고 맨 앞에 둔다 */
+const FAQ_DESK = {
+  href: '/support/faq',
+  title: '자주 묻는 질문',
+  desc: '주문·결제, 배송, 교환·반품에 관해 많이 받는 질문과 답입니다.',
+};
+
 export function SupportView({
   tel,
   hours,
   holiday,
+  hasFaq = false,
 }: {
   tel: string;
   hours: string;
   holiday: string;
+  /** 내건 「자주 묻는 질문」이 있는가. 없으면 메뉴를 그리지 않는다 — 빈 화면으로 보내지 않는다 */
+  hasFaq?: boolean;
 }) {
+  const desks = hasFaq ? [FAQ_DESK, ...DESKS] : DESKS;
   return (
     <div className={styles.page}>
       <div className="wrap">
@@ -79,7 +90,7 @@ export function SupportView({
 
         {/* ---------- 바로가기 ---------- */}
         <section className={styles.desks} aria-label="고객센터 메뉴">
-          {DESKS.map((desk) => (
+          {desks.map((desk) => (
             <Link key={desk.href} href={desk.href} className={styles.desk}>
               <span className={styles.deskTitle}>{desk.title}</span>
               <span className={styles.deskDesc}>{desk.desc}</span>

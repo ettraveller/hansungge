@@ -18,6 +18,7 @@ import type { RefundPolicy } from '@/api/policies';
 import type { QnaSummary } from '@/types/board';
 import type { ProductDetail, ProductSummary } from '@/types/product';
 import { formatGram, formatKrw, formatPurity } from '@/utils/format';
+import { PhotoLightbox } from '@/components/product/PhotoLightbox';
 import { mediaUrl } from '@/utils/media';
 import styles from './ProductDetailView.module.css';
 
@@ -78,6 +79,8 @@ export function ProductDetailView({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  /** 사진을 크게 보는 중인가 */
+  const [zoomed, setZoomed] = useState(false);
   const [qty, setQty] = useState(1);
   /** 담기 요청이 나가 있는가. 중복 클릭을 막는다 (handleAddToCart) */
   const adding = useRef(false);
@@ -196,15 +199,33 @@ export function ProductDetailView({
           {!preview && <WishlistHeart productId={product.id} productName={product.name} />}
           {photos.length > 0 ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.mainPhoto}
-                src={photos[shown]}
-                alt={product.name}
-                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
-                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
-                loading="eager"
-                decoding="async"
+              {/* 누르면 화면 가득 크게 본다 (PhotoLightbox). 버튼으로 감싸야 키보드로도 열린다. */}
+              <button
+                type="button"
+                className={styles.zoomButton}
+                aria-label={`${product.name} 사진 크게 보기`}
+                onClick={() => setZoomed(true)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className={styles.mainPhoto}
+                  src={photos[shown]}
+                  alt={product.name}
+                  // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+                  // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+                  loading="eager"
+                  decoding="async"
+                />
+                <span className={styles.zoomHint} aria-hidden="true">
+                  크게 보기
+                </span>
+              </button>
+              <PhotoLightbox
+                photos={photos}
+                index={zoomed ? shown : null}
+                name={product.name}
+                onIndexChange={setPhotoIndex}
+                onClose={() => setZoomed(false)}
               />
 
               {/*
