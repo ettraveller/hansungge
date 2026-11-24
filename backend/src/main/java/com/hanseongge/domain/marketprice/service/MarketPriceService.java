@@ -287,6 +287,9 @@ public class MarketPriceService {
      * 18K 의 실제 금 함량은 0.75 다 — 그 차이가 마진이다 (V35). 여기서 또 빼면 두 번 빼는
      * 것이 되어 실제보다 낮게 안내된다.
      *
+     * <h2>돈 값에서 계산한다</h2>
+     * {@link #buybackAmount} 참조. 저장된 g 값은 끊긴 값이라 큰 중량에서 오차가 난다.
+     *
      * <h2>원 단위로 끊는다</h2>
      * 매입은 현금으로 치르므로 소수점이 남을 자리가 없다. 올림이 아니라 버림이다 —
      * 안내한 금액보다 적게 주는 일은 없어야 하지만, 많게 안내해 두고 덜 주는 일은
@@ -307,11 +310,29 @@ public class MarketPriceService {
                         weightDon,
                         price.value(),
                         MetalType.perDonFromGram(price.value()),
-                        price.value().multiply(weightG).setScale(0, RoundingMode.DOWN)))
+                        buybackAmount(price.value(), weightG)))
                 // 고시된 적 없는 금속(지금은 은·백금). 0 원을 돌려주지 않는다 (원칙 P6).
                 .orElseGet(() -> new BuybackQuoteResponse(
                         metalType, metalType.displayName(), false,
                         weightG, weightDon, null, null, null));
+    }
+
+    /**
+     * 매입 예상액 = 고시한 돈 값 × 중량(g) ÷ 3.75, 원 아래는 버린다.
+     *
+     * <h2>저장된 g 값을 그대로 곱하지 않는다</h2>
+     * g 값은 돈 값을 3.75 로 나눠 <b>소수 둘째 자리에서 끊은</b> 것이다 (589,000원/돈 →
+     * 157,066.67원/g). 그 값에 큰 중량을 곱하면 끊어 낸 자리가 불어난다 —
+     * 1000돈(3,750g)에서 589,000,012원이 나와, 화면에 함께 적힌 「589,000원/돈 × 1000돈」
+     * 과 12원이 달랐다 (2026-11-23 QA-085). 고시는 돈 단위로 하고 손님도 돈으로 읽는다.
+     * 그 값에서 출발하면 돈으로 넣은 중량은 언제나 딱 떨어진다.
+     *
+     * <p>곱한 뒤에 한 번만 나눈다. 먼저 나누면 그 자리에서 다시 끊긴다.
+     */
+    static BigDecimal buybackAmount(BigDecimal pricePerGram, BigDecimal weightG) {
+        return MetalType.perDonFromGram(pricePerGram)
+                .multiply(weightG)
+                .divide(MetalType.GRAMS_PER_DON, 0, RoundingMode.DOWN);
     }
 
     @Transactional(readOnly = true)
