@@ -1,0 +1,121 @@
+.page {
+  padding: 52px 0 60px;
+}
+
+.empty {
+  padding: 56px 16px;
+  text-align: center;
+  color: var(--gray);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.empty a,
+.foot a {
+  color: var(--gold-deep);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 묶음 건너뛰기 */
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.toc a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-base);
+  font-weight: 600;
+  background: #fff;
+}
+
+.toc a:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+
+.group {
+  margin-bottom: 36px;
+  /* 위에 붙어 다니는 헤더에 제목이 가리지 않게 */
+  scroll-margin-top: calc(var(--header-h) + var(--gnb-h) + 16px);
+}
+
+.groupTitle {
+  margin-bottom: 12px;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.items {
+  border-top: 2px solid var(--dark);
+}
+
+.item {
+  border-bottom: 1px solid var(--line);
+}
+
+.question {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  /* 누를 자리를 넉넉히 */
+  padding: 18px 40px 18px 4px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+
+/* 브라우저 기본 세모를 지우고 오른쪽에 +/− 를 둔다 */
+.question::-webkit-details-marker {
+  display: none;
+}
+
+.question::after {
+  content: '+';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.item[open] > .question::after {
+  content: '−';
+}
+
+.item[open] > .question {
+  color: var(--gold-deep);
+}
+
+.mark {
+  flex: none;
+  color: var(--gold-deep);
+  font-weight: 800;
+}
+
+.answer {
+  margin: 0;
+  padding: 4px 16px 22px 30px;
+  color: var(--ink-600);
+  line-height: var(--leading-relaxed);
+  /* 관리자가 넣은 줄바꿈을 살린다. HTML 로 꽂지 않는다. */
+  white-space: pre-line;
+}
+
+.foot {
+  margin-top: 8px;
+  color: var(--gray);
+}

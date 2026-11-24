@@ -18,6 +18,7 @@ import type { RefundPolicy } from '@/api/policies';
 import type { QnaSummary } from '@/types/board';
 import type { ProductDetail, ProductSummary } from '@/types/product';
 import { formatGram, formatKrw, formatPurity } from '@/utils/format';
+import { PhotoLightbox } from '@/components/product/PhotoLightbox';
 import { mediaUrl } from '@/utils/media';
 import styles from './ProductDetailView.module.css';
 
@@ -78,7 +79,11 @@ export function ProductDetailView({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [added, setAdded] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  /** 사진을 크게 보는 중인가 */
+  const [zoomed, setZoomed] = useState(false);
   const [qty, setQty] = useState(1);
+  /** 담기 요청이 나가 있는가. 중복 클릭을 막는다 (handleAddToCart) */
+  const adding = useRef(false);
 
   /**
    * 위쪽 갤러리 사진.
@@ -135,10 +140,20 @@ export function ProductDetailView({
       router.push(`/login?reason=required&next=${next}`);
       return;
     }
+    // 빠르게 두 번 누르면 둘 다 나간다 — isPending 은 다음 렌더에야 버튼을 잠그는데
+    // 두 번째 클릭은 그 전에 온다. 담기는 기존 수량에 더하는 동작이라 2개가 4개가
+    // 됐다 (2026-11-23 QA-038). 요청이 끝날 때까지 여기서 직접 막는다.
+    if (adding.current) return;
+    adding.current = true;
     setAdded(false);
     addToCart.mutate(
       { productId: product.id, optionId: option?.id ?? null, quantity: qty },
-      { onSuccess: () => (then ? then() : setAdded(true)) },
+      {
+        onSuccess: () => (then ? then() : setAdded(true)),
+        onSettled: () => {
+          adding.current = false;
+        },
+      },
     );
   };
 
@@ -184,15 +199,33 @@ export function ProductDetailView({
           {!preview && <WishlistHeart productId={product.id} productName={product.name} />}
           {photos.length > 0 ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.mainPhoto}
-                src={photos[shown]}
-                alt={product.name}
-                // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
-                // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
-                loading="eager"
-                decoding="async"
+              {/* 누르면 화면 가득 크게 본다 (PhotoLightbox). 버튼으로 감싸야 키보드로도 열린다. */}
+              <button
+                type="button"
+                className={styles.zoomButton}
+                aria-label={`${product.name} 사진 크게 보기`}
+                onClick={() => setZoomed(true)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className={styles.mainPhoto}
+                  src={photos[shown]}
+                  alt={product.name}
+                  // 첫 화면에 바로 보이는 그림이라 지연 로딩을 걸지 않는다. 걸면
+                  // 가장 큰 요소가 늦게 그려져 LCP 가 그만큼 밀린다.
+                  loading="eager"
+                  decoding="async"
+                />
+                <span className={styles.zoomHint} aria-hidden="true">
+                  크게 보기
+                </span>
+              </button>
+              <PhotoLightbox
+                photos={photos}
+                index={zoomed ? shown : null}
+                name={product.name}
+                onIndexChange={setPhotoIndex}
+                onClose={() => setZoomed(false)}
               />
 
               {/*

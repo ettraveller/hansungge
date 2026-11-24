@@ -9,7 +9,7 @@ import { DepositGuide } from '@/components/order/DepositGuide';
 import { ShipmentInfo } from '@/components/order/ShipmentInfo';
 import { useCancelOrder, useOrder } from '@/hooks/useOrder';
 import { ApiError } from '@/types/api';
-import type { OrderStatus } from '@/types/order';
+import { PAYMENT_METHOD_LABEL, type OrderStatus } from '@/types/order';
 import { formatDateTime, formatKrw, formatPhone } from '@/utils/format';
 import styles from '@/views/CheckoutView.module.css';
 
@@ -127,7 +127,7 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
         </ul>
 
         <div className={styles.total}>
-          <span>{order.status === 'PAID' ? '결제 금액' : '결제 예정 금액'}</span>
+          <span>{amountLabel(order.status)}</span>
           <strong>{formatKrw(order.totalAmount)}</strong>
         </div>
 
@@ -147,6 +147,15 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
         )}
 
         <dl className={styles.addressBox}>
+          {/* 어떻게 치렀는지. 전에는 금액만 있고 수단이 없어, 무통장으로 넣은 주문인지
+              카드로 낸 주문인지를 이 화면에서 알 수 없었다 (2026-11-23 QA-067). */}
+          <dt>결제수단</dt>
+          <dd>
+            {PAYMENT_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod}
+            {order.paymentMethod === 'BANK_TRANSFER' && order.depositorName
+              ? ` · 입금자명 ${order.depositorName}`
+              : ''}
+          </dd>
           <dt>받는 분</dt>
           <dd>
             {order.receiverName} · {formatPhone(order.receiverPhone)}
@@ -205,12 +214,41 @@ export function OrderDetailView({ orderNo }: { orderNo: string }) {
             </button>
           ))}
 
-        {!order.cancellable && order.status === 'PAID' && (
-          <p className={styles.disclaimer}>
-            결제 후 취소·환불은 고객센터로 문의해 주세요.
-          </p>
+        {/* 결제한 뒤의 취소·환불은 사람이 확인하고 처리한다 (환불은 돈이 나가는 일이다).
+            문의 화면으로 보내되 주문번호를 실어 준다 — 전에는 빈 글쓰기 화면이 떠서
+            주문번호를 손으로 옮겨 적어야 했다 (2026-11-23 QA-069). */}
+        {!order.cancellable && AFTER_PAYMENT.includes(order.status) && (
+          <>
+            <p className={styles.disclaimer}>
+              결제 후 취소·교환·반품은 아래에서 문의해 주세요. 발송 전이면 확인 후 바로
+              취소해 드립니다.
+            </p>
+            <Link
+              href={`/support/qna/write?orderNo=${encodeURIComponent(order.orderNo)}`}
+              className={styles.ghostButton}
+              style={{ display: 'block', textAlign: 'center' }}
+            >
+              취소·교환·반품 문의
+            </Link>
+          </>
         )}
       </article>
     </div>
   );
+}
+
+/** 결제가 끝난 뒤의 상태들. 이때부터는 손님이 직접 취소하지 못하고 문의로 받는다. */
+const AFTER_PAYMENT: OrderStatus[] = ['PAID', 'PREPARING', 'SHIPPED', 'DELIVERED'];
+
+/**
+ * 합계의 이름.
+ *
+ * <p>전에는 PAID 일 때만 「결제 금액」이었다. 상품 준비 중·배송 중·배송 완료도 이미
+ * 치른 주문인데 「결제 예정 금액」으로 나왔다 (2026-11-23 QA-067). 취소·환불된 주문은
+ * 예정도 완료도 아니므로 「주문 금액」이라고만 한다.
+ */
+function amountLabel(status: OrderStatus): string {
+  if (AFTER_PAYMENT.includes(status)) return '결제 금액';
+  if (status === 'ORDER_CREATED' || status === 'PAYMENT_PENDING') return '결제 예정 금액';
+  return '주문 금액';
 }

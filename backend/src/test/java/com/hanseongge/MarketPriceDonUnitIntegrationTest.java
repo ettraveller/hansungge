@@ -230,6 +230,25 @@ class MarketPriceDonUnitIntegrationTest extends EmbeddedPostgresSupport {
     }
 
     @Test
+    @DisplayName("돈으로 넣은 중량은 돈 시세 × 돈 수와 딱 맞는다 — g 값의 끊긴 자리가 불어나지 않는다")
+    void buybackMatchesPerDonPriceForLargeWeights() throws Exception {
+        // 589,000원/돈 → 157,066.67원/g (3.75 로 나누어떨어지지 않는다)
+        declare("700000", "589000");
+
+        // 2돈, 100돈, 1000돈
+        String[][] cases = {{"7.5", "1178000"}, {"375", "58900000"}, {"3750", "589000000"}};
+        for (String[] c : cases) {
+            MvcResult result = mockMvc.perform(get("/api/v1/prices/buyback")
+                            .param("metal", "GOLD_24K")
+                            .param("weightG", c[0]))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assertThat(body.get("amount").decimalValue()).as("weightG=" + c[0]).isEqualByComparingTo(c[1]);
+        }
+    }
+
+    @Test
     @DisplayName("고시된 적 없는 금속은 0원이 아니라 '시세문의'로 돌아온다 — 원칙 P6")
     void buybackReturnsNoPriceInsteadOfZero() throws Exception {
         // 은은 고시한 적이 없다.

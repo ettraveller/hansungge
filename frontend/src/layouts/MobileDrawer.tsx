@@ -8,6 +8,8 @@ import { createPortal } from 'react-dom';
 import { useIsBrowser } from '@/hooks/useIsBrowser';
 import { useSignOut, useUserSession } from '@/hooks/useUserSession';
 import type { NavItem } from '@/layouts/navigation';
+// 문자열 주소에는 basePath 가 붙지 않는다 — import 한다 (헤더·푸터 로고와 같다).
+import logo from './logo.svg';
 import styles from './MobileDrawer.module.css';
 
 
@@ -134,7 +136,7 @@ export function MobileDrawer({ nav }: { nav: NavItem[] }) {
             <aside className={open ? styles.drawerOn : styles.drawer} aria-hidden={!open}>
         <div className={styles.drawerHead}>
           {/* 서랍도 흰 바탕이라 헤더와 같은 로고다 */}
-          <Image src="/logo.svg" alt="한성금거래소" width={560} height={104} />
+          <Image src={logo} alt="한성금거래소" width={560} height={104} />
           <button
             type="button"
             className={styles.drawerClose}

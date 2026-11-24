@@ -228,7 +228,7 @@ export interface PaymentConfig {
    * <p>주문마다 들고 다니지 않는다 — 가게의 계좌는 주문의 속성이 아니라 설정이다.
    */
   bankAccount?: BankAccount | null;
-  /** 입금 안내 기한(시간). 지나도 자동취소하지 않는다 */
+  /** 입금 기한(시간). 관리자 설정값이다. 지나면 서버가 그 주문을 접는다 */
   depositDueHours: number;
 }
 

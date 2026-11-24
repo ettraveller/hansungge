@@ -1,7 +1,12 @@
 import Link from 'next/link';
 
 import { SectionHead } from '@/components/ui/SectionHead';
-import { GUIDE_SECTIONS, type GuideSection } from './guide-content';
+import {
+  DEPOSIT_DUE_SLOT,
+  GUIDE_SECTIONS,
+  depositDueSentence,
+  type GuideSection,
+} from './guide-content';
 import styles from './GuideView.module.css';
 
 /**
@@ -16,7 +21,13 @@ import styles from './GuideView.module.css';
  * 통합인증 심사에 「상품·서비스 설명」과 「환불 정책」을 볼 수 있는 주소로 제출한다.
  * 자바스크립트로 그리면 검수 도구가 빈 페이지를 본다.
  */
-export function GuideView() {
+export function GuideView({
+  depositDueHours = null,
+}: {
+  /** 무통장입금 기한(시간). 관리자 설정값이다. 받지 못했으면 null */
+  depositDueHours?: number | null;
+}) {
+  const deposit = depositDueSentence(depositDueHours);
   return (
     <div className={styles.page}>
       <div className="wrap">
@@ -35,12 +46,16 @@ export function GuideView() {
           ))}
         </nav>
 
-        {GUIDE_SECTIONS.map((section) => (
+        {GUIDE_SECTIONS.map((raw) => ({
+          ...raw,
+          // 기한 문장의 자리를 실제 값으로 채운다
+          items: raw.items.map((item) => item.replace(DEPOSIT_DUE_SLOT, deposit)),
+        })).map((section) => (
           <Section key={section.title} section={section} />
         ))}
 
         <p className={styles.foot}>
-          궁금한 점은 <Link href="/support/qna/write">1:1 문의</Link>로 남겨 주세요. 상품에 대한
+          궁금한 점은 <Link href="/support/qna/write">문의게시판</Link>에 남겨 주세요(비밀글로 등록됩니다). 상품에 대한
           질문은 <Link href="/support/product-qna">상품 문의</Link>에서도 받습니다.
         </p>
       </div>

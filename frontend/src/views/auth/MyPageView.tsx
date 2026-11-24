@@ -274,6 +274,10 @@ function EmailPanel() {
                 onChange={(e) => editEmail(e.target.value)}
                 autoComplete="email"
                 placeholder="example@domain.com"
+                // type=email 만으로는 「a@b」가 통과한다. 그대로 보내면 발송이 실패하고
+                // 「인증 메일을 보내지 못했습니다」가 떠서 장애처럼 읽혔다 (QA-027).
+                pattern="[^@\s]+@[^@\s]+\.[^@\s]{2,}"
+                title="올바른 이메일 주소를 입력해 주세요. (예: example@domain.com)"
                 required
               />
             </div>

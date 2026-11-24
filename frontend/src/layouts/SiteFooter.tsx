@@ -13,6 +13,9 @@ import type { FooterInfo } from '@/api/footer';
  * 정적 import 는 번들러가 basePath 를 올바르게 붙인 /_next/static 주소를 만든다.
  */
 import escrowMark from './escrow-kb.png';
+// 문자열 주소("/logo-dark.svg")에는 basePath 가 붙지 않아 QA(/qa)에서 깨졌다.
+// import 하면 빌드가 주소를 만든다 (헤더 로고와 같은 이유).
+import logoDark from './logo-dark.svg';
 import styles from './ShopLayout.module.css';
 
 /**
@@ -67,7 +70,8 @@ export function SiteFooter({ info, renderText }: Props) {
   <footer className={styles.footer}>
     <div className={styles.footTop}>
       <div className="wrap">
-        <Link href="/about">회사소개</Link>
+        {/* 「회사소개」는 페이지가 없어 내렸다 (2026-11-23 QA-009 — 모든 화면 푸터의
+            첫 링크가 404 였다). 소개 글이 준비되면 /about 을 만들고 되살린다. */}
         <Link href="/terms">이용약관</Link>
         <Link href="/privacy">개인정보처리방침</Link>
         <Link href="/guide">이용안내</Link>
@@ -82,7 +86,7 @@ export function SiteFooter({ info, renderText }: Props) {
           <div className={styles.footBrandRow}>
             {/* 푸터는 검정 바탕이다. 여기가 logo-dark(밝은 글자)를 쓸 자리다 */}
             <Image
-              src="/logo-dark.svg"
+              src={logoDark}
               alt="한성금거래소"
               width={560}
               height={104}

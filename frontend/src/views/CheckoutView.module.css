@@ -784,3 +784,11 @@
   color: var(--danger, #c0392b);
   font-weight: 700;
 }
+
+/* 주문할 수 없는 사유 (재고 부족 등). 안내 문구와 버튼 사이에 선다. */
+.emptyReason {
+  margin-top: 8px;
+  margin-bottom: 18px;
+  font-size: var(--text-base);
+  color: var(--red);
+}

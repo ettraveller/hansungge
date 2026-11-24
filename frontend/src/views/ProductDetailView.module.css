@@ -579,3 +579,27 @@
   font-variant-numeric: tabular-nums;
   color: var(--gray);
 }
+
+/* 대표 사진을 감싼 버튼 — 누르면 크게 본다. 버튼 모양은 지우고 사진만 남긴다. */
+.zoomButton {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+/* 눌린다는 것을 알리는 작은 표시. 사진 구석에 두어 상품을 가리지 않는다. */
+.zoomHint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 27, 45, 0.62);
+  color: #fff;
+  font-size: var(--text-xs);
+  pointer-events: none;
+}

@@ -11,6 +11,9 @@ import styles from './BuybackCalculator.module.css';
 /** 1돈 = 3.75g. 무게 단위 환산이라 금액이 아니다 — 원칙 P1 이 막는 것은 금액이다. */
 const GRAMS_PER_DON = 3.75;
 
+/** 받는 최대 중량(g). 서버(PublicMarketPriceController)의 상한과 같은 값이다. */
+const MAX_WEIGHT_G = 100_000;
+
 type Unit = 'DON' | 'GRAM';
 
 /**
@@ -36,8 +39,27 @@ export function BuybackCalculator() {
   const [input, setInput] = useState('');
 
   const typed = Number(input);
-  const valid = input.trim() !== '' && Number.isFinite(typed) && typed > 0;
-  const weightG = valid ? (unit === 'DON' ? typed * GRAMS_PER_DON : typed) : 0;
+  const wellFormed = input.trim() !== '' && Number.isFinite(typed) && typed > 0;
+  const typedG = wellFormed ? (unit === 'DON' ? typed * GRAMS_PER_DON : typed) : 0;
+
+  /**
+   * 입력이 왜 안 되는지. 없으면 null.
+   *
+   * <p>전에는 「1.2.3」은 아무 말 없이 무시되고, 너무 큰 값은 서버가 거절한 것을
+   * 「금액을 불러오지 못했습니다. 잠시 후 다시 시도」로 띄웠다 — 입력이 틀린 것인데
+   * 장애처럼 읽혔다 (2026-11-23 QA-086). 서버 상한(100,000g)과 같은 값으로 먼저 거른다.
+   */
+  const inputProblem =
+    input.trim() === ''
+      ? null
+      : !wellFormed
+        ? '무게를 숫자로 넣어 주세요. (예: 3.75)'
+        : typedG > MAX_WEIGHT_G
+          ? '무게가 너무 큽니다. 이만큼은 지점으로 문의해 주세요.'
+          : null;
+
+  const valid = wellFormed && inputProblem === null;
+  const weightG = valid ? typedG : 0;
 
   const quote = useQuery({
     queryKey: ['buyback', metal, weightG],
@@ -113,7 +135,11 @@ export function BuybackCalculator() {
       </div>
 
       <div className={styles.result} aria-live="polite">
-        {!valid ? (
+        {inputProblem ? (
+          <p className={styles.resultIdle} role="alert">
+            {inputProblem}
+          </p>
+        ) : !valid ? (
           <p className={styles.resultIdle}>무게를 넣으면 예상 금액이 나옵니다.</p>
         ) : quote.isPending ? (
           <p className={styles.resultIdle}>계산 중…</p>

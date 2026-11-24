@@ -86,7 +86,7 @@ export function PasswordResetView() {
         <h1 className={styles.title}>비밀번호 찾기</h1>
         <p className={styles.lead}>
           {channels.length > 0
-            ? '가입한 휴대폰번호나 이메일로 인증번호를 받아 새 비밀번호를 정합니다.'
+            ? `가입한 ${channelWords(channels)}로 인증번호를 받아 새 비밀번호를 정합니다.`
             : '본인인증(PASS·토스 등)으로 가입한 계정을 찾고, 그 자리에서 새 비밀번호를 정합니다.'}
         </p>
       </header>
@@ -156,4 +156,15 @@ export function PasswordResetView() {
       </div>
     </div>
   );
+}
+
+/**
+ * 지금 쓸 수 있는 수단만 말한다.
+ *
+ * <p>전에는 언제나 「휴대폰번호나 이메일」이라고 적었는데, 문자 발송이 꺼져 있으면
+ * 입력칸은 이메일 하나뿐이라 안내와 화면이 어긋났다 (2026-11-23 QA-023).
+ */
+function channelWords(channels: VerificationChannel[]): string {
+  const words = channels.map((c) => (c === 'SMS' ? '휴대폰번호' : '이메일'));
+  return words.join('나 ');
 }

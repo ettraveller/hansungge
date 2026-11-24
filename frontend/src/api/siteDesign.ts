@@ -54,8 +54,8 @@ export const SECTION_META: Record<
   },
   PRODUCTS: {
     label: '상품',
-    title: '시세 연동 상품',
-    desc: '시세가 바뀌면 가격도 함께 바뀝니다',
+    title: '판매 상품',
+    desc: '고시 시세를 기준으로 판매가를 안내합니다',
     note: '카테고리 탭으로 나뉜 상품 목록',
   },
   STORES: {

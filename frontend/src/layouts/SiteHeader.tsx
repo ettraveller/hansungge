@@ -1,9 +1,13 @@
+import Form from 'next/form';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { SearchIcon } from '@/layouts/icons';
 import logoGold from '@/layouts/logo-gold.svg';
+import { Suspense } from 'react';
+
 import { MobileDrawer } from '@/layouts/MobileDrawer';
+import { MobileSearch } from '@/layouts/MobileSearch';
 import { StickyHeader } from '@/layouts/StickyHeader';
 import type { NavItem } from '@/layouts/navigation';
 import styles from './ShopLayout.module.css';
@@ -43,11 +47,19 @@ export function SiteHeader({ nav }: { nav: NavItem[] }) {
         <Image src={logoGold} alt="한성금거래소" width={560} height={104} priority />
       </Link>
 
-      <form className={styles.search} action="/shop" role="search">
+      {/* next/form 을 쓴다. 맨 <form action="/shop"> 에는 basePath 가 붙지 않아
+          QA(/qa)에서 검색하면 운영 주소로 넘어갔다. */}
+      <Form className={styles.search} action="/shop" role="search">
         <SearchIcon size={17} className={styles.searchIcon} />
         <input type="text" name="keyword" placeholder="상품 검색" aria-label="상품 검색" />
         <button type="submit">검색</button>
-      </form>
+      </Form>
+
+      {/* 좁은 화면의 검색. 주소의 검색어를 읽으므로(useSearchParams) Suspense 로
+          감싼다 — 감싸지 않으면 이 헤더를 쓰는 화면 전체가 정적 생성에서 빠진다. */}
+      <Suspense fallback={null}>
+        <MobileSearch />
+      </Suspense>
 
     </div>
 

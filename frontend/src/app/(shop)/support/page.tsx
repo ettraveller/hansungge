@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 
+import { faqApi } from '@/api/faqs';
 import { footerApi } from '@/api/footer';
 import { load } from '@/api/server';
 import { FOOTER_DEFAULTS } from '@/data/company';
@@ -22,8 +23,18 @@ export const metadata: Metadata = {
  * 기본값으로 그린다 — 전화번호가 사라지는 것이 이 화면에서 가장 나쁜 결과다.
  */
 export default async function SupportPage() {
-  const footer = await load(() => footerApi.get(), '고객센터 대표전화');
+  const [footer, faqs] = await Promise.all([
+    load(() => footerApi.get(), '고객센터 대표전화'),
+    load(() => faqApi.list(), '고객센터 FAQ 유무'),
+  ]);
   const info = footer.data ?? FOOTER_DEFAULTS;
 
-  return <SupportView tel={info.tel} hours={info.hours} holiday={info.holiday} />;
+  return (
+    <SupportView
+      tel={info.tel}
+      hours={info.hours}
+      holiday={info.holiday}
+      hasFaq={(faqs.data?.length ?? 0) > 0}
+    />
+  );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Notice } from '@/components/auth/Notice';
 import {
@@ -121,8 +121,27 @@ function CartRow({ item, index }: { item: CartItem; index: number }) {
   // 수량은 절대값으로 보낸다. 증감으로 보내면 요청이 중복 도착할 때 두 번 반영된다.
   const setQuantity = (next: number) => {
     if (next < 1 || next === item.quantity) return;
-    changeQuantity.mutate({ itemId: item.id, quantity: next });
+    changeQuantity.mutate(
+      { itemId: item.id, quantity: next },
+      {
+        // 늘리다 거절당했으면(재고 부족·상품별 상한) 지금 수량이 끝이다.
+        onError: () => {
+          if (next > item.quantity) setCappedAt(item.quantity);
+        },
+      },
+    );
   };
+
+  /**
+   * 더 늘릴 수 없다고 확인된 수량.
+   *
+   * <p>남은 재고는 공개 응답에 없다(영업 정보). 그래서 미리 막지는 못하고, 한 번
+   * 거절당한 수량을 기억해 그 자리에서 + 를 잠근다. 전에는 「재고가 부족합니다」가
+   * 뜬 뒤에도 + 가 계속 눌려 같은 거절이 반복됐다 (2026-11-23 QA-043). 수량을 줄이면
+   * 다시 풀린다.
+   */
+  const [cappedAt, setCappedAt] = useState<number | null>(null);
+  const capped = cappedAt != null && item.quantity >= cappedAt;
 
   const thumbUrl = mediaUrl(item.thumbnailKey);
   const error = changeQuantity.error ?? remove.error;
@@ -201,7 +220,7 @@ function CartRow({ item, index }: { item: CartItem; index: number }) {
         <button
           type="button"
           aria-label="수량 늘리기"
-          disabled={busy}
+          disabled={busy || capped}
           onClick={() => setQuantity(item.quantity + 1)}
         >
           +

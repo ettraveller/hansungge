@@ -167,9 +167,18 @@ export function CheckoutView() {
   }
 
   if (orderableItems.length === 0) {
+    // 왜 안 되는지를 말한다. 서버는 품목마다 사유를 준다(재고 부족·판매 중지 등).
+    // 전에는 사유를 버리고 「주문할 수 있는 상품이 없습니다」만 띄워서, 수량을 많이
+    // 고른 손님이 무엇을 고쳐야 하는지 알 수 없었다 (2026-11-23 QA-036).
+    const blocked = cart?.items.find((item) => !item.orderable);
     return (
       <div className={styles.empty}>
         <p>주문할 수 있는 상품이 없습니다.</p>
+        {blocked?.unavailableReason && (
+          <p className={styles.emptyReason}>
+            {blocked.productName} — {blocked.unavailableReason}
+          </p>
+        )}
         <Link
           className={styles.emptyLink}
           href={direct ? `/shop/product/${direct.productId}` : '/cart'}
@@ -405,13 +414,15 @@ export function CheckoutView() {
                   </span>
                 </div>
 
-                {/* 기한은 안내다. 지나도 주문이 사라지지 않는다 — 입금하려고 계좌를
-                    열어 둔 사이에 취소되면 보낸 돈이 갈 곳을 잃는다. 그래서
-                    「취소됩니다」라고 적지 않는다. 적으면 지키지 않는 약속이 된다. */}
+                {/* 기한이 지나면 서버가 주문을 접는다 (OrderRepository.findStale —
+                    무통장은 deposit_due_at 을 본다). 전에는 「지나도 사라지지 않는다」고
+                    보고 취소를 적지 않았는데, 실제로는 접히고 있었다. 접히는 것을
+                    알리지 않으면 기한 뒤에 부친 돈이 갈 곳을 잃는다. 이용안내와 같은
+                    말이어야 한다 (2026-11-23 QA-061). */}
                 <p className={styles.depositNote}>
                   주문 후 {paymentConfig.data?.depositDueHours ?? 3}시간 이내에 입금해 주세요.
-                  금 시세가 계속 움직이므로, 늦어지면 주문을 다시 확인해 드려야 할 수
-                  있습니다. 입금이 확인되면 상품 준비를 시작합니다.
+                  금 시세가 계속 움직이므로, 기한까지 입금이 확인되지 않으면 주문은 자동으로
+                  취소됩니다. 입금이 확인되면 상품 준비를 시작합니다.
                 </p>
               </div>
             )}
