@@ -79,6 +79,8 @@ export function ProductDetailView({
   const [added, setAdded] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [qty, setQty] = useState(1);
+  /** 담기 요청이 나가 있는가. 중복 클릭을 막는다 (handleAddToCart) */
+  const adding = useRef(false);
 
   /**
    * 위쪽 갤러리 사진.
@@ -135,10 +137,20 @@ export function ProductDetailView({
       router.push(`/login?reason=required&next=${next}`);
       return;
     }
+    // 빠르게 두 번 누르면 둘 다 나간다 — isPending 은 다음 렌더에야 버튼을 잠그는데
+    // 두 번째 클릭은 그 전에 온다. 담기는 기존 수량에 더하는 동작이라 2개가 4개가
+    // 됐다 (2026-11-23 QA-038). 요청이 끝날 때까지 여기서 직접 막는다.
+    if (adding.current) return;
+    adding.current = true;
     setAdded(false);
     addToCart.mutate(
       { productId: product.id, optionId: option?.id ?? null, quantity: qty },
-      { onSuccess: () => (then ? then() : setAdded(true)) },
+      {
+        onSuccess: () => (then ? then() : setAdded(true)),
+        onSettled: () => {
+          adding.current = false;
+        },
+      },
     );
   };
 

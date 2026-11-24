@@ -167,9 +167,18 @@ export function CheckoutView() {
   }
 
   if (orderableItems.length === 0) {
+    // 왜 안 되는지를 말한다. 서버는 품목마다 사유를 준다(재고 부족·판매 중지 등).
+    // 전에는 사유를 버리고 「주문할 수 있는 상품이 없습니다」만 띄워서, 수량을 많이
+    // 고른 손님이 무엇을 고쳐야 하는지 알 수 없었다 (2026-11-23 QA-036).
+    const blocked = cart?.items.find((item) => !item.orderable);
     return (
       <div className={styles.empty}>
         <p>주문할 수 있는 상품이 없습니다.</p>
+        {blocked?.unavailableReason && (
+          <p className={styles.emptyReason}>
+            {blocked.productName} — {blocked.unavailableReason}
+          </p>
+        )}
         <Link
           className={styles.emptyLink}
           href={direct ? `/shop/product/${direct.productId}` : '/cart'}
