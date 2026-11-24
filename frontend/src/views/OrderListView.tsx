@@ -450,12 +450,21 @@ function OrderRow({
             <Link href={`/mypage/orders/${order.orderNo}`} className={shell.pill}>
               주문 상세
             </Link>
-            <Link href="/support/qna/write" className={shell.pill}>
-              교환·반품 문의
-            </Link>
+            {/* 취소된 주문에는 두지 않는다 — 교환·반품할 것이 없다. 주문번호를 실어 보낸다. */}
+            {!CLOSED_STATUSES.includes(order.status) && (
+              <Link
+                href={`/support/qna/write?orderNo=${encodeURIComponent(order.orderNo)}`}
+                className={shell.pill}
+              >
+                교환·반품 문의
+              </Link>
+            )}
           </>
         )}
       </div>
     </Reveal>
   );
 }
+
+/** 끝난 주문. 교환·반품 문의를 걸지 않는다. */
+const CLOSED_STATUSES: string[] = ['CANCEL_REQUESTED', 'CANCELLED', 'REFUND_PENDING', 'REFUNDED'];

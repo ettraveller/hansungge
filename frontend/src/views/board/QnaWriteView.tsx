@@ -15,6 +15,8 @@ import form from '@/components/auth/auth.module.css';
 
 interface Props {
   boardType: QnaBoardType;
+  /** 미리 적어 둘 주문번호. 주문 상세의 「취소·교환·반품 문의」가 실어 보낸다 */
+  orderNo?: string;
   /**
    * 어느 상품에 대한 문의인가. 상품 상세의 「상품문의」 탭에서 넘어올 때 채워진다.
    *
@@ -35,12 +37,15 @@ interface Props {
  * {@code restored} 전에는 비로그인으로 판단하지 않는다 — 새로고침 직후 잠깐 토큰이 없는
  * 구간이 있고, 그때를 로그아웃으로 읽으면 로그인한 사람이 로그인 화면으로 튕긴다.
  */
-export function QnaWriteView({ boardType, productId }: Props) {
+export function QnaWriteView({ boardType, productId, orderNo = '' }: Props) {
   const router = useRouter();
   const { isAuthenticated, restored } = useUserSession();
 
-  const [title, setTitle] = useState('');
-  const [question, setQuestion] = useState('');
+  // 주문 상세에서 넘어왔으면 주문번호를 미리 적어 둔다 (페이지가 모양을 확인해 넘긴다).
+  const [title, setTitle] = useState(orderNo ? `[주문 ${orderNo}] ` : '');
+  const [question, setQuestion] = useState(orderNo ? `주문번호: ${orderNo}
+
+` : '');
   // 문의게시판은 비밀글을 기본으로 켠다. 주문번호·연락처를 적는 자리인데 기본이
   // 공개라, 체크를 놓치면 그 내용이 목록에 그대로 걸렸다 (2026-11-23 QA-075).
   // 제품문의는 다른 손님에게도 쓸모가 있어 공개가 기본이다.

@@ -206,7 +206,7 @@ export function HeroSlider({
                 }
                 style={{ backgroundImage: `url(${banner.image})` }}
                 role="img"
-                aria-label={banner.alt ?? ''}
+                aria-label={banner.alt || `메인 배너 ${i + 1}`}
               />
             )}
             {banner.mobileImage && (
@@ -214,7 +214,7 @@ export function HeroSlider({
                 className={`${styles.bgFull} ${styles.bgNarrow}`}
                 style={{ backgroundImage: `url(${banner.mobileImage})` }}
                 role="img"
-                aria-label={banner.alt ?? ''}
+                aria-label={banner.alt || `메인 배너 ${i + 1}`}
               />
             )}
             {/* 주소가 없으면 누를 수 없는 배너다. 빈 링크를 두면 눌리는데 아무 일도

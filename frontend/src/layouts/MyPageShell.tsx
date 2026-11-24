@@ -39,7 +39,8 @@ const GROUPS: { name: string; items: { name: string; href: string }[] }[] = [
     items: [
       // 내 정보·비밀번호·약관·소셜 연결·탈퇴가 한 화면에 모여 있다.
       // /mypage 는 주문내역으로 보내므로 여기는 별도 주소를 쓴다.
-      { name: '계정 관리', href: '/mypage/account' },
+      // 묶음 이름과 같은 이름을 쓰지 않는다 — 「계정 관리 › 계정 관리」로 읽혔다 (QA-071)
+      { name: '내 정보 · 비밀번호', href: '/mypage/account' },
     ],
   },
   {
@@ -145,7 +146,9 @@ function SummaryBar() {
     <div className={styles.summary}>
       <div className={styles.who}>
         <span className={styles.whoName}>{user?.name ?? data.name} 님</span>
-        <span className={styles.whoSub}>{formatPhone(user?.phone) || ''}</span>
+        {/* 번호가 없으면 그리지 않는다. formatPhone 은 빈 값에 '-' 를 돌려줘서, 소셜로
+            가입해 번호가 없는 회원의 이름 옆에 뜻 없는 줄표가 붙었다 (QA-071). */}
+        {user?.phone && <span className={styles.whoSub}>{formatPhone(user.phone)}</span>}
         {/* 총계는 단계가 아니다 — 흐름 안에 「전체 14」를 끼우면 결제 대기 앞 단계로
             읽힌다. 찜한 상품은 주문 상태와 아무 관계가 없다. 둘 다 작게 옆에 둔다. */}
         <span className={styles.whoLinks}>
