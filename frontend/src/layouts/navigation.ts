@@ -31,6 +31,10 @@ const TRAILING: NavItem[] = [
     href: '/support',
     label: '고객센터',
     children: [
+      // 고정 메뉴다 — 이 목록은 모든 화면의 머리글이 쓰므로 FAQ 유무를 매번 물을 수
+      // 없다. 질문이 전부 내려가 있어도 /support/faq 가 안내 문구를 그려서 404 가
+      // 아니다. (/support 카드만 유무에 따라 숨는다 — 그쪽은 페이지가 이미 조회한다.)
+      { href: '/support/faq', label: '자주 묻는 질문' },
       { href: '/support/qna', label: '문의게시판' },
       { href: '/support/product-qna', label: '제품문의' },
       { href: '/event', label: '이벤트' },
