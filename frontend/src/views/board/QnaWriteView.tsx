@@ -41,7 +41,10 @@ export function QnaWriteView({ boardType, productId }: Props) {
 
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
-  const [secret, setSecret] = useState(false);
+  // 문의게시판은 비밀글을 기본으로 켠다. 주문번호·연락처를 적는 자리인데 기본이
+  // 공개라, 체크를 놓치면 그 내용이 목록에 그대로 걸렸다 (2026-11-23 QA-075).
+  // 제품문의는 다른 손님에게도 쓸모가 있어 공개가 기본이다.
+  const [secret, setSecret] = useState(boardType === 'GENERAL');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const basePath = QNA_BOARD_PATH[boardType];

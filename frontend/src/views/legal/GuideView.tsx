@@ -55,7 +55,7 @@ export function GuideView({
         ))}
 
         <p className={styles.foot}>
-          궁금한 점은 <Link href="/support/qna/write">1:1 문의</Link>로 남겨 주세요. 상품에 대한
+          궁금한 점은 <Link href="/support/qna/write">문의게시판</Link>에 남겨 주세요(비밀글로 등록됩니다). 상품에 대한
           질문은 <Link href="/support/product-qna">상품 문의</Link>에서도 받습니다.
         </p>
       </div>

@@ -1,5 +1,8 @@
 'use client';
 
+import { useState } from 'react';
+
+import { Toast } from '@/components/ui/Toast';
 import { useIsWishlisted, useToggleWishlist } from '@/hooks/useInterest';
 import { useUserSession } from '@/hooks/useUserSession';
 import styles from '@/components/product/WishlistHeart.module.css';
@@ -23,6 +26,9 @@ export function WishlistHeart({ productId, productName }: { productId: number; p
   const { isAuthenticated } = useUserSession();
   const { data: wishlisted } = useIsWishlisted(isAuthenticated ? productId : null);
   const toggle = useToggleWishlist();
+  // 실패를 알린다. 전에는 요청이 실패해도 아무 일도 일어나지 않아, 눌렀는데
+  // 하트가 그대로인 이유를 알 수 없었다 (2026-11-23 QA-094).
+  const [failed, setFailed] = useState<string | null>(null);
 
   if (!isAuthenticated) {
     return null;
@@ -31,6 +37,7 @@ export function WishlistHeart({ productId, productName }: { productId: number; p
   const on = wishlisted === true;
 
   return (
+    <>
     <button
       type="button"
       className={on ? `${styles.heart} ${styles.on}` : styles.heart}
@@ -40,12 +47,20 @@ export function WishlistHeart({ productId, productName }: { productId: number; p
         // 카드 전체가 링크인 자리에서도 상세로 넘어가지 않게 한다.
         e.preventDefault();
         e.stopPropagation();
-        toggle.mutate({ productId, next: !on });
+        toggle.mutate(
+          { productId, next: !on },
+          {
+            onError: () =>
+              setFailed(on ? '찜을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.' : '찜하지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+          },
+        );
       }}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 20.4S4.5 15.7 4.5 10.6A3.9 3.9 0 0 1 12 8.3a3.9 3.9 0 0 1 7.5 2.3c0 5.1-7.5 9.8-7.5 9.8z" />
       </svg>
     </button>
+    <Toast message={failed} onDone={() => setFailed(null)} />
+    </>
   );
 }
