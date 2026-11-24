@@ -156,3 +156,13 @@
     font-size: 13px;
   }
 }
+
+/* 검색 결과가 없을 때의 「전체 상품 보기」. 빈 상자 안의 글자와 구별되어야 눌린다. */
+.empty a {
+  display: inline-block;
+  margin-top: 10px;
+  font-weight: 700;
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

@@ -649,3 +649,73 @@ a.topbarLink:hover {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ---------- 좁은 화면의 검색 (MobileSearch) ----------
+   넓은 화면에서는 헤더의 검색창이 있으므로 돋보기도 검색줄도 감춘다. */
+.mobileSearchToggle,
+.mobileSearchBar {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  /* 헤더 세 칸 중 마지막 칸 (.headerMain). 햄버거와 같은 크기로 맞춘다. */
+  .mobileSearchToggle {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+    color: var(--header-fg);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 헤더 바로 아래에 겹쳐 뜬다. 헤더가 sticky 라 이 줄의 기준이 된다. */
+  .mobileSearchBar {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 8px;
+    padding: 10px var(--gutter);
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 8px 20px -12px rgba(15, 27, 45, 0.25);
+  }
+
+  .mobileSearchBar input {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    padding: 0 14px;
+    border: 1.5px solid var(--header-fg);
+    border-radius: var(--radius-sm);
+    /* 16px 보다 작으면 iOS 가 입력할 때 화면을 확대한다 */
+    font-size: 16px;
+    color: var(--header-fg);
+    background: transparent;
+    outline: none;
+  }
+
+  .mobileSearchBar input:focus {
+    border-color: var(--gold-500);
+  }
+
+  .mobileSearchBar button {
+    flex: none;
+    height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--action);
+    color: var(--on-action);
+    font-weight: 700;
+    font-size: var(--text-base);
+  }
+}

@@ -15,6 +15,8 @@ interface Props {
   products: Loaded<PageResponse<ProductSummary>>;
   /** 현재 선택된 카테고리. 없으면 전체 */
   selectedCategoryId: number | null;
+  /** 검색어. 검색으로 온 것이 아니면 null */
+  keyword?: string | null;
 }
 
 /**
@@ -24,7 +26,12 @@ interface Props {
  * 클라이언트 상태로 두면 각 카테고리에 고유 URL 이 없어져 검색엔진이 색인할 페이지가
  * 하나로 줄어든다.
  */
-export function ProductListView({ categories, products, selectedCategoryId }: Props) {
+export function ProductListView({
+  categories,
+  products,
+  selectedCategoryId,
+  keyword = null,
+}: Props) {
   const page = products.data;
   const items = page?.content ?? [];
   const all = categories.data ?? [];
@@ -51,7 +58,7 @@ export function ProductListView({ categories, products, selectedCategoryId }: Pr
       <div className="wrap">
         <SectionHead
           as="h1"
-          title={currentName ?? '전체 상품'}
+          title={keyword ? `‘${keyword}’ 검색 결과` : (currentName ?? '전체 상품')}
           desc="가격은 현재 고시 시세 기준으로 계산되어 표시됩니다"
         />
 
@@ -99,11 +106,25 @@ export function ProductListView({ categories, products, selectedCategoryId }: Pr
             상품 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.
           </p>
         ) : items.length === 0 ? (
-          <p className={styles.empty}>
-            {selectedCategoryId === null
-              ? '판매 중인 상품이 아직 없습니다.'
-              : '이 카테고리에 판매 중인 상품이 없습니다.'}
-          </p>
+          keyword ? (
+            // 검색해서 없는 것과 가게에 상품이 없는 것은 다른 말이다. 전에는 둘 다
+            // 「판매 중인 상품이 아직 없습니다」라서 가게가 빈 것처럼 읽혔다 (QA-032).
+            <div className={styles.empty}>
+              <p>
+                <strong>‘{keyword}’</strong> 검색 결과가 없습니다.
+              </p>
+              <p>다른 낱말로 찾아보시거나 전체 상품을 둘러보세요.</p>
+              <p>
+                <Link href="/shop">전체 상품 보기</Link>
+              </p>
+            </div>
+          ) : (
+            <p className={styles.empty}>
+              {selectedCategoryId === null
+                ? '판매 중인 상품이 아직 없습니다.'
+                : '이 카테고리에 판매 중인 상품이 없습니다.'}
+            </p>
+          )
         ) : (
           <>
             <p className={styles.count}>

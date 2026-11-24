@@ -53,6 +53,7 @@ export default async function ShopPage({
       categories={categories}
       products={products}
       selectedCategoryId={categoryId}
+      keyword={params.keyword?.trim().slice(0, 60) || null}
     />
   );
 }
